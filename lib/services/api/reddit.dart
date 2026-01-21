@@ -161,12 +161,14 @@ class RedditApi extends Api {
   Post _parsePost(Map<String, dynamic> json) {
     final data = json['data'];
     final author = data['author'];
-    String? thumb = data['thumbnail'];
-    if (thumb == '' || thumb == 'self' || thumb == 'default' || thumb == 'nsfw' || thumb == 'image') {
-      thumb = null;
-    }
-    else if (thumb!.startsWith('http')) {
-      thumb = thumb.replaceAll('&amp;', '&');
+    String? thumbnail = data['thumbnail'];
+    if (thumbnail != null) {
+      if (thumbnail == '' || thumbnail == 'self' || thumbnail == 'default' || thumbnail == 'nsfw' || thumbnail == 'image') {
+        thumbnail = null;
+      }
+      else if (thumbnail!.startsWith('http')) {
+        thumbnail = thumbnail.replaceAll('&amp;', '&');
+      }
     }
 
     String? textHtml = data['selftext_html'];
@@ -223,7 +225,7 @@ class RedditApi extends Api {
       urlPath: data['permalink'],
       domain: domain,
       communityName: data['subreddit'].toLowerCase(),
-      thumbnailUrl: thumb,
+      thumbnailUrl: thumbnail,
       isStickied: data['stickied'],
       isSelf: data['is_self'],
       isNsfw: data['over_18'],
