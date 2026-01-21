@@ -46,7 +46,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
 
   @override
   void initState() {
-    debugPrint('initState url=${widget.url}, audioUrl=${widget.audioUrl}');
     super.initState();
     _init();
   }
@@ -80,9 +79,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
     await _player.open(
       Media(
         widget.url,
-        httpHeaders: {
-          'User-Agent': Settings.userAgent.value,
-        },
+        httpHeaders: {'User-Agent': Settings.userAgent.value},
       ),
       play: false,
     );

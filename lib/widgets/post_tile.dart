@@ -1,3 +1,4 @@
+import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/utils.dart';
@@ -7,6 +8,7 @@ import 'package:lurk/services/history.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/api/api.dart';
+import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/history_builder.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -84,9 +86,9 @@ class PostTile extends StatelessWidget {
                     id: post.id,
                     history: History.posts,
                     builder: (context, isVisited) {
-                      return RichText(
-                        text: TextSpan(
-                          style: const TextStyle(fontSize: 16),
+                      return Text.rich(
+                        TextSpan(
+                          style: const TextStyle(fontSize: 13.5, height: 1.2),
                           children: [
                             TextSpan(
                               text: post.title,
@@ -112,36 +114,45 @@ class PostTile extends StatelessWidget {
               ),
             ),
           ),
-          Ink(
+          SizedBox(
             width: 70,
             height: 70,
-            decoration: BoxDecoration(
-              image: post.thumbnailUrl != null
-                ? DecorationImage(
-                    fit: BoxFit.cover,
-                    image: NetworkImage(post.thumbnailUrl!),
-                  )
-                : null,
-            ),
-            child: InkWell(
-              onTap: () async {
-                if (await navigate(context, post.url, community: community, post: post)) {
-                  History.posts.setVisited(post.id);
-                }
-              },
-              child: post.thumbnailUrl == null
-                  ? Container(
-                    constraints: const BoxConstraints.expand(),
-                    decoration: BoxDecoration(
-                      border: BoxBorder.all(color: Constants.lighterBackgroundColor)
+            child: Stack(
+              children: [
+                Positioned.fill(
+                  child: post.thumbnailUrl != null
+                      ? CachedNetworkImage(
+                          imageUrl: post.thumbnailUrl!,
+                          memCacheWidth: 210, // 70px * 3 (standard device pixel ratio)
+                          memCacheHeight: 210,
+                          fadeInDuration: Duration.zero,
+                          fit: BoxFit.cover,
+                          httpHeaders: {'User-Agent': Settings.userAgent.value},
+                          errorWidget: (context, url, error) => const Icon(Icons.broken_image_rounded),
+                        )
+                      : DecoratedBox(
+                          decoration: BoxDecoration(
+                            border: BoxBorder.all(color: Constants.lighterBackgroundColor)
+                          ),
+                          child: Icon(
+                            post.isSelf ? Icons.subject_rounded : Icons.link_rounded,
+                            color: Colors.white38,
+                          ),
+                        ),
+                ),
+                Positioned.fill(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () async {
+                        if (await navigate(context, post.url, community: community, post: post)) {
+                          History.posts.setVisited(post.id);
+                        }
+                      }
                     ),
-                    child: Icon(
-                      post.isSelf ? Icons.subject : Icons.link,
-                      color: Colors.white38,
-                      size: 24,
-                    ),
-                  )
-                  : null,
+                  ),
+                ),
+              ],
             ),
           )
         ],
