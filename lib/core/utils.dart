@@ -116,7 +116,11 @@ Future<bool> navigate(BuildContext context, String url, {Community? community, P
     if (pathSegments[1].startsWith('CMAF')) {
       pathSegments.removeLast();
       pathSegments.add('CMAF_AUDIO_128.mp4');
-      audioUrl = uri.replace(pathSegments: pathSegments).toString();
+      audioUrl = Uri(
+        scheme: uri.scheme,
+        host: uri.host,
+        pathSegments: pathSegments
+      ).toString();
     }
     Navigator.push(
       context, MaterialPageRoute(
