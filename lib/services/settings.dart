@@ -58,7 +58,7 @@ class SettingNotifier<T> extends ValueNotifier<T> {
 
   final SettingsCompanion Function(T) companionBuilder;
   final T? defaultValue;
-  final bool hasSavedValue;
+  bool hasSavedValue;
 
   SettingNotifier(T initialValue, this.companionBuilder, [this.defaultValue]) : hasSavedValue = initialValue != null, super(initialValue ?? defaultValue as T);
 
@@ -67,6 +67,7 @@ class SettingNotifier<T> extends ValueNotifier<T> {
     if (super.value == newValue) return;
     super.value = newValue ?? defaultValue as T;
     Database.instance.updateSettings(companionBuilder(newValue));
+    hasSavedValue = true;
   }
   
 }

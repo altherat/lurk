@@ -80,10 +80,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 );
               }
             ),
-            const Divider(
-              height: 32,
-              color: Constants.lighterBackgroundColor
-            ),
+            const _Divider(),
             _Header(text: 'Content'),
             _SettingSwitchListTile(
               setting: Settings.showCommentImages,
@@ -93,10 +90,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setting: Settings.autoplayVideos,
               label: 'Autoplay videos'
             ),
-            const Divider(
-              height: 32,
-              color: Constants.lighterBackgroundColor
-            ),
+            const _Divider(),
             _Header(
               text: 'Appearance'
             ),
@@ -114,46 +108,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 setting: Settings.showPlatformColorAccents,
                 label: 'Platform color accents'
               ),
-              const Divider(
-                height: 32,
-                color: Constants.lighterBackgroundColor
-              ),
+              const _Divider(),
               _Header(text: 'Reddit'),
+              const _ClientIdSetting(),
+              const _RedirectUriSetting(),
+              const _LinksFromOldRedditSetting(),
             ],
-            if (F.appFlavor == Flavor.combined || F.appFlavor == Flavor.reddit) ...[
-              _SettingStringListTile(
-                setting: Settings.clientId,
-                label: 'Client ID',
-                hintText: 'Not yet implemented',
-                helpText: 'Without a client ID, Reddit limits you to 100 requests per 10 minutes.\n\nSpecifying a client ID increases this limit to 100 requests per 1 minute (per client ID) and enables login (not yet implemented).',
-              ),
-              ValueListenableBuilder(
-                valueListenable: Settings.clientId,
-                builder: (context, clientId, child) {
-                  if (clientId != null && clientId.isNotEmpty) {
-                    return _SettingStringListTile(
-                      setting: Settings.redirectUri,
-                      label: 'Redirect URI',
-                      hintText: 'Not yet implemented',
-                      helperText: (value) => "Used to spoof another app's authorization flow",
-                    );
-                  }
-                  return const SizedBox.shrink();
-                },
-              ),
-              _SettingSwitchListTile(
-                setting: Settings.copyOldRedditLinks,
-                label: 'Links from old.reddit.com',
-                helpText: 'When enabled, any links you copy or open in your browser will be from old.reddit.com rather than www.reddit.com.',
-              ),
-            ],
-            const Divider(
-              height: 32,
-              color: Constants.lighterBackgroundColor
-            ),
+            const _Divider(),
             _Header(
               text: 'Other'
             ),
+            if (F.appFlavor == Flavor.reddit) ...[
+              const _LinksFromOldRedditSetting(),
+              const _ClientIdSetting(),
+              const _RedirectUriSetting()
+            ],
             _SettingStringListTile(
               setting: Settings.userAgent,
               label: 'User agent',
@@ -162,6 +131,83 @@ class _SettingsScreenState extends State<SettingsScreen> {
           ],
         ),
       )
+    );
+  }
+
+}
+
+class _Divider extends StatelessWidget {
+
+  const _Divider({
+    super.key
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return const Divider(
+      height: 32,
+      color: Constants.lighterBackgroundColor
+    );
+  }
+
+}
+
+class _ClientIdSetting extends StatelessWidget {
+
+  const _ClientIdSetting({
+    super.key
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingStringListTile(
+      setting: Settings.clientId,
+      label: 'Client ID',
+      hintText: 'Not yet implemented',
+      helpText: 'Without a client ID, Reddit limits you to 100 requests per 10 minutes.\n\nSpecifying a client ID increases this limit to 100 requests per 1 minute (per client ID) and enables login (not yet implemented).',
+    );
+  }
+
+}
+
+class _RedirectUriSetting extends StatelessWidget {
+
+  const _RedirectUriSetting({
+    super.key
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder(
+      valueListenable: Settings.clientId,
+      builder: (context, clientId, child) {
+        if (clientId != null && clientId.isNotEmpty) {
+          return _SettingStringListTile(
+            setting: Settings.redirectUri,
+            label: 'Redirect URI',
+            hintText: 'Not yet implemented',
+            helperText: (value) => "Used to spoof another app's authorization flow",
+          );
+        }
+        return const SizedBox.shrink();
+      },
+    );
+  }
+
+}
+
+class _LinksFromOldRedditSetting extends StatelessWidget {
+
+  const _LinksFromOldRedditSetting({
+    super.key
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return _SettingSwitchListTile(
+      setting: Settings.copyOldRedditLinks,
+      label: 'Links from old.reddit.com',
+      helpText: 'When enabled, any links you copy or open in your browser will be from old.reddit.com rather than www.reddit.com.',
     );
   }
 
@@ -307,7 +353,7 @@ class _SettingStringListTile<T> extends StatelessWidget {
         builder: (context, value, child) {
           final displayValue = setting.hasSavedValue ? value : null;
           return _TextField(
-            defaultValue: displayValue == null ? null : toText?.call(displayValue) ?? displayValue.toString(),
+            defaultValue: displayValue != null ? toText?.call(displayValue) ?? displayValue.toString() : null,
             label: label,
             hintText: hintText ?? (setting.defaultValue != null ? (toText?.call(setting.defaultValue) ?? setting.defaultValue.toString()) : null),
             helperText: helperText,
