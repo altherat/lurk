@@ -1,0 +1,64 @@
+import 'package:lurk/core/utils.dart';
+import 'package:lurk/core/utils.dart' as utils;
+
+class Post {
+
+  final String id;
+  final int score;
+  final int timestampMs;
+  final String title;
+  final String? textHtml;
+  final String? author;
+  final int commentCount;
+  final String url;
+  final String urlPath;
+  final String domain;
+  final String communityName;
+  final String? thumbnailUrl;
+  final bool isDeleted;
+  final bool isStickied;
+  final bool isSelf;
+  final bool isNsfw;
+  final bool isGallery;
+  final List<String> galleryImageUrls;
+
+  Post({
+    required this.id,
+    required this.score,
+    required this.timestampMs,
+    required this.title,
+    required this.textHtml,
+    required this.author,
+    required this.commentCount,
+    required this.url,
+    required this.urlPath,
+    required this.domain,
+    required this.communityName,
+    this.thumbnailUrl,
+    this.isStickied = false,
+    required this.isDeleted,
+    required this.isSelf,
+    required this.isNsfw,
+    required this.isGallery,
+    this.galleryImageUrls = const []
+  });
+
+  String get compactScore {
+    if (score < 1000) {
+      return score.toString();
+    }
+    final double reduced = score / 1000;
+    String formatted = reduced.toStringAsFixed(1);
+    if (reduced >= 9.95) {
+      formatted = reduced.toStringAsFixed(0);
+    }
+    return '${formatted.replaceAll(RegExp(r'\.0$'), '')}K';
+  }
+
+  String get timeAgo => utils.timeAgo(timestampMs);
+
+  String get timeAgoCompact => utils.timeAgoCompact(timestampMs);
+
+  String get commentsLabel => commentCount == 1 ? '1 comment' : '${commentCount.toCommaString()} comments';
+  
+}

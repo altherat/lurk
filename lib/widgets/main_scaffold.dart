@@ -1,0 +1,684 @@
+import 'dart:math';
+
+import 'package:flutter/material.dart' hide SearchBar;
+import 'package:flutter/rendering.dart';
+import 'package:flutter/services.dart';
+import 'package:lurk/core/constants.dart';
+import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/utils.dart';
+import 'package:lurk/core/flavors.dart';
+import 'package:lurk/models/community.dart';
+import 'package:lurk/screens/posts.dart';
+import 'package:lurk/screens/settings.dart';
+import 'package:lurk/services/settings.dart';
+import 'package:lurk/widgets/community_name.dart';
+import 'package:lurk/widgets/filter_bottom_sheet.dart';
+import 'package:lurk/widgets/search_bar.dart';
+import 'package:lurk/widgets/themed_app_bar.dart';
+
+class MainScaffold extends StatefulWidget {
+
+  final Platform? platform;
+  final String? activeCommunityName;
+  final GlobalKey<ScaffoldState>? scaffoldKey;
+  final Widget? title;
+  final Widget? subtitle;
+  final List<Widget> iconActions;
+  final Map<String, VoidCallback> popupMenuActions;
+  final List<Sort> sorts;
+  final Sort? initialSort;
+  final Widget? Function(BuildContext context, Sort? selectedSort)? additionalFilterBuilder;
+  final bool useSlivers;
+  final List<Widget> slivers;
+  final Widget body;
+  final VoidCallback? onRefresh;
+  final Function(Sort sort)? onSortSelected;
+
+  const MainScaffold({
+    super.key,
+    this.platform,
+    this.activeCommunityName,
+    this.scaffoldKey,
+    required this.title,
+    this.subtitle,
+    this.iconActions = const [],
+    this.popupMenuActions = const {},
+    this.sorts = const [],
+    this.initialSort,
+    this.additionalFilterBuilder,
+    this.useSlivers = false,
+    this.slivers = const [],
+    required this.body,
+    this.onRefresh,
+    this.onSortSelected
+  });
+
+  @override
+  State<MainScaffold> createState() => _MainScaffoldState();
+
+}
+
+class _MainScaffoldState extends State<MainScaffold> {
+
+  final ValueNotifier<bool> _isBottomBarVisible = ValueNotifier<bool>(true);
+  final ScrollController _scrollController = ScrollController();
+  late GlobalKey<ScaffoldState> _scaffoldKey;
+
+  @override
+  void initState() {
+    super.initState();
+    _scaffoldKey = widget.scaffoldKey ?? GlobalKey<ScaffoldState>();
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  void _scrollToTopAndRefresh() {
+    if (widget.onRefresh == null) return;
+    if (_scrollController.hasClients) {
+      _scrollController.animateTo(
+        0, 
+        duration: const Duration(milliseconds: 300), 
+        curve: Curves.easeInOut
+      );
+    }
+    widget.onRefresh!.call();
+  }
+
+  void _showFilterBottomSheet() {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      builder: (context) {
+        return FilterBottomSheet(
+          platform: widget.platform!,
+          filters: widget.sorts,
+          initialFilter: widget.initialSort ?? widget.sorts.first,
+          additionalFilterBuilder: widget.additionalFilterBuilder,
+          onFilterSelected: widget.onSortSelected!,
+        );
+      }
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder(
+      valueListenable: Settings.useBottomBar,
+      builder: (context, useBottomBar, child) {
+
+        final List<Widget> actions = [
+          PopupMenuButton(
+            onSelected: (callback) => callback(),
+            itemBuilder: (context) => [
+              ...widget.popupMenuActions.entries.map((entry) {
+                return PopupMenuItem<VoidCallback>(
+                  value: entry.value,
+                  child: Text(entry.key),
+                );
+              }),
+              PopupMenuItem<VoidCallback>(
+                value: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen())),
+                child: const Text('Settings'),
+              ),
+            ]
+          ),
+        ];
+        final titleWidget = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            if (widget.title != null)
+              DefaultTextStyle.merge(
+                style: const TextStyle(height: 1),
+                child: widget.title!
+              ),
+            if (widget.subtitle != null)
+              ValueListenableBuilder(
+                valueListenable: Settings.appBarColor,
+                builder: (context, appBarColor, child) {
+                  return Builder(
+                    builder: (context) {
+                      final parentAlpha = (DefaultTextStyle.of(context).style.color!.a * 255).toInt();
+                      return DefaultTextStyle.merge(
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                          color: appBarColor?.contrast.withAlpha(min(parentAlpha, Constants.appBarSubtitleAlpha)),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        child: widget.subtitle!
+                      );
+                    },
+                  );
+                }
+              )
+          ],
+        );
+        final bool extendBody;
+        final Drawer? drawer;
+        final double drawerEdgeDragWidth;
+        final Widget? appBarDrawerIcon;
+        final Widget? bottomBar;
+        if (useBottomBar) {
+          extendBody = true;
+          final paddingBottom = MediaQuery.of(context).padding.bottom;
+          // paddingBottom = math.max(0.0, paddingBottom * 0.6);
+          drawer = null;
+          drawerEdgeDragWidth = 20;
+          appBarDrawerIcon = null;
+          bottomBar = ValueListenableBuilder(
+            valueListenable: _isBottomBarVisible,
+            builder: (context, isBottomBarVisible, child) {
+              return AnimatedSlide(
+                offset: isBottomBarVisible ? Offset.zero : const Offset(0, 1),
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeInOut,
+                child: SingleChildScrollView(
+                  physics: const NeverScrollableScrollPhysics(),
+                  child: ValueListenableBuilder(
+                    valueListenable: Settings.appBarColor,
+                    builder: (context, appBarColor, child) {
+                      return Material(
+                        color: appBarColor,
+                        child: Padding(
+                          padding: EdgeInsets.only(bottom: paddingBottom),
+                          child: SizedBox(
+                            height: kBottomNavigationBarHeight,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceAround,
+                              children: [
+                                IconButton(
+                                  icon: const Icon(Icons.sort_rounded),
+                                  tooltip: 'Sort',
+                                  iconSize: 26,
+                                  onPressed: _showFilterBottomSheet
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.groups_rounded),
+                                  tooltip: 'Communities',
+                                  iconSize: 26,
+                                  onPressed: () {
+                                    showModalBottomSheet(
+                                      context: context,
+                                      isScrollControlled: true,
+                                      backgroundColor: Colors.transparent,
+                                      builder: (context) {
+                                        final screenHeight = MediaQuery.of(context).size.height;
+                                        final viewInsetsBottom = MediaQuery.of(context).viewInsets.bottom;
+                                        return Padding(
+                                          padding: EdgeInsets.only(bottom: viewInsetsBottom),
+                                          child: GestureDetector(
+                                            behavior: HitTestBehavior.opaque,
+                                            onTap: () => Navigator.of(context).pop(),
+                                            child: SizedBox(
+                                              height: (screenHeight - viewInsetsBottom) * 0.4,
+                                              child: Material(
+                                                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                                                child: _CommunityList(
+                                                  activeCommunityPlatform: widget.platform,
+                                                  activeCommunityName: widget.activeCommunityName,
+                                                  scaffoldKey: _scaffoldKey,
+                                                  padding: EdgeInsets.only(
+                                                    top: 16,
+                                                    bottom: MediaQuery.of(context).padding.bottom
+                                                  ),
+                                                  onActiveCommunitySelected: _scrollToTopAndRefresh
+                                                ),
+                                              )
+                                            )
+                                          ),
+                                        );
+                                      },
+                                    );
+                                  }
+                                ),
+                                IconButton(
+                                  icon: const Icon(Icons.refresh_rounded),
+                                  tooltip: 'Refresh',
+                                  iconSize: 26,
+                                  onPressed: _scrollToTopAndRefresh
+                                ),
+                              ]
+                            ),
+                          ),
+                        )
+                      );
+                    }
+                  ),
+                ),
+              );
+            }
+          );
+        }
+        else {
+          final theme = Theme.of(context);
+          extendBody = false;
+          drawer = Drawer(
+            child: AnnotatedRegion<SystemUiOverlayStyle>(
+              value: const SystemUiOverlayStyle(
+                statusBarColor: Colors.transparent,
+                statusBarIconBrightness: Brightness.light, 
+                statusBarBrightness: Brightness.dark,      
+              ),
+              child: Stack(
+                children: [
+                  _CommunityList(
+                    activeCommunityPlatform: widget.platform,
+                    activeCommunityName: widget.activeCommunityName,
+                    scaffoldKey: _scaffoldKey,
+                    onActiveCommunitySelected: _scrollToTopAndRefresh
+                  ),
+                  _Scrim(color: (theme.drawerTheme.backgroundColor ?? theme.canvasColor).withAlpha(Constants.scrimAlpha))
+                ],
+              ),
+            )
+          );
+          drawerEdgeDragWidth = MediaQuery.of(context).size.width / 6;
+          appBarDrawerIcon = IconButton(
+            icon: const Icon(Icons.menu_rounded),
+            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+          );
+          bottomBar = null;
+          if (widget.sorts.isNotEmpty) {
+            actions.insert(
+              0, 
+              IconButton(
+                icon: const Icon(Icons.sort_rounded),
+                onPressed: _showFilterBottomSheet
+              )
+            );
+          }
+        }
+
+        PreferredSizeWidget? appBar;
+        Widget body;
+        if (widget.useSlivers) {
+          body = ValueListenableBuilder(
+            valueListenable: Settings.appBarColor,
+            builder: (context, appBarColor, child) {
+              return Stack(
+                children: [
+                  NestedScrollView(
+                    controller: _scrollController,
+                    headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+                      return <Widget>[
+                        SliverAppBar(
+                          floating: true,
+                          snap: true,
+                          title: titleWidget,
+                          actions: actions,
+                          backgroundColor: appBarColor,
+                          surfaceTintColor: appBarColor,
+                          foregroundColor: appBarColor?.contrast,
+                          leading: appBarDrawerIcon
+                        ),
+                        ...widget.slivers
+                      ];
+                    },
+                    body: widget.body
+                  ),
+                  _Scrim(color: appBarColor!.withAlpha(Constants.scrimAlpha))
+                ],
+              );
+            }
+          );
+        }
+        else {
+          appBar = ThemedAppBar(
+            title: titleWidget,
+            actions: actions,
+            leading: appBarDrawerIcon,
+          );
+          body = widget.body;
+        }
+
+        if (useBottomBar) {
+          body = NotificationListener<UserScrollNotification>(
+            onNotification: (notification) {
+              final ScrollDirection direction = notification.direction;
+              if (direction == ScrollDirection.reverse && _isBottomBarVisible.value) {
+                _isBottomBarVisible.value = false;
+              }
+              else if (direction == ScrollDirection.forward && !_isBottomBarVisible.value) {
+                _isBottomBarVisible.value = true;
+              }
+              return true;
+            },
+            child: body
+          );
+        }
+
+        return Scaffold(
+          key: _scaffoldKey,
+          extendBody: extendBody,
+          drawer: drawer,
+          drawerEdgeDragWidth: drawerEdgeDragWidth,
+          bottomNavigationBar: bottomBar,
+          appBar: appBar,
+          body: body
+        );
+      }
+    );
+  }
+
+}
+
+class _Scrim extends StatelessWidget {
+
+  final Color color;
+
+  const _Scrim({
+    super.key,
+    required this.color
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Positioned(
+      top: 0,
+      left: 0,
+      right: 0,
+      height: MediaQuery.of(context).padding.top,
+      child: ColoredBox(color: color),
+    );
+  }
+
+}
+
+class SimplePopupMenuItem {
+
+  final String label;
+  final VoidCallback onSelected;
+
+  const SimplePopupMenuItem({
+    required this.label,
+    required this.onSelected
+  });
+  
+}
+
+class _CommunityList extends StatefulWidget {
+
+  final Platform? activeCommunityPlatform;
+  final String? activeCommunityName;
+  final GlobalKey<ScaffoldState> scaffoldKey;
+  final EdgeInsetsGeometry? padding;
+  final VoidCallback? onActiveCommunitySelected;
+
+  const _CommunityList({
+    super.key,
+    required this.activeCommunityPlatform,
+    required this.activeCommunityName,
+    required this.scaffoldKey,
+    this.padding,
+    required this.onActiveCommunitySelected
+  });
+
+  @override
+  State<_CommunityList> createState() => _CommunityListState();
+
+}
+
+class _CommunityListState extends State<_CommunityList> {
+
+  final TextEditingController _searchController = TextEditingController();
+  final FocusNode _searchBarFocusNode = FocusNode();
+  late Platform _searchPlatform;
+  String _searchQuery = '';
+
+  @override
+  void initState() {
+    super.initState();
+    _searchPlatform = widget.activeCommunityPlatform ?? F.appFlavor.platforms.first;
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    _searchBarFocusNode.dispose();
+    super.dispose();
+  }
+
+  void _navigateToCommunity(Community community) {
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => PostsScreen(community: community)),
+      (route) => route.isFirst
+    );
+  }
+
+  void _onCommunityTap(Community community) {
+    if (community.platform == widget.activeCommunityPlatform && community.name == (widget.activeCommunityName ?? widget.activeCommunityPlatform?.communityHome)) {
+      Navigator.pop(context);
+      widget.onActiveCommunitySelected?.call();
+      return;
+    }
+    if ((widget.scaffoldKey.currentState?.isDrawerOpen ?? false)) {
+      Navigator.pop(context);
+    }
+    _navigateToCommunity(community);
+  }
+
+  void _sort() {
+    Settings.communities.sort((c1, c2) {
+      if (c1.isFavorite != c2.isFavorite) return c1.isFavorite ? -1 : 1;
+      return (c1.name ?? '').toLowerCase().compareTo((c2.name ?? '').toLowerCase());
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasSearchQuery = _searchQuery.isNotEmpty;
+    return ValueListenableBuilder(
+      valueListenable: Settings.communities,
+      builder: (context, communities, child) {
+        final visibleItems = hasSearchQuery ? communities.where((community) => community.name?.toLowerCase().contains(_searchQuery) ?? false).toList() : communities;
+        return ListView.builder(
+          padding: widget.padding,
+          itemCount: 1 + visibleItems.length,
+          itemBuilder: (context, index) {
+            if (index == 0) {
+              final bool isCombinedFlavor = F.appFlavor == Flavor.combined;
+              final double width;
+              final double rightCornerRadius;
+              final Alignment? alignment;
+              final Widget child;
+              if (hasSearchQuery) {
+                width = 48;
+                rightCornerRadius = 6;
+                alignment = Alignment.centerRight;
+                child = Transform.translate(
+                  offset: const Offset(0, 0.5), // Can't get text aligned without this
+                  child: Text(
+                    _searchPlatform.communityPrefix,
+                    style: TextStyle(
+                      fontSize: Theme.of(context).searchBarTheme.textStyle?.resolve({})?.fontSize ?? 16,
+                      // color: Colors.white.withAlpha(Constants.communityPrefixAlpha)
+                      // fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                );
+              }
+              else {
+                width = 40;
+                rightCornerRadius = 20;
+                alignment = null;
+                child = const Icon(Icons.search_rounded, color: Colors.white);
+              }
+              final searchIcon = AnimatedContainer(
+                duration: const Duration(milliseconds: 200),
+                width: width,
+                height: 40,
+                alignment: alignment,
+                decoration: BoxDecoration(
+                  color: _searchPlatform.color,
+                  // color: _searchPlatform.color.withAlpha(Constants.platformColorBackgroundAlpha),
+                  borderRadius: BorderRadius.horizontal(
+                    left: const Radius.circular(20),
+                    right: Radius.circular(rightCornerRadius),
+                  ),
+                ),
+                child: child
+              );
+              final searchBar = SearchBar(
+                controller: _searchController,
+                keyboardType: TextInputType.url,
+                textInputAction: TextInputAction.go,
+                padding: const WidgetStatePropertyAll<EdgeInsets>(EdgeInsets.only(right: 16)),
+                hintText: 'Search ${_searchPlatform.communityLabel}',
+                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_/]'))],
+                backgroundColor: WidgetStateProperty.all(Constants.lighterBackgroundColor),
+                leading: Container(
+                  width: 48,
+                  height: 48,
+                  alignment: Alignment.centerLeft,
+                  margin: EdgeInsets.only(left: 8),
+                  child: isCombinedFlavor
+                    ? GestureDetector(
+                        onTap: () => setState(() {
+                          _searchPlatform = Platform.values[(Platform.values.indexOf(_searchPlatform) + 1) % Platform.values.length];
+                        }),
+                        child: searchIcon
+                      )
+                    : searchIcon
+                ),
+                onChanged: (value) {
+                                      
+                  String cleanValue = value.toLowerCase();
+                  if (isCombinedFlavor) {
+                    for (Platform platform in Platform.values) {
+                      if (cleanValue.startsWith(platform.communityPrefix)) {
+                        cleanValue = cleanValue.substring(platform.communityPrefix.length);
+                        _searchPlatform = platform;
+                        break;
+                      }
+                    }
+                  }
+
+                  cleanValue = cleanValue.replaceAll('/', '');
+              
+                  if (cleanValue != value) {
+                    _searchController.text = cleanValue;
+                    _searchController.selection = TextSelection.fromPosition(TextPosition(offset: cleanValue.length));
+                  }
+              
+                  setState(() {
+                    _searchQuery = cleanValue;
+                  });
+
+                },
+                onSubmitted: (value) async {
+                  String? name = value.trim();
+                  if (name.isEmpty) {
+                    if (_searchPlatform.communityHome != null) {
+                      return;
+                    }
+                    name = null;
+                  }
+                  final community = Community(
+                    platform: _searchPlatform,
+                    name: name
+                  );
+                  Navigator.pop(context);
+                  _navigateToCommunity(community);
+                  Settings.communities.add(community);
+                  _sort();
+                },
+              );
+
+              return ListTile(
+                minVerticalPadding: 0,
+                title: Padding(
+                  padding: const EdgeInsets.only(bottom: 8),
+                  child: F.appFlavor == Flavor.combined
+                  ? KeyboardListener(
+                      focusNode: _searchBarFocusNode,
+                      onKeyEvent: (KeyEvent event) {
+                        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.backspace && _searchController.text.isEmpty) {
+                          setState(() {
+                            _searchPlatform = Platform.values[(Platform.values.indexOf(_searchPlatform) - 1) % Platform.values.length];
+                          });
+                        }
+                      },
+                      child: searchBar,
+                    )
+                  : searchBar
+                ),
+              );
+            }
+        
+            final community = visibleItems[index - 1];
+
+            return Stack(
+              children: [
+                ListTile(
+                  contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                  horizontalTitleGap: 8,
+                  title: F.appFlavor == Flavor.combined || community.platform.communityHome == null ? CommunityName(community: community) : Text(community.name!),
+                  leading: IconButton(
+                    icon: ValueListenableBuilder(
+                      valueListenable: Settings.showPlatformColorAccents,
+                      builder: (context, showPlatformColorAccents, child) {
+                        final IconData icon;
+                        final Color? color;
+                        if (community.isFavorite) {
+                          icon = Icons.star_rounded;
+                          color = showPlatformColorAccents ? Theme.of(context).iconTheme.color : Theme.of(context).colorScheme.primary;
+                        }
+                        else {
+                          icon = Icons.star_border_rounded;
+                          color = null;
+                        }
+                        return Icon(
+                          icon,
+                          color: color,
+                          size: 24
+                        );
+                      }
+                    ),
+                    onPressed: () {
+                      Settings.communities.update(community.copyWith(isFavorite: !community.isFavorite));
+                      _sort();
+                    }
+                  ),
+                  onTap: () => _onCommunityTap(community),
+                  onLongPress: () {
+                    HapticFeedback.mediumImpact();
+                    showSimpleOptionsDialog(
+                      context: context,
+                      title: community.fullDisplayName,
+                      options: {
+                        'Remove': () => Settings.communities.remove(community)
+                      },
+                    );
+                  }
+                ),
+                if (community.platform == widget.activeCommunityPlatform && community.name == (widget.activeCommunityName ?? widget.activeCommunityPlatform?.communityHome))
+                  Positioned(
+                    left: 0,
+                    top: 8,
+                    bottom: 8,
+                    child: ValueListenableBuilder(
+                      valueListenable: Settings.showPlatformColorAccents,
+                      builder: (context, showPlatformColorAccents, child) {
+                        return Container(
+                          width: 4,
+                          decoration: BoxDecoration(
+                            color: showPlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary,
+                            borderRadius: BorderRadius.horizontal(right: Radius.circular(4)),
+                          ),
+                        );
+                      }
+                    ),
+                  ),
+              ],
+            );
+          }
+        );
+      }
+    );
+  }
+
+}

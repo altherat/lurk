@@ -1,0 +1,44 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "name": "Reddit (Debug)",
+            "request": "launch",
+            "type": "dart",
+            "args": ["--flavor", "reddit"]
+        },
+        {
+            "name": "Reddit (Release)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release",
+            "args": ["--flavor", "reddit"]
+        },
+        {
+            "name": "Digg (Debug)",
+            "request": "launch",
+            "type": "dart",
+            "args": ["--flavor", "digg"]
+        },
+        {
+            "name": "Digg (Release)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release",
+            "args": ["--flavor", "digg"]
+        },
+        {
+            "name": "Combined (Debug)",
+            "request": "launch",
+            "type": "dart",
+            "args": ["--flavor", "combined"]
+        },
+        {
+            "name": "Combined (Release)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release",
+            "args": ["--flavor", "combined"]
+        }
+    ]
+}
