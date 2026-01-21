@@ -30,7 +30,7 @@ abstract class Api {
   @protected
   Map<String, String> getHeaders(Map<String, dynamic> headers) {
     return {
-      'User-Agent': Settings.userAgent.value!,
+      'User-Agent': Settings.userAgent.value,
       ...headers
     };
   }

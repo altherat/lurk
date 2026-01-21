@@ -111,11 +111,19 @@ Future<bool> navigate(BuildContext context, String url, {Community? community, P
   }
 
   if (uri.host == 'v.redd.it') {
+    final pathSegments = uri.pathSegments.toList();
+    String? audioUrl;
+    if (pathSegments[1].startsWith('CMAF')) {
+      pathSegments.removeLast();
+      pathSegments.add('CMAF_AUDIO_128.mp4');
+      audioUrl = uri.replace(pathSegments: pathSegments).toString();
+    }
     Navigator.push(
       context, MaterialPageRoute(
         builder: (_) {
           return VideoPlayerScreen(
-            url: '$url/HLSPlaylist.m3u8',
+            url: url, //'$url/HLSPlaylist.m3u8',
+            audioUrl: audioUrl,
             community: community,
             post: post,
           );

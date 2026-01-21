@@ -160,7 +160,6 @@ class RedditApi extends Api {
 
   Post _parsePost(Map<String, dynamic> json) {
     final data = json['data'];
-    final url = data['url'];
     final author = data['author'];
     String? thumb = data['thumbnail'];
     if (thumb == '' || thumb == 'self' || thumb == 'default' || thumb == 'nsfw' || thumb == 'image') {
@@ -173,6 +172,18 @@ class RedditApi extends Api {
     String? textHtml = data['selftext_html'];
     if (textHtml != null) {
       textHtml = parseFragment(textHtml).text;
+    }
+
+    final secureMedia = data['secure_media'];
+    String? videoUrl;
+    if (secureMedia != null) {
+      final redditVideo = secureMedia['reddit_video'];
+      if (redditVideo != null) {
+        // videoUrl = redditVideo['hls_url'].replaceAll('&amp;', '&');
+        // videoUrl = redditVideo['dash_url'].replaceAll('&amp;', '&');
+        videoUrl = redditVideo['fallback_url'];
+        // videoUrl = (redditVideo['hls_url'] ?? redditVideo['dash_url'] ?? redditVideo['fallback_url']).replaceAll('&amp;', '&');
+      }
     }
 
     final List<String> galleryImageUrls = [];
@@ -208,7 +219,7 @@ class RedditApi extends Api {
       textHtml: textHtml,
       author: author,
       commentCount: data['num_comments'],
-      url: url,
+      url: videoUrl ?? data['url'],
       urlPath: data['permalink'],
       domain: domain,
       communityName: data['subreddit'].toLowerCase(),

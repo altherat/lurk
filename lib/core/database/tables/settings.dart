@@ -20,6 +20,6 @@ class Settings extends Table {
   TextColumn get redirectUri => text().nullable()();
   BoolColumn get copyOldRedditLinks => boolean().withDefault(const Constant(Constants.defaultCopyOldRedditLinks))();
   
-  TextColumn get userAgent => text().nullable()();
+  TextColumn get userAgent => text().withDefault(const Constant(Constants.defaultUserAgent))();
   
 }

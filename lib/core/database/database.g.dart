@@ -156,9 +156,10 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
   late final GeneratedColumn<String> userAgent = GeneratedColumn<String>(
     'user_agent',
     aliasedName,
-    true,
+    false,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
+    defaultValue: const Constant(Constants.defaultUserAgent),
   );
   @override
   List<GeneratedColumn> get $columns => [
@@ -333,7 +334,7 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
       userAgent: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}user_agent'],
-      ),
+      )!,
     );
   }
 
@@ -360,7 +361,7 @@ class Setting extends DataClass implements Insertable<Setting> {
   final String? clientId;
   final String? redirectUri;
   final bool copyOldRedditLinks;
-  final String? userAgent;
+  final String userAgent;
   const Setting({
     required this.id,
     required this.homeCommunityPlatform,
@@ -373,7 +374,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     this.clientId,
     this.redirectUri,
     required this.copyOldRedditLinks,
-    this.userAgent,
+    required this.userAgent,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -405,9 +406,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       map['redirect_uri'] = Variable<String>(redirectUri);
     }
     map['copy_old_reddit_links'] = Variable<bool>(copyOldRedditLinks);
-    if (!nullToAbsent || userAgent != null) {
-      map['user_agent'] = Variable<String>(userAgent);
-    }
+    map['user_agent'] = Variable<String>(userAgent);
     return map;
   }
 
@@ -432,9 +431,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           ? const Value.absent()
           : Value(redirectUri),
       copyOldRedditLinks: Value(copyOldRedditLinks),
-      userAgent: userAgent == null && nullToAbsent
-          ? const Value.absent()
-          : Value(userAgent),
+      userAgent: Value(userAgent),
     );
   }
 
@@ -460,7 +457,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       clientId: serializer.fromJson<String?>(json['clientId']),
       redirectUri: serializer.fromJson<String?>(json['redirectUri']),
       copyOldRedditLinks: serializer.fromJson<bool>(json['copyOldRedditLinks']),
-      userAgent: serializer.fromJson<String?>(json['userAgent']),
+      userAgent: serializer.fromJson<String>(json['userAgent']),
     );
   }
   @override
@@ -484,7 +481,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       'clientId': serializer.toJson<String?>(clientId),
       'redirectUri': serializer.toJson<String?>(redirectUri),
       'copyOldRedditLinks': serializer.toJson<bool>(copyOldRedditLinks),
-      'userAgent': serializer.toJson<String?>(userAgent),
+      'userAgent': serializer.toJson<String>(userAgent),
     };
   }
 
@@ -500,7 +497,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     Value<String?> clientId = const Value.absent(),
     Value<String?> redirectUri = const Value.absent(),
     bool? copyOldRedditLinks,
-    Value<String?> userAgent = const Value.absent(),
+    String? userAgent,
   }) => Setting(
     id: id ?? this.id,
     homeCommunityPlatform: homeCommunityPlatform ?? this.homeCommunityPlatform,
@@ -516,7 +513,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     clientId: clientId.present ? clientId.value : this.clientId,
     redirectUri: redirectUri.present ? redirectUri.value : this.redirectUri,
     copyOldRedditLinks: copyOldRedditLinks ?? this.copyOldRedditLinks,
-    userAgent: userAgent.present ? userAgent.value : this.userAgent,
+    userAgent: userAgent ?? this.userAgent,
   );
   Setting copyWithCompanion(SettingsCompanion data) {
     return Setting(
@@ -617,7 +614,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<String?> clientId;
   final Value<String?> redirectUri;
   final Value<bool> copyOldRedditLinks;
-  final Value<String?> userAgent;
+  final Value<String> userAgent;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.homeCommunityPlatform = const Value.absent(),
@@ -691,7 +688,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<String?>? clientId,
     Value<String?>? redirectUri,
     Value<bool>? copyOldRedditLinks,
-    Value<String?>? userAgent,
+    Value<String>? userAgent,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -1197,7 +1194,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> clientId,
       Value<String?> redirectUri,
       Value<bool> copyOldRedditLinks,
-      Value<String?> userAgent,
+      Value<String> userAgent,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -1212,7 +1209,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> clientId,
       Value<String?> redirectUri,
       Value<bool> copyOldRedditLinks,
-      Value<String?> userAgent,
+      Value<String> userAgent,
     });
 
 class $$SettingsTableFilterComposer
@@ -1460,7 +1457,7 @@ class $$SettingsTableTableManager
                 Value<String?> clientId = const Value.absent(),
                 Value<String?> redirectUri = const Value.absent(),
                 Value<bool> copyOldRedditLinks = const Value.absent(),
-                Value<String?> userAgent = const Value.absent(),
+                Value<String> userAgent = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 homeCommunityPlatform: homeCommunityPlatform,
@@ -1488,7 +1485,7 @@ class $$SettingsTableTableManager
                 Value<String?> clientId = const Value.absent(),
                 Value<String?> redirectUri = const Value.absent(),
                 Value<bool> copyOldRedditLinks = const Value.absent(),
-                Value<String?> userAgent = const Value.absent(),
+                Value<String> userAgent = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 homeCommunityPlatform: homeCommunityPlatform,

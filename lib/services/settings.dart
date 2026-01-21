@@ -16,7 +16,7 @@ class Settings {
   static late final SettingNotifier<String?> clientId;
   static late final SettingNotifier<String?> redirectUri;
   static late final SettingNotifier<bool> copyOldRedditLinks;
-  static late final SettingNotifier<String?> userAgent;
+  static late final SettingNotifier<String> userAgent;
   static late final RelationalListSettingNotifier<Community> communities;
 
   static Future<void> init() async {

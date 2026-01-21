@@ -216,13 +216,12 @@ class DiggApi extends Api {
       }
     );
     final response = await _client.query(options);
-    debugPrint('response: ${response}');
     return compute(_parsePostDetails, response.data!);
   }
 
   @override
   Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? level, Sort? sort}) async {
-    debugPrint('[Digg] getMoreComments: id=$id, pageToken=$pageToken');
+    // debugPrint('[Digg] getMoreComments: id=$id, pageToken=$pageToken');
     final gql.QueryOptions options = gql.QueryOptions(
       document: gql.gql(r'''
         query MoreComments($first: Int, $postWhere: PostWhere!, $commentWhere: CommentWhere!, $sort: CommentSort, $after: String) {
