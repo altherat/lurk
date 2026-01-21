@@ -1,7 +1,10 @@
+// AI slop
+
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3, Quaternion;
 
 class OneFingerZoomGestureRecognizer extends StatefulWidget {
+  
   final Widget child;
   final TransformationController transformationController;
   final VoidCallback? onDoubleTap;
@@ -158,4 +161,5 @@ class _OneFingerZoomGestureRecognizerState
       child: widget.child,
     );
   }
+  
 }

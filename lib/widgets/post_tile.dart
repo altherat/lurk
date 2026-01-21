@@ -1,4 +1,4 @@
-import 'package:cached_network_image/cached_network_image.dart';
+import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/utils.dart';
@@ -11,6 +11,8 @@ import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/history_builder.dart';
 import 'package:url_launcher/url_launcher.dart';
+
+final thumbnailSize = 70;
 
 class PostTile extends StatelessWidget {
 
@@ -57,6 +59,7 @@ class PostTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final cacheSize = thumbnailSize * MediaQuery.devicePixelRatioOf(context).round();
     return InkWell(
       onTap: onTap ?? () => _showOptions(context),
       onLongPress: () { 
@@ -121,15 +124,16 @@ class PostTile extends StatelessWidget {
               children: [
                 Positioned.fill(
                   child: post.thumbnailUrl != null
-                      ? CachedNetworkImage(
-                          imageUrl: post.thumbnailUrl!,
-                          memCacheWidth: 210, // 70px * 3 (standard device pixel ratio)
-                          memCacheHeight: 210,
-                          fadeInDuration: Duration.zero,
+                      ? ExtendedImage.network(
+                          post.thumbnailUrl!,
+                          headers: {'User-Agent': Settings.userAgent.value},
+                          width: 70,
+                          height: 70,
+                          cacheWidth: cacheSize,
+                          cacheHeight: cacheSize,
                           fit: BoxFit.cover,
-                          httpHeaders: {'User-Agent': Settings.userAgent.value},
-                          errorWidget: (context, url, error) => const Icon(Icons.broken_image_rounded),
-                        )
+                          loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed ? const Icon(Icons.broken_image_rounded) : null
+                      )
                       : DecoratedBox(
                           decoration: BoxDecoration(
                             border: BoxBorder.all(color: Constants.lighterBackgroundColor)

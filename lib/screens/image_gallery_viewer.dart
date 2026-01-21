@@ -1,3 +1,4 @@
+import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
@@ -5,10 +6,11 @@ import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/image_viewer.dart';
-import 'package:lurk/widgets/media_error.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/widgets/large_circular_progress_indicator.dart';
+
+import '../services/settings.dart';
 
 class ImageGalleryViewerScreen extends StatefulWidget {
 
@@ -95,19 +97,28 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
             final url = _post.galleryImageUrls[index - 1];
             return Stack(
               children: [
-                Image.network(
+                ExtendedImage.network(
                   url,
-                  headers: Constants.userAgentHeader,
-                  width: double.infinity, 
+                  headers: {'User-Agent': Settings.userAgent.value},
                   fit: BoxFit.fitWidth,
+                  mode: ExtendedImageMode.gesture,
                   cacheWidth: (MediaQuery.of(context).size.width * MediaQuery.of(context).devicePixelRatio).toInt(),
-                  loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
-                    return loadingProgress == null ? child : const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: LargeCircularProgressIndicator(),
-                    );
+                  loadStateChanged: (state) {
+                    switch (state.extendedImageLoadState) {
+                      case LoadState.loading:
+                        return const LargeCircularProgressIndicator();
+                      case LoadState.completed:
+                        return state.completedWidget;
+                      case LoadState.failed:
+                        final color = Theme.of(context).disabledColor;
+                        return Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [Icon(Icons.broken_image_rounded, size: 80, color: color)],
+                          ),
+                      );
+                    }
                   },
-                  errorBuilder: (context, error, stackTrace) => const MediaError(),
                 ),
                 Positioned.fill(
                   child: Material(

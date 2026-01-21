@@ -1,13 +1,12 @@
+import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
-import 'package:lurk/core/constants.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
-import 'package:lurk/widgets/media_error.dart';
+import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
 import 'package:lurk/widgets/large_circular_progress_indicator.dart';
-import 'package:lurk/widgets/one_finger_zoom.dart';
 
-class ImageViewerScreen extends StatefulWidget {
+class ImageViewerScreen extends StatelessWidget {
 
   final String url;
   final Community? community;
@@ -21,45 +20,52 @@ class ImageViewerScreen extends StatefulWidget {
   });
 
   @override
-  State<ImageViewerScreen> createState() => _ImageViewerScreenState();
-}
-
-class _ImageViewerScreenState extends State<ImageViewerScreen> {
-  
-  final TransformationController _transformationController = TransformationController();
-
-  @override
-  void dispose() {
-    _transformationController.dispose();
-    super.dispose();
-  }
-
-  @override
   Widget build(BuildContext context) {
     return MediaScaffold(
-      url: widget.url,
+      url: url,
       type: 'image',
-      community: widget.community,
-      post: widget.post,
-      body: OneFingerZoomGestureRecognizer(
-        transformationController: _transformationController,
-        child: InteractiveViewer(
-          transformationController: _transformationController,
-          child: Align(
-            alignment: AlignmentGeometry.topCenter,
-            child: Image.network(
-              widget.url,
-              headers: Constants.userAgentHeader,
-              width: double.infinity, 
-              fit: BoxFit.fitWidth,
-              loadingBuilder: (BuildContext context, Widget child, ImageChunkEvent? loadingProgress) {
-                return loadingProgress == null ? child : const LargeCircularProgressIndicator();
-              },
-              errorBuilder: (context, error, stackTrace) => const MediaError()
-            ),
-          ),
+      community: community,
+      post: post,
+      body: SizedBox.expand(
+        child: ExtendedImage.network(
+          url,
+          headers: {'User-Agent': Settings.userAgent.value},
+          fit: BoxFit.fitWidth,
+          alignment: Alignment.topCenter,
+          mode: ExtendedImageMode.gesture,
+          initGestureConfigHandler: (state) {
+            return GestureConfig(
+              minScale: 1,
+            );
+          },
+          onDoubleTap: (ExtendedImageGestureState state) {
+            debugPrint('onDoubleTap');
+            state.handleDoubleTap(
+              scale: state.gestureDetails?.totalScale == 1 ? 3 : 1,
+              doubleTapPosition: state.pointerDownPosition,
+            );
+          },
+          loadStateChanged: (state) {
+            switch (state.extendedImageLoadState) {
+              case LoadState.loading:
+                return const LargeCircularProgressIndicator();
+              case LoadState.completed:
+                return state.completedWidget;
+              case LoadState.failed:
+                final color = Theme.of(context).disabledColor;
+                return Center(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(Icons.broken_image_rounded, size: 80, color: color),
+                      Text('Something went wrong', style: TextStyle(color: color)),
+                    ],
+                  ),
+              );
+            }
+          },
         ),
-      )
+      ),
     );
   }
   

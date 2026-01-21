@@ -1,3 +1,4 @@
+import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
@@ -588,6 +589,8 @@ class _Html extends StatelessWidget {
 
 class _Image extends StatelessWidget {
 
+  final double _height = 200;
+
   final Community community;
   final String url;
 
@@ -601,56 +604,58 @@ class _Image extends StatelessWidget {
   Widget build(BuildContext context) {
     return Align(
       alignment: Alignment.topLeft,
-      child: Image.network(
+      child: ExtendedImage.network(
         url,
-        headers: Constants.userAgentHeader,
+        headers: {'User-Agent': Settings.userAgent.value},
+        cacheHeight: (_height * MediaQuery.devicePixelRatioOf(context)).round(),
         fit: BoxFit.contain,
-        loadingBuilder: (context, child, progress) {
-          if (progress == null) {
-            return Stack(
-              children: [
-                Container(
-                  constraints: BoxConstraints(maxHeight: 200),
-                  decoration: BoxDecoration(border: Border.all(color: Constants.commentIndentColor)),
-                  child: child,
-                ),
-                Positioned.fill(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onLongPress: () {
-                        showSimpleOptionsBottomSheet(
-                          context: context,
-                          options: {
-                            'Save image': () {}, //TODO
-                            'View in browser': () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
-                            'Copy link': () => copyToClipboard(url)
-                          }
-                        );
-                      },
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(builder: (context) => ImageViewerScreen(url: url))
-                        );
-                      }
-                    ),
+        loadStateChanged: (state) {
+          switch (state.extendedImageLoadState) {
+            case LoadState.loading:
+              return const Padding(
+                padding: EdgeInsets.all(8),
+                child: CircularProgressIndicator(),
+              );
+            case LoadState.completed:
+              return Stack(
+                children: [
+                  Container(
+                    constraints: BoxConstraints(maxHeight: _height),
+                    decoration: BoxDecoration(border: Border.all(color: Constants.commentIndentColor)),
+                    child: state.completedWidget,
                   ),
-                )
-              ],
-            );
+                  Positioned.fill(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onLongPress: () {
+                          showSimpleOptionsBottomSheet(
+                            context: context,
+                            options: {
+                              'Save image': () {}, //TODO
+                              'View in browser': () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+                              'Copy link': () => copyToClipboard(url)
+                            }
+                          );
+                        },
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (context) => ImageViewerScreen(url: url))
+                          );
+                        }
+                      ),
+                    ),
+                  )
+                ],
+              );
+            case LoadState.failed:
+              return const Icon(
+                Icons.broken_image_rounded,
+                color: Constants.secondaryTextColor
+              );
           }
-          return const Padding(
-            padding: EdgeInsets.all(8),
-            child: CircularProgressIndicator(),
-          );
-        },
-        errorBuilder: (context, error, stackTrace) {
-          return const Icon(
-            Icons.broken_image_rounded,
-            color: Constants.secondaryTextColor
-          );
-        },
+        }
       ),
     );
   }
