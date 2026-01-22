@@ -91,7 +91,7 @@ String timeAgoCompact(int timestampMs) {
 Future<void> openInBrowser(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
 Future<dynamic> navigate(BuildContext context, String url, {Community? community, Post? post}) async {
-  // debugPrint('navigate: $url');
+  debugPrint('navigate: $url');
   final uri = Uri.tryParse(url);
   if (uri == null) return;
 
