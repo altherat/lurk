@@ -30,16 +30,11 @@ class MediaScaffold extends StatelessWidget {
       'Save $type': () {}, //TODO
       if (post != null)
         'View comments': () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) {
-                return PostDetailsScreen(
-                  community: community!,
-                  post: post,
-                  url: url
-                );
-              }
+          context.push(
+            () => PostDetailsScreen(
+              community: community!,
+              post: post,
+              url: url
             )
           );
         },

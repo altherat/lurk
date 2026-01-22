@@ -8,21 +8,43 @@ enum Platform {
     communityPrefix: 'r/',
     communityHome: 'popular',
     userPrefix: 'u/',
-    postSorts: [
-      Sort('Hot', 'hot'),
-      Sort('New', 'new'),
-      Sort('Top', 'top', _redditTimeRanges),
-      Sort('Rising', 'rising'),
-      Sort('Controversial', 'controversial', _redditTimeRanges)
-    ],
-    commentSorts: [
-      Sort('Best', 'best'),
-      Sort('Top', 'top'),
-      Sort('New', 'new'),
-      Sort('Controversial', 'controversial'),
-      Sort('Old', 'old'),
-      Sort('Q&A', 'qa')
-    ],
+    postsFeedOptions: FeedOptionsGroup(
+      FeedOptionType.sort,
+      [
+        FeedOption('Hot', apiValue: 'hot'),
+        FeedOption('New', apiValue: 'new'),
+        FeedOption('Top', apiValue: 'top', subGroup: _redditTimeFeedOptions),
+        FeedOption('Rising', apiValue: 'rising'),
+        FeedOption('Controversial', apiValue: 'controversial', subGroup: _redditTimeFeedOptions)
+      ]
+    ),
+    postCommentsFeedOptions: FeedOptionsGroup(
+      FeedOptionType.sort,
+      [
+        FeedOption('Best', apiValue: 'best'),
+        FeedOption('Top', apiValue: 'top'),
+        FeedOption('New', apiValue: 'new'),
+        FeedOption('Controversial', apiValue: 'controversial'),
+        FeedOption('Old', apiValue: 'old'),
+        FeedOption('Q&A', apiValue: 'qa')
+      ],
+    ),
+    userPostsFeedOptions: FeedOptionsGroup(
+      FeedOptionType.sort,
+      [
+        FeedOption('Hot', apiValue: 'hot'),
+        FeedOption('New', apiValue: 'new'),
+        FeedOption('Top', apiValue: 'top', subGroup: _redditTimeFeedOptions),
+      ],
+    ),
+    userCommentsFeedOptions: FeedOptionsGroup(
+      FeedOptionType.sort,
+      [
+        FeedOption('Hot', apiValue: 'hot'),
+        FeedOption('New', apiValue: 'new'),
+        FeedOption('Top', apiValue: 'top', subGroup: _redditTimeFeedOptions),
+      ]
+    )
   ),
 
   digg(
@@ -30,18 +52,41 @@ enum Platform {
     communityLabel: 'community',
     communityPrefix: '/',
     userPrefix: '@',
-    postSorts: [
-      Sort('Trending', 'TRENDING'),
-      Sort('Most dugg', 'MOST_DUGG'),
-      Sort('Latest', 'RECENT'),
-      Sort('Heating up', 'HEATING_UP'),
-    ],
-    commentSorts: [
-      Sort('Most dugg', {'score': 'DESC'}),
-      Sort('Most buried', {'score': 'ASC'}),
-      Sort('Newest', {'createdDate': 'DESC'}),
-      Sort('Oldest', {'createdDate': 'ASC'})
-    ]
+    postsFeedOptions: FeedOptionsGroup(
+      FeedOptionType.sort,
+      [
+        FeedOption('Trending', apiValue: 'TRENDING'),
+        FeedOption('Most dugg', apiValue: 'MOST_DUGG'),
+        FeedOption('Latest', apiValue: 'RECENT'),
+        FeedOption('Heating up', apiValue: 'HEATING_UP'),
+      ],
+    ),
+    postCommentsFeedOptions: FeedOptionsGroup(
+      FeedOptionType.sort,
+      [
+        FeedOption('Most dugg', apiValue: {'score': 'DESC'}),
+        FeedOption('Most buried', apiValue: {'score': 'ASC'}),
+        FeedOption('Newest', apiValue: {'createdDate': 'DESC'}),
+        FeedOption('Oldest', apiValue: {'createdDate': 'ASC'})
+      ],
+    ),
+    userPostsFeedOptions: FeedOptionsGroup(
+      FeedOptionType.sort,
+      [
+        FeedOption('Latest', apiValue: 'RECENT'),
+        FeedOption('Most dugg', apiValue: 'MOST_DUGG'),
+        FeedOption('Trending', apiValue: 'TRENDING'),
+      ],
+    ),
+    userCommentsFeedOptions: FeedOptionsGroup(
+      FeedOptionType.sort,
+      [
+        FeedOption('Newest', apiValue: {'createdDate': 'DESC'}),
+        FeedOption('Oldest', apiValue: {'createdDate': 'ASC'}),
+        FeedOption('Most dugg', apiValue: {'score': 'DESC'}),
+        FeedOption('Most buried', apiValue: {'score': 'ASC'}),
+      ]
+    )
   );
 
   final Color color;
@@ -49,8 +94,10 @@ enum Platform {
   final String communityPrefix;
   final String? communityHome;
   final String userPrefix;
-  final List<Sort> postSorts;
-  final List<Sort> commentSorts;
+  final FeedOptionsGroup postsFeedOptions;
+  final FeedOptionsGroup postCommentsFeedOptions;
+  final FeedOptionsGroup userPostsFeedOptions;
+  final FeedOptionsGroup userCommentsFeedOptions;
 
   const Platform({
     required this.color,
@@ -58,52 +105,74 @@ enum Platform {
     required this.communityPrefix,
     this.communityHome,
     required this.userPrefix,
-    required this.postSorts,
-    required this.commentSorts
+    required this.postsFeedOptions,
+    required this.postCommentsFeedOptions,
+    required this.userPostsFeedOptions,
+    required this.userCommentsFeedOptions,
   });
   
 }
 
-const _redditTimeRanges = [
-  TimeRange('Hour', 'past hour', 'hour'),
-  TimeRange('Day', 'past day', 'day'),
-  TimeRange('Week', 'past week', 'week'),
-  TimeRange('Month', 'past month', 'month'),
-  TimeRange('Year', 'past year', 'year'),
-  TimeRange('All time', 'all time', 'all')
-];
+const _redditTimeFeedOptions = FeedOptionsGroup(
+  FeedOptionType.time,
+  [
+    FeedOption('Hour', description: 'Past hour', apiValue: 'hour'),
+    FeedOption('Day', description: 'Past day', apiValue: 'day'),
+    FeedOption('Week', description: 'Past week', apiValue: 'week'),
+    FeedOption('Month', description: 'Past month', apiValue: 'month'),
+    FeedOption('Year', description: 'Past year', apiValue: 'year'),
+    FeedOption('All time', description: 'All time', apiValue: 'all')
+  ]
+);
 
-abstract class FeedOption {
+enum FeedOptionType {
+
+  sort('Sort'),
+  time('Time');
 
   final String label;
+
+  const FeedOptionType(this.label);
+  
+}
+
+class FeedOption {
+
+  final String label;
+  final String? _description;
   final dynamic apiValue;
+  final FeedOptionsGroup? subGroup;
+
+  String get description => _description ?? label;
 
   const FeedOption(
-    this.label,
-    this.apiValue
-  );
+    this.label, {
+    String? description,
+    this.apiValue,
+    this.subGroup
+  }) : _description = description;
+
+@override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      other is FeedOption &&
+          runtimeType == other.runtimeType &&
+          label == other.label &&
+          apiValue == other.apiValue;
+
+  @override
+  int get hashCode => label.hashCode ^ apiValue.hashCode;
+
 }
 
-class Sort extends FeedOption {
+class FeedOptionsGroup {
 
-  final List<TimeRange> timeRanges;
+  final FeedOptionType type;
+  final List<FeedOption> options;
 
-  const Sort(
-    super.label,
-    super.apiValue,
-    [this.timeRanges = const []]
-  );
-
-}
-
-class TimeRange extends FeedOption {
-
-  final String description;
-
-  const TimeRange(
-    super.label,
-    this.description,
-    super.apiValue
+  const FeedOptionsGroup(
+    this.type,
+    this.options
   );
 
 }

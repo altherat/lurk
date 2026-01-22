@@ -26,8 +26,10 @@ class RedditApi extends Api {
   String getCommentUrl(Post post, Comment comment) => '${getPostDetailsUrl(post)}${comment.id}';
 
   @override
-  Future<Posts> getPosts(String? id, {Sort? sort, TimeRange? timeRange, String? pageToken}) async {
+  Future<Posts> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // debugPrint('[Reddit] getPosts: $id, sort=${sort?.label}, timeRange=$timeRange, after=$pageToken');
+    final sort = options?[FeedOptionType.sort];
+    final timeRange = options?[FeedOptionType.time];
     final subreddit = id ?? Platform.reddit.communityHome;
     String url = '$baseUrl/r/$subreddit/';
     if (sort != null) {
@@ -50,8 +52,9 @@ class RedditApi extends Api {
   }
 
   @override
-  Future<PostDetails> getPostDetailsFromUrl(String url, {Sort? sort}) async {
+  Future<PostDetails> getPostDetailsFromUrl(String url, {Map<FeedOptionType, FeedOption>? options}) async {
     // debugPrint('[Reddit] getPostDetailsFromUrl: url=$url, sort=$sort');
+    final sort = options?[FeedOptionType.sort];
     var uri = Uri.parse(url);
     if (uri.queryParameters['sort'] == null && sort != null) {
       uri = uri.replace(
@@ -68,10 +71,11 @@ class RedditApi extends Api {
   }
 
   @override
-  Future<PostDetails> getPostDetailsFromId(String id, {Sort? sort}) => getPostDetailsFromUrl('$baseUrl/comments/$id', sort: sort);
+  Future<PostDetails> getPostDetailsFromId(String id, {Map<FeedOptionType, FeedOption>? options}) => getPostDetailsFromUrl('$baseUrl/comments/$id', options: options);
 
   @override
-  Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? level, Sort? sort}) async {
+  Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? level, Map<FeedOptionType, FeedOption>? options}) async {
+    final sort = options?[FeedOptionType.sort];
     final uri = Uri.parse('$baseUrlOld/api/morechildren');
     final body = {
       'api_type': 'json',

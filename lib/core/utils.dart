@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
-import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
@@ -11,7 +10,6 @@ import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/screens/posts.dart';
 import 'package:lurk/screens/video_player.dart';
 import 'package:lurk/screens/web_viewer.dart';
-import 'package:lurk/widgets/media_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 final _commaFormatter = NumberFormat.decimalPattern();
@@ -57,6 +55,17 @@ extension ColorExtension on Color {
   
 }
 
+extension NavigationOffsets on BuildContext {
+
+  Future<T?> push<T>(Widget Function() builder) {
+    return Navigator.push<T>(
+      this,
+      MaterialPageRoute(builder: (_) => builder()),
+    );
+  }
+
+}
+
 String timeAgo(int timestampMs) {
   final Duration diff = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(timestampMs));
   final thresholds = {
@@ -90,8 +99,8 @@ String timeAgoCompact(int timestampMs) {
 
 Future<void> openInBrowser(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
-Future<dynamic> navigate(BuildContext context, String url, {Community? community, Post? post}) async {
-  debugPrint('navigate: $url');
+Future navigate(BuildContext context, String url, {Community? community, Post? post}) async {
+  // debugPrint('navigate: $url');
   final uri = Uri.tryParse(url);
   if (uri == null) return;
 
@@ -99,15 +108,11 @@ Future<dynamic> navigate(BuildContext context, String url, {Community? community
   final path = uri.path.toLowerCase();
 
   if (host == 'i.redd.it' || host.endsWith('.imgix.net') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || path.endsWith('.gif') || path.endsWith('.webp')) {
-    return Navigator.push(
-      context, MaterialPageRoute(
-        builder: (_) {
-          return ImageViewerScreen(
-            url: url,
-            community: community,
-            post: post,
-          );
-        }
+    return context.push(
+      () => ImageViewerScreen(
+        url: url,
+        community: community,
+        post: post,
       )
     );
   }
@@ -124,30 +129,22 @@ Future<dynamic> navigate(BuildContext context, String url, {Community? community
         pathSegments: pathSegments
       ).toString();
     }
-    return Navigator.push(
-      context, MaterialPageRoute(
-        builder: (_) {
-          return VideoPlayerScreen(
-            url: url, //'$url/HLSPlaylist.m3u8',
-            audioUrl: audioUrl,
-            community: community,
-            post: post,
-          );
-        }
+    return context.push(
+      () => VideoPlayerScreen(
+        url: url, //'$url/HLSPlaylist.m3u8',
+        audioUrl: audioUrl,
+        community: community,
+        post: post,
       )
     );
   }
   
   if (path.endsWith('.mp4') || path.endsWith('.mov')) {
-    return Navigator.push(
-      context, MaterialPageRoute(
-        builder: (_) {
-          return VideoPlayerScreen(
-            url: url,
-            community: community,
-            post: post
-          );
-        }
+    return context.push(
+      () => VideoPlayerScreen(
+        url: url,
+        community: community,
+        post: post
       )
     );
   }
@@ -158,34 +155,24 @@ Future<dynamic> navigate(BuildContext context, String url, {Community? community
       final firstPathSegment = pathSegments[0].toLowerCase();
       if (firstPathSegment == 'r') {
         if (pathSegments.length == 2) {
-          return Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) {
-                return PostsScreen(
-                  community: Community(
-                    platform: Platform.reddit,
-                    name: pathSegments[1].toLowerCase()
-                  )
-                );
-              }
+          return context.push(
+            () => PostsScreen(
+              community: Community(
+                platform: Platform.reddit,
+                name: pathSegments[1].toLowerCase()
+              )
             )
           );
         }
         if (pathSegments[2] == 'comments' && pathSegments.length >= 4) {
-          return Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (_) {
-                return PostDetailsScreen(
-                  community: Community(
-                    platform: Platform.reddit,
-                    name: pathSegments[1].toLowerCase()
-                  ),
-                  post: post,
-                  url: url
-                );
-              }
+          return context.push(
+            () => PostDetailsScreen(
+              community: Community(
+                platform: Platform.reddit,
+                name: pathSegments[1].toLowerCase()
+              ),
+              post: post,
+              url: url
             )
           );
         }
@@ -199,16 +186,12 @@ Future<dynamic> navigate(BuildContext context, String url, {Community? community
       }
       else if (firstPathSegment == 'gallery') {
         if (pathSegments.length == 2) {
-          return Navigator.push(
-            context, MaterialPageRoute(
-              builder: (_) {
-                return ImageGalleryViewerScreen(
-                  url: url,
-                  platform: Platform.reddit,
-                  community: community,
-                  post: post,
-                );
-              }
+          return context.push(
+            () => ImageGalleryViewerScreen(
+              url: url,
+              platform: Platform.reddit,
+              community: community,
+              post: post,
             )
           );
         }
@@ -220,31 +203,25 @@ Future<dynamic> navigate(BuildContext context, String url, {Community? community
     final pathSegments = uri.pathSegments;
     if (pathSegments.length >= 2) {
       final communityName = pathSegments[0].toLowerCase();
-      return Navigator.push(
-        context,
-        MaterialPageRoute(
-          builder: (_) => PostDetailsScreen(
-            community: Community(
-              platform: Platform.digg,
-              name: communityName,
-            ),
-            post: post,
-            url: url,
+      return context.push(
+        () => PostDetailsScreen(
+          community: Community(
+            platform: Platform.digg,
+            name: communityName,
           ),
-        ),
+          post: post,
+          url: url,
+        )
       );
     }
   }
 
-  return Navigator.push(
-    context,
-    MaterialPageRoute(
-      builder: (_) => WebViewerScreen(
-        community: community,
-        post: post,
-        url: url,
-      ),
-    ),
+  return context.push(
+    () => WebViewerScreen(
+      community: community,
+      post: post,
+      url: url,
+    )
   );
 
   // if (await launchUrl(uri, mode: LaunchMode.inAppBrowserView)) {

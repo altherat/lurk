@@ -29,7 +29,7 @@ class CommunityName extends StatelessWidget {
             children: [
               TextSpan(
                 text: community.platform.communityPrefix,
-                style: TextStyle(color: showPlatformColorAccents ? community.platform.color.withAlpha(alpha != null ? min(alpha!, parentAlpha) : parentAlpha) : parentColor.withAlpha(min(parentAlpha, Constants.communityPrefixAlpha))),
+                style: TextStyle(color: showPlatformColorAccents ? community.platform.color.withAlpha(alpha != null ? min(alpha!, parentAlpha) : parentAlpha) : parentColor.withAlpha(min(parentAlpha, Constants.namePrefixAlpha))),
               ),
               if (displayName.isNotEmpty)
                 TextSpan(

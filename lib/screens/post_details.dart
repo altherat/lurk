@@ -8,6 +8,8 @@ import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/image_viewer.dart';
+import 'package:lurk/screens/posts.dart';
+import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/core/utils.dart';
@@ -38,7 +40,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
   final _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
 
   Post? _post;
-  Sort? _sort;
+  Map<FeedOptionType, FeedOption>? _feedOptions;
   List<CommentItem>? _comments;
   List<CommentItem>? _visibleComments;
   bool _isLoading = true;
@@ -56,7 +58,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     }
   }
 
-  Future<void> _getPostDetailsFromPost() => _getPostDetails(() => Api.of(widget.community.platform).getPostDetailsFromId(_post!.id, sort: _sort));
+  Future<void> _getPostDetailsFromPost() => _getPostDetails(() => Api.of(widget.community.platform).getPostDetailsFromId(_post!.id, options: _feedOptions));
 
   Future<void> _getPostDetails(Function() get) async {
     try {
@@ -146,7 +148,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)
               ),
               Text(
-                'sorted by ${(_sort?.label ?? widget.community.platform.commentSorts.first.label).toLowerCase()}',
+                'sorted by${_feedOptions != null ? ': ${_feedOptions!.values..map((option) => option.label).join('  •  ')}' : ' ${widget.community.platform.postCommentsFeedOptions.options.first.label.toLowerCase()}'}',
                 style: const TextStyle(color: Constants.secondaryTextColor, fontSize: 11),
               )
             ],
@@ -221,7 +223,12 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                           title: '${commentItem.author!.toPosessive()} comment',
                           options: {
                             'View user': () {
-                              //TODO
+                              context.push(
+                                () => UserDetailsScreen(
+                                  platform: widget.community.platform,
+                                  username: commentItem.author!
+                                )
+                              );
                             },
                             if (commentItem.text != null)
                               'Copy text': () => copyToClipboard(commentItem.text!),
@@ -308,19 +315,18 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
         'Copy link': () => copyToClipboard(widget.url ?? widget.post!.url),
         'Copy comments link': () => copyToClipboard(Api.of(widget.community.platform).getPostDetailsUrl(widget.post!))
       },
-      sorts: widget.community.platform.commentSorts,
-      initialSort: _sort,
+      feedOptions: widget.community.platform.postCommentsFeedOptions,
+      selectedFeedOptions: _feedOptions,
       useSlivers: true,
       body: body,
       onRefresh: () => _refreshIndicatorKey.currentState?.show(),
-      onSortSelected: (sort) {
-        Navigator.pop(context);
+      onFeedOptionsSelected: (options) {
         setState(() {
           _isLoading = true;
           _comments?.clear();
           _visibleComments?.clear();
           _collapsedCommentIds?.clear();
-          _sort = sort;
+          _feedOptions = options;
         });
         _getPostDetailsFromPost();
       },
@@ -559,7 +565,27 @@ class _Html extends StatelessWidget {
             return null;
           },
           onTapUrl: (url) {
-            navigate(context, url);
+            if (url.startsWith('/r/')) {
+              context.push(
+                () => PostsScreen(
+                  community: Community(
+                    platform: Platform.reddit,
+                    name: Uri.parse(url).pathSegments[1].toLowerCase()
+                  )
+                )
+              );
+            }
+            else if (url.startsWith('/u/')) {
+              context.push(
+                () => UserDetailsScreen(
+                  platform: Platform.reddit,
+                  username: Uri.parse(url).pathSegments[1].toLowerCase()
+                )
+              );
+            }
+            else {
+              navigate(context, url);
+            }
             return true;
           },
           onTapImage: (imageMetadata) {
@@ -590,7 +616,6 @@ class _HtmlLink extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint('build: $url');
     return Align(
       alignment: Alignment.topLeft,
       child: InkWell(
@@ -662,12 +687,7 @@ class _Image extends StatelessWidget {
                             }
                           );
                         },
-                        onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(builder: (context) => ImageViewerScreen(url: url))
-                          );
-                        }
+                        onTap: () => context.push(() => ImageViewerScreen(url: url))
                       ),
                     ),
                   )

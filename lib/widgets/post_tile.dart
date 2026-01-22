@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/posts.dart';
+import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/models/post.dart';
@@ -36,19 +37,16 @@ class PostTile extends StatelessWidget {
       title: post.title,
       options: {
         'View ${community.platform.communityLabel} ${community.fullDisplayName}': () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder:(context) {
-                return PostsScreen(
-                  community: community
-                );
-              }
-            )
-          );
+          context.push(() => PostsScreen(community: community));
+
         },
         'View user ${community.platform.userPrefix}${post.author}': () {
-          //TODO
+          context.push(
+            () => UserDetailsScreen(
+              platform: community.platform,
+              username: post.author!
+            )
+          );
         },
         'View link in browser': () => openInBrowser(post.url),
         'View comments in browser': () => openInBrowser(Api.of(community.platform).getPostDetailsUrl(post)),

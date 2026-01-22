@@ -1,7 +1,9 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/flavors.dart';
+import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/posts.dart';
@@ -9,7 +11,7 @@ import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/widgets/community_name.dart';
-import 'package:lurk/widgets/filter_bottom_sheet.dart';
+import 'package:lurk/widgets/feed_option_selector.dart';
 import 'package:lurk/widgets/history_builder.dart';
 import 'package:lurk/widgets/large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
@@ -34,9 +36,7 @@ class PostsScreen extends StatefulWidget {
 class _PostsScreenState extends State<PostsScreen> {
 
   final _postListKey = GlobalKey<PostsListViewState>();
-
-  Sort? _sort;
-  TimeRange? _timeRange;
+  Map<FeedOptionType, FeedOption>? _feedOptions;
 
   @override
   Widget build(BuildContext context) {
@@ -45,41 +45,19 @@ class _PostsScreenState extends State<PostsScreen> {
       activeCommunityName: widget.community.name,
       scaffoldKey: widget.scaffoldKey,
       title: CommunityName(community: widget.community),
-      subtitle: _sort == null || _sort == widget.community.platform.postSorts.first ? null : Text('${_sort!.label.toLowerCase()}${_timeRange == null ? '' : '  •  ${_timeRange!.description}'}'),
-      sorts: widget.community.platform.postSorts,
-      initialSort: _sort,
+      subtitle: _feedOptions != null ? Text(_feedOptions!.values.map((option) => option.description).join('  •  ')) : null,
+      feedOptions: widget.community.platform.postsFeedOptions,
+      selectedFeedOptions: _feedOptions,
       useSlivers: true,
       body: PostsListView(
         key: _postListKey,
         community: widget.community,
-        sort: _sort,
-        timeRange: _timeRange,
+        feedOptions: _feedOptions,
       ),
-      additionalFilterBuilder: (context, selectedSort) {
-        if (selectedSort?.timeRanges.isNotEmpty ?? false) {
-          return FilterSection(
-            platform: widget.community.platform,
-            header: 'Time range',
-            selected: _timeRange,
-            filters: selectedSort!.timeRanges,
-            onSelected: (timeRange) {
-              Navigator.pop(context);
-              setState(() {
-                _sort = selectedSort;
-                _timeRange = timeRange;
-              });
-            }
-          );
-        }
-      },
-      onSortSelected: (sort) {
-        _timeRange = null;
-        if ((_sort ?? widget.community.platform.postSorts.first) != sort && sort.timeRanges.isEmpty) {
-          Navigator.pop(context);
-          setState(() {
-            _sort = sort;
-          });
-        }
+      onFeedOptionsSelected: (options) {
+        setState(() {
+          _feedOptions = options;
+        });
       },
       onRefresh: () => _postListKey.currentState?._refresh(),
     );
@@ -90,14 +68,12 @@ class _PostsScreenState extends State<PostsScreen> {
 class PostsListView extends StatefulWidget {
 
   final Community community;
-  final Sort? sort;
-  final TimeRange? timeRange;
+  final Map<FeedOptionType, FeedOption>? feedOptions;
 
   const PostsListView({
     super.key,
     required this.community,
-    required this.sort,
-    required this.timeRange
+    required this.feedOptions
   });
 
   @override
@@ -124,9 +100,7 @@ class PostsListViewState extends State<PostsListView> {
   @override
   void didUpdateWidget(covariant PostsListView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.community != oldWidget.community ||
-        widget.timeRange != oldWidget.timeRange ||
-        (widget.sort != oldWidget.sort && (!(widget.sort?.timeRanges.isNotEmpty ?? false) || widget.timeRange != null))) {
+    if (widget.community != oldWidget.community || (!mapEquals(widget.feedOptions, oldWidget.feedOptions) && !(oldWidget.feedOptions == null && listEquals(widget.feedOptions?.values.toList(), [widget.community.platform.postsFeedOptions.options.first])))) {
       setState(() {
         _posts.clear();
         _isLoadingInitially = true;
@@ -142,7 +116,7 @@ class PostsListViewState extends State<PostsListView> {
       });
     }
     try {
-      final Posts result = await Api.of(widget.community.platform).getPosts(widget.community.name, sort: widget.sort, timeRange: widget.timeRange);
+      final Posts result = await Api.of(widget.community.platform).getPosts(widget.community.name, options: widget.feedOptions);
       if (mounted) {
         setState(() {
           _posts = result.posts;
@@ -161,7 +135,7 @@ class PostsListViewState extends State<PostsListView> {
   Future<void> _getMorePosts() async {
     _isLoadingMore = true;
     try {
-      final Posts result = await Api.of(widget.community.platform).getPosts(widget.community.name, sort: widget.sort, timeRange: widget.timeRange, pageToken: _postsPageToken);
+      final Posts result = await Api.of(widget.community.platform).getPosts(widget.community.name, options: widget.feedOptions, pageToken: _postsPageToken);
       if (mounted) {
         setState(() {
           _posts.addAll(result.posts);
@@ -250,15 +224,10 @@ class PostsListViewState extends State<PostsListView> {
                       community: widget.community,
                       post: post,
                       onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) {
-                              return PostDetailsScreen(
-                                community: widget.community,
-                                post: post
-                              );
-                            }
+                        context.push(
+                          () => PostDetailsScreen(
+                            community: widget.community,
+                            post: post
                           )
                         );
                         if (post.isSelf) {

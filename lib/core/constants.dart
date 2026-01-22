@@ -6,7 +6,7 @@ class Constants {
   const Constants._();
 
   static const scrimAlpha = 125;
-  static const communityPrefixAlpha = 125;
+  static const namePrefixAlpha = 125;
   static const appBarSubtitleAlpha = 175;
   static const platformColorBackgroundAlpha = 100;
   static const primaryColor = Color(0xFFAADFF1);

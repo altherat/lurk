@@ -12,7 +12,7 @@ import 'package:lurk/screens/posts.dart';
 import 'package:lurk/screens/settings.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/community_name.dart';
-import 'package:lurk/widgets/filter_bottom_sheet.dart';
+import 'package:lurk/widgets/feed_option_selector.dart';
 import 'package:lurk/widgets/search_bar.dart';
 import 'package:lurk/widgets/themed_app_bar.dart';
 
@@ -25,14 +25,13 @@ class MainScaffold extends StatefulWidget {
   final Widget? subtitle;
   final List<Widget> iconActions;
   final Map<String, VoidCallback> popupMenuActions;
-  final List<Sort> sorts;
-  final Sort? initialSort;
-  final Widget? Function(BuildContext context, Sort? selectedSort)? additionalFilterBuilder;
+  final FeedOptionsGroup? feedOptions;
+  final Map<FeedOptionType, FeedOption>? selectedFeedOptions;
   final bool useSlivers;
   final List<Widget> slivers;
   final Widget body;
   final VoidCallback? onRefresh;
-  final Function(Sort sort)? onSortSelected;
+  final Function(Map<FeedOptionType, FeedOption>)? onFeedOptionsSelected;
 
   const MainScaffold({
     super.key,
@@ -43,14 +42,13 @@ class MainScaffold extends StatefulWidget {
     this.subtitle,
     this.iconActions = const [],
     this.popupMenuActions = const {},
-    this.sorts = const [],
-    this.initialSort,
-    this.additionalFilterBuilder,
+    this.feedOptions,
+    this.selectedFeedOptions,
     this.useSlivers = false,
     this.slivers = const [],
     required this.body,
     this.onRefresh,
-    this.onSortSelected
+    this.onFeedOptionsSelected
   });
 
   @override
@@ -88,17 +86,25 @@ class _MainScaffoldState extends State<MainScaffold> {
     widget.onRefresh!.call();
   }
 
-  void _showFilterBottomSheet() {
+  void _showFeedOptionsBottomSheet() {
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
+      isScrollControlled: true,
       builder: (context) {
-        return FilterBottomSheet(
-          platform: widget.platform!,
-          filters: widget.sorts,
-          initialFilter: widget.initialSort ?? widget.sorts.first,
-          additionalFilterBuilder: widget.additionalFilterBuilder,
-          onFilterSelected: widget.onSortSelected!,
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: _FeedOptionsSelector(
+              platform: widget.platform!,
+              options: widget.feedOptions!,
+              selected: widget.selectedFeedOptions,
+              onSelected: (options) {
+                widget.onFeedOptionsSelected!(options);
+                Navigator.pop(context);
+              }
+            ),
+          ),
         );
       }
     );
@@ -193,7 +199,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                                   icon: const Icon(Icons.sort_rounded),
                                   tooltip: 'Sort',
                                   iconSize: 26,
-                                  onPressed: _showFilterBottomSheet
+                                  onPressed: _showFeedOptionsBottomSheet
                                 ),
                                 IconButton(
                                   icon: const Icon(Icons.groups_rounded),
@@ -281,12 +287,12 @@ class _MainScaffoldState extends State<MainScaffold> {
             onPressed: () => _scaffoldKey.currentState?.openDrawer(),
           );
           bottomBar = null;
-          if (widget.sorts.isNotEmpty) {
+          if (widget.feedOptions != null) {
             actions.insert(
               0, 
               IconButton(
                 icon: const Icon(Icons.sort_rounded),
-                onPressed: _showFilterBottomSheet
+                onPressed: _showFeedOptionsBottomSheet
               )
             );
           }
@@ -385,18 +391,6 @@ class _Scrim extends StatelessWidget {
     );
   }
 
-}
-
-class SimplePopupMenuItem {
-
-  final String label;
-  final VoidCallback onSelected;
-
-  const SimplePopupMenuItem({
-    required this.label,
-    required this.onSelected
-  });
-  
 }
 
 class _CommunityList extends StatefulWidget {
@@ -678,6 +672,136 @@ class _CommunityListState extends State<_CommunityList> {
           }
         );
       }
+    );
+  }
+
+}
+
+class _FeedOptionsSelector extends StatefulWidget {
+
+  final Platform platform;
+  final FeedOptionsGroup options;
+  final Map<FeedOptionType, FeedOption>? selected;
+  final Function(Map<FeedOptionType, FeedOption>) onSelected;
+
+  const _FeedOptionsSelector({
+    super.key,
+    required this.platform,
+    required this.options,
+    required this.selected,
+    required this.onSelected
+  });
+
+  @override
+  State<_FeedOptionsSelector> createState() => _FeedOptionsSelectorState();
+  
+}
+
+class _FeedOptionsSelectorState extends State<_FeedOptionsSelector> {
+
+  late final List<(FeedOptionType, FeedOption)> _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.selected != null) {
+      _selected = widget.selected!.entries.map((entry) => (entry.key, entry.value)).toList();
+    }
+    else {
+      _selected = [(widget.options.type, widget.options.options.first)];
+    }
+  }
+
+  void _onOptionSelected(int level, FeedOptionType feedOptionType, FeedOption option) {
+    if (_selected.length > level) {
+      _selected.removeRange(level, _selected.length);
+    }
+    _selected.add((feedOptionType, option));
+    if (option.subGroup != null) {
+      setState(() {});
+    }
+    else {
+      widget.onSelected({for (var item in _selected) item.$1: item.$2});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<FeedOptionsGroup> toShow = [widget.options];
+    for (var selection in _selected) {
+      final option = selection.$2;
+      if (option.subGroup != null) {
+        toShow.add(option.subGroup!);
+      }
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: List.generate(toShow.length, (index) {
+        final group = toShow[index];
+        return _AnimatedRow(
+          child: Padding(
+            padding: EdgeInsets.only(top: index == 0 ? 0 : 16),
+            child: FeedOptionSelector(
+              platform: widget.platform,
+              header: group.type.label,
+              options: group.options,
+              selected: _selected.length > index ? _selected[index].$2 : null,
+              onSelected: (option) => _onOptionSelected(index, group.type, option),
+            ),
+          ),
+        );
+      }),
+    );
+  }
+
+}
+
+class _AnimatedRow extends StatefulWidget {
+
+  final Widget child;
+  const _AnimatedRow({
+    super.key, 
+    required this.child
+  });
+
+  @override
+  State<_AnimatedRow> createState() => _AnimatedRowState();
+
+}
+
+class _AnimatedRowState extends State<_AnimatedRow> with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 400),
+      vsync: this,
+    );
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.fastOutSlowIn,
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizeTransition(
+      sizeFactor: _animation,
+      axisAlignment: -1.0,
+      child: FadeTransition(
+        opacity: _animation,
+        child: widget.child
+      ),
     );
   }
 

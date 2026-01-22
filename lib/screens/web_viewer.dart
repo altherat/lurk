@@ -61,16 +61,11 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
       popupMenuActions: {
         if (widget.post != null)
           'View comments': () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (_) {
-                  return PostDetailsScreen(
-                    community: widget.community!,
-                    post: widget.post,
-                    url: widget.url
-                  );
-                }
+            context.push(
+              () => PostDetailsScreen(
+                community: widget.community!,
+                post: widget.post,
+                url: widget.url
               )
             );
           },

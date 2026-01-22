@@ -22,10 +22,10 @@ abstract class Api {
   String getPostDetailsUrl(Post post);
   String getCommentUrl(Post post, Comment comment);
 
-  Future<Posts> getPosts(String? id, {Sort? sort, TimeRange? timeRange, String? pageToken});
-  Future<PostDetails> getPostDetailsFromUrl(String url, {Sort? sort});
-  Future<PostDetails> getPostDetailsFromId(String id, {Sort? sort});
-  Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? level, Sort? sort});
+  Future<Posts> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
+  Future<PostDetails> getPostDetailsFromUrl(String url, {Map<FeedOptionType, FeedOption>? options});
+  Future<PostDetails> getPostDetailsFromId(String id, {Map<FeedOptionType, FeedOption>? options});
+  Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? level, Map<FeedOptionType, FeedOption>? options});
 
   @protected
   Map<String, String> getHeaders(Map<String, dynamic> headers) {

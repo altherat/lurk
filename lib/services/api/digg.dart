@@ -48,9 +48,10 @@ class DiggApi extends Api {
   String getCommentUrl(Post post, Comment comment) => '$baseUrl/${post.communityName}/${post.id.split('-')[1]}/comment/${comment.id.split('-')[2]}';
 
   @override
-  Future<Posts> getPosts(String? id, {Sort? sort, TimeRange? timeRange, String? pageToken}) async {
+  Future<Posts> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // debugPrint('[Digg] getPosts: id=$id, sort=${sort?.label}, timeRange=$timeRange, pageToken=$pageToken');
-    final gql.QueryOptions options = gql.QueryOptions(
+    final sort = options?[FeedOptionType.sort];
+    final gql.QueryOptions queryOptions = gql.QueryOptions(
       document: gql.gql(r'''
         query PostsQuery($first: Int, $where: PostWhere, $sort: PostSort, $after: String) {
 
@@ -103,22 +104,23 @@ class DiggApi extends Api {
           if (sort?.apiValue == 'MOST_DUGG')
             'publishedDate_GT': DateTime.now().toUtc().subtract(const Duration(days: 1)).toIso8601String(), // Current functionality of Digg website/app is to only return most dugg posts in past day
         },
-        'sort': (sort ?? Platform.digg.postSorts.first).apiValue,
+        'sort': (sort ?? Platform.digg.postsFeedOptions.options.first).apiValue,
         if (pageToken != null)
           'after': pageToken
       }
     );
-    final response = await _client.query(options);
+    final response = await _client.query(queryOptions);
     return compute(_parsePosts, response.data!);
   }
 
   @override
-  Future<PostDetails> getPostDetailsFromUrl(String url, {Sort? sort}) => getPostDetailsFromId(Uri.parse(url).pathSegments[1]);
+  Future<PostDetails> getPostDetailsFromUrl(String url, {Map<FeedOptionType, FeedOption>? options}) => getPostDetailsFromId(Uri.parse(url).pathSegments[1]);
 
   @override
-  Future<PostDetails> getPostDetailsFromId(String id, {Sort? sort}) async {
+  Future<PostDetails> getPostDetailsFromId(String id, {Map<FeedOptionType, FeedOption>? options}) async {
     // debugPrint('[Digg] getPostDetails: id=$id, sort=$sort');
-    final gql.QueryOptions options = gql.QueryOptions(
+    final sort = options?[FeedOptionType.sort];
+    final gql.QueryOptions queryOptions = gql.QueryOptions(
       document: gql.gql(r'''
         query PostDetails($postWhere: PostWhere!, $commentWhere: CommentWhere!, $sort: CommentSort, $first: Int) {
 
@@ -212,17 +214,18 @@ class DiggApi extends Api {
         'commentWhere': {
           'postId_EQ': id,
         },
-        'sort': (sort ?? Platform.digg.commentSorts.first).apiValue
+        'sort': (sort ?? Platform.digg.postCommentsFeedOptions.options.first).apiValue
       }
     );
-    final response = await _client.query(options);
+    final response = await _client.query(queryOptions);
     return compute(_parsePostDetails, response.data!);
   }
 
   @override
-  Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? level, Sort? sort}) async {
+  Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? level, Map<FeedOptionType, FeedOption>? options}) async {
     // debugPrint('[Digg] getMoreComments: id=$id, pageToken=$pageToken');
-    final gql.QueryOptions options = gql.QueryOptions(
+    final sort = options?[FeedOptionType.sort];
+    final gql.QueryOptions queryOptions = gql.QueryOptions(
       document: gql.gql(r'''
         query MoreComments($first: Int, $postWhere: PostWhere!, $commentWhere: CommentWhere!, $sort: CommentSort, $after: String) {
 
@@ -292,12 +295,12 @@ class DiggApi extends Api {
         'commentWhere': {
           'postId_EQ': id,
         },
-        'sort': (sort ?? Platform.digg.commentSorts.first).apiValue,
+        'sort': (sort ?? Platform.digg.postCommentsFeedOptions.options.first).apiValue,
         'after': pageToken,
       },
     );
 
-    final response = await _client.query(options);
+    final response = await _client.query(queryOptions);
     return compute((data) {
       final List edges = data['comments']['edges'];
       final Map<String, dynamic> pageInfo = data['comments']['pageInfo'];

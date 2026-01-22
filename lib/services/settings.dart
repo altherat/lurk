@@ -21,14 +21,9 @@ class Settings {
   static late final RelationalListSettingNotifier<Community> communities;
 
   static Future<void> init() async {
-    try {
 
-    debugPrint('init');
-    
     final db = Database.instance;
     final [dbSettings as Setting, dbCommunities as List<Community>] = await Future.wait([db.getAllSettings(), db.getAllCommunities()]);
-
-    debugPrint('loaded: ${dbSettings.homeCommunityPlatform}, ${dbSettings.homeCommunityName}');
 
     homeCommunity = SettingNotifier(
       dbSettings.homeCommunityPlatform != null ? Community(
@@ -57,11 +52,7 @@ class Settings {
       save: db.saveCommunity,
       delete: db.deleteCommunity,
     );
-
-  } catch (e, stackTrace) {
-    debugPrint('ERROR: ${e.toString()}');
-    debugPrint(stackTrace.toString());
-  }
+    
   }
 
 }

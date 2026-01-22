@@ -135,16 +135,11 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () {
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder: (_) {
-                                return ImageViewerScreen(
-                                  url: url,
-                                  community: widget.community,
-                                  post: widget.post,
-                                );
-                              }
+                          context.push(
+                            () => ImageViewerScreen(
+                              url: url,
+                              community: widget.community,
+                              post: widget.post,
                             )
                           );
                         }
