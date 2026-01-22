@@ -22,14 +22,14 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     ),
   );
   @override
-  late final GeneratedColumnWithTypeConverter<Platform, String>
+  late final GeneratedColumnWithTypeConverter<Platform?, String>
   homeCommunityPlatform = GeneratedColumn<String>(
     'home_community_platform',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  ).withConverter<Platform>($SettingsTable.$converterhomeCommunityPlatform);
+    requiredDuringInsert: false,
+  ).withConverter<Platform?>($SettingsTable.$converterhomeCommunityPlatformn);
   static const VerificationMeta _homeCommunityNameMeta = const VerificationMeta(
     'homeCommunityName',
   );
@@ -156,10 +156,9 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
   late final GeneratedColumn<String> userAgent = GeneratedColumn<String>(
     'user_agent',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-    defaultValue: const Constant(Constants.defaultUserAgent),
   );
   @override
   List<GeneratedColumn> get $columns => [
@@ -288,12 +287,12 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.int,
         data['${effectivePrefix}id'],
       )!,
-      homeCommunityPlatform: $SettingsTable.$converterhomeCommunityPlatform
+      homeCommunityPlatform: $SettingsTable.$converterhomeCommunityPlatformn
           .fromSql(
             attachedDatabase.typeMapping.read(
               DriftSqlType.string,
               data['${effectivePrefix}home_community_platform'],
-            )!,
+            ),
           ),
       homeCommunityName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -334,7 +333,7 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
       userAgent: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}user_agent'],
-      )!,
+      ),
     );
   }
 
@@ -347,11 +346,15 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
   $converterhomeCommunityPlatform = const EnumNameConverter<Platform>(
     Platform.values,
   );
+  static JsonTypeConverter2<Platform?, String?, String?>
+  $converterhomeCommunityPlatformn = JsonTypeConverter2.asNullable(
+    $converterhomeCommunityPlatform,
+  );
 }
 
 class Setting extends DataClass implements Insertable<Setting> {
   final int id;
-  final Platform homeCommunityPlatform;
+  final Platform? homeCommunityPlatform;
   final String? homeCommunityName;
   final bool showCommentImages;
   final bool autoplayVideos;
@@ -361,10 +364,10 @@ class Setting extends DataClass implements Insertable<Setting> {
   final String? clientId;
   final String? redirectUri;
   final bool copyOldRedditLinks;
-  final String userAgent;
+  final String? userAgent;
   const Setting({
     required this.id,
-    required this.homeCommunityPlatform,
+    this.homeCommunityPlatform,
     this.homeCommunityName,
     required this.showCommentImages,
     required this.autoplayVideos,
@@ -374,15 +377,15 @@ class Setting extends DataClass implements Insertable<Setting> {
     this.clientId,
     this.redirectUri,
     required this.copyOldRedditLinks,
-    required this.userAgent,
+    this.userAgent,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
     map['id'] = Variable<int>(id);
-    {
+    if (!nullToAbsent || homeCommunityPlatform != null) {
       map['home_community_platform'] = Variable<String>(
-        $SettingsTable.$converterhomeCommunityPlatform.toSql(
+        $SettingsTable.$converterhomeCommunityPlatformn.toSql(
           homeCommunityPlatform,
         ),
       );
@@ -406,14 +409,18 @@ class Setting extends DataClass implements Insertable<Setting> {
       map['redirect_uri'] = Variable<String>(redirectUri);
     }
     map['copy_old_reddit_links'] = Variable<bool>(copyOldRedditLinks);
-    map['user_agent'] = Variable<String>(userAgent);
+    if (!nullToAbsent || userAgent != null) {
+      map['user_agent'] = Variable<String>(userAgent);
+    }
     return map;
   }
 
   SettingsCompanion toCompanion(bool nullToAbsent) {
     return SettingsCompanion(
       id: Value(id),
-      homeCommunityPlatform: Value(homeCommunityPlatform),
+      homeCommunityPlatform: homeCommunityPlatform == null && nullToAbsent
+          ? const Value.absent()
+          : Value(homeCommunityPlatform),
       homeCommunityName: homeCommunityName == null && nullToAbsent
           ? const Value.absent()
           : Value(homeCommunityName),
@@ -431,7 +438,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           ? const Value.absent()
           : Value(redirectUri),
       copyOldRedditLinks: Value(copyOldRedditLinks),
-      userAgent: Value(userAgent),
+      userAgent: userAgent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(userAgent),
     );
   }
 
@@ -442,8 +451,10 @@ class Setting extends DataClass implements Insertable<Setting> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return Setting(
       id: serializer.fromJson<int>(json['id']),
-      homeCommunityPlatform: $SettingsTable.$converterhomeCommunityPlatform
-          .fromJson(serializer.fromJson<String>(json['homeCommunityPlatform'])),
+      homeCommunityPlatform: $SettingsTable.$converterhomeCommunityPlatformn
+          .fromJson(
+            serializer.fromJson<String?>(json['homeCommunityPlatform']),
+          ),
       homeCommunityName: serializer.fromJson<String?>(
         json['homeCommunityName'],
       ),
@@ -457,7 +468,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       clientId: serializer.fromJson<String?>(json['clientId']),
       redirectUri: serializer.fromJson<String?>(json['redirectUri']),
       copyOldRedditLinks: serializer.fromJson<bool>(json['copyOldRedditLinks']),
-      userAgent: serializer.fromJson<String>(json['userAgent']),
+      userAgent: serializer.fromJson<String?>(json['userAgent']),
     );
   }
   @override
@@ -465,8 +476,8 @@ class Setting extends DataClass implements Insertable<Setting> {
     serializer ??= driftRuntimeOptions.defaultSerializer;
     return <String, dynamic>{
       'id': serializer.toJson<int>(id),
-      'homeCommunityPlatform': serializer.toJson<String>(
-        $SettingsTable.$converterhomeCommunityPlatform.toJson(
+      'homeCommunityPlatform': serializer.toJson<String?>(
+        $SettingsTable.$converterhomeCommunityPlatformn.toJson(
           homeCommunityPlatform,
         ),
       ),
@@ -481,13 +492,13 @@ class Setting extends DataClass implements Insertable<Setting> {
       'clientId': serializer.toJson<String?>(clientId),
       'redirectUri': serializer.toJson<String?>(redirectUri),
       'copyOldRedditLinks': serializer.toJson<bool>(copyOldRedditLinks),
-      'userAgent': serializer.toJson<String>(userAgent),
+      'userAgent': serializer.toJson<String?>(userAgent),
     };
   }
 
   Setting copyWith({
     int? id,
-    Platform? homeCommunityPlatform,
+    Value<Platform?> homeCommunityPlatform = const Value.absent(),
     Value<String?> homeCommunityName = const Value.absent(),
     bool? showCommentImages,
     bool? autoplayVideos,
@@ -497,10 +508,12 @@ class Setting extends DataClass implements Insertable<Setting> {
     Value<String?> clientId = const Value.absent(),
     Value<String?> redirectUri = const Value.absent(),
     bool? copyOldRedditLinks,
-    String? userAgent,
+    Value<String?> userAgent = const Value.absent(),
   }) => Setting(
     id: id ?? this.id,
-    homeCommunityPlatform: homeCommunityPlatform ?? this.homeCommunityPlatform,
+    homeCommunityPlatform: homeCommunityPlatform.present
+        ? homeCommunityPlatform.value
+        : this.homeCommunityPlatform,
     homeCommunityName: homeCommunityName.present
         ? homeCommunityName.value
         : this.homeCommunityName,
@@ -513,7 +526,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     clientId: clientId.present ? clientId.value : this.clientId,
     redirectUri: redirectUri.present ? redirectUri.value : this.redirectUri,
     copyOldRedditLinks: copyOldRedditLinks ?? this.copyOldRedditLinks,
-    userAgent: userAgent ?? this.userAgent,
+    userAgent: userAgent.present ? userAgent.value : this.userAgent,
   );
   Setting copyWithCompanion(SettingsCompanion data) {
     return Setting(
@@ -604,7 +617,7 @@ class Setting extends DataClass implements Insertable<Setting> {
 
 class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<int> id;
-  final Value<Platform> homeCommunityPlatform;
+  final Value<Platform?> homeCommunityPlatform;
   final Value<String?> homeCommunityName;
   final Value<bool> showCommentImages;
   final Value<bool> autoplayVideos;
@@ -614,7 +627,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<String?> clientId;
   final Value<String?> redirectUri;
   final Value<bool> copyOldRedditLinks;
-  final Value<String> userAgent;
+  final Value<String?> userAgent;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.homeCommunityPlatform = const Value.absent(),
@@ -631,7 +644,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
-    required Platform homeCommunityPlatform,
+    this.homeCommunityPlatform = const Value.absent(),
     this.homeCommunityName = const Value.absent(),
     this.showCommentImages = const Value.absent(),
     this.autoplayVideos = const Value.absent(),
@@ -642,7 +655,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.redirectUri = const Value.absent(),
     this.copyOldRedditLinks = const Value.absent(),
     this.userAgent = const Value.absent(),
-  }) : homeCommunityPlatform = Value(homeCommunityPlatform);
+  });
   static Insertable<Setting> custom({
     Expression<int>? id,
     Expression<String>? homeCommunityPlatform,
@@ -678,7 +691,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
 
   SettingsCompanion copyWith({
     Value<int>? id,
-    Value<Platform>? homeCommunityPlatform,
+    Value<Platform?>? homeCommunityPlatform,
     Value<String?>? homeCommunityName,
     Value<bool>? showCommentImages,
     Value<bool>? autoplayVideos,
@@ -688,7 +701,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<String?>? clientId,
     Value<String?>? redirectUri,
     Value<bool>? copyOldRedditLinks,
-    Value<String>? userAgent,
+    Value<String?>? userAgent,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -716,7 +729,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     }
     if (homeCommunityPlatform.present) {
       map['home_community_platform'] = Variable<String>(
-        $SettingsTable.$converterhomeCommunityPlatform.toSql(
+        $SettingsTable.$converterhomeCommunityPlatformn.toSql(
           homeCommunityPlatform.value,
         ),
       );
@@ -1184,7 +1197,7 @@ abstract class _$Database extends GeneratedDatabase {
 typedef $$SettingsTableCreateCompanionBuilder =
     SettingsCompanion Function({
       Value<int> id,
-      required Platform homeCommunityPlatform,
+      Value<Platform?> homeCommunityPlatform,
       Value<String?> homeCommunityName,
       Value<bool> showCommentImages,
       Value<bool> autoplayVideos,
@@ -1194,12 +1207,12 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> clientId,
       Value<String?> redirectUri,
       Value<bool> copyOldRedditLinks,
-      Value<String> userAgent,
+      Value<String?> userAgent,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
       Value<int> id,
-      Value<Platform> homeCommunityPlatform,
+      Value<Platform?> homeCommunityPlatform,
       Value<String?> homeCommunityName,
       Value<bool> showCommentImages,
       Value<bool> autoplayVideos,
@@ -1209,7 +1222,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> clientId,
       Value<String?> redirectUri,
       Value<bool> copyOldRedditLinks,
-      Value<String> userAgent,
+      Value<String?> userAgent,
     });
 
 class $$SettingsTableFilterComposer
@@ -1226,7 +1239,7 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<Platform, Platform, String>
+  ColumnWithTypeConverterFilters<Platform?, Platform, String>
   get homeCommunityPlatform => $composableBuilder(
     column: $table.homeCommunityPlatform,
     builder: (column) => ColumnWithTypeConverterFilters(column),
@@ -1365,7 +1378,7 @@ class $$SettingsTableAnnotationComposer
   GeneratedColumn<int> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
-  GeneratedColumnWithTypeConverter<Platform, String>
+  GeneratedColumnWithTypeConverter<Platform?, String>
   get homeCommunityPlatform => $composableBuilder(
     column: $table.homeCommunityPlatform,
     builder: (column) => column,
@@ -1447,7 +1460,7 @@ class $$SettingsTableTableManager
           updateCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                Value<Platform> homeCommunityPlatform = const Value.absent(),
+                Value<Platform?> homeCommunityPlatform = const Value.absent(),
                 Value<String?> homeCommunityName = const Value.absent(),
                 Value<bool> showCommentImages = const Value.absent(),
                 Value<bool> autoplayVideos = const Value.absent(),
@@ -1457,7 +1470,7 @@ class $$SettingsTableTableManager
                 Value<String?> clientId = const Value.absent(),
                 Value<String?> redirectUri = const Value.absent(),
                 Value<bool> copyOldRedditLinks = const Value.absent(),
-                Value<String> userAgent = const Value.absent(),
+                Value<String?> userAgent = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 homeCommunityPlatform: homeCommunityPlatform,
@@ -1475,7 +1488,7 @@ class $$SettingsTableTableManager
           createCompanionCallback:
               ({
                 Value<int> id = const Value.absent(),
-                required Platform homeCommunityPlatform,
+                Value<Platform?> homeCommunityPlatform = const Value.absent(),
                 Value<String?> homeCommunityName = const Value.absent(),
                 Value<bool> showCommentImages = const Value.absent(),
                 Value<bool> autoplayVideos = const Value.absent(),
@@ -1485,7 +1498,7 @@ class $$SettingsTableTableManager
                 Value<String?> clientId = const Value.absent(),
                 Value<String?> redirectUri = const Value.absent(),
                 Value<bool> copyOldRedditLinks = const Value.absent(),
-                Value<String> userAgent = const Value.absent(),
+                Value<String?> userAgent = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 homeCommunityPlatform: homeCommunityPlatform,

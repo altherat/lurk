@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/database/database.dart';
+import 'package:lurk/core/flavors.dart';
 import 'package:lurk/models/community.dart';
 
 class Settings {
@@ -10,7 +11,7 @@ class Settings {
   static late final SettingNotifier<Community> homeCommunity;
   static late final SettingNotifier<bool> showCommentImages;
   static late final SettingNotifier<bool> autoplayVideos;
-  static late final SettingNotifier<Color?> appBarColor;
+  static late final SettingNotifier<Color> appBarColor;
   static late final SettingNotifier<bool> useBottomBar;
   static late final SettingNotifier<bool> showPlatformColorAccents;
   static late final SettingNotifier<String?> clientId;
@@ -20,24 +21,27 @@ class Settings {
   static late final RelationalListSettingNotifier<Community> communities;
 
   static Future<void> init() async {
+    try {
+
+    debugPrint('init');
     
     final db = Database.instance;
     final [dbSettings as Setting, dbCommunities as List<Community>] = await Future.wait([db.getAllSettings(), db.getAllCommunities()]);
-    for (var community in dbCommunities) {
-      debugPrint('loaded: ${community.platform}, ${community.name}');
-    }
+
+    debugPrint('loaded: ${dbSettings.homeCommunityPlatform}, ${dbSettings.homeCommunityName}');
 
     homeCommunity = SettingNotifier(
-      Community(
-        platform: dbSettings.homeCommunityPlatform,
+      dbSettings.homeCommunityPlatform != null ? Community(
+        platform: dbSettings.homeCommunityPlatform!,
         name: dbSettings.homeCommunityName
-      ),
+      ) : null,
       (value) {
         return SettingsCompanion(
           homeCommunityPlatform: Value(value.platform),
           homeCommunityName: Value(value.name),
         );
       },
+      F.appFlavor.defaultCommunities.first
     );
     showCommentImages = SettingNotifier(dbSettings.showCommentImages, (value) => SettingsCompanion(showCommentImages: Value(value)), Constants.defaultShowCommentImages);
     autoplayVideos = SettingNotifier(dbSettings.autoplayVideos, (value) => SettingsCompanion(autoplayVideos: Value(value)), Constants.defaultAutoplayVideos);
@@ -53,6 +57,11 @@ class Settings {
       save: db.saveCommunity,
       delete: db.deleteCommunity,
     );
+
+  } catch (e, stackTrace) {
+    debugPrint('ERROR: ${e.toString()}');
+    debugPrint(stackTrace.toString());
+  }
   }
 
 }
@@ -63,7 +72,7 @@ class SettingNotifier<T> extends ValueNotifier<T> {
   final T? defaultValue;
   bool hasSavedValue;
 
-  SettingNotifier(T initialValue, this.companionBuilder, [this.defaultValue]) : hasSavedValue = initialValue != null, super(initialValue ?? defaultValue as T);
+  SettingNotifier(T? initialValue, this.companionBuilder, [this.defaultValue]) : hasSavedValue = initialValue != null, super(initialValue ?? defaultValue as T);
 
   @override
   set value(T newValue) {

@@ -66,7 +66,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         const SizedBox(height: 8),
                       ],
                       _TextField(
-                        defaultValue: homeCommunity.name,
+                        defaultValue: Settings.homeCommunity.hasSavedValue ? homeCommunity.name : null,
                         label: homeCommunity.platform.communityLabel.toTitleCase(),
                         hintText: homeCommunity.platform.communityHome,
                         prefixText: homeCommunity.platform.communityPrefix,
@@ -97,7 +97,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _SettingColorListTile(
               setting: Settings.appBarColor,
               label: 'App bar color',
-              hintText: 'FF212121', // Suggest Reddit is Fun app bar color, in case user wants to mimic that
             ),
             _SettingSwitchListTile(
               setting: Settings.useBottomBar,
@@ -351,9 +350,8 @@ class _SettingStringListTile<T> extends StatelessWidget {
       title: ValueListenableBuilder<T?>(
         valueListenable: setting,
         builder: (context, value, child) {
-          final displayValue = setting.hasSavedValue ? value : null;
           return _TextField(
-            defaultValue: displayValue != null ? toText?.call(displayValue) ?? displayValue.toString() : null,
+            defaultValue: setting.hasSavedValue ? toText?.call(value) ?? value.toString() : null,
             label: label,
             hintText: hintText ?? (setting.defaultValue != null ? (toText?.call(setting.defaultValue) ?? setting.defaultValue.toString()) : null),
             helperText: helperText,

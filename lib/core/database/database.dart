@@ -28,17 +28,21 @@ class Database extends _$Database {
 
   @override
   MigrationStrategy get migration {
-    final homeCommunity = F.appFlavor.defaultCommunities.first;
+    // final homeCommunity = F.appFlavor.defaultCommunities.first;
     return MigrationStrategy(
       onCreate: (m) async {
         await m.createAll();
-        await into(settings).insert(
-          SettingsCompanion.insert(
-            homeCommunityPlatform: homeCommunity.platform,
-            homeCommunityName: Value(homeCommunity.name),
-          ),
-        );
+        // await into(settings).insert(
+        //   SettingsCompanion.insert(
+        //     homeCommunityPlatform: homeCommunity.platform,
+        //     homeCommunityName: Value(homeCommunity.name),
+        //   ),
+        // );
         await batch((batch) {
+          batch.insert(
+            settings, 
+            SettingsCompanion.insert(),
+          );
           batch.insertAll(
             communities,
             F.appFlavor.defaultCommunities.map((community) => CommunitiesCompanion.insert(platform: community.platform, name: community.name))

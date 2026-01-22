@@ -10,7 +10,6 @@ import 'package:lurk/models/post.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/history_builder.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 final thumbnailSize = 70;
 
@@ -19,12 +18,14 @@ class PostTile extends StatelessWidget {
   final Community community;
   final Post post;
   final Widget subtitle;
+  final bool showThumbnail;
   final VoidCallback? onTap;
 
   const PostTile({
     super.key,
     required this.community,
     required this.post,
+    this.showThumbnail = true,
     required this.subtitle,
     this.onTap
   });
@@ -49,8 +50,8 @@ class PostTile extends StatelessWidget {
         'View user ${community.platform.userPrefix}${post.author}': () {
           //TODO
         },
-        'View link in browser': () => launchUrl(Uri.parse(post.url), mode: LaunchMode.externalApplication),
-        'View comments in browser': () => launchUrl(Uri.parse(Api.of(community.platform).getPostDetailsUrl(post)), mode: LaunchMode.externalApplication),
+        'View link in browser': () => openInBrowser(post.url),
+        'View comments in browser': () => openInBrowser(Api.of(community.platform).getPostDetailsUrl(post)),
         'Copy link': () => copyToClipboard(post.url),
         'Copy comments link': () => copyToClipboard(Api.of(community.platform).getPostDetailsUrl(post))
       }      
@@ -117,47 +118,48 @@ class PostTile extends StatelessWidget {
               ),
             ),
           ),
-          SizedBox(
-            width: 70,
-            height: 70,
-            child: Stack(
-              children: [
-                Positioned.fill(
-                  child: post.thumbnailUrl != null
-                      ? ExtendedImage.network(
-                          post.thumbnailUrl!,
-                          headers: {'User-Agent': Settings.userAgent.value},
-                          width: 70,
-                          height: 70,
-                          cacheWidth: cacheSize,
-                          cacheHeight: cacheSize,
-                          fit: BoxFit.cover,
-                          loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed ? const Icon(Icons.broken_image_rounded) : null
-                      )
-                      : DecoratedBox(
-                          decoration: BoxDecoration(
-                            border: BoxBorder.all(color: Constants.lighterBackgroundColor)
+          if (showThumbnail)
+            SizedBox(
+              width: 70,
+              height: 70,
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: post.thumbnailUrl != null
+                        ? ExtendedImage.network(
+                            post.thumbnailUrl!,
+                            headers: {'User-Agent': Settings.userAgent.value},
+                            width: 70,
+                            height: 70,
+                            cacheWidth: cacheSize,
+                            cacheHeight: cacheSize,
+                            fit: BoxFit.cover,
+                            loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed ? const Icon(Icons.broken_image_rounded) : null
+                        )
+                        : DecoratedBox(
+                            decoration: BoxDecoration(
+                              border: BoxBorder.all(color: Constants.lighterBackgroundColor)
+                            ),
+                            child: Icon(
+                              post.isSelf ? Icons.subject_rounded : Icons.link_rounded,
+                              color: Colors.white38,
+                            ),
                           ),
-                          child: Icon(
-                            post.isSelf ? Icons.subject_rounded : Icons.link_rounded,
-                            color: Colors.white38,
-                          ),
-                        ),
-                ),
-                Positioned.fill(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        navigate(context, post.url, community: community, post: post);
-                        History.posts.setVisited(post.id);
-                      }
+                  ),
+                  Positioned.fill(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          navigate(context, post.url, community: community, post: post);
+                          History.posts.setVisited(post.id);
+                        }
+                      ),
                     ),
                   ),
-                ),
-              ],
-            ),
-          )
+                ],
+              ),
+            )
         ],
       ),
     );

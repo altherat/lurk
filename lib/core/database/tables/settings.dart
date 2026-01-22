@@ -6,7 +6,7 @@ class Settings extends Table {
 
   IntColumn get id => integer().autoIncrement()();
 
-  TextColumn get homeCommunityPlatform => text().map(const EnumNameConverter<Platform>(Platform.values))();
+  TextColumn get homeCommunityPlatform => text().map(const EnumNameConverter<Platform>(Platform.values)).nullable()();
   TextColumn get homeCommunityName => text().nullable()();
 
   BoolColumn get showCommentImages => boolean().withDefault(const Constant(Constants.defaultShowCommentImages))();
@@ -20,6 +20,6 @@ class Settings extends Table {
   TextColumn get redirectUri => text().nullable()();
   BoolColumn get copyOldRedditLinks => boolean().withDefault(const Constant(Constants.defaultCopyOldRedditLinks))();
   
-  TextColumn get userAgent => text().withDefault(const Constant(Constants.defaultUserAgent))();
+  TextColumn get userAgent => text().nullable()();
   
 }

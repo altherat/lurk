@@ -39,7 +39,6 @@ class ImageViewerScreen extends StatelessWidget {
             );
           },
           onDoubleTap: (ExtendedImageGestureState state) {
-            debugPrint('onDoubleTap');
             state.handleDoubleTap(
               scale: state.gestureDetails?.totalScale == 1 ? 3 : 1,
               doubleTapPosition: state.pointerDownPosition,

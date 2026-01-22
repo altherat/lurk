@@ -43,7 +43,7 @@ class MediaScaffold extends StatelessWidget {
             )
           );
         },
-      'View in browser': () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+      'View in browser': () => openInBrowser(url),
       'Copy link': () => copyToClipboard(url)
     };
     return MainScaffold(

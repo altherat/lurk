@@ -74,7 +74,7 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
               )
             );
           },
-      'View in browser': () => launchUrl(Uri.parse(widget.url), mode: LaunchMode.externalApplication),
+      'View in browser': () => openInBrowser(widget.url),
       'Copy link': () => copyToClipboard(widget.url)
       },
       body: WebViewWidget(

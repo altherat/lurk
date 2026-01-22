@@ -15,7 +15,6 @@ import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 import 'package:lurk/widgets/post_tile.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class PostDetailsScreen extends StatefulWidget {
 
@@ -114,6 +113,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
         PostTile(
           community: widget.community,
           post: _post!,
+          showThumbnail: !_post!.isSelf,
           subtitle: Text(
             'posted to ${_post!.communityName}\n${_post!.timeAgo} ago by ${_post!.author}',
             style: const TextStyle(color: Constants.secondaryTextColor, fontSize: 12)
@@ -303,8 +303,8 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
       title: title != null ? Text(title) : null,
       subtitle: _post != null ? Text(widget.community.fullDisplayName) : null,
       popupMenuActions: {
-        'View in browser': () => launchUrl(Uri.parse(widget.url ?? widget.post!.url), mode: LaunchMode.externalApplication),
-        'View comments in browser': () => launchUrl(Uri.parse(Api.of(widget.community.platform).getPostDetailsUrl(widget.post!)), mode: LaunchMode.externalApplication),
+        'View in browser': () => openInBrowser(widget.url ?? widget.post!.url),
+        'View comments in browser': () => openInBrowser(Api.of(widget.community.platform).getPostDetailsUrl(widget.post!)),
         'Copy link': () => copyToClipboard(widget.url ?? widget.post!.url),
         'Copy comments link': () => copyToClipboard(Api.of(widget.community.platform).getPostDetailsUrl(widget.post!))
       },
@@ -636,7 +636,7 @@ class _Image extends StatelessWidget {
                             context: context,
                             options: {
                               'Save image': () {}, //TODO
-                              'View in browser': () => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication),
+                              'View in browser': () => openInBrowser(url),
                               'Copy link': () => copyToClipboard(url)
                             }
                           );

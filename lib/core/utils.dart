@@ -88,6 +88,8 @@ String timeAgoCompact(int timestampMs) {
   return '${(diff.inDays / 365).floor()}y';
 }
 
+Future<void> openInBrowser(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+
 Future<dynamic> navigate(BuildContext context, String url, {Community? community, Post? post}) async {
   // debugPrint('navigate: $url');
   final uri = Uri.tryParse(url);
