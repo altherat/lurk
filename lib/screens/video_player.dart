@@ -7,7 +7,6 @@ import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
-import 'package:lurk/widgets/one_finger_zoom.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
 import 'package:lurk/widgets/large_circular_progress_indicator.dart';
@@ -37,9 +36,9 @@ class VideoPlayerScreen extends StatefulWidget {
 
 class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
 
-  final TransformationController _transformationController = TransformationController();
   final Player _player = Player();
   late final VideoController _controller = VideoController(_player);
+  final ValueNotifier<double> _sliderController = ValueNotifier(0);
   bool _isInitialized = false;
   bool _showControls = true;
   Timer? _hideControlsTimer;
@@ -53,8 +52,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
   @override
   void dispose() {
     routeObserver.unsubscribe(this);
-    _transformationController.dispose();
     _player.dispose();
+    _sliderController.dispose();
     _hideControlsTimer?.cancel();
     super.dispose();
   }
@@ -73,7 +72,10 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
 
   Future<void> _init() async {
     if (_player.platform is NativePlayer) {
-      await (_player.platform as NativePlayer).setProperty('user-agent', Settings.userAgent.value);
+      final platform = _player.platform as NativePlayer;
+      await platform.setProperty('user-agent', Settings.userAgent.value);
+      await platform.setProperty('hwdec', 'no');
+      await platform.setProperty('video-sync', 'audio');
     }
 
     await _player.open(
@@ -85,7 +87,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
     );
 
     if (widget.audioUrl != null && _player.platform is NativePlayer) {
-      await (_player.platform as NativePlayer).command(['audio-add', widget.audioUrl!, 'select']);
+      final platform = _player.platform as NativePlayer;
+      await platform.command(['audio-add', widget.audioUrl!, 'select']);
       
       // audio skips without this
       await _player.stream.buffer
@@ -243,28 +246,34 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
                             StreamBuilder<Duration>(
                               stream: _player.stream.position,
                               builder: (context, snapshot) {
-                                final position = snapshot.data ?? Duration.zero;
                                 final total = _player.state.duration;
-                                return Row(
-                                  children: [
-                                    Text(
-                                      _formatDuration(position),
-                                      style: const TextStyle(color: Colors.white),
-                                    ),
-                                    Expanded(
-                                      child: Slider(
-                                        inactiveColor: Constants.primaryColor.withAlpha(100),
-                                        value: position.inMilliseconds.toDouble(),
-                                        max: total.inMilliseconds.toDouble(),
-                                        onChangeStart: (_) => _disposeHideControlsTimer(),
-                                        onChanged: (value) => _player.seek(Duration(milliseconds: value.toInt()))
-                                      ),
-                                    ),
-                                    Text(
-                                      _formatDuration(total),
-                                      style: const TextStyle(color: Colors.white),
-                                    ),
-                                  ],
+                                final maxVal = total.inMilliseconds.toDouble();
+                                return ValueListenableBuilder(
+                                  valueListenable: _sliderController,
+                                  builder: (context, value, child) {
+                                    return Row(
+                                      children: [
+                                        Text(
+                                          _formatDuration(Duration(milliseconds: value.round())),
+                                          style: const TextStyle(color: Colors.white),
+                                        ),
+                                        Expanded(
+                                          child: Slider(
+                                            inactiveColor: Constants.primaryColor.withAlpha(100),
+                                            value: value,
+                                            max: maxVal,
+                                            onChangeStart: (_) => _disposeHideControlsTimer(),
+                                            onChanged: (value) => _sliderController.value = value,
+                                            onChangeEnd: (value) => _player.seek(Duration(milliseconds: value.toInt()))
+                                          ),
+                                        ),
+                                        Text(
+                                          _formatDuration(total),
+                                          style: const TextStyle(color: Colors.white),
+                                        ),
+                                      ],
+                                    );
+                                  }
                                 );
                               }
                             ),

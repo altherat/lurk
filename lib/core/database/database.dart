@@ -90,7 +90,7 @@ class Database extends _$Database {
     return (delete(communities)
       ..where((c) => 
         c.platform.equals(community.platform.name) & 
-        c.name.equalsNullable(community.name)
+        c.name.equals(community.name ?? '')
       )
     )
     .go();

@@ -23,6 +23,9 @@ class Settings {
     
     final db = Database.instance;
     final [dbSettings as Setting, dbCommunities as List<Community>] = await Future.wait([db.getAllSettings(), db.getAllCommunities()]);
+    for (var community in dbCommunities) {
+      debugPrint('loaded: ${community.platform}, ${community.name}');
+    }
 
     homeCommunity = SettingNotifier(
       Community(

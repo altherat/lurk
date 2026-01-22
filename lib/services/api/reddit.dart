@@ -248,8 +248,11 @@ class RedditApi extends Api {
             items.addAll(_parseComments(repliesData['children'], level + 1));
           }
         }
-      } else if (kind == 'more') {
-        items.add(_parseLoadMoreCommentFromJson(data, level));
+      }
+      else if (kind == 'more') {
+        if (data['count'] != 0) {
+          items.add(_parseLoadMoreCommentFromJson(data, level));
+        }
       }
     }
     return items;
