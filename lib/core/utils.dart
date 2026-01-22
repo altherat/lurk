@@ -10,6 +10,7 @@ import 'package:lurk/screens/image_viewer.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/screens/posts.dart';
 import 'package:lurk/screens/video_player.dart';
+import 'package:lurk/screens/web_viewer.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
 import 'package:url_launcher/url_launcher.dart';
 
@@ -87,16 +88,16 @@ String timeAgoCompact(int timestampMs) {
   return '${(diff.inDays / 365).floor()}y';
 }
 
-Future<bool> navigate(BuildContext context, String url, {Community? community, Post? post}) async {
+Future<dynamic> navigate(BuildContext context, String url, {Community? community, Post? post}) async {
   // debugPrint('navigate: $url');
   final uri = Uri.tryParse(url);
-  if (uri == null) return false;
+  if (uri == null) return;
 
   final host = uri.host.toLowerCase();
   final path = uri.path.toLowerCase();
 
   if (host == 'i.redd.it' || host.endsWith('.imgix.net') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || path.endsWith('.gif') || path.endsWith('.webp')) {
-    Navigator.push(
+    return Navigator.push(
       context, MaterialPageRoute(
         builder: (_) {
           return ImageViewerScreen(
@@ -107,7 +108,6 @@ Future<bool> navigate(BuildContext context, String url, {Community? community, P
         }
       )
     );
-    return true;
   }
 
   if (uri.host == 'v.redd.it') {
@@ -122,7 +122,7 @@ Future<bool> navigate(BuildContext context, String url, {Community? community, P
         pathSegments: pathSegments
       ).toString();
     }
-    Navigator.push(
+    return Navigator.push(
       context, MaterialPageRoute(
         builder: (_) {
           return VideoPlayerScreen(
@@ -134,11 +134,10 @@ Future<bool> navigate(BuildContext context, String url, {Community? community, P
         }
       )
     );
-    return true;
   }
   
   if (path.endsWith('.mp4') || path.endsWith('.mov')) {
-    Navigator.push(
+    return Navigator.push(
       context, MaterialPageRoute(
         builder: (_) {
           return VideoPlayerScreen(
@@ -149,7 +148,6 @@ Future<bool> navigate(BuildContext context, String url, {Community? community, P
         }
       )
     );
-    return true;
   }
 
   if (host == 'reddit.com' || host == 'redd.it' || host.endsWith('.reddit.com') || host.endsWith('.redd.it')) {
@@ -158,7 +156,7 @@ Future<bool> navigate(BuildContext context, String url, {Community? community, P
       final firstPathSegment = pathSegments[0].toLowerCase();
       if (firstPathSegment == 'r') {
         if (pathSegments.length == 2) {
-          Navigator.push(
+          return Navigator.push(
             context,
             MaterialPageRoute(
               builder: (context) {
@@ -171,10 +169,9 @@ Future<bool> navigate(BuildContext context, String url, {Community? community, P
               }
             )
           );
-          return true;
         }
         if (pathSegments[2] == 'comments' && pathSegments.length >= 4) {
-          Navigator.push(
+          return Navigator.push(
             context,
             MaterialPageRoute(
               builder: (_) {
@@ -189,19 +186,18 @@ Future<bool> navigate(BuildContext context, String url, {Community? community, P
               }
             )
           );
-          return true;
         }
       }
       else if ((firstPathSegment == 'u' || firstPathSegment == 'user')) {
         if (pathSegments.length >= 2) {
           final username = pathSegments[1];
           // TODO: Navigator.push(context, MaterialPageRoute(builder: (_) => UserProfileScreen(username: username)));
-          return true;
+          return;
         }
       }
       else if (firstPathSegment == 'gallery') {
         if (pathSegments.length == 2) {
-          Navigator.push(
+          return Navigator.push(
             context, MaterialPageRoute(
               builder: (_) {
                 return ImageGalleryViewerScreen(
@@ -213,7 +209,6 @@ Future<bool> navigate(BuildContext context, String url, {Community? community, P
               }
             )
           );
-          return true;
         }
       }
     }
@@ -223,7 +218,7 @@ Future<bool> navigate(BuildContext context, String url, {Community? community, P
     final pathSegments = uri.pathSegments;
     if (pathSegments.length >= 2) {
       final communityName = pathSegments[0].toLowerCase();
-      Navigator.push(
+      return Navigator.push(
         context,
         MaterialPageRoute(
           builder: (_) => PostDetailsScreen(
@@ -231,25 +226,31 @@ Future<bool> navigate(BuildContext context, String url, {Community? community, P
               platform: Platform.digg,
               name: communityName,
             ),
-            post: post, // If we have the object from a list, pass it
+            post: post,
             url: url,
-            // You might want to ensure your screen can load via ID if post is null
-            // id: postId, 
           ),
         ),
       );
-      return true;
     }
   }
 
-  if (await launchUrl(uri, mode: LaunchMode.inAppBrowserView)) {
-    return true;
-  }
-  else if (context.mounted) {
-    ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Something went wrong')));
-  }
+  return Navigator.push(
+    context,
+    MaterialPageRoute(
+      builder: (_) => WebViewerScreen(
+        community: community,
+        post: post,
+        url: url,
+      ),
+    ),
+  );
 
-  return false;
+  // if (await launchUrl(uri, mode: LaunchMode.inAppBrowserView)) {
+  //   return true;
+  // }
+  // else if (context.mounted) {
+  //   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Something went wrong')));
+  // }
 }
 
 Future<void> showSimpleAlertDialog({

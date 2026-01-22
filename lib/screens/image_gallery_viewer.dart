@@ -69,82 +69,92 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
       post: widget.post,
       body: _isLoading
         ? const LargeCircularProgressIndicator()
-        : ListView.builder(
-          padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
-          cacheExtent: 1000,
-          itemCount: 1 + _post.galleryImageUrls.length,
-          itemBuilder: (context, index) {
-            if (index == 0) {
-              return Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(_post.title),
-                    Text(
-                      'by ${_post.author ?? '[deleted]'} • ${_post.timeAgo}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: Constants.secondaryTextColor
+        : ListView.separated(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+            cacheExtent: MediaQuery.of(context).size.height,
+            itemCount: 1 + _post.galleryImageUrls.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 16),
+            itemBuilder: (context, index) {
+              if (index == 0) {
+                return Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(_post.title),
+                      Text(
+                        'by ${_post.author ?? '[deleted]'} • ${_post.timeAgo}',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          color: Constants.secondaryTextColor
+                        ),
                       ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(_post.galleryImageUrls.length.toPluralString('image'))
-                  ],
-                ),
-              );
-            }
-            final url = _post.galleryImageUrls[index - 1];
-            return Stack(
-              children: [
-                ExtendedImage.network(
-                  url,
-                  headers: {'User-Agent': Settings.userAgent.value},
-                  fit: BoxFit.fitWidth,
-                  mode: ExtendedImageMode.gesture,
-                  cacheWidth: (MediaQuery.of(context).size.width * MediaQuery.of(context).devicePixelRatio).toInt(),
-                  loadStateChanged: (state) {
-                    switch (state.extendedImageLoadState) {
-                      case LoadState.loading:
-                        return const LargeCircularProgressIndicator();
-                      case LoadState.completed:
-                        return state.completedWidget;
-                      case LoadState.failed:
-                        final color = Theme.of(context).disabledColor;
-                        return Center(
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [Icon(Icons.broken_image_rounded, size: 80, color: color)],
-                          ),
-                      );
-                    }
-                  },
-                ),
-                Positioned.fill(
-                  child: Material(
-                    color: Colors.transparent,
-                    child: InkWell(
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (_) {
-                              return ImageViewerScreen(
-                                url: widget.url,
-                                community: widget.community,
-                                post: widget.post,
-                              );
-                            }
-                          )
+                      const SizedBox(height: 16),
+                      Text(_post.galleryImageUrls.length.toPluralString('image'))
+                    ],
+                  ),
+                );
+              }
+              final url = _post.galleryImageUrls[index - 1];
+              return Stack(
+                children: [
+                  ExtendedImage.network(
+                    url,
+                    headers: {'User-Agent': Settings.userAgent.value},
+                    fit: BoxFit.fitWidth,
+                    mode: ExtendedImageMode.gesture,
+                    cacheWidth: (MediaQuery.of(context).size.width * MediaQuery.of(context).devicePixelRatio).toInt(),
+                    loadStateChanged: (state) {
+                      switch (state.extendedImageLoadState) {
+                        case LoadState.loading:
+                          return const Padding(
+                            padding: EdgeInsets.all(16),
+                            child: LargeCircularProgressIndicator()
+                          );
+                        case LoadState.completed:
+                          return state.completedWidget;
+                        case LoadState.failed:
+                          final color = Theme.of(context).disabledColor;
+                          return Center(
+                            child: Column(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  Icons.broken_image_rounded,
+                                  size: 80,
+                                  color: color
+                                )
+                              ],
+                            ),
                         );
                       }
-                    ),
+                    },
                   ),
-                )
-              ],
-            );
-          },
-        )
+                  Positioned.fill(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (_) {
+                                return ImageViewerScreen(
+                                  url: url,
+                                  community: widget.community,
+                                  post: widget.post,
+                                );
+                              }
+                            )
+                          );
+                        }
+                      ),
+                    ),
+                  )
+                ],
+              );
+            },
+          )
     );
   }
 

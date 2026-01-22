@@ -576,7 +576,10 @@ class _Html extends StatelessWidget {
         }
         return null;
       },
-      onTapUrl: (url) => navigate(context, url),
+      onTapUrl: (url) {
+        navigate(context, url);
+        return true;
+      },
       onTapImage: (imageMetadata) {
         final url = imageMetadata.sources.firstOrNull?.url;
          if (url != null) {

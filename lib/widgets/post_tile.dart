@@ -148,10 +148,9 @@ class PostTile extends StatelessWidget {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: () async {
-                        if (await navigate(context, post.url, community: community, post: post)) {
-                          History.posts.setVisited(post.id);
-                        }
+                      onTap: () {
+                        navigate(context, post.url, community: community, post: post);
+                        History.posts.setVisited(post.id);
                       }
                     ),
                   ),
