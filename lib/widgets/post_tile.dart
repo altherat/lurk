@@ -58,7 +58,6 @@ class PostTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final cacheSize = thumbnailSize * MediaQuery.devicePixelRatioOf(context).round();
     return InkWell(
       onTap: onTap ?? () => _showOptions(context),
       onLongPress: () { 
@@ -127,10 +126,7 @@ class PostTile extends StatelessWidget {
                         ? ExtendedImage.network(
                             post.thumbnailUrl!,
                             headers: {'User-Agent': Settings.userAgent.value},
-                            width: 70,
-                            height: 70,
-                            cacheWidth: cacheSize,
-                            cacheHeight: cacheSize,
+                            cacheWidth: thumbnailSize * MediaQuery.devicePixelRatioOf(context).round(),
                             fit: BoxFit.cover,
                             loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed ? const Icon(Icons.broken_image_rounded) : null
                         )

@@ -4,8 +4,8 @@ import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
-import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 class WebViewerScreen extends StatefulWidget {
 
@@ -27,20 +27,20 @@ class WebViewerScreen extends StatefulWidget {
 
 class _WebViewerScreenState extends State<WebViewerScreen> {
 
-  late final WebViewController controller;
+  late final WebViewController _controller;
   late String? _title;
 
   @override
   void initState() {
     super.initState();
     _title = widget.post?.title;
-    controller = WebViewController()
+    _controller = WebViewController()
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) async {
             if (progress == 100) {
-                final String? title = await controller.getTitle();
+                final String? title = await _controller.getTitle();
                 if (mounted && title != null && title.isNotEmpty) {
                   setState(() {
                     _title = title;
@@ -49,12 +49,23 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
               }
           }
         ),
-      )
-      ..loadRequest(Uri.parse(widget.url));
+      );
+    _controller.loadRequest(Uri.parse(widget.url));
   }
 
   @override
   Widget build(BuildContext context) {
+    late final PlatformWebViewWidgetCreationParams params;
+    if (WebViewPlatform.instance is AndroidWebViewPlatform) {
+      params = AndroidWebViewWidgetCreationParams(
+        controller: _controller.platform,
+        displayWithHybridComposition: true,
+      );
+    } else {
+      params = PlatformWebViewWidgetCreationParams(
+        controller: _controller.platform,
+      );
+    }
     return MainScaffold(
       title: _title != null ? Text(_title!) : null,
       subtitle: Text(widget.url),
@@ -72,8 +83,8 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
       'View in browser': () => openInBrowser(widget.url),
       'Copy link': () => copyToClipboard(widget.url)
       },
-      body: WebViewWidget(
-        controller: controller
+      body: WebViewWidget.fromPlatformCreationParams(
+        params: params
       )
     );
   }

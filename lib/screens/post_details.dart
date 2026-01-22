@@ -33,6 +33,7 @@ class PostDetailsScreen extends StatefulWidget {
 
   @override
   State<PostDetailsScreen> createState() => _PostDetailsScreenState();
+  
 }
 
 class _PostDetailsScreenState extends State<PostDetailsScreen> {
@@ -148,7 +149,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                 style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)
               ),
               Text(
-                'sorted by${_feedOptions != null ? ': ${_feedOptions!.values..map((option) => option.label).join('  •  ')}' : ' ${widget.community.platform.postCommentsFeedOptions.options.first.label.toLowerCase()}'}',
+                'sorted by${_feedOptions != null && _feedOptions!.length > 1 ? ': ${_feedOptions!.values.map((option) => option.label.toLowerCase()).join(' / ')}' : ' ${widget.community.platform.postCommentsFeedOptions.options.first.label.toLowerCase()}'}',
                 style: const TextStyle(color: Constants.secondaryTextColor, fontSize: 11),
               )
             ],
@@ -158,6 +159,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
       body = RefreshIndicator(
         key: _refreshIndicatorKey,
         displacement: 15,
+        color: widget.community.platform.color,
         onRefresh: _getPostDetailsFromPost,
         child: _isLoading
           ? Column(

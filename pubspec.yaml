@@ -50,6 +50,7 @@ dependencies:
   media_kit_libs_video: ^1.0.7
   extended_image: ^10.0.1
   webview_flutter: ^4.13.1
+  webview_flutter_android: ^4.10.11
   # flutter_flavorizr: ^2.4.1
 
 dev_dependencies:

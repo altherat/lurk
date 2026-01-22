@@ -2,7 +2,6 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
-import 'package:lurk/core/flavors.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
@@ -11,7 +10,6 @@ import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/widgets/community_name.dart';
-import 'package:lurk/widgets/feed_option_selector.dart';
 import 'package:lurk/widgets/history_builder.dart';
 import 'package:lurk/widgets/large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
@@ -45,7 +43,7 @@ class _PostsScreenState extends State<PostsScreen> {
       activeCommunityName: widget.community.name,
       scaffoldKey: widget.scaffoldKey,
       title: CommunityName(community: widget.community),
-      subtitle: _feedOptions != null ? Text(_feedOptions!.values.map((option) => option.description).join('  •  ')) : null,
+      subtitle: _feedOptions != null ? Text(_feedOptions!.values.map((option) => option.description.toLowerCase()).join(' / ')) : null,
       feedOptions: widget.community.platform.postsFeedOptions,
       selectedFeedOptions: _feedOptions,
       useSlivers: true,
@@ -56,7 +54,7 @@ class _PostsScreenState extends State<PostsScreen> {
       ),
       onFeedOptionsSelected: (options) {
         setState(() {
-          _feedOptions = options;
+          _feedOptions = listEquals(options.values.toList(), [widget.community.platform.postsFeedOptions.options.first]) ? null : options;
         });
       },
       onRefresh: () => _postListKey.currentState?._refresh(),
@@ -100,7 +98,7 @@ class PostsListViewState extends State<PostsListView> {
   @override
   void didUpdateWidget(covariant PostsListView oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (widget.community != oldWidget.community || (!mapEquals(widget.feedOptions, oldWidget.feedOptions) && !(oldWidget.feedOptions == null && listEquals(widget.feedOptions?.values.toList(), [widget.community.platform.postsFeedOptions.options.first])))) {
+    if (widget.community != oldWidget.community || !mapEquals(widget.feedOptions, oldWidget.feedOptions)) {
       setState(() {
         _posts.clear();
         _isLoadingInitially = true;
@@ -163,6 +161,7 @@ class PostsListViewState extends State<PostsListView> {
       : RefreshIndicator(
           key: _refreshIndicatorKey,
           displacement: 15,
+          color: widget.community.platform.color,
           onRefresh: _getPosts,
           child: _posts.isEmpty
           ? LayoutBuilder(

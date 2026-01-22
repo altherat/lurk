@@ -1,8 +1,10 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:lurk/app.dart';
 import 'package:lurk/core/constants.dart';
+import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
@@ -39,7 +41,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
   final Player _player = Player();
   late final VideoController _controller = VideoController(_player);
   final ValueNotifier<double> _sliderController = ValueNotifier(0);
+  StreamSubscription? _playerStreamSubscription;
   bool _isInitialized = false;
+  bool _isDragging = false;
   bool _showControls = true;
   Timer? _hideControlsTimer;
 
@@ -54,6 +58,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
     routeObserver.unsubscribe(this);
     _player.dispose();
     _sliderController.dispose();
+    _playerStreamSubscription?.cancel();
     _hideControlsTimer?.cancel();
     super.dispose();
   }
@@ -73,9 +78,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
   Future<void> _init() async {
     if (_player.platform is NativePlayer) {
       final platform = _player.platform as NativePlayer;
+      await platform.setProperty('ao', 'audiotrack,opensles');
       await platform.setProperty('user-agent', Settings.userAgent.value);
       await platform.setProperty('hwdec', 'no');
       await platform.setProperty('video-sync', 'audio');
+      await platform.setProperty('correct-pts', 'no'); 
     }
 
     await _player.open(
@@ -88,16 +95,23 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
 
     if (widget.audioUrl != null && _player.platform is NativePlayer) {
       final platform = _player.platform as NativePlayer;
-      await platform.command(['audio-add', widget.audioUrl!, 'select']);
+      await platform.command(['audio-add', widget.audioUrl!, 'auto']);
+      await platform.setProperty('aid', '1');
       
-      // audio skips without this
-      await _player.stream.buffer
-          .firstWhere((b) => b > Duration.zero)
-          .timeout(const Duration(seconds: 2));
-      await _player.seek(Duration.zero);
+      // audio skips without this (maybe resolved?)
+      // await _player.stream.buffer
+      //     .firstWhere((b) => b > Duration.zero)
+      //     .timeout(const Duration(seconds: 2));
+      // await _player.seek(Duration.zero);
     }
 
     if (!mounted) return;
+
+    _playerStreamSubscription = _player.stream.position.listen((position) {
+      if (!_isDragging) {
+        _sliderController.value = position.inMilliseconds.toDouble();
+      }
+    });
 
     setState(() {
       _isInitialized = true;
@@ -105,12 +119,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
 
     if (Settings.autoplayVideos.value) {
       await _player.play();
-      _hideControlsTimer = Timer(const Duration(seconds: 2), () {
+      _hideControlsTimer = Timer(const Duration(seconds: 3), () {
         if (mounted && _showControls) {
           setState(() => _showControls = false);
         }
       });
     }
+
   }
 
   void _onControlsChanged(VoidCallback action) {
@@ -200,7 +215,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
                                     color: Colors.white,
                                     size: 34,
                                   ),
-                                  onPressed: () => _onControlsChanged(() => _player.seek(_player.state.position - const Duration(seconds: 5)))
+                                  onPressed: () => _onControlsChanged(() => _player.seek(Duration(milliseconds: max(0, _player.state.position.inMilliseconds - 5000))))
                                 ),
                                 const SizedBox(width: 20),
                                 IconButton(
@@ -210,7 +225,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
                                       return Icon(
                                         snapshot.data ?? _player.state.playing ? Icons.pause_rounded : Icons.play_arrow_rounded,
                                         color: Colors.white,
-                                        size: 34,
+                                        size: 48,
                                       );
                                     },
                                   ),
@@ -223,7 +238,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
                                     color: Colors.white,
                                     size: 34,
                                   ),
-                                  onPressed: () => _onControlsChanged(() => _player.seek(_player.state.position + const Duration(seconds: 5)))
+                                  onPressed: () => _onControlsChanged(() => _player.seek(Duration(milliseconds: min(_player.state.duration.inMilliseconds, _player.state.position.inMilliseconds + 5000))))
                                 ),
                                 const SizedBox(width: 20),
                                 PopupMenuButton<double>(
@@ -243,37 +258,37 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
                                 )
                               ],
                             ),
-                            StreamBuilder<Duration>(
-                              stream: _player.stream.position,
-                              builder: (context, snapshot) {
-                                final total = _player.state.duration;
-                                final maxVal = total.inMilliseconds.toDouble();
-                                return ValueListenableBuilder(
-                                  valueListenable: _sliderController,
-                                  builder: (context, value, child) {
-                                    return Row(
-                                      children: [
-                                        Text(
-                                          _formatDuration(Duration(milliseconds: value.round())),
-                                          style: const TextStyle(color: Colors.white),
-                                        ),
-                                        Expanded(
-                                          child: Slider(
-                                            inactiveColor: Constants.primaryColor.withAlpha(100),
-                                            value: value,
-                                            max: maxVal,
-                                            onChangeStart: (_) => _disposeHideControlsTimer(),
-                                            onChanged: (value) => _sliderController.value = value,
-                                            onChangeEnd: (value) => _player.seek(Duration(milliseconds: value.toInt()))
-                                          ),
-                                        ),
-                                        Text(
-                                          _formatDuration(total),
-                                          style: const TextStyle(color: Colors.white),
-                                        ),
-                                      ],
-                                    );
-                                  }
+                            ValueListenableBuilder(
+                              valueListenable: _sliderController,
+                              builder: (context, value, child) {
+                                final duration = _player.state.duration;
+                                return Row(
+                                  children: [
+                                    Text(
+                                      _formatDuration(Duration(milliseconds: value.round())),
+                                      style: const TextStyle(color: Colors.white),
+                                    ),
+                                    Expanded(
+                                      child: Slider(
+                                        inactiveColor: Constants.primaryColor.withAlpha(100),
+                                        value: min(value, duration.inMilliseconds.toDouble()),
+                                        max: duration.inMilliseconds.toDouble(),
+                                        onChangeStart: (_) {
+                                          _isDragging = true;
+                                          _disposeHideControlsTimer();
+                                        },
+                                        onChanged: (value) => _sliderController.value = value,
+                                        onChangeEnd: (value) async {
+                                          await _player.seek(Duration(milliseconds: value.toInt()));
+                                          _isDragging = false;
+                                        }
+                                      ),
+                                    ),
+                                    Text(
+                                      _formatDuration(duration),
+                                      style: const TextStyle(color: Colors.white),
+                                    ),
+                                  ],
                                 );
                               }
                             ),

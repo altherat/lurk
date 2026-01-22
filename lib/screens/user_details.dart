@@ -36,7 +36,12 @@ class UserDetailsScreen extends StatelessWidget {
         ),
       ),
       feedOptions: platform.userPostsFeedOptions,
-      body: const Placeholder()
+      body: RefreshIndicator(
+        color: platform.color,
+        displacement: 15,
+        onRefresh: () async {},
+        child: Placeholder()
+      )
     );
   }
   

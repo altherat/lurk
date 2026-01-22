@@ -4,8 +4,8 @@ import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/post_details.dart';
+import 'package:lurk/services/api/api.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
-import 'package:url_launcher/url_launcher.dart';
 
 class MediaScaffold extends StatelessWidget {
 
@@ -27,14 +27,16 @@ class MediaScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final options = {
-      'Save $type': () {}, //TODO
+      'Save $type': () {
+        //TODO
+      },
       if (post != null)
         'View comments': () {
           context.push(
             () => PostDetailsScreen(
               community: community!,
               post: post,
-              url: url
+              url: Api.of(community!.platform).getPostDetailsUrl(post!),
             )
           );
         },
