@@ -1,6 +1,7 @@
 
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
+import 'package:lurk/core/flavors.dart';
 import 'package:lurk/screens/posts.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/services/settings.dart';
@@ -108,7 +109,7 @@ class _HomeState extends State<_Home> {
             )
           );
         }
-        return const LargeCircularProgressIndicator();
+        return LargeCircularProgressIndicator(platform: F.appFlavor.platforms.first);
       },
     );
   }

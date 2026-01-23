@@ -150,7 +150,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                       final parentAlpha = (DefaultTextStyle.of(context).style.color!.a * 255).toInt();
                       return DefaultTextStyle.merge(
                         style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                          color: appBarColor?.contrast.withAlpha(min(parentAlpha, Constants.appBarSubtitleAlpha)),
+                          color: appBarColor.contrast.withAlpha(min(parentAlpha, Constants.appBarSubtitleAlpha)),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,

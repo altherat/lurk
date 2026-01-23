@@ -47,7 +47,7 @@ class ImageViewerScreen extends StatelessWidget {
           loadStateChanged: (state) {
             switch (state.extendedImageLoadState) {
               case LoadState.loading:
-                return const LargeCircularProgressIndicator();
+                return LargeCircularProgressIndicator(platform: community?.platform);
               case LoadState.completed:
                 return state.completedWidget;
               case LoadState.failed:

@@ -158,7 +158,7 @@ class PostsListViewState extends State<PostsListView> {
   @override
   Widget build(BuildContext context) {
     return _isLoadingInitially 
-      ? const LargeCircularProgressIndicator()
+      ? LargeCircularProgressIndicator(platform: widget.community.platform)
       : CustomRefreshIndicator(
           key: _refreshIndicatorKey,
           platform: widget.community.platform,

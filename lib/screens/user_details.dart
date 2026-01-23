@@ -5,6 +5,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
+import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 
 class UserDetailsScreen extends StatelessWidget {
@@ -36,10 +37,11 @@ class UserDetailsScreen extends StatelessWidget {
         ),
       ),
       feedOptions: platform.userPostsFeedOptions,
-      body: RefreshIndicator(
-        color: platform.color,
-        displacement: 15,
-        onRefresh: () async {},
+      body: CustomRefreshIndicator(
+        platform: platform,
+        onRefresh: () async {
+          
+        },
         child: Placeholder()
       )
     );

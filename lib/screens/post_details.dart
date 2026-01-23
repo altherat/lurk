@@ -14,6 +14,7 @@ import 'package:lurk/services/history.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/services/settings.dart';
+import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
@@ -109,7 +110,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     final Widget body;
     if (_post == null) {
       title = widget.url;
-      body = const LargeCircularProgressIndicator();
+      body = LargeCircularProgressIndicator(platform: widget.community.platform);
     }
     else {
       title = _post!.title;
@@ -165,7 +166,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
           ? Column(
               children: [
                 ...headers,
-                const Expanded(child: LargeCircularProgressIndicator())
+                Expanded(child: LargeCircularProgressIndicator(platform: widget.community.platform))
               ],
             )
           : _visibleComments == null
@@ -367,14 +368,15 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
     final Widget child;
     if (_isLoading) {
       onTap = null;
-      child = const Align(
+      child = Align(
         alignment: Alignment.topLeft,
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 8),
           child: SizedBox(
             height: 20,
             width: 20,
-            child: CircularProgressIndicator(
+            child: CustomCircularProgressIndicator(
+              platform: widget.community.platform,
               strokeWidth: 2.5,
             ),
           ),
@@ -663,9 +665,9 @@ class _Image extends StatelessWidget {
         loadStateChanged: (state) {
           switch (state.extendedImageLoadState) {
             case LoadState.loading:
-              return const Padding(
-                padding: EdgeInsets.all(8),
-                child: CircularProgressIndicator(),
+              return Padding(
+                padding: EdgeInsets.symmetric(vertical: 16),
+                child: CustomCircularProgressIndicator(platform: community.platform),
               );
             case LoadState.completed:
               return Stack(

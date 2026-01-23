@@ -167,7 +167,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
               ),
             ),
             if (!_isInitialized)
-              const LargeCircularProgressIndicator()
+              LargeCircularProgressIndicator(platform: widget.community?.platform)
             else ...[
               Positioned(
                 bottom: 0,
@@ -301,7 +301,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
               ),
               StreamBuilder(
                 stream: _player.stream.buffering,
-                builder: (context, snapshot) => snapshot.data == true ? const LargeCircularProgressIndicator() : const SizedBox.shrink(),
+                builder: (context, snapshot) => snapshot.data == true ? LargeCircularProgressIndicator(platform: widget.community?.platform) : const SizedBox.shrink(),
               ),
             ]
           ],

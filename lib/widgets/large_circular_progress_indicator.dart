@@ -1,16 +1,29 @@
 import 'package:flutter/material.dart';
+import 'package:lurk/core/enums.dart';
+import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+
+const _size = 64.0;
+const _strokeWidth = 6.0;
 
 class LargeCircularProgressIndicator extends StatelessWidget {
+
+  final Platform? platform;
   
-  const LargeCircularProgressIndicator({super.key});
+  const LargeCircularProgressIndicator({
+    super.key,
+    required this.platform
+  });
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
+    return Center(
       child: SizedBox(
-        width: 64,
-        height: 64,
-        child: CircularProgressIndicator.adaptive(strokeWidth: 6)
+        width: _size,
+        height: _size,
+        child: CustomCircularProgressIndicator(
+          platform: platform,
+          strokeWidth: _strokeWidth,
+        )
       )
     );
   }

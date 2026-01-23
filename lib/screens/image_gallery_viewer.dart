@@ -68,7 +68,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
       community: widget.community,
       post: widget.post,
       body: _isLoading
-        ? const LargeCircularProgressIndicator()
+        ? LargeCircularProgressIndicator(platform: widget.community?.platform)
         : ListView.separated(
             padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
             cacheExtent: MediaQuery.of(context).size.height,
@@ -107,9 +107,9 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                     loadStateChanged: (state) {
                       switch (state.extendedImageLoadState) {
                         case LoadState.loading:
-                          return const Padding(
+                          return Padding(
                             padding: EdgeInsets.all(16),
-                            child: LargeCircularProgressIndicator()
+                            child: LargeCircularProgressIndicator(platform: widget.community?.platform)
                           );
                         case LoadState.completed:
                           return state.completedWidget;

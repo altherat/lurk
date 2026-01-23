@@ -1,0 +1,30 @@
+import 'package:flutter/material.dart';
+import 'package:lurk/core/enums.dart';
+import 'package:lurk/services/settings.dart';
+
+class CustomCircularProgressIndicator extends StatelessWidget {
+
+  final Platform? platform;
+  final double? strokeWidth;
+
+  const CustomCircularProgressIndicator({
+    super.key,
+    required this.platform,
+    this.strokeWidth
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (platform == null) return CircularProgressIndicator.adaptive(strokeWidth: strokeWidth);
+    return ValueListenableBuilder(
+      valueListenable: Settings.showMorePlatformColorAccents,
+      builder: (context, showMorePlatformColorAccents, child) {
+        return CircularProgressIndicator.adaptive(
+          valueColor: showMorePlatformColorAccents ? AlwaysStoppedAnimation(platform!.color) : null,
+          strokeWidth: strokeWidth
+        );
+      }
+    );
+  }
+
+}
