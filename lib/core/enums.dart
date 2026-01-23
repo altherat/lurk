@@ -30,7 +30,7 @@ enum Platform {
         FeedOption('Q&A', apiValue: 'qa')
       ],
     ),
-    userPostsFeedOptions: FeedOptionsGroup(
+    userFeedOptions: FeedOptionsGroup(
       FeedOptionType.type,
       [
         FeedOption('Overview', subGroup: _redditUserFeedOptions),
@@ -38,22 +38,6 @@ enum Platform {
         FeedOption('Comments', apiValue: 'comments', subGroup: _redditUserFeedOptions)
       ]
     ),
-    // userPostsFeedOptions: FeedOptionsGroup(
-    //   FeedOptionType.sort,
-    //   [
-    //     FeedOption('Hot', apiValue: 'hot'),
-    //     FeedOption('New', apiValue: 'new'),
-    //     FeedOption('Top', apiValue: 'top', subGroup: _redditTimeFeedOptions),
-    //   ],
-    // ),
-    userCommentsFeedOptions: FeedOptionsGroup(
-      FeedOptionType.sort,
-      [
-        FeedOption('Hot', apiValue: 'hot'),
-        FeedOption('New', apiValue: 'new'),
-        FeedOption('Top', apiValue: 'top', subGroup: _redditTimeFeedOptions),
-      ]
-    )
   ),
 
   digg(
@@ -80,21 +64,34 @@ enum Platform {
         FeedOption('Oldest', apiValue: {'createdDate': 'ASC'})
       ],
     ),
-    userPostsFeedOptions: FeedOptionsGroup(
-      FeedOptionType.sort,
+    userFeedOptions: FeedOptionsGroup(
+      FeedOptionType.type,
       [
-        FeedOption('Latest', apiValue: 'RECENT'),
-        FeedOption('Most dugg', apiValue: 'MOST_DUGG'),
-        FeedOption('Trending', apiValue: 'TRENDING'),
-      ],
-    ),
-    userCommentsFeedOptions: FeedOptionsGroup(
-      FeedOptionType.sort,
-      [
-        FeedOption('Newest', apiValue: {'createdDate': 'DESC'}),
-        FeedOption('Oldest', apiValue: {'createdDate': 'ASC'}),
-        FeedOption('Most dugg', apiValue: {'score': 'DESC'}),
-        FeedOption('Most buried', apiValue: {'score': 'ASC'}),
+        FeedOption(
+          'Posts',
+          apiValue: DiggUserFeedType.posts,
+          subGroup: FeedOptionsGroup(
+            FeedOptionType.sort,
+            [
+              FeedOption('Latest', apiValue: 'RECENT'),
+              FeedOption('Most dugg', apiValue: 'MOST_DUGG'),
+              FeedOption('Trending', apiValue: 'TRENDING')
+            ]
+          )
+        ),
+        FeedOption(
+          'Comments',
+          apiValue: DiggUserFeedType.comments,
+          subGroup: FeedOptionsGroup(
+            FeedOptionType.sort,
+            [
+              FeedOption('Newest', apiValue: {'createdDate': 'DESC'}),
+              FeedOption('Oldest', apiValue: {'createdDate': 'ASC'}),
+              FeedOption('Most dugg', apiValue: {'score': 'DESC'}),
+              FeedOption('Most buried', apiValue: {'score': 'ASC'})
+            ]
+          )
+        )
       ]
     )
   );
@@ -107,8 +104,7 @@ enum Platform {
   final String userPrefix;
   final FeedOptionsGroup postsFeedOptions;
   final FeedOptionsGroup postCommentsFeedOptions;
-  final FeedOptionsGroup userPostsFeedOptions;
-  final FeedOptionsGroup userCommentsFeedOptions;
+  final FeedOptionsGroup userFeedOptions;
 
   const Platform({
     required this.color,
@@ -119,8 +115,7 @@ enum Platform {
     required this.userPrefix,
     required this.postsFeedOptions,
     required this.postCommentsFeedOptions,
-    required this.userPostsFeedOptions,
-    required this.userCommentsFeedOptions,
+    required this.userFeedOptions,
   });
 
   static Platform? forUrl(String url) {
@@ -133,6 +128,11 @@ enum Platform {
     return null;
   }
   
+}
+
+enum DiggUserFeedType {
+  posts,
+  comments
 }
 
 const _redditTimeFeedOptions = FeedOptionsGroup(

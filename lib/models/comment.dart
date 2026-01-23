@@ -22,9 +22,8 @@ class Comment extends CommentItem {
   final String? text;
   final String? textHtml;
 
-  final String? linkTitle;
-  final String? subreddit;
-  final String? linkAuthor;
+  final String? postTitle;
+  final String? communityName;
 
   const Comment({
     required super.level,
@@ -37,12 +36,13 @@ class Comment extends CommentItem {
     required this.timestampMs,
     required this.text,
     required this.textHtml,
-    this.linkTitle,
-    this.subreddit,
-    this.linkAuthor,
+    this.postTitle,
+    this.communityName,
   });
 
   String get timeAgo => utils.timeAgo(timestampMs);
+
+  String get timeAgoCompact => utils.timeAgoCompact(timestampMs);
 
 }
 

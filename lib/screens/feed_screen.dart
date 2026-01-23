@@ -137,8 +137,9 @@ class _ContentState<T> extends State<_Content<T>> {
         });
       }
     }
-    catch (e) {
+    catch (e, stackTrace) {
       debugPrint('Error loading feed: $e');
+      debugPrint(stackTrace.toString());
       if (mounted) {
         setState(() => _isLoading = false);
       }

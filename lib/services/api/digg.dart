@@ -322,7 +322,149 @@ class DiggApi extends Api {
 
   @override
   Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    throw UnimplementedError();
+    debugPrint('[Digg] getUserItems: id=$id, options=$options, pageToken=$pageToken');
+    final DiggUserFeedType type = options?[FeedOptionType.type]?.apiValue ?? Platform.digg.userFeedOptions.options.first.apiValue;
+    final FeedOption? sort = options?[FeedOptionType.sort];
+    switch (type) {
+      case DiggUserFeedType.posts:
+        return _getPosts({
+          'first': 30,
+          'where': {
+            'author': {
+              'username_EQ': id
+            },
+          },
+          if (sort != null)
+            'sort': sort.apiValue,
+          if (pageToken != null)
+            'after': pageToken
+        });
+        case DiggUserFeedType.comments:
+          final gql.QueryOptions queryOptions = gql.QueryOptions(
+            document: gql.gql(r'''
+              query CommentsQuery($first: Int, $after: String, $sort: CommentSort, $where: CommentWhere!) {
+              
+                comments(first: $first, where: $where, sort: $sort, after: $after) {
+                  edges {
+                    node {
+                      _id
+                      text
+                      score
+                      createdDate
+                      deletedDate
+                      commentCount
+                      post {
+                        title
+                        community {
+                          name
+                        }
+                      }
+                      pm
+                      attachments {
+                        __typename
+                        ... on Image {
+                          url
+                        }
+                        ... on GiphyGIF {
+                          id
+                        }
+                      }
+                    }
+                  }
+                  pageInfo {
+                    hasNextPage
+                    endCursor
+                  }
+                }
+              }
+            '''),
+            variables: {
+              'first': 30,
+              'where': {
+                'author': {
+                  'username_EQ': id
+                }
+              },
+              if (sort != null)
+                'sort': sort.apiValue,
+              if (pageToken != null)
+                'after': pageToken,
+            },
+          );
+          debugPrint({
+              'first': 30,
+              'where': {
+                'author': {
+                  'username_EQ': id
+                }
+              },
+              if (sort != null)
+                'sort': sort?.apiValue,
+              if (pageToken != null)
+                'after': pageToken,
+            }.toString());
+
+          final response = await _client.query(queryOptions);
+          final data = response.data!['comments'];
+          final List edges = data['edges'];
+          final pageInfo = data['pageInfo'];
+
+          return PagedResult(
+            items: edges.map((edge) => _parseComment(edge['node'])).toList(),
+            pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
+          );
+    }
+  }
+
+  Future<PagedResult<Post>> _getPosts(Map<String, dynamic> variables) async {
+    final gql.QueryOptions queryOptions = gql.QueryOptions(
+      document: gql.gql(r'''
+        query PostsQuery($first: Int, $where: PostWhere, $sort: PostSort, $after: String) {
+
+          posts(first: $first, where: $where, sort: $sort, after: $after) {
+            edges {
+              node {
+                _id
+                title
+                score
+                upvoteCount
+                commentCount
+                createdDate
+                deletedDate
+                slug
+                type
+                nsfw
+                text
+                author {
+                  username
+                }
+                community {
+                  name
+                }
+                externalContent {
+                  url,
+                  imageUrl
+                }
+                attachments {
+                  __typename
+                  ... on Image {
+                    url
+                  }
+                }
+              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+
+        }
+      '''),
+      variables: variables
+    );
+    final response = await _client.query(queryOptions);
+    return compute(_parsePostsResult, response.data!);
   }
 
   static PagedResult<Post> _parsePostsResult(Map<String, dynamic> data) {
@@ -337,7 +479,7 @@ class DiggApi extends Api {
 
   static Post _parsePost(Map<String, dynamic> json) {
     final String id = json['_id'];
-    final String text = json['text'];
+    final String? text = json['text'];
     final authorUsername = json['author']['username'];
     final List attachments = json['attachments'];
     final externalContent = json['externalContent'];
@@ -374,7 +516,7 @@ class DiggApi extends Api {
       ),
       id: id,
       title: (json['title'] as String).trim(),
-      textHtml: text.isEmpty ? null : text,
+      textHtml: text != null && text.isNotEmpty ? text : null,
       score: json['score'],
       timestampMs: DateTime.tryParse(json['createdDate'])?.millisecondsSinceEpoch ?? 0,
       commentCount: json['commentCount'],
@@ -418,46 +560,7 @@ class DiggApi extends Api {
     for (int i = 0; i < children.length; i++) {
       final item = children[i];
       final Map<String, dynamic> data = (item is Map && item.containsKey('node')) ? item['node'] : item as Map<String, dynamic>;
-      final text = data['text'];
-      final author = data['author'];
-      final pm = data['pm'];
-      final List attachments = data['attachments'];
-      final bool isSubmitter;
-      final String? authorUsername;
-      if (author != null) {
-        isSubmitter = author['_id'] == postAuthorId;
-        authorUsername = author['username'];
-      }
-      else {
-        isSubmitter = false;
-        authorUsername = null;
-      }
-
-      final String html = ((pm != null ? _parsePmToHtml(pm) : text) ?? '') + attachments.map((a) {
-        switch (a['__typename']) {
-          case 'Image':
-            return '<img src="${a['url']}">';
-          case 'GiphyGIF':
-            return '<img src="https://media.giphy.com/media/${a['id']}/giphy.gif">';
-        }
-        return '';
-      }).join();
-
-      comments.add(
-        Comment(
-          level: level,
-          id: data['_id'],
-          isDeleted: data['deletedDate'] != null,
-          author: authorUsername,
-          isModerator: false,
-          isSubmitter: isSubmitter,
-          score: data['score'],
-          timestampMs: DateTime.parse(data['createdDate']).millisecondsSinceEpoch,
-          text: text,
-          textHtml: html.isEmpty ? null : html
-        )
-      );
-
+      comments.add(_parseComment((item is Map && item.containsKey('node')) ? item['node'] : item as Map<String, dynamic>, level, postAuthorId));
       if (level < 4) {
         final List? replyComments = data['comments'];
         if (replyComments != null && replyComments.isNotEmpty) {
@@ -480,6 +583,48 @@ class DiggApi extends Api {
     }
 
     return comments; 
+  }
+
+  static Comment _parseComment(Map<String, dynamic> data, [int level = 0, String? postAuthorId]) {
+    final text = data['text'];
+    final author = data['author'];
+    final postData = data['post'];
+    final pm = data['pm'];
+    final List attachments = data['attachments'];
+    final bool isSubmitter;
+    final String? authorUsername;
+    if (author != null) {
+      isSubmitter = author['_id'] == postAuthorId;
+      authorUsername = author['username'];
+    }
+    else {
+      isSubmitter = false;
+      authorUsername = null;
+    }
+
+    final String html = ((pm != null ? _parsePmToHtml(pm) : text) ?? '') + attachments.map((a) {
+      switch (a['__typename']) {
+        case 'Image':
+          return '<img src="${a['url']}">';
+        case 'GiphyGIF':
+          return '<img src="https://media.giphy.com/media/${a['id']}/giphy.gif">';
+      }
+      return '';
+    }).join();
+    return Comment(
+      level: level,
+      id: data['_id'],
+      isDeleted: data['deletedDate'] != null,
+      author: authorUsername,
+      isModerator: false,
+      isSubmitter: isSubmitter,
+      score: data['score'],
+      timestampMs: DateTime.parse(data['createdDate']).millisecondsSinceEpoch,
+      text: text,
+      textHtml: html.isEmpty ? null : html,
+      postTitle: postData?['title'],
+      communityName: postData['community']['name'],
+    );
   }
 
   static String _parsePmToHtml(Map<String, dynamic> pm) {

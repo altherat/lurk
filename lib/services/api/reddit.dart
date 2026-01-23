@@ -308,9 +308,8 @@ class RedditApi extends Api {
       timestampMs: ((data['created_utc'] ?? 0) as num).toInt() * 1000,
       text: data['body'],
       textHtml: data['body_html'].replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&'),
-      linkTitle: data['link_title'],
-      subreddit: data['subreddit']?.toLowerCase(),
-      linkAuthor: data['link_author']
+      postTitle: data['link_title'],
+      communityName: data['subreddit']?.toLowerCase()
     );
   }
 

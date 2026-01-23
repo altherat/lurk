@@ -30,7 +30,7 @@ class UserDetailsScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return FeedScreen(
       platform: platform,
-      feedOptions: platform.userPostsFeedOptions,
+      feedOptions: platform.userFeedOptions,
       title: Builder(
         builder: (context) {
           final parentColor = DefaultTextStyle.of(context).style.color;
@@ -89,10 +89,10 @@ class UserDetailsScreen extends StatelessWidget {
                   TextSpan(
                     children: [
                       TextSpan(
-                        text: item.linkTitle,
+                        text: item.postTitle,
                       ),
                       TextSpan(
-                        text: ' by ${item.linkAuthor ?? '[deleted]'} in ${item.subreddit}',
+                        text: ' ${platform.communityPrefix}${item.communityName}',
                         style: TextStyle(
                           fontSize: 12,
                           color: Constants.secondaryTextColor,
@@ -109,13 +109,13 @@ class UserDetailsScreen extends StatelessWidget {
                     ),
                     children: [
                       TextSpan(
-                        text: !item.isDeleted && item.author != null ? item.author : '[deleted]',
+                        text: username,
                         style: TextStyle(
                           fontWeight: FontWeight.bold,
                           color: Constants.commentAuthorColor
                         ),
                       ),
-                      TextSpan(text: ' • ${item.score?.toPluralString('point') ?? '[~]'} • ${item.timeAgo}'),
+                      TextSpan(text: ' • ${item.score?.toPluralString('point') ?? '[~]'} • ${item.timeAgoCompact}'),
                     ],
                   ),
                 ),
