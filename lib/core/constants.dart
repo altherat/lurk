@@ -1,9 +1,9 @@
+import 'dart:io' as io;
+
 import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
 
 class Constants {
-
-  const Constants._();
 
   static const pageTransitionDuration = Duration(milliseconds: 100);
   static const scrimAlpha = 125;
@@ -34,10 +34,8 @@ class Constants {
   static const commentSubmitterColor = Color(0xFFAACCFF);
   static const htmlLinkColor = Color(0xFF66CCDD);
   static const htmlQuoteLineColor = Color(0xFF3388CC);
-  // static const htmlQuoteTextColor = Colors.white;
 
   static const databaseName = 'lurk';
-  static const defaultUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36';
   static const defaultPlatform = Platform.reddit;
   static const defaultShowCommentImages = true;
   static const defaultAutoplayVideos = true;
@@ -46,16 +44,8 @@ class Constants {
   static const defaultShowMorePlatformColorAccents = false;
   static const defaultShowPlatformColorTextAccents = false;
   static const defaultCopyOldRedditLinks = false;
-
-  static const userAgentHeader = {
-    'User-Agent': defaultUserAgent
-  };
-
-  static const httpHeaders = {
-    ...userAgentHeader,
-    // 'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-    // 'Accept-Language': 'en-CA,en-US;q=0.9,en-GB;q=0.8,en;q=0.7',
-    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8'
-  };
+  
+  static final defaultUserAgent = '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by u/altherat)';
+  // static const defaultUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36';
     
 }

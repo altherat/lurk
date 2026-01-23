@@ -512,7 +512,7 @@ class DiggApi extends Api {
     return Post(
       community: Community(
         platform: Platform.digg,
-        name: json['community']['name']
+        name: json['community']['name'].toLowerCase()
       ),
       id: id,
       title: (json['title'] as String).trim(),
@@ -593,6 +593,8 @@ class DiggApi extends Api {
     final List attachments = data['attachments'];
     final bool isSubmitter;
     final String? authorUsername;
+    final String? postTitle;
+    final String? communityName;
     if (author != null) {
       isSubmitter = author['_id'] == postAuthorId;
       authorUsername = author['username'];
@@ -600,6 +602,15 @@ class DiggApi extends Api {
     else {
       isSubmitter = false;
       authorUsername = null;
+    }
+
+    if (postData != null) {
+      postTitle = postData?['title'];
+      communityName = postData['community']['name'];
+    }
+    else {
+      postTitle = null;
+      communityName = null;
     }
 
     final String html = ((pm != null ? _parsePmToHtml(pm) : text) ?? '') + attachments.map((a) {
@@ -611,6 +622,8 @@ class DiggApi extends Api {
       }
       return '';
     }).join();
+
+
     return Comment(
       level: level,
       id: data['_id'],
@@ -622,8 +635,8 @@ class DiggApi extends Api {
       timestampMs: DateTime.parse(data['createdDate']).millisecondsSinceEpoch,
       text: text,
       textHtml: html.isEmpty ? null : html,
-      postTitle: postData?['title'],
-      communityName: postData['community']['name'],
+      postTitle: postTitle,
+      communityName: communityName,
     );
   }
 
