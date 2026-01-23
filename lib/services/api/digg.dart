@@ -3,9 +3,9 @@ import 'package:graphql_flutter/graphql_flutter.dart' as gql;
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/community.dart';
+import 'package:lurk/models/paged_result.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
-import 'package:lurk/models/posts.dart';
 import 'package:lurk/services/api/api.dart';
 
 class DiggApi extends Api {
@@ -49,7 +49,7 @@ class DiggApi extends Api {
   String getCommentUrl(Post post, Comment comment) => '$baseUrl/${post.community.name}/${post.id.split('-')[1]}/comment/${comment.id.split('-')[2]}';
 
   @override
-  Future<Posts> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedResult<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // debugPrint('[Digg] getPosts: id=$id, sort=${sort?.label}, timeRange=$timeRange, pageToken=$pageToken');
     final sort = options?[FeedOptionType.sort];
     final gql.QueryOptions queryOptions = gql.QueryOptions(
@@ -111,7 +111,7 @@ class DiggApi extends Api {
       }
     );
     final response = await _client.query(queryOptions);
-    return compute(_parsePosts, response.data!);
+    return compute(_parsePostsResult, response.data!);
   }
 
   @override
@@ -320,12 +320,17 @@ class DiggApi extends Api {
     }, response.data!);
   }
 
-  static Posts _parsePosts(Map<String, dynamic> data) {
+  @override
+  Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+    throw UnimplementedError();
+  }
+
+  static PagedResult<Post> _parsePostsResult(Map<String, dynamic> data) {
     final postsData = data['posts'];
     final List edges = postsData['edges'];
     final pageInfo = postsData['pageInfo'];
-    return Posts(
-      posts: edges.map((edge) => _parsePost(edge['node'])).toList(),
+    return PagedResult(
+      items: edges.map((edge) => _parsePost(edge['node'])).toList(),
       pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
     );
   }

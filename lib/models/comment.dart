@@ -6,7 +6,7 @@ abstract class CommentItem {
 
   final int level;
 
-  CommentItem({required this.level});
+  const CommentItem({required this.level});
   
 }
 
@@ -22,7 +22,11 @@ class Comment extends CommentItem {
   final String? text;
   final String? textHtml;
 
-  Comment({
+  final String? linkTitle;
+  final String? subreddit;
+  final String? linkAuthor;
+
+  const Comment({
     required super.level,
     required this.id,
     required this.isDeleted,
@@ -33,6 +37,9 @@ class Comment extends CommentItem {
     required this.timestampMs,
     required this.text,
     required this.textHtml,
+    this.linkTitle,
+    this.subreddit,
+    this.linkAuthor,
   });
 
   String get timeAgo => utils.timeAgo(timestampMs);
@@ -44,7 +51,7 @@ class LoadMoreComment extends CommentItem {
   final int count;
   final String? pageToken;
 
-  LoadMoreComment({
+  const LoadMoreComment({
     required super.level,
     required this.count,
     required this.pageToken

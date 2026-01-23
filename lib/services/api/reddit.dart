@@ -6,9 +6,9 @@ import 'package:http/http.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/community.dart';
+import 'package:lurk/models/paged_result.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
-import 'package:lurk/models/posts.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/settings.dart';
 
@@ -27,7 +27,7 @@ class RedditApi extends Api {
   String getCommentUrl(Post post, Comment comment) => '${getPostDetailsUrl(post)}${comment.id}';
 
   @override
-  Future<Posts> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedResult<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // debugPrint('[Reddit] getPosts: $id, sort=${sort?.label}, timeRange=$timeRange, after=$pageToken');
     final sort = options?[FeedOptionType.sort];
     final timeRange = options?[FeedOptionType.time];
@@ -49,7 +49,7 @@ class RedditApi extends Api {
     if (params.isNotEmpty) {
       uri = uri.replace(queryParameters: params);
     }
-    return compute(_parsePosts, (await _get(uri)).body);
+    return compute(_parsePostsResult, (await _get(uri)).body);
   }
 
   @override
@@ -115,6 +115,35 @@ class RedditApi extends Api {
     );
   }
 
+  @override
+  Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+    final FeedOption? type = options?[FeedOptionType.type];
+    final FeedOption? sort = options?[FeedOptionType.sort];
+    final FeedOption? timeRange = options?[FeedOptionType.time];
+    String url = '$baseUrl/u/$id/';
+    if (type?.apiValue != null) {
+      url += type!.apiValue;
+    }
+
+    final Map<String, dynamic> params = {};
+    if (sort != null) {
+      params['sort'] = sort.apiValue;
+    }
+    if (timeRange != null) {
+      params['t'] = timeRange.apiValue;
+    }
+    if (pageToken != null) {
+      params['after'] = pageToken;
+    }
+
+    Uri uri = Uri.parse('$url.json');
+    if (params.isNotEmpty) {
+      uri = uri.replace(queryParameters: params);
+    }
+    debugPrint(uri.toString());
+    return compute(_parseUserItemsResult, (await _get(uri)).body);
+  }
+
   Future<Response> _get(Uri uri) {
     return _handleResponse(
       get(
@@ -142,12 +171,12 @@ class RedditApi extends Api {
     return response;
   }
 
-  Posts _parsePosts(String body) {
+  PagedResult<Post> _parsePostsResult(String body) {
     final json = jsonDecode(body);
     final data = json['data'];
     final children = data['children'] as List;
-    return Posts(
-      posts: children
+    return PagedResult(
+      items: children
         .where((child) => child['kind'] == 't3')
         .map((child) => _parsePost(child))
         .toList(),
@@ -279,6 +308,9 @@ class RedditApi extends Api {
       timestampMs: ((data['created_utc'] ?? 0) as num).toInt() * 1000,
       text: data['body'],
       textHtml: data['body_html'].replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&'),
+      linkTitle: data['link_title'],
+      subreddit: data['subreddit']?.toLowerCase(),
+      linkAuthor: data['link_author']
     );
   }
 
@@ -327,59 +359,24 @@ class RedditApi extends Api {
     );
   }
 
-  // List<Post> _postsFromHtml(String html) {
-  //   return parse(html)
-  //     .querySelectorAll('div.thing.link')
-  //     .where((element) => !element.classes.contains('promoted'))
-  //     .map((element) => Post._fromElement(element))
-  //     .toList();
-  // }
+PagedResult<dynamic> _parseUserItemsResult(String body) {
+    final json = jsonDecode(body);
+    final data = json['data'];
+    final children = data['children'] as List;
+    return PagedResult(
+      items: children.map((child) {
+        final String kind = child['kind'];
+        final Map<String, dynamic> childData = child['data'];
 
-  // Post _postFromElement(Element element) {
-  //   String url = element.attributes['data-url']!;
-  //   String? thumbnailUrl = element.querySelector('img.thumbnail')?.attributes['src'] ?? element.querySelector('a.thumbnail img')?.attributes['src'];
-  //   if (thumbnailUrl != null && thumbnailUrl.startsWith('//')) {
-  //     thumbnailUrl = 'https:$thumbnailUrl';
-  //   }
-
-  //   List<String> galleryImageUrls = [];
-  //   String? textHtml;
-
-  //   final expando = element.querySelector('div.expando');
-  //   final cachedHtml = expando?.attributes['data-cachedhtml'];
-
-  //   if (cachedHtml != null) {
-  //     DocumentFragment fragment = parseFragment(parse(cachedHtml).body!.text);
-  //     final anchors = fragment.querySelectorAll('a.gallery-item-thumbnail-link');
-  //     for (var a in anchors) {
-  //       String? href = a.attributes['href'];
-  //       if (href != null) {
-  //         galleryImageUrls.add(href.replaceAll('&amp;', '&'));
-  //       }
-  //     }
-  //     final userTextDiv = fragment.querySelector('.usertext-body .md');
-  //     if (userTextDiv != null) {
-  //       textHtml = userTextDiv.innerHtml; 
-  //     }
-  //   }
-
-  //   return Post(
-  //     id: element.attributes['data-fullname']!,
-  //     score: int.tryParse(element.attributes['data-score']!)!,
-  //     timestampMs: int.tryParse(element.attributes['data-timestamp']!)!,
-  //     title: element.querySelector('a.title')!.text,
-  //     textHtml: textHtml,
-  //     author: element.attributes['data-author']!,
-  //     commentCount: int.tryParse(element.attributes['data-comments-count']!)!,
-  //     url: url,
-  //     permalink: element.attributes['data-permalink']!,
-  //     domain: url.contains('gallery') ? 'reddit/gallery' : element.attributes['data-domain']!,
-  //     subreddit: element.attributes['data-subreddit']!,
-  //     thumbnailUrl: thumbnailUrl,
-  //     isStickied: element.classes.contains('stickied'),
-  //     isNsfw: element.attributes['data-nsfw']! == 'true',
-  //     galleryImageUrls: galleryImageUrls
-  //   );
-  // }
+        if (kind == 't3') {
+          return _parsePost(child);
+        } else if (kind == 't1') {
+          return _parseCommentFromJson(childData, 0);
+        }
+        return null;
+      }).toList(),
+      pageToken: data['after']
+    );
+  }
 
 }

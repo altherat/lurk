@@ -93,17 +93,14 @@ class _MainScaffoldState extends State<MainScaffold> {
       isScrollControlled: true,
       builder: (context) {
         return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: _FeedOptionsSelector(
-              platform: widget.platform!,
-              options: widget.feedOptions!,
-              selected: widget.selectedFeedOptions,
-              onSelected: (options) {
-                widget.onFeedOptionsSelected!(options);
-                Navigator.pop(context);
-              }
-            ),
+          child: _FeedOptionsSelector(
+            platform: widget.platform!,
+            optionsGroup: widget.feedOptions!,
+            selected: widget.selectedFeedOptions,
+            onSelected: (options) {
+              widget.onFeedOptionsSelected!(options);
+              Navigator.pop(context);
+            }
           ),
         );
       }
@@ -681,14 +678,14 @@ class _CommunityListState extends State<_CommunityList> {
 class _FeedOptionsSelector extends StatefulWidget {
 
   final Platform platform;
-  final FeedOptionsGroup options;
+  final FeedOptionsGroup optionsGroup;
   final Map<FeedOptionType, FeedOption>? selected;
   final Function(Map<FeedOptionType, FeedOption>) onSelected;
 
   const _FeedOptionsSelector({
     super.key,
     required this.platform,
-    required this.options,
+    required this.optionsGroup,
     required this.selected,
     required this.onSelected
   });
@@ -709,7 +706,16 @@ class _FeedOptionsSelectorState extends State<_FeedOptionsSelector> {
       _selected = widget.selected!.entries.map((entry) => (entry.key, entry.value)).toList();
     }
     else {
-      _selected = [(widget.options.type, widget.options.options.first)];
+      // _selected = [(widget.optionsGroup.type, widget.optionsGroup.options.first)];
+      _selected = [];
+      void addDefaultSelection(FeedOptionsGroup group) {
+        final firstOption = group.options.first;
+        _selected.add((group.type, firstOption));
+        if (firstOption.subGroup != null) {
+          addDefaultSelection(firstOption.subGroup!);
+        }
+      }
+      addDefaultSelection(widget.optionsGroup);
     }
   }
 
@@ -728,7 +734,7 @@ class _FeedOptionsSelectorState extends State<_FeedOptionsSelector> {
 
   @override
   Widget build(BuildContext context) {
-    final List<FeedOptionsGroup> toShow = [widget.options];
+    final List<FeedOptionsGroup> toShow = [widget.optionsGroup];
     for (var selection in _selected) {
       final option = selection.$2;
       if (option.subGroup != null) {
@@ -737,21 +743,23 @@ class _FeedOptionsSelectorState extends State<_FeedOptionsSelector> {
     }
     return Column(
       mainAxisSize: MainAxisSize.min,
-      children: List.generate(toShow.length, (index) {
-        final group = toShow[index];
-        return _AnimatedRow(
-          child: Padding(
-            padding: EdgeInsets.only(top: index == 0 ? 0 : 16),
-            child: FeedOptionSelector(
-              platform: widget.platform,
-              header: group.type.label,
-              options: group.options,
-              selected: _selected.length > index ? _selected[index].$2 : null,
-              onSelected: (option) => _onOptionSelected(index, group.type, option),
+      children: [
+        ...List.generate(toShow.length, (index) {
+          final group = toShow[index];
+          return _AnimatedRow(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(32, index == 0 ? 0 : 16, 32, 0),
+              child: FeedOptionSelector(
+                platform: widget.platform,
+                header: group.type.label,
+                options: group.options,
+                selected: _selected.length > index ? _selected[index].$2 : null,
+                onSelected: (option) => _onOptionSelected(index, group.type, option),
+              ),
             ),
-          ),
-        );
-      }),
+          );
+        }),
+      ]
     );
   }
 
@@ -771,6 +779,7 @@ class _AnimatedRow extends StatefulWidget {
 }
 
 class _AnimatedRowState extends State<_AnimatedRow> with SingleTickerProviderStateMixin {
+
   late AnimationController _controller;
   late Animation<double> _animation;
 

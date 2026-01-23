@@ -31,13 +31,21 @@ enum Platform {
       ],
     ),
     userPostsFeedOptions: FeedOptionsGroup(
-      FeedOptionType.sort,
+      FeedOptionType.type,
       [
-        FeedOption('Hot', apiValue: 'hot'),
-        FeedOption('New', apiValue: 'new'),
-        FeedOption('Top', apiValue: 'top', subGroup: _redditTimeFeedOptions),
-      ],
+        FeedOption('Overview', subGroup: _redditUserFeedOptions),
+        FeedOption('Posts', apiValue: 'submitted', subGroup: _redditUserFeedOptions),
+        FeedOption('Comments', apiValue: 'comments', subGroup: _redditUserFeedOptions)
+      ]
     ),
+    // userPostsFeedOptions: FeedOptionsGroup(
+    //   FeedOptionType.sort,
+    //   [
+    //     FeedOption('Hot', apiValue: 'hot'),
+    //     FeedOption('New', apiValue: 'new'),
+    //     FeedOption('Top', apiValue: 'top', subGroup: _redditTimeFeedOptions),
+    //   ],
+    // ),
     userCommentsFeedOptions: FeedOptionsGroup(
       FeedOptionType.sort,
       [
@@ -139,14 +147,25 @@ const _redditTimeFeedOptions = FeedOptionsGroup(
   ]
 );
 
+const _redditUserFeedOptions = FeedOptionsGroup(
+  FeedOptionType.sort,
+  [
+    FeedOption('New', apiValue: 'new'),
+    FeedOption('Hot', apiValue: 'hot'),
+    FeedOption('Top', apiValue: 'top', subGroup: _redditTimeFeedOptions),
+  ],
+);
+  
+
 enum FeedOptionType {
 
+  type,
   sort('Sort'),
   time('Time');
 
-  final String label;
+  final String? label;
 
-  const FeedOptionType(this.label);
+  const FeedOptionType([this.label]);
   
 }
 
@@ -188,5 +207,21 @@ class FeedOptionsGroup {
     this.type,
     this.options
   );
+
+  Map<FeedOptionType, FeedOption> get defaults {
+    final Map<FeedOptionType, FeedOption> defaults = {};
+
+    void addDefaultSelection(FeedOptionsGroup group) {
+      final firstOption = group.options.first;
+      defaults[group.type] = firstOption;
+      if (firstOption.subGroup != null) {
+        addDefaultSelection(firstOption.subGroup!);
+      }
+    }
+
+    addDefaultSelection(this);
+    
+    return defaults;
+  }
 
 }

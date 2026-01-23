@@ -1,9 +1,9 @@
 import 'package:flutter/foundation.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/comment.dart';
+import 'package:lurk/models/paged_result.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
-import 'package:lurk/models/posts.dart';
 import 'package:lurk/services/api/digg.dart';
 import 'package:lurk/services/api/reddit.dart';
 import 'package:lurk/services/settings.dart';
@@ -22,10 +22,11 @@ abstract class Api {
   String getPostDetailsUrl(Post post);
   String getCommentUrl(Post post, Comment comment);
 
-  Future<Posts> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
+  Future<PagedResult<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
   Future<PostDetails> getPostDetailsFromUrl(String url, {Map<FeedOptionType, FeedOption>? options});
   Future<PostDetails> getPostDetailsFromId(String id, {Map<FeedOptionType, FeedOption>? options});
   Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? level, Map<FeedOptionType, FeedOption>? options});
+  Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
 
   @protected
   Map<String, String> getHeaders(Map<String, dynamic> headers) {

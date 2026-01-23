@@ -1,24 +1,19 @@
-import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/comment.dart';
-import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/post_details.dart';
-import 'package:lurk/screens/image_viewer.dart';
-import 'package:lurk/screens/posts.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/core/utils.dart';
-import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/centered_scroll_view.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
+import 'package:lurk/widgets/html.dart';
 import 'package:lurk/widgets/large_message.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 import 'package:lurk/widgets/post_tile.dart';
@@ -159,7 +154,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
               border: Border.all(color: Constants.postTextHtmlBorderColor),
               borderRadius: BorderRadius.circular(4),
             ),
-            child: _Html(
+            child: Html(
               platform: _post!.community.platform,
               html: _post!.textHtml!
             )
@@ -280,7 +275,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                                 ),
                                 children: [
                                   TextSpan(
-                                    text: commentItem.isDeleted ? '[deleted]' : commentItem.author ?? '[deleted]',
+                                    text: !commentItem.isDeleted && commentItem.author != null ? commentItem.author : '[deleted]',
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
                                       color: authorColor
@@ -298,7 +293,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                               ),
                             ),
                             if (!isCollapsed && htmlText != null)
-                              _Html(
+                              Html(
                                 platform: _post!.community.platform,
                                 html: htmlText
                               )
@@ -358,7 +353,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
           _isLoading = true;
           _comments?.clear();
           _visibleComments?.clear();
-          _collapsedCommentIds?.clear();
+          _collapsedCommentIds.clear();
           _feedOptions = options;
         });
         _getPostDetailsFromPost();
@@ -447,7 +442,11 @@ class _Indented extends StatelessWidget {
   final int level;
   final Widget child;
 
-  const _Indented({super.key, required this.level, required this.child});
+  const _Indented({
+    super.key,
+    required this.level,
+    required this.child
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -477,264 +476,6 @@ class _Indented extends StatelessWidget {
           child: child,
         ),
       ],
-    );
-  }
-
-}
-
-class _Html extends StatelessWidget {
-
-  final Platform platform;
-  final String html;
-
-  const _Html({
-    super.key,
-    required this.platform,
-    required this.html,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final textStyle = const TextStyle(
-      fontSize: 13,
-      height: 1.25,
-    );
-    return ValueListenableBuilder(
-      valueListenable: Settings.showCommentImages,
-      builder: (context, showImages, child) {
-        return HtmlWidget(
-          html,
-          rebuildTriggers: [showImages],
-          textStyle: textStyle,
-          customStylesBuilder: (element) {
-            if (element.localName == 'p') {
-              if (element.parent?.localName == 'blockquote') {
-                return {
-                  'margin-top': element.previousElementSibling == null ? '0' : '4px',
-                  'margin-bottom': element.nextElementSibling == null ? '0' : '4px',
-                };
-              }
-              return {
-                'margin-top': '4px', 
-                'margin-bottom': '4px', 
-              };
-            }
-            if (element.localName == 'a') {
-              final String linkColorCss = Constants.htmlLinkColor.toCss();
-              return {
-                'color': linkColorCss,
-                'text-decoration-color': linkColorCss,
-              };
-            }
-            if (element.localName == 'h1') {
-              return {
-                'font-size': '20px'
-              };
-            }
-            if (element.localName == 'ul') {
-              return {
-                'margin': '0',
-                'padding-left': '25px'
-              };
-            }
-            if (element.localName == 'li') {
-              return {
-                'list-style-position': 'inside',
-              };
-            }
-            if (element.localName == 'blockquote') {
-              return {
-                'margin': '0',
-                'padding': '0 0 0 5px',
-                'border-left': '1px solid ${Constants.htmlQuoteLineColor.toCss()}',
-                // 'color': Constants.htmlQuoteTextColor.toCss(),
-                'font-style': 'italic',
-              };
-            }
-            return null;
-          },
-          customWidgetBuilder: (element) {
-            if (element.localName == 'hr') {
-              return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                height: 1,
-                color: Constants.commentIndentColor,
-              );
-            }
-            if (showImages) {
-              if (element.localName == 'img') {
-                final String url = element.attributes['src']!;
-                return _Image(
-                  platform: platform,
-                  url: url
-                );
-              }
-              else if (element.localName == 'a') {
-                final String url = element.attributes['href']!;
-                if (Uri.tryParse(url)?.host == 'preview.redd.it') {
-                  return _Image(
-                    platform: platform,
-                    url: url
-                  );
-                }
-              }
-            }
-            else if (element.localName == 'img') {
-              return _HtmlLink(
-                url: element.attributes['src']!,
-                placeholder: '[gif]',
-                textStyle: textStyle
-              );
-            }
-            else if (element.localName == 'a') {
-              final String url = element.attributes['href']!;
-              if (Uri.tryParse(url)?.host == 'preview.redd.it') {
-                return _HtmlLink(
-                  url: url,
-                  placeholder: '[image]',
-                  textStyle: textStyle
-                );
-              }
-            }
-            return null;
-          },
-          onTapUrl: (url) {
-            if (url.startsWith('/r/')) {
-              context.push(
-                () => PostsScreen(
-                  community: Community(
-                    platform: Platform.reddit,
-                    name: Uri.parse(url).pathSegments[1].toLowerCase()
-                  )
-                )
-              );
-            }
-            else if (url.startsWith('/u/')) {
-              context.push(
-                () => UserDetailsScreen(
-                  platform: Platform.reddit,
-                  username: Uri.parse(url).pathSegments[1].toLowerCase()
-                )
-              );
-            }
-            else {
-              navigate(context, url);
-            }
-            return true;
-          },
-          onTapImage: (imageMetadata) {
-            final url = imageMetadata.sources.firstOrNull?.url;
-             if (url != null) {
-              navigate(context, url);
-             }
-          },
-        );
-      }
-    );
-  }
-
-}
-
-class _HtmlLink extends StatelessWidget {
-
-  final String url;
-  final String placeholder;
-  final TextStyle textStyle;
-
-  const _HtmlLink({
-    super.key,
-    required this.url,
-    required this.placeholder,
-    required this.textStyle
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Align(
-      alignment: Alignment.topLeft,
-      child: InkWell(
-        onTap: () => navigate(context, url),
-        child: Padding(
-          padding: EdgeInsets.only(right: 64),
-          child: Text(
-            placeholder,
-            style: textStyle.copyWith(
-              color: Constants.htmlLinkColor,
-              decoration: TextDecoration.underline,
-              decorationColor: Constants.htmlLinkColor,
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-  
-}
-
-class _Image extends StatelessWidget {
-
-  final Platform platform;
-  final String url;
-
-  const _Image({
-    super.key,
-    required this.platform,
-    required this.url
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final maxHeight = MediaQuery.of(context).size.height * 0.25;
-    return Align(
-      alignment: Alignment.topLeft,
-      child: ExtendedImage.network(
-        url,
-        headers: {'User-Agent': Settings.userAgent.value},
-        cacheHeight: (maxHeight * MediaQuery.devicePixelRatioOf(context)).round(),
-        fit: BoxFit.contain,
-        loadStateChanged: (state) {
-          switch (state.extendedImageLoadState) {
-            case LoadState.loading:
-              return Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: CustomCircularProgressIndicator(platform: platform),
-              );
-            case LoadState.completed:
-              return Stack(
-                children: [
-                  Container(
-                    constraints: BoxConstraints(maxHeight: maxHeight),
-                    decoration: BoxDecoration(border: Border.all(color: Constants.commentIndentColor)),
-                    child: state.completedWidget,
-                  ),
-                  Positioned.fill(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onLongPress: () {
-                          showSimpleOptionsBottomSheet(
-                            context: context,
-                            options: {
-                              'Save image': () {}, //TODO
-                              'View in browser': () => openInBrowser(url),
-                              'Copy link': () => copyToClipboard(url)
-                            }
-                          );
-                        },
-                        onTap: () => context.push(() => ImageViewerScreen(url: url))
-                      ),
-                    ),
-                  )
-                ],
-              );
-            case LoadState.failed:
-              return const Icon(
-                Icons.broken_image_rounded,
-                color: Constants.secondaryTextColor
-              );
-          }
-        }
-      ),
     );
   }
 

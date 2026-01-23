@@ -5,12 +5,14 @@ import 'package:lurk/services/settings.dart';
 
 class CustomRefreshIndicator extends StatelessWidget {
 
+  final GlobalKey<RefreshIndicatorState>? flutterRefreshIndicatorKey;
   final Platform? platform;
   final RefreshCallback? onRefresh;
   final Widget child;
 
   const CustomRefreshIndicator({
     super.key,
+    this.flutterRefreshIndicatorKey,
     this.platform,
     required this.onRefresh,
     required this.child
@@ -22,6 +24,7 @@ class CustomRefreshIndicator extends StatelessWidget {
       valueListenable: Settings.showMorePlatformColorAccents,
       builder: (context, showMorePlatformColorAccents, child) {
         return RefreshIndicator(
+          key: flutterRefreshIndicatorKey,
           displacement: Constants.refreshIndicatorDisplacement,
           color: showMorePlatformColorAccents ? platform?.color : null,
           notificationPredicate: onRefresh != null ? defaultScrollNotificationPredicate : (notification) => false,

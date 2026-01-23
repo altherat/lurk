@@ -1,7 +1,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
-import 'package:lurk/core/flavors.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/posts.dart';
 import 'package:lurk/services/history.dart';

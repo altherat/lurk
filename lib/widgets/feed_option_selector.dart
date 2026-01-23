@@ -30,7 +30,8 @@ class FeedOptionSelector extends StatelessWidget {
             child: Text(
               header!,
               style: TextStyle(
-                fontSize: 16
+                fontSize: 16,
+                fontWeight: FontWeight.bold
               )
             )
           ),
