@@ -5,10 +5,10 @@ class Constants {
 
   const Constants._();
 
+  static const pageTransitionDuration = Duration(milliseconds: 100);
   static const scrimAlpha = 125;
-  static const namePrefixAlpha = 125;
   static const appBarSubtitleAlpha = 175;
-  static const platformColorBackgroundAlpha = 100;
+  static const namePrefixAlpha = 125;
   static const primaryColor = Color(0xFFAADFF1);
   static const splashColor = Color(0x30AADFF1);
   static const highlightColor = Color(0x30AADFF1);

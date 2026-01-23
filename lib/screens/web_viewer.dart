@@ -29,6 +29,7 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
 
   late final WebViewController _controller;
   late String? _title;
+  bool _isExiting = false;
 
   @override
   void initState() {
@@ -55,38 +56,80 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    late final PlatformWebViewWidgetCreationParams params;
-    if (WebViewPlatform.instance is AndroidWebViewPlatform) {
-      params = AndroidWebViewWidgetCreationParams(
-        controller: _controller.platform,
-        displayWithHybridComposition: true,
-      );
-    } else {
-      params = PlatformWebViewWidgetCreationParams(
-        controller: _controller.platform,
-      );
-    }
-    return MainScaffold(
-      title: _title != null ? Text(_title!) : null,
-      subtitle: Text(widget.url),
-      popupMenuActions: {
-        if (widget.post != null)
-          'View comments': () {
-            context.push(
-              () => PostDetailsScreen(
-                community: widget.community!,
-                post: widget.post,
-                url: widget.url
-              )
-            );
-          },
-      'View in browser': () => openInBrowser(widget.url),
-      'Copy link': () => copyToClipboard(widget.url)
+    return PopScope(
+      onPopInvokedWithResult: (didPop, result) {
+        if (didPop) {
+          setState(() => _isExiting = true);
+        }
       },
-      body: WebViewWidget.fromPlatformCreationParams(
-        params: params
+      child: MainScaffold(
+        title: _title != null ? Text(_title!) : null,
+        subtitle: Text(widget.url),
+        popupMenuActions: {
+          if (widget.post != null)
+            'View comments': () {
+              context.push(
+                () => PostDetailsScreen(
+                  community: widget.community!,
+                  post: widget.post,
+                  url: widget.url
+                )
+              );
+            },
+        'View in browser': () => openInBrowser(widget.url),
+        'Copy link': () => copyToClipboard(widget.url)
+        },
+        body: _isExiting
+          ? const SizedBox.shrink()
+          : _WebView(
+              controller: _controller,
+              url: widget.url,
+              community: widget.community,
+              post: widget.post,
+            )
       )
     );
+  }
+
+}
+
+class _WebView extends StatefulWidget {
+
+  final WebViewController controller;
+  final String url;
+  final Community? community;
+  final Post? post;
+
+  const _WebView({
+    super.key,
+    required this.controller,
+    required this.url,
+    required this.community,
+    required this.post,
+  });
+
+  @override
+  State<_WebView> createState() => _WebViewState();
+
+}
+
+class _WebViewState extends State<_WebView> {
+
+  @override
+  Widget build(BuildContext context) {
+    final PlatformWebViewWidgetCreationParams params;
+    if (WebViewPlatform.instance is AndroidWebViewPlatform) {
+      params = AndroidWebViewWidgetCreationParams(
+        controller: widget.controller.platform,
+        displayWithHybridComposition: true,
+      );
+    }
+    else {
+      params = PlatformWebViewWidgetCreationParams(
+        controller: widget.controller.platform,
+      );
+    }
+    return WebViewWidget.fromPlatformCreationParams(params: params);
   }
 
 }

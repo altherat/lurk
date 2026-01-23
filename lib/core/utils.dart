@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
+import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
@@ -60,9 +61,28 @@ extension NavigationOffsets on BuildContext {
   Future<T?> push<T>(Widget Function() builder) {
     return Navigator.push<T>(
       this,
-      MaterialPageRoute(builder: (_) => builder()),
+      _PageRoute(builder: (_) => builder()),
     );
   }
+
+  // Future<T?> push<T>(Widget Function() builder) {
+  //   return Navigator.push<T>(
+  //     this,
+  //     MaterialPageRoute(builder: (_) => builder()),
+  //   );
+  // }
+
+}
+
+class _PageRoute<T> extends MaterialPageRoute<T> {
+
+  _PageRoute({required super.builder});
+
+  @override
+  Duration get transitionDuration => Constants.pageTransitionDuration;
+
+  @override
+  Duration get reverseTransitionDuration => Constants.pageTransitionDuration;
 
 }
 
