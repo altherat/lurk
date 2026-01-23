@@ -3,12 +3,14 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/database/database.dart';
+import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/flavors.dart';
 import 'package:lurk/models/community.dart';
 
 class Settings {
 
-  static late final SettingNotifier<Community> homeCommunity;
+  static late final SettingNotifier<Platform> homeCommunityPlatform;
+  static late final SettingNotifier<String?> homeCommunityName;
   static late final SettingNotifier<bool> showCommentImages;
   static late final SettingNotifier<bool> autoplayVideos;
   static late final SettingNotifier<Color> appBarColor;
@@ -26,19 +28,8 @@ class Settings {
     final db = Database.instance;
     final [dbSettings as Setting, dbCommunities as List<Community>] = await Future.wait([db.getAllSettings(), db.getAllCommunities()]);
 
-    homeCommunity = SettingNotifier(
-      dbSettings.homeCommunityPlatform != null ? Community(
-        platform: dbSettings.homeCommunityPlatform!,
-        name: dbSettings.homeCommunityName
-      ) : null,
-      (value) {
-        return SettingsCompanion(
-          homeCommunityPlatform: Value(value.platform),
-          homeCommunityName: Value(value.name),
-        );
-      },
-      F.appFlavor.defaultCommunities.first
-    );
+    homeCommunityPlatform = SettingNotifier(dbSettings.homeCommunityPlatform, (value) => SettingsCompanion(homeCommunityPlatform: Value(value)), F.appFlavor.defaultCommunities.first.platform);
+    homeCommunityName = SettingNotifier(dbSettings.homeCommunityName, (value) => SettingsCompanion(homeCommunityName: Value(value)), homeCommunityPlatform.value.communityHome);
     showCommentImages = SettingNotifier(dbSettings.showCommentImages, (value) => SettingsCompanion(showCommentImages: Value(value)), Constants.defaultShowCommentImages);
     autoplayVideos = SettingNotifier(dbSettings.autoplayVideos, (value) => SettingsCompanion(autoplayVideos: Value(value)), Constants.defaultAutoplayVideos);
     appBarColor = SettingNotifier(dbSettings.appBarColor != null ? Color(dbSettings.appBarColor!) : null, (value) => SettingsCompanion(appBarColor: Value(value?.toARGB32())), Constants.defaultAppBarColor);

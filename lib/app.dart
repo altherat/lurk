@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/flavors.dart';
+import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/posts.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/services/settings.dart';
@@ -99,17 +100,25 @@ class _HomeState extends State<_Home> {
               }
             },
             child: ValueListenableBuilder(
-              valueListenable: Settings.homeCommunity,
-              builder: (context, homeCommunity, child) {
-                return PostsScreen(
-                  community: homeCommunity,
-                  scaffoldKey: _scaffoldKey
+              valueListenable: Settings.homeCommunityPlatform,
+              builder: (context, homeCommunityPlatform, child) {
+                return ValueListenableBuilder(
+                  valueListenable: Settings.homeCommunityName,
+                  builder: (context, homeCommunityName, child) {
+                    return PostsScreen(
+                      community: Community(
+                        platform: homeCommunityPlatform,
+                        name: homeCommunityName
+                      ),
+                      scaffoldKey: _scaffoldKey
+                    );
+                  }
                 );
               }
             )
           );
         }
-        return LargeCircularProgressIndicator(platform: F.appFlavor.platforms.first);
+        return LargeCircularProgressIndicator();
       },
     );
   }

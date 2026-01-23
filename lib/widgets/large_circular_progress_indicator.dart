@@ -11,7 +11,7 @@ class LargeCircularProgressIndicator extends StatelessWidget {
   
   const LargeCircularProgressIndicator({
     super.key,
-    required this.platform
+    this.platform
   });
 
   @override

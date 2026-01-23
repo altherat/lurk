@@ -28,21 +28,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(8),
           children: [
-            _Header(text: 'Home page'),
-            ValueListenableBuilder(
-              valueListenable: Settings.homeCommunity,
-              builder: (context, homeCommunity, child) {
-                return ListTile(
-                  title: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      if (F.appFlavor == Flavor.combined) ...[
-                        Row(
-                          children: Platform.values.map((platform) {
-                            final bool isSelected = homeCommunity.platform == platform;
-                            return Padding(
-                              padding: const EdgeInsets.only(right: 8.0),
-                              child: ChoiceChip(
+            const _Header(text: 'Home page'),
+            ListTile(
+              title: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (F.appFlavor == Flavor.combined) ...[
+                    Row(
+                      children: Platform.values.map((platform) {
+                        return Padding(
+                          padding: const EdgeInsets.only(right: 8),
+                          child: ValueListenableBuilder(
+                            valueListenable: Settings.homeCommunityPlatform,
+                            builder: (context, homeCommunityPlatform, child) {
+                              final bool isSelected = homeCommunityPlatform == platform;
+                              return ChoiceChip(
                                 label: Text(platform.name.toTitleCase()),
                                 selected: isSelected,
                                 showCheckmark: false, 
@@ -57,29 +57,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                                 ),
                                 onSelected: (bool selected) {
                                   if (selected) {
-                                    Settings.homeCommunity.value = homeCommunity.copyWith(platform: platform);
+                                    Settings.homeCommunityPlatform.value = platform;
                                   }
                                 },
-                              ),
-                            );
-                          }).toList(),
-                        ),
-                        const SizedBox(height: 8),
-                      ],
-                      _TextField(
-                        defaultValue: Settings.homeCommunity.hasSavedValue ? homeCommunity.name : null,
-                        label: homeCommunity.platform.communityLabel.toTitleCase(),
-                        hintText: homeCommunity.platform.communityHome,
-                        prefixText: homeCommunity.platform.communityPrefix,
-                        floatingLabelBehavior: FloatingLabelBehavior.always,
-                        onSubmitted: (value) {
-                          Settings.homeCommunity.value = homeCommunity.copyWith(name: value.isEmpty ? null : value);
-                        },
-                      )
-                    ],
+                              );
+                            }
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                    const SizedBox(height: 8),
+                  ],
+                  ValueListenableBuilder(
+                    valueListenable: Settings.homeCommunityPlatform,
+                    builder: (context, homeCommunityPlatform, child) {
+                      return ValueListenableBuilder(
+                        valueListenable: Settings.homeCommunityName,
+                        builder: (context, homeCommunityName, child) {
+                          return _TextField(
+                            defaultValue: Settings.homeCommunityName.hasSavedValue ? homeCommunityName : null,
+                            label: homeCommunityPlatform.communityLabel.toTitleCase(),
+                            hintText: homeCommunityPlatform.communityHome,
+                            prefixText: homeCommunityPlatform.communityPrefix,
+                            floatingLabelBehavior: FloatingLabelBehavior.always,
+                            onSubmitted: (value) {
+                              Settings.homeCommunityName.value = value.isEmpty ? null : value;
+                            },
+                          );
+                        }
+                      );
+                    }
                   )
-                );
-              }
+                ],
+              )
             ),
             const _Divider(),
             _Header(text: 'Content'),
@@ -366,15 +376,15 @@ class _SettingStringListTile<T> extends StatelessWidget {
             floatingLabelBehavior: floatingLabelBehavior,
             suffixIcon: helpText != null
               ? IconButton(
-                icon: const Icon(Icons.info_outline_rounded),
-                onPressed: () {
-                  showSimpleBottomSheet(
-                    context: context,
-                    title: label,
-                    content: helpText!
-                  );
-                }
-              ) : null,
+                  icon: const Icon(Icons.info_outline_rounded),
+                  onPressed: () {
+                    showSimpleBottomSheet(
+                      context: context,
+                      title: label,
+                      content: helpText!
+                    );
+                  }
+                ) : null,
             onSubmitted: (newValue) {
               setting.value = fromText == null ? (newValue.isEmpty ? null : newValue as T) : fromText!.call(newValue);
             },
