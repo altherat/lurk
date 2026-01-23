@@ -3,6 +3,8 @@ import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/post_details.dart';
+import 'package:lurk/services/settings.dart';
+import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -28,6 +30,7 @@ class WebViewerScreen extends StatefulWidget {
 class _WebViewerScreenState extends State<WebViewerScreen> {
 
   late final WebViewController _controller;
+  final _progressNotifier = ValueNotifier(0.0);
   late String? _title;
   bool _isExiting = false;
 
@@ -40,6 +43,7 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) async {
+            _progressNotifier.value = progress / 100;
             if (progress == 100) {
                 final String? title = await _controller.getTitle();
                 if (mounted && title != null && title.isNotEmpty) {
@@ -55,6 +59,12 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
   }
 
   @override
+  void dispose() {
+    _progressNotifier.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return PopScope(
       onPopInvokedWithResult: (didPop, result) {
@@ -65,6 +75,12 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
       child: MainScaffold(
         title: _title != null ? Text(_title!) : null,
         subtitle: Text(widget.url),
+        iconActions: [
+          IconButton(
+            icon: const Icon(Icons.refresh_rounded),
+            onPressed: _controller.reload,
+          )
+        ],
         popupMenuActions: {
           if (widget.post != null)
             'View comments': () {
@@ -81,12 +97,33 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
         },
         body: _isExiting
           ? const SizedBox.shrink()
-          : _WebView(
-              controller: _controller,
-              url: widget.url,
-              community: widget.community,
-              post: widget.post,
-            )
+          : Stack(
+              children: [
+                _WebView(
+                    controller: _controller,
+                    url: widget.url,
+                    community: widget.community,
+                    post: widget.post,
+                  ),
+                  ValueListenableBuilder(
+                    valueListenable: Settings.showMorePlatformColorAccents,
+                    builder: (context, showMorePlatformColorAccents, child) {
+                      return ValueListenableBuilder(
+                        valueListenable: _progressNotifier,
+                        builder: (context, progress, child) {
+                          if (progress == 1) return SizedBox.shrink();
+                          return LinearProgressIndicator(
+                            value: progress,
+                            color: showMorePlatformColorAccents ? widget.community?.platform.color : null,
+                            backgroundColor: Colors.transparent,
+                            minHeight: 3,
+                          );
+                        }
+                      );
+                    }
+                  )
+              ],
+          )
       )
     );
   }

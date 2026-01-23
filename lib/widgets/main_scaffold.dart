@@ -117,6 +117,7 @@ class _MainScaffoldState extends State<MainScaffold> {
       builder: (context, useBottomBar, child) {
 
         final List<Widget> actions = [
+          ...widget.iconActions,
           PopupMenuButton(
             onSelected: (callback) => callback(),
             itemBuilder: (context) => [
@@ -133,6 +134,7 @@ class _MainScaffoldState extends State<MainScaffold> {
             ]
           ),
         ];
+
         final titleWidget = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
