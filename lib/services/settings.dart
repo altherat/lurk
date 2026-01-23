@@ -13,7 +13,7 @@ class Settings {
   static late final SettingNotifier<bool> autoplayVideos;
   static late final SettingNotifier<Color> appBarColor;
   static late final SettingNotifier<bool> useBottomBar;
-  static late final SettingNotifier<bool> showPlatformColorAccents;
+  static late final SettingNotifier<bool> showMorePlatformColorAccents;
   static late final SettingNotifier<bool> showPlatformColorTextAccents;
   static late final SettingNotifier<String?> clientId;
   static late final SettingNotifier<String?> redirectUri;
@@ -43,7 +43,7 @@ class Settings {
     autoplayVideos = SettingNotifier(dbSettings.autoplayVideos, (value) => SettingsCompanion(autoplayVideos: Value(value)), Constants.defaultAutoplayVideos);
     appBarColor = SettingNotifier(dbSettings.appBarColor != null ? Color(dbSettings.appBarColor!) : null, (value) => SettingsCompanion(appBarColor: Value(value?.toARGB32())), Constants.defaultAppBarColor);
     useBottomBar = SettingNotifier(dbSettings.useBottomBar, (value) => SettingsCompanion(useBottomBar: Value(value)), Constants.defaultUseBottomBar);
-    showPlatformColorAccents = SettingNotifier(dbSettings.showPlatformColorAccents, (value) => SettingsCompanion(showPlatformColorAccents: Value(value)), Constants.defaultShowPlatformColorAccents);
+    showMorePlatformColorAccents = SettingNotifier(dbSettings.showMorePlatformColorAccents, (value) => SettingsCompanion(showMorePlatformColorAccents: Value(value)), Constants.defaultShowMorePlatformColorAccents);
     showPlatformColorTextAccents = SettingNotifier(dbSettings.showPlatformColorTextAccents, (value) => SettingsCompanion(showPlatformColorTextAccents: Value(value)), Constants.defaultShowPlatformColorTextAccents);
     clientId = SettingNotifier(dbSettings.clientId, (value) => SettingsCompanion(clientId: Value(value)));
     redirectUri = SettingNotifier(dbSettings.redirectUri, (value) => SettingsCompanion(redirectUri: Value(value)));

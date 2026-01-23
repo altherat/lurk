@@ -539,7 +539,7 @@ class _CommunityListState extends State<_CommunityList> {
                     : searchIcon
                 ),
                 onChanged: (value) {
-                                      
+                  
                   String cleanValue = value.toLowerCase();
                   if (isCombinedFlavor) {
                     for (Platform platform in Platform.values) {
@@ -552,7 +552,6 @@ class _CommunityListState extends State<_CommunityList> {
                   }
 
                   cleanValue = cleanValue.replaceAll('/', '');
-              
                   if (cleanValue != value) {
                     _searchController.text = cleanValue;
                     _searchController.selection = TextSelection.fromPosition(TextPosition(offset: cleanValue.length));
@@ -613,13 +612,13 @@ class _CommunityListState extends State<_CommunityList> {
                   title: F.appFlavor == Flavor.combined || community.platform.communityHome == null ? CommunityName(community: community) : Text(community.name!),
                   leading: IconButton(
                     icon: ValueListenableBuilder(
-                      valueListenable: Settings.showPlatformColorAccents,
-                      builder: (context, showPlatformColorAccents, child) {
+                      valueListenable: Settings.showMorePlatformColorAccents,
+                      builder: (context, showMorePlatformColorAccents, child) {
                         final IconData icon;
                         final Color? color;
                         if (community.isFavorite) {
                           icon = Icons.star_rounded;
-                          color = showPlatformColorAccents ? Theme.of(context).iconTheme.color : Theme.of(context).colorScheme.primary;
+                          color = showMorePlatformColorAccents ? Theme.of(context).iconTheme.color : Theme.of(context).colorScheme.primary;
                         }
                         else {
                           icon = Icons.star_border_rounded;
@@ -655,12 +654,12 @@ class _CommunityListState extends State<_CommunityList> {
                     top: 8,
                     bottom: 8,
                     child: ValueListenableBuilder(
-                      valueListenable: Settings.showPlatformColorAccents,
-                      builder: (context, showPlatformColorAccents, child) {
+                      valueListenable: Settings.showMorePlatformColorAccents,
+                      builder: (context, showMorePlatformColorAccents, child) {
                         return Container(
                           width: 4,
                           decoration: BoxDecoration(
-                            color: showPlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary,
+                            color: showMorePlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary,
                             borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
                           ),
                         );

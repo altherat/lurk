@@ -35,15 +35,15 @@ class FeedOptionSelector extends StatelessWidget {
             )
           ),
         ValueListenableBuilder(
-          valueListenable: Settings.showPlatformColorAccents,
-          builder: (context, showPlatformColorAccents, child) {
+          valueListenable: Settings.showMorePlatformColorAccents,
+          builder: (context, showMorePlatformColorAccents, child) {
             return Wrap(
               spacing: 8,
               runSpacing: 4,
               children: options.map((filter) {
                 final Color? backgroundColor;
                 final Color? foregroundColor;
-                if (showPlatformColorAccents) {
+                if (showMorePlatformColorAccents) {
                   backgroundColor = platform.color;
                   foregroundColor = Colors.white;
                 }

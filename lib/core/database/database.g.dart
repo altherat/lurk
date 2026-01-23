@@ -98,20 +98,22 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     ),
     defaultValue: const Constant(Constants.defaultUseBottomBar),
   );
-  static const VerificationMeta _showPlatformColorAccentsMeta =
-      const VerificationMeta('showPlatformColorAccents');
+  static const VerificationMeta _showMorePlatformColorAccentsMeta =
+      const VerificationMeta('showMorePlatformColorAccents');
   @override
-  late final GeneratedColumn<bool> showPlatformColorAccents =
+  late final GeneratedColumn<bool> showMorePlatformColorAccents =
       GeneratedColumn<bool>(
-        'show_platform_color_accents',
+        'show_more_platform_color_accents',
         aliasedName,
         false,
         type: DriftSqlType.bool,
         requiredDuringInsert: false,
         defaultConstraints: GeneratedColumn.constraintIsAlways(
-          'CHECK ("show_platform_color_accents" IN (0, 1))',
+          'CHECK ("show_more_platform_color_accents" IN (0, 1))',
         ),
-        defaultValue: const Constant(Constants.defaultShowPlatformColorAccents),
+        defaultValue: const Constant(
+          Constants.defaultShowMorePlatformColorAccents,
+        ),
       );
   static const VerificationMeta _showPlatformColorTextAccentsMeta =
       const VerificationMeta('showPlatformColorTextAccents');
@@ -186,7 +188,7 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     autoplayVideos,
     appBarColor,
     useBottomBar,
-    showPlatformColorAccents,
+    showMorePlatformColorAccents,
     showPlatformColorTextAccents,
     clientId,
     redirectUri,
@@ -253,12 +255,12 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         ),
       );
     }
-    if (data.containsKey('show_platform_color_accents')) {
+    if (data.containsKey('show_more_platform_color_accents')) {
       context.handle(
-        _showPlatformColorAccentsMeta,
-        showPlatformColorAccents.isAcceptableOrUnknown(
-          data['show_platform_color_accents']!,
-          _showPlatformColorAccentsMeta,
+        _showMorePlatformColorAccentsMeta,
+        showMorePlatformColorAccents.isAcceptableOrUnknown(
+          data['show_more_platform_color_accents']!,
+          _showMorePlatformColorAccentsMeta,
         ),
       );
     }
@@ -341,9 +343,9 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.bool,
         data['${effectivePrefix}use_bottom_bar'],
       )!,
-      showPlatformColorAccents: attachedDatabase.typeMapping.read(
+      showMorePlatformColorAccents: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
-        data['${effectivePrefix}show_platform_color_accents'],
+        data['${effectivePrefix}show_more_platform_color_accents'],
       )!,
       showPlatformColorTextAccents: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
@@ -391,7 +393,7 @@ class Setting extends DataClass implements Insertable<Setting> {
   final bool autoplayVideos;
   final int? appBarColor;
   final bool useBottomBar;
-  final bool showPlatformColorAccents;
+  final bool showMorePlatformColorAccents;
   final bool showPlatformColorTextAccents;
   final String? clientId;
   final String? redirectUri;
@@ -405,7 +407,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     required this.autoplayVideos,
     this.appBarColor,
     required this.useBottomBar,
-    required this.showPlatformColorAccents,
+    required this.showMorePlatformColorAccents,
     required this.showPlatformColorTextAccents,
     this.clientId,
     this.redirectUri,
@@ -432,8 +434,8 @@ class Setting extends DataClass implements Insertable<Setting> {
       map['app_bar_color'] = Variable<int>(appBarColor);
     }
     map['use_bottom_bar'] = Variable<bool>(useBottomBar);
-    map['show_platform_color_accents'] = Variable<bool>(
-      showPlatformColorAccents,
+    map['show_more_platform_color_accents'] = Variable<bool>(
+      showMorePlatformColorAccents,
     );
     map['show_platform_color_text_accents'] = Variable<bool>(
       showPlatformColorTextAccents,
@@ -466,7 +468,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           ? const Value.absent()
           : Value(appBarColor),
       useBottomBar: Value(useBottomBar),
-      showPlatformColorAccents: Value(showPlatformColorAccents),
+      showMorePlatformColorAccents: Value(showMorePlatformColorAccents),
       showPlatformColorTextAccents: Value(showPlatformColorTextAccents),
       clientId: clientId == null && nullToAbsent
           ? const Value.absent()
@@ -499,8 +501,8 @@ class Setting extends DataClass implements Insertable<Setting> {
       autoplayVideos: serializer.fromJson<bool>(json['autoplayVideos']),
       appBarColor: serializer.fromJson<int?>(json['appBarColor']),
       useBottomBar: serializer.fromJson<bool>(json['useBottomBar']),
-      showPlatformColorAccents: serializer.fromJson<bool>(
-        json['showPlatformColorAccents'],
+      showMorePlatformColorAccents: serializer.fromJson<bool>(
+        json['showMorePlatformColorAccents'],
       ),
       showPlatformColorTextAccents: serializer.fromJson<bool>(
         json['showPlatformColorTextAccents'],
@@ -526,8 +528,8 @@ class Setting extends DataClass implements Insertable<Setting> {
       'autoplayVideos': serializer.toJson<bool>(autoplayVideos),
       'appBarColor': serializer.toJson<int?>(appBarColor),
       'useBottomBar': serializer.toJson<bool>(useBottomBar),
-      'showPlatformColorAccents': serializer.toJson<bool>(
-        showPlatformColorAccents,
+      'showMorePlatformColorAccents': serializer.toJson<bool>(
+        showMorePlatformColorAccents,
       ),
       'showPlatformColorTextAccents': serializer.toJson<bool>(
         showPlatformColorTextAccents,
@@ -547,7 +549,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     bool? autoplayVideos,
     Value<int?> appBarColor = const Value.absent(),
     bool? useBottomBar,
-    bool? showPlatformColorAccents,
+    bool? showMorePlatformColorAccents,
     bool? showPlatformColorTextAccents,
     Value<String?> clientId = const Value.absent(),
     Value<String?> redirectUri = const Value.absent(),
@@ -565,8 +567,8 @@ class Setting extends DataClass implements Insertable<Setting> {
     autoplayVideos: autoplayVideos ?? this.autoplayVideos,
     appBarColor: appBarColor.present ? appBarColor.value : this.appBarColor,
     useBottomBar: useBottomBar ?? this.useBottomBar,
-    showPlatformColorAccents:
-        showPlatformColorAccents ?? this.showPlatformColorAccents,
+    showMorePlatformColorAccents:
+        showMorePlatformColorAccents ?? this.showMorePlatformColorAccents,
     showPlatformColorTextAccents:
         showPlatformColorTextAccents ?? this.showPlatformColorTextAccents,
     clientId: clientId.present ? clientId.value : this.clientId,
@@ -595,9 +597,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       useBottomBar: data.useBottomBar.present
           ? data.useBottomBar.value
           : this.useBottomBar,
-      showPlatformColorAccents: data.showPlatformColorAccents.present
-          ? data.showPlatformColorAccents.value
-          : this.showPlatformColorAccents,
+      showMorePlatformColorAccents: data.showMorePlatformColorAccents.present
+          ? data.showMorePlatformColorAccents.value
+          : this.showMorePlatformColorAccents,
       showPlatformColorTextAccents: data.showPlatformColorTextAccents.present
           ? data.showPlatformColorTextAccents.value
           : this.showPlatformColorTextAccents,
@@ -622,7 +624,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('autoplayVideos: $autoplayVideos, ')
           ..write('appBarColor: $appBarColor, ')
           ..write('useBottomBar: $useBottomBar, ')
-          ..write('showPlatformColorAccents: $showPlatformColorAccents, ')
+          ..write(
+            'showMorePlatformColorAccents: $showMorePlatformColorAccents, ',
+          )
           ..write(
             'showPlatformColorTextAccents: $showPlatformColorTextAccents, ',
           )
@@ -643,7 +647,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     autoplayVideos,
     appBarColor,
     useBottomBar,
-    showPlatformColorAccents,
+    showMorePlatformColorAccents,
     showPlatformColorTextAccents,
     clientId,
     redirectUri,
@@ -661,7 +665,8 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.autoplayVideos == this.autoplayVideos &&
           other.appBarColor == this.appBarColor &&
           other.useBottomBar == this.useBottomBar &&
-          other.showPlatformColorAccents == this.showPlatformColorAccents &&
+          other.showMorePlatformColorAccents ==
+              this.showMorePlatformColorAccents &&
           other.showPlatformColorTextAccents ==
               this.showPlatformColorTextAccents &&
           other.clientId == this.clientId &&
@@ -678,7 +683,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<bool> autoplayVideos;
   final Value<int?> appBarColor;
   final Value<bool> useBottomBar;
-  final Value<bool> showPlatformColorAccents;
+  final Value<bool> showMorePlatformColorAccents;
   final Value<bool> showPlatformColorTextAccents;
   final Value<String?> clientId;
   final Value<String?> redirectUri;
@@ -692,7 +697,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.autoplayVideos = const Value.absent(),
     this.appBarColor = const Value.absent(),
     this.useBottomBar = const Value.absent(),
-    this.showPlatformColorAccents = const Value.absent(),
+    this.showMorePlatformColorAccents = const Value.absent(),
     this.showPlatformColorTextAccents = const Value.absent(),
     this.clientId = const Value.absent(),
     this.redirectUri = const Value.absent(),
@@ -707,7 +712,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.autoplayVideos = const Value.absent(),
     this.appBarColor = const Value.absent(),
     this.useBottomBar = const Value.absent(),
-    this.showPlatformColorAccents = const Value.absent(),
+    this.showMorePlatformColorAccents = const Value.absent(),
     this.showPlatformColorTextAccents = const Value.absent(),
     this.clientId = const Value.absent(),
     this.redirectUri = const Value.absent(),
@@ -722,7 +727,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<bool>? autoplayVideos,
     Expression<int>? appBarColor,
     Expression<bool>? useBottomBar,
-    Expression<bool>? showPlatformColorAccents,
+    Expression<bool>? showMorePlatformColorAccents,
     Expression<bool>? showPlatformColorTextAccents,
     Expression<String>? clientId,
     Expression<String>? redirectUri,
@@ -738,8 +743,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (autoplayVideos != null) 'autoplay_videos': autoplayVideos,
       if (appBarColor != null) 'app_bar_color': appBarColor,
       if (useBottomBar != null) 'use_bottom_bar': useBottomBar,
-      if (showPlatformColorAccents != null)
-        'show_platform_color_accents': showPlatformColorAccents,
+      if (showMorePlatformColorAccents != null)
+        'show_more_platform_color_accents': showMorePlatformColorAccents,
       if (showPlatformColorTextAccents != null)
         'show_platform_color_text_accents': showPlatformColorTextAccents,
       if (clientId != null) 'client_id': clientId,
@@ -758,7 +763,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<bool>? autoplayVideos,
     Value<int?>? appBarColor,
     Value<bool>? useBottomBar,
-    Value<bool>? showPlatformColorAccents,
+    Value<bool>? showMorePlatformColorAccents,
     Value<bool>? showPlatformColorTextAccents,
     Value<String?>? clientId,
     Value<String?>? redirectUri,
@@ -774,8 +779,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       autoplayVideos: autoplayVideos ?? this.autoplayVideos,
       appBarColor: appBarColor ?? this.appBarColor,
       useBottomBar: useBottomBar ?? this.useBottomBar,
-      showPlatformColorAccents:
-          showPlatformColorAccents ?? this.showPlatformColorAccents,
+      showMorePlatformColorAccents:
+          showMorePlatformColorAccents ?? this.showMorePlatformColorAccents,
       showPlatformColorTextAccents:
           showPlatformColorTextAccents ?? this.showPlatformColorTextAccents,
       clientId: clientId ?? this.clientId,
@@ -813,9 +818,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     if (useBottomBar.present) {
       map['use_bottom_bar'] = Variable<bool>(useBottomBar.value);
     }
-    if (showPlatformColorAccents.present) {
-      map['show_platform_color_accents'] = Variable<bool>(
-        showPlatformColorAccents.value,
+    if (showMorePlatformColorAccents.present) {
+      map['show_more_platform_color_accents'] = Variable<bool>(
+        showMorePlatformColorAccents.value,
       );
     }
     if (showPlatformColorTextAccents.present) {
@@ -848,7 +853,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('autoplayVideos: $autoplayVideos, ')
           ..write('appBarColor: $appBarColor, ')
           ..write('useBottomBar: $useBottomBar, ')
-          ..write('showPlatformColorAccents: $showPlatformColorAccents, ')
+          ..write(
+            'showMorePlatformColorAccents: $showMorePlatformColorAccents, ',
+          )
           ..write(
             'showPlatformColorTextAccents: $showPlatformColorTextAccents, ',
           )
@@ -1275,7 +1282,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<bool> autoplayVideos,
       Value<int?> appBarColor,
       Value<bool> useBottomBar,
-      Value<bool> showPlatformColorAccents,
+      Value<bool> showMorePlatformColorAccents,
       Value<bool> showPlatformColorTextAccents,
       Value<String?> clientId,
       Value<String?> redirectUri,
@@ -1291,7 +1298,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<bool> autoplayVideos,
       Value<int?> appBarColor,
       Value<bool> useBottomBar,
-      Value<bool> showPlatformColorAccents,
+      Value<bool> showMorePlatformColorAccents,
       Value<bool> showPlatformColorTextAccents,
       Value<String?> clientId,
       Value<String?> redirectUri,
@@ -1344,8 +1351,8 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get showPlatformColorAccents => $composableBuilder(
-    column: $table.showPlatformColorAccents,
+  ColumnFilters<bool> get showMorePlatformColorAccents => $composableBuilder(
+    column: $table.showMorePlatformColorAccents,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1419,8 +1426,8 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get showPlatformColorAccents => $composableBuilder(
-    column: $table.showPlatformColorAccents,
+  ColumnOrderings<bool> get showMorePlatformColorAccents => $composableBuilder(
+    column: $table.showMorePlatformColorAccents,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -1493,8 +1500,8 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<bool> get showPlatformColorAccents => $composableBuilder(
-    column: $table.showPlatformColorAccents,
+  GeneratedColumn<bool> get showMorePlatformColorAccents => $composableBuilder(
+    column: $table.showMorePlatformColorAccents,
     builder: (column) => column,
   );
 
@@ -1555,7 +1562,7 @@ class $$SettingsTableTableManager
                 Value<bool> autoplayVideos = const Value.absent(),
                 Value<int?> appBarColor = const Value.absent(),
                 Value<bool> useBottomBar = const Value.absent(),
-                Value<bool> showPlatformColorAccents = const Value.absent(),
+                Value<bool> showMorePlatformColorAccents = const Value.absent(),
                 Value<bool> showPlatformColorTextAccents = const Value.absent(),
                 Value<String?> clientId = const Value.absent(),
                 Value<String?> redirectUri = const Value.absent(),
@@ -1569,7 +1576,7 @@ class $$SettingsTableTableManager
                 autoplayVideos: autoplayVideos,
                 appBarColor: appBarColor,
                 useBottomBar: useBottomBar,
-                showPlatformColorAccents: showPlatformColorAccents,
+                showMorePlatformColorAccents: showMorePlatformColorAccents,
                 showPlatformColorTextAccents: showPlatformColorTextAccents,
                 clientId: clientId,
                 redirectUri: redirectUri,
@@ -1585,7 +1592,7 @@ class $$SettingsTableTableManager
                 Value<bool> autoplayVideos = const Value.absent(),
                 Value<int?> appBarColor = const Value.absent(),
                 Value<bool> useBottomBar = const Value.absent(),
-                Value<bool> showPlatformColorAccents = const Value.absent(),
+                Value<bool> showMorePlatformColorAccents = const Value.absent(),
                 Value<bool> showPlatformColorTextAccents = const Value.absent(),
                 Value<String?> clientId = const Value.absent(),
                 Value<String?> redirectUri = const Value.absent(),
@@ -1599,7 +1606,7 @@ class $$SettingsTableTableManager
                 autoplayVideos: autoplayVideos,
                 appBarColor: appBarColor,
                 useBottomBar: useBottomBar,
-                showPlatformColorAccents: showPlatformColorAccents,
+                showMorePlatformColorAccents: showMorePlatformColorAccents,
                 showPlatformColorTextAccents: showPlatformColorTextAccents,
                 clientId: clientId,
                 redirectUri: redirectUri,

@@ -21,7 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String platformTitle = F.appFlavor == Flavor.combined ? 'Platform' : F.appFlavor.platforms.first.name.toTitleCase();
+    final String platformLabel = F.appFlavor == Flavor.combined ? 'platform' : F.appFlavor.platforms.first.name;
     return Scaffold(
       appBar: ThemedAppBar(title: const Text('Settings')),
       body: SafeArea(
@@ -104,12 +104,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
               label: 'Bottom bar'
             ),
             _SettingSwitchListTile(
-              setting: Settings.showPlatformColorAccents,
-              label: '$platformTitle color accents'
+              setting: Settings.showMorePlatformColorAccents,
+              label: 'More $platformLabel color accents'
             ),
             _SettingSwitchListTile(
               setting: Settings.showPlatformColorTextAccents,
-              label: '$platformTitle color text accents'
+              label: '${platformLabel.toTitleCase()} color text accents'
             ),
             if (F.appFlavor == Flavor.combined) ...[
               const _Divider(),

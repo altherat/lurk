@@ -19,10 +19,11 @@ class CustomRefreshIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
-      valueListenable: Settings.showPlatformColorAccents,
-      builder: (context, showPlatformColorAccents, child) {
+      valueListenable: Settings.showMorePlatformColorAccents,
+      builder: (context, showMorePlatformColorAccents, child) {
         return RefreshIndicator(
-          displacement: Constants.refreshIndicatorDisplacemetn,
+          displacement: Constants.refreshIndicatorDisplacement,
+          color: showMorePlatformColorAccents ? platform.color : null,
           onRefresh: onRefresh,
           child: this.child,
         );

@@ -9,7 +9,7 @@ class Constants {
   static const scrimAlpha = 125;
   static const appBarSubtitleAlpha = 175;
   static const namePrefixAlpha = 125;
-  static const refreshIndicatorDisplacemetn = 15.0;
+  static const refreshIndicatorDisplacement = 15.0;
   static const primaryColor = Color(0xFFAADFF1);
   static const splashColor = Color(0x30AADFF1);
   static const highlightColor = Color(0x30AADFF1);
@@ -43,7 +43,7 @@ class Constants {
   static const defaultAutoplayVideos = true;
   static const defaultAppBarColor = Color(0xFF000000);
   static const defaultUseBottomBar = false;
-  static const defaultShowPlatformColorAccents = false;
+  static const defaultShowMorePlatformColorAccents = false;
   static const defaultShowPlatformColorTextAccents = false;
   static const defaultCopyOldRedditLinks = false;
 
