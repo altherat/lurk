@@ -5,7 +5,7 @@ import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/core/flavors.dart';
 import 'package:lurk/services/settings.dart';
-import 'package:lurk/widgets/themed_app_bar.dart';
+import 'package:lurk/widgets/custom_app_bar.dart';
 
 class SettingsScreen extends StatefulWidget {
 
@@ -21,6 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final String platformTitle = F.appFlavor == Flavor.combined ? 'Platform' : F.appFlavor.platforms.first.name.toTitleCase();
     return Scaffold(
       appBar: ThemedAppBar(title: const Text('Settings')),
       body: SafeArea(
@@ -102,11 +103,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setting: Settings.useBottomBar,
               label: 'Bottom bar'
             ),
+            _SettingSwitchListTile(
+              setting: Settings.showPlatformColorAccents,
+              label: '$platformTitle color accents'
+            ),
+            _SettingSwitchListTile(
+              setting: Settings.showPlatformColorTextAccents,
+              label: '$platformTitle color text accents'
+            ),
             if (F.appFlavor == Flavor.combined) ...[
-              _SettingSwitchListTile(
-                setting: Settings.showPlatformColorAccents,
-                label: 'Platform color accents'
-              ),
               const _Divider(),
               _Header(text: 'Reddit'),
               const _ClientIdSetting(),

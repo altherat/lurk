@@ -10,6 +10,7 @@ import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/widgets/community_name.dart';
+import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/history_builder.dart';
 import 'package:lurk/widgets/large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
@@ -158,10 +159,9 @@ class PostsListViewState extends State<PostsListView> {
   Widget build(BuildContext context) {
     return _isLoadingInitially 
       ? const LargeCircularProgressIndicator()
-      : RefreshIndicator(
+      : CustomRefreshIndicator(
           key: _refreshIndicatorKey,
-          displacement: 15,
-          color: widget.community.platform.color,
+          platform: widget.community.platform,
           onRefresh: _getPosts,
           child: _posts.isEmpty
           ? LayoutBuilder(

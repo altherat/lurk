@@ -9,6 +9,7 @@ class Constants {
   static const scrimAlpha = 125;
   static const appBarSubtitleAlpha = 175;
   static const namePrefixAlpha = 125;
+  static const refreshIndicatorDisplacemetn = 15.0;
   static const primaryColor = Color(0xFFAADFF1);
   static const splashColor = Color(0x30AADFF1);
   static const highlightColor = Color(0x30AADFF1);
@@ -36,7 +37,6 @@ class Constants {
   // static const htmlQuoteTextColor = Colors.white;
 
   static const databaseName = 'lurk';
-  static final diggApiBaseUrl = 'https://apineapple-prod.digg.com/graphql';
   static const defaultUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36';
   static const defaultPlatform = Platform.reddit;
   static const defaultShowCommentImages = true;
@@ -44,6 +44,7 @@ class Constants {
   static const defaultAppBarColor = Color(0xFF000000);
   static const defaultUseBottomBar = false;
   static const defaultShowPlatformColorAccents = false;
+  static const defaultShowPlatformColorTextAccents = false;
   static const defaultCopyOldRedditLinks = false;
 
   static const userAgentHeader = {

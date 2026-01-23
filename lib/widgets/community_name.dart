@@ -21,15 +21,15 @@ class CommunityName extends StatelessWidget {
     final parentColor = DefaultTextStyle.of(context).style.color;
     final parentAlpha = (parentColor!.a * 255).toInt();
     return ValueListenableBuilder(
-      valueListenable: Settings.showPlatformColorAccents,
-      builder: (context, showPlatformColorAccents, child) {
+      valueListenable: Settings.showPlatformColorTextAccents,
+      builder: (context, showPlatformColorTextAccents, child) {
         final displayName = community.displayName;
         return Text.rich(
           TextSpan(
             children: [
               TextSpan(
                 text: community.platform.communityPrefix,
-                style: TextStyle(color: showPlatformColorAccents ? community.platform.color.withAlpha(alpha != null ? min(alpha!, parentAlpha) : parentAlpha) : parentColor.withAlpha(min(parentAlpha, Constants.namePrefixAlpha))),
+                style: TextStyle(color: showPlatformColorTextAccents ? community.platform.color.withAlpha(alpha != null ? min(alpha!, parentAlpha) : parentAlpha) : parentColor.withAlpha(min(parentAlpha, Constants.namePrefixAlpha))),
               ),
               if (displayName.isNotEmpty)
                 TextSpan(

@@ -14,6 +14,7 @@ class Settings {
   static late final SettingNotifier<Color> appBarColor;
   static late final SettingNotifier<bool> useBottomBar;
   static late final SettingNotifier<bool> showPlatformColorAccents;
+  static late final SettingNotifier<bool> showPlatformColorTextAccents;
   static late final SettingNotifier<String?> clientId;
   static late final SettingNotifier<String?> redirectUri;
   static late final SettingNotifier<bool> copyOldRedditLinks;
@@ -43,6 +44,7 @@ class Settings {
     appBarColor = SettingNotifier(dbSettings.appBarColor != null ? Color(dbSettings.appBarColor!) : null, (value) => SettingsCompanion(appBarColor: Value(value?.toARGB32())), Constants.defaultAppBarColor);
     useBottomBar = SettingNotifier(dbSettings.useBottomBar, (value) => SettingsCompanion(useBottomBar: Value(value)), Constants.defaultUseBottomBar);
     showPlatformColorAccents = SettingNotifier(dbSettings.showPlatformColorAccents, (value) => SettingsCompanion(showPlatformColorAccents: Value(value)), Constants.defaultShowPlatformColorAccents);
+    showPlatformColorTextAccents = SettingNotifier(dbSettings.showPlatformColorTextAccents, (value) => SettingsCompanion(showPlatformColorTextAccents: Value(value)), Constants.defaultShowPlatformColorTextAccents);
     clientId = SettingNotifier(dbSettings.clientId, (value) => SettingsCompanion(clientId: Value(value)));
     redirectUri = SettingNotifier(dbSettings.redirectUri, (value) => SettingsCompanion(redirectUri: Value(value)));
     copyOldRedditLinks = SettingNotifier(dbSettings.copyOldRedditLinks, (value) => SettingsCompanion(copyOldRedditLinks: Value(value)), Constants.defaultCopyOldRedditLinks);

@@ -13,8 +13,8 @@ import 'package:lurk/screens/settings.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/community_name.dart';
 import 'package:lurk/widgets/feed_option_selector.dart';
-import 'package:lurk/widgets/search_bar.dart';
-import 'package:lurk/widgets/themed_app_bar.dart';
+import 'package:lurk/widgets/custom_search_bar.dart';
+import 'package:lurk/widgets/custom_app_bar.dart';
 
 class MainScaffold extends StatefulWidget {
 
@@ -661,7 +661,7 @@ class _CommunityListState extends State<_CommunityList> {
                           width: 4,
                           decoration: BoxDecoration(
                             color: showPlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary,
-                            borderRadius: BorderRadius.horizontal(right: Radius.circular(4)),
+                            borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
                           ),
                         );
                       }

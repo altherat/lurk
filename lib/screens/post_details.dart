@@ -14,6 +14,7 @@ import 'package:lurk/services/history.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/services/settings.dart';
+import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 import 'package:lurk/widgets/post_tile.dart';
@@ -156,10 +157,9 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
           )
         )
       ];
-      body = RefreshIndicator(
+      body = CustomRefreshIndicator(
         key: _refreshIndicatorKey,
-        displacement: 15,
-        color: widget.community.platform.color,
+        platform: widget.community.platform,
         onRefresh: _getPostDetailsFromPost,
         child: _isLoading
           ? Column(

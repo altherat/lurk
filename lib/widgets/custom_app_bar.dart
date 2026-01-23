@@ -31,7 +31,7 @@ class ThemedAppBar extends StatelessWidget implements PreferredSizeWidget {
             actions: actions,
             backgroundColor: appBarColor,
             surfaceTintColor: appBarColor,
-            foregroundColor: appBarColor?.contrast,
+            foregroundColor: appBarColor.contrast,
           );
         }
       ),

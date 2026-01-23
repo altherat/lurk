@@ -113,6 +113,23 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         ),
         defaultValue: const Constant(Constants.defaultShowPlatformColorAccents),
       );
+  static const VerificationMeta _showPlatformColorTextAccentsMeta =
+      const VerificationMeta('showPlatformColorTextAccents');
+  @override
+  late final GeneratedColumn<bool> showPlatformColorTextAccents =
+      GeneratedColumn<bool>(
+        'show_platform_color_text_accents',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("show_platform_color_text_accents" IN (0, 1))',
+        ),
+        defaultValue: const Constant(
+          Constants.defaultShowPlatformColorTextAccents,
+        ),
+      );
   static const VerificationMeta _clientIdMeta = const VerificationMeta(
     'clientId',
   );
@@ -170,6 +187,7 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     appBarColor,
     useBottomBar,
     showPlatformColorAccents,
+    showPlatformColorTextAccents,
     clientId,
     redirectUri,
     copyOldRedditLinks,
@@ -241,6 +259,15 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         showPlatformColorAccents.isAcceptableOrUnknown(
           data['show_platform_color_accents']!,
           _showPlatformColorAccentsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('show_platform_color_text_accents')) {
+      context.handle(
+        _showPlatformColorTextAccentsMeta,
+        showPlatformColorTextAccents.isAcceptableOrUnknown(
+          data['show_platform_color_text_accents']!,
+          _showPlatformColorTextAccentsMeta,
         ),
       );
     }
@@ -318,6 +345,10 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.bool,
         data['${effectivePrefix}show_platform_color_accents'],
       )!,
+      showPlatformColorTextAccents: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_platform_color_text_accents'],
+      )!,
       clientId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}client_id'],
@@ -361,6 +392,7 @@ class Setting extends DataClass implements Insertable<Setting> {
   final int? appBarColor;
   final bool useBottomBar;
   final bool showPlatformColorAccents;
+  final bool showPlatformColorTextAccents;
   final String? clientId;
   final String? redirectUri;
   final bool copyOldRedditLinks;
@@ -374,6 +406,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     this.appBarColor,
     required this.useBottomBar,
     required this.showPlatformColorAccents,
+    required this.showPlatformColorTextAccents,
     this.clientId,
     this.redirectUri,
     required this.copyOldRedditLinks,
@@ -401,6 +434,9 @@ class Setting extends DataClass implements Insertable<Setting> {
     map['use_bottom_bar'] = Variable<bool>(useBottomBar);
     map['show_platform_color_accents'] = Variable<bool>(
       showPlatformColorAccents,
+    );
+    map['show_platform_color_text_accents'] = Variable<bool>(
+      showPlatformColorTextAccents,
     );
     if (!nullToAbsent || clientId != null) {
       map['client_id'] = Variable<String>(clientId);
@@ -431,6 +467,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           : Value(appBarColor),
       useBottomBar: Value(useBottomBar),
       showPlatformColorAccents: Value(showPlatformColorAccents),
+      showPlatformColorTextAccents: Value(showPlatformColorTextAccents),
       clientId: clientId == null && nullToAbsent
           ? const Value.absent()
           : Value(clientId),
@@ -465,6 +502,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       showPlatformColorAccents: serializer.fromJson<bool>(
         json['showPlatformColorAccents'],
       ),
+      showPlatformColorTextAccents: serializer.fromJson<bool>(
+        json['showPlatformColorTextAccents'],
+      ),
       clientId: serializer.fromJson<String?>(json['clientId']),
       redirectUri: serializer.fromJson<String?>(json['redirectUri']),
       copyOldRedditLinks: serializer.fromJson<bool>(json['copyOldRedditLinks']),
@@ -489,6 +529,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       'showPlatformColorAccents': serializer.toJson<bool>(
         showPlatformColorAccents,
       ),
+      'showPlatformColorTextAccents': serializer.toJson<bool>(
+        showPlatformColorTextAccents,
+      ),
       'clientId': serializer.toJson<String?>(clientId),
       'redirectUri': serializer.toJson<String?>(redirectUri),
       'copyOldRedditLinks': serializer.toJson<bool>(copyOldRedditLinks),
@@ -505,6 +548,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     Value<int?> appBarColor = const Value.absent(),
     bool? useBottomBar,
     bool? showPlatformColorAccents,
+    bool? showPlatformColorTextAccents,
     Value<String?> clientId = const Value.absent(),
     Value<String?> redirectUri = const Value.absent(),
     bool? copyOldRedditLinks,
@@ -523,6 +567,8 @@ class Setting extends DataClass implements Insertable<Setting> {
     useBottomBar: useBottomBar ?? this.useBottomBar,
     showPlatformColorAccents:
         showPlatformColorAccents ?? this.showPlatformColorAccents,
+    showPlatformColorTextAccents:
+        showPlatformColorTextAccents ?? this.showPlatformColorTextAccents,
     clientId: clientId.present ? clientId.value : this.clientId,
     redirectUri: redirectUri.present ? redirectUri.value : this.redirectUri,
     copyOldRedditLinks: copyOldRedditLinks ?? this.copyOldRedditLinks,
@@ -552,6 +598,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       showPlatformColorAccents: data.showPlatformColorAccents.present
           ? data.showPlatformColorAccents.value
           : this.showPlatformColorAccents,
+      showPlatformColorTextAccents: data.showPlatformColorTextAccents.present
+          ? data.showPlatformColorTextAccents.value
+          : this.showPlatformColorTextAccents,
       clientId: data.clientId.present ? data.clientId.value : this.clientId,
       redirectUri: data.redirectUri.present
           ? data.redirectUri.value
@@ -574,6 +623,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('appBarColor: $appBarColor, ')
           ..write('useBottomBar: $useBottomBar, ')
           ..write('showPlatformColorAccents: $showPlatformColorAccents, ')
+          ..write(
+            'showPlatformColorTextAccents: $showPlatformColorTextAccents, ',
+          )
           ..write('clientId: $clientId, ')
           ..write('redirectUri: $redirectUri, ')
           ..write('copyOldRedditLinks: $copyOldRedditLinks, ')
@@ -592,6 +644,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     appBarColor,
     useBottomBar,
     showPlatformColorAccents,
+    showPlatformColorTextAccents,
     clientId,
     redirectUri,
     copyOldRedditLinks,
@@ -609,6 +662,8 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.appBarColor == this.appBarColor &&
           other.useBottomBar == this.useBottomBar &&
           other.showPlatformColorAccents == this.showPlatformColorAccents &&
+          other.showPlatformColorTextAccents ==
+              this.showPlatformColorTextAccents &&
           other.clientId == this.clientId &&
           other.redirectUri == this.redirectUri &&
           other.copyOldRedditLinks == this.copyOldRedditLinks &&
@@ -624,6 +679,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<int?> appBarColor;
   final Value<bool> useBottomBar;
   final Value<bool> showPlatformColorAccents;
+  final Value<bool> showPlatformColorTextAccents;
   final Value<String?> clientId;
   final Value<String?> redirectUri;
   final Value<bool> copyOldRedditLinks;
@@ -637,6 +693,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.appBarColor = const Value.absent(),
     this.useBottomBar = const Value.absent(),
     this.showPlatformColorAccents = const Value.absent(),
+    this.showPlatformColorTextAccents = const Value.absent(),
     this.clientId = const Value.absent(),
     this.redirectUri = const Value.absent(),
     this.copyOldRedditLinks = const Value.absent(),
@@ -651,6 +708,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.appBarColor = const Value.absent(),
     this.useBottomBar = const Value.absent(),
     this.showPlatformColorAccents = const Value.absent(),
+    this.showPlatformColorTextAccents = const Value.absent(),
     this.clientId = const Value.absent(),
     this.redirectUri = const Value.absent(),
     this.copyOldRedditLinks = const Value.absent(),
@@ -665,6 +723,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<int>? appBarColor,
     Expression<bool>? useBottomBar,
     Expression<bool>? showPlatformColorAccents,
+    Expression<bool>? showPlatformColorTextAccents,
     Expression<String>? clientId,
     Expression<String>? redirectUri,
     Expression<bool>? copyOldRedditLinks,
@@ -681,6 +740,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (useBottomBar != null) 'use_bottom_bar': useBottomBar,
       if (showPlatformColorAccents != null)
         'show_platform_color_accents': showPlatformColorAccents,
+      if (showPlatformColorTextAccents != null)
+        'show_platform_color_text_accents': showPlatformColorTextAccents,
       if (clientId != null) 'client_id': clientId,
       if (redirectUri != null) 'redirect_uri': redirectUri,
       if (copyOldRedditLinks != null)
@@ -698,6 +759,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<int?>? appBarColor,
     Value<bool>? useBottomBar,
     Value<bool>? showPlatformColorAccents,
+    Value<bool>? showPlatformColorTextAccents,
     Value<String?>? clientId,
     Value<String?>? redirectUri,
     Value<bool>? copyOldRedditLinks,
@@ -714,6 +776,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       useBottomBar: useBottomBar ?? this.useBottomBar,
       showPlatformColorAccents:
           showPlatformColorAccents ?? this.showPlatformColorAccents,
+      showPlatformColorTextAccents:
+          showPlatformColorTextAccents ?? this.showPlatformColorTextAccents,
       clientId: clientId ?? this.clientId,
       redirectUri: redirectUri ?? this.redirectUri,
       copyOldRedditLinks: copyOldRedditLinks ?? this.copyOldRedditLinks,
@@ -754,6 +818,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
         showPlatformColorAccents.value,
       );
     }
+    if (showPlatformColorTextAccents.present) {
+      map['show_platform_color_text_accents'] = Variable<bool>(
+        showPlatformColorTextAccents.value,
+      );
+    }
     if (clientId.present) {
       map['client_id'] = Variable<String>(clientId.value);
     }
@@ -780,6 +849,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('appBarColor: $appBarColor, ')
           ..write('useBottomBar: $useBottomBar, ')
           ..write('showPlatformColorAccents: $showPlatformColorAccents, ')
+          ..write(
+            'showPlatformColorTextAccents: $showPlatformColorTextAccents, ',
+          )
           ..write('clientId: $clientId, ')
           ..write('redirectUri: $redirectUri, ')
           ..write('copyOldRedditLinks: $copyOldRedditLinks, ')
@@ -1204,6 +1276,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int?> appBarColor,
       Value<bool> useBottomBar,
       Value<bool> showPlatformColorAccents,
+      Value<bool> showPlatformColorTextAccents,
       Value<String?> clientId,
       Value<String?> redirectUri,
       Value<bool> copyOldRedditLinks,
@@ -1219,6 +1292,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int?> appBarColor,
       Value<bool> useBottomBar,
       Value<bool> showPlatformColorAccents,
+      Value<bool> showPlatformColorTextAccents,
       Value<String?> clientId,
       Value<String?> redirectUri,
       Value<bool> copyOldRedditLinks,
@@ -1272,6 +1346,11 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<bool> get showPlatformColorAccents => $composableBuilder(
     column: $table.showPlatformColorAccents,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get showPlatformColorTextAccents => $composableBuilder(
+    column: $table.showPlatformColorTextAccents,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1345,6 +1424,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get showPlatformColorTextAccents => $composableBuilder(
+    column: $table.showPlatformColorTextAccents,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get clientId => $composableBuilder(
     column: $table.clientId,
     builder: (column) => ColumnOrderings(column),
@@ -1414,6 +1498,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get showPlatformColorTextAccents => $composableBuilder(
+    column: $table.showPlatformColorTextAccents,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get clientId =>
       $composableBuilder(column: $table.clientId, builder: (column) => column);
 
@@ -1467,6 +1556,7 @@ class $$SettingsTableTableManager
                 Value<int?> appBarColor = const Value.absent(),
                 Value<bool> useBottomBar = const Value.absent(),
                 Value<bool> showPlatformColorAccents = const Value.absent(),
+                Value<bool> showPlatformColorTextAccents = const Value.absent(),
                 Value<String?> clientId = const Value.absent(),
                 Value<String?> redirectUri = const Value.absent(),
                 Value<bool> copyOldRedditLinks = const Value.absent(),
@@ -1480,6 +1570,7 @@ class $$SettingsTableTableManager
                 appBarColor: appBarColor,
                 useBottomBar: useBottomBar,
                 showPlatformColorAccents: showPlatformColorAccents,
+                showPlatformColorTextAccents: showPlatformColorTextAccents,
                 clientId: clientId,
                 redirectUri: redirectUri,
                 copyOldRedditLinks: copyOldRedditLinks,
@@ -1495,6 +1586,7 @@ class $$SettingsTableTableManager
                 Value<int?> appBarColor = const Value.absent(),
                 Value<bool> useBottomBar = const Value.absent(),
                 Value<bool> showPlatformColorAccents = const Value.absent(),
+                Value<bool> showPlatformColorTextAccents = const Value.absent(),
                 Value<String?> clientId = const Value.absent(),
                 Value<String?> redirectUri = const Value.absent(),
                 Value<bool> copyOldRedditLinks = const Value.absent(),
@@ -1508,6 +1600,7 @@ class $$SettingsTableTableManager
                 appBarColor: appBarColor,
                 useBottomBar: useBottomBar,
                 showPlatformColorAccents: showPlatformColorAccents,
+                showPlatformColorTextAccents: showPlatformColorTextAccents,
                 clientId: clientId,
                 redirectUri: redirectUri,
                 copyOldRedditLinks: copyOldRedditLinks,
