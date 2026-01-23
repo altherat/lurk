@@ -5,6 +5,7 @@ import 'package:html/parser.dart';
 import 'package:http/http.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/comment.dart';
+import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/posts.dart';
@@ -218,6 +219,10 @@ class RedditApi extends Api {
     }
 
     return Post(
+      community: Community(
+        platform: Platform.reddit,
+        name: data['subreddit'].toLowerCase()
+      ),
       id: data['id'],
       score: data['score'],
       timestampMs: (data['created_utc'] as num).toInt() * 1000,
@@ -228,7 +233,6 @@ class RedditApi extends Api {
       url: videoUrl ?? data['url'],
       urlPath: data['permalink'],
       domain: domain,
-      communityName: data['subreddit'].toLowerCase(),
       thumbnailUrl: thumbnail,
       isStickied: data['stickied'],
       isSelf: data['is_self'],

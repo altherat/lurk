@@ -1,8 +1,10 @@
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/core/utils.dart' as utils;
+import 'package:lurk/models/community.dart';
 
 class Post {
 
+  final Community community;
   final String id;
   final int score;
   final int timestampMs;
@@ -13,7 +15,6 @@ class Post {
   final String url;
   final String urlPath;
   final String domain;
-  final String communityName;
   final String? thumbnailUrl;
   final bool isDeleted;
   final bool isStickied;
@@ -23,6 +24,7 @@ class Post {
   final List<String> galleryImageUrls;
 
   Post({
+    required this.community,
     required this.id,
     required this.score,
     required this.timestampMs,
@@ -33,7 +35,6 @@ class Post {
     required this.url,
     required this.urlPath,
     required this.domain,
-    required this.communityName,
     this.thumbnailUrl,
     this.isStickied = false,
     required this.isDeleted,

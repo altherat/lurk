@@ -119,7 +119,7 @@ String timeAgoCompact(int timestampMs) {
 
 Future<void> openInBrowser(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
-Future navigate(BuildContext context, String url, {Community? community, Post? post}) async {
+Future navigate(BuildContext context, String url, {Post? post}) async {
   // debugPrint('navigate: $url');
   final uri = Uri.tryParse(url);
   if (uri == null) return;
@@ -131,7 +131,6 @@ Future navigate(BuildContext context, String url, {Community? community, Post? p
     return context.push(
       () => ImageViewerScreen(
         url: url,
-        community: community,
         post: post,
       )
     );
@@ -153,7 +152,6 @@ Future navigate(BuildContext context, String url, {Community? community, Post? p
       () => VideoPlayerScreen(
         url: url, //'$url/HLSPlaylist.m3u8',
         audioUrl: audioUrl,
-        community: community,
         post: post,
       )
     );
@@ -163,7 +161,6 @@ Future navigate(BuildContext context, String url, {Community? community, Post? p
     return context.push(
       () => VideoPlayerScreen(
         url: url,
-        community: community,
         post: post
       )
     );
@@ -187,10 +184,6 @@ Future navigate(BuildContext context, String url, {Community? community, Post? p
         if (pathSegments[2] == 'comments' && pathSegments.length >= 4) {
           return context.push(
             () => PostDetailsScreen(
-              community: Community(
-                platform: Platform.reddit,
-                name: pathSegments[1].toLowerCase()
-              ),
               post: post,
               url: url
             )
@@ -210,7 +203,6 @@ Future navigate(BuildContext context, String url, {Community? community, Post? p
             () => ImageGalleryViewerScreen(
               url: url,
               platform: Platform.reddit,
-              community: community,
               post: post,
             )
           );
@@ -222,13 +214,8 @@ Future navigate(BuildContext context, String url, {Community? community, Post? p
   if (host == 'digg.com' || host == 'www.digg.com') {
     final pathSegments = uri.pathSegments;
     if (pathSegments.length >= 2) {
-      final communityName = pathSegments[0].toLowerCase();
       return context.push(
         () => PostDetailsScreen(
-          community: Community(
-            platform: Platform.digg,
-            name: communityName,
-          ),
           post: post,
           url: url,
         )
@@ -238,7 +225,6 @@ Future navigate(BuildContext context, String url, {Community? community, Post? p
 
   return context.push(
     () => WebViewerScreen(
-      community: community,
       post: post,
       url: url,
     )

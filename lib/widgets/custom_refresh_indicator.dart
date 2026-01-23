@@ -6,7 +6,7 @@ import 'package:lurk/services/settings.dart';
 class CustomRefreshIndicator extends StatelessWidget {
 
   final Platform? platform;
-  final RefreshCallback onRefresh;
+  final RefreshCallback? onRefresh;
   final Widget child;
 
   const CustomRefreshIndicator({
@@ -18,20 +18,16 @@ class CustomRefreshIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (platform == null) {
-      return RefreshIndicator(
-        displacement: Constants.refreshIndicatorDisplacement,
-        onRefresh: onRefresh,
-        child: child,
-      );
-    }
     return ValueListenableBuilder(
       valueListenable: Settings.showMorePlatformColorAccents,
       builder: (context, showMorePlatformColorAccents, child) {
         return RefreshIndicator(
           displacement: Constants.refreshIndicatorDisplacement,
-          color: showMorePlatformColorAccents ? platform!.color : null,
-          onRefresh: onRefresh,
+          color: showMorePlatformColorAccents ? platform?.color : null,
+          notificationPredicate: onRefresh != null ? defaultScrollNotificationPredicate : (notification) => false,
+          onRefresh: () async {
+            onRefresh?.call();
+          },
           child: this.child,
         );
       }

@@ -16,7 +16,6 @@ final thumbnailSize = 70;
 
 class PostTile extends StatelessWidget {
 
-  final Community community;
   final Post post;
   final Widget subtitle;
   final bool showThumbnail;
@@ -24,7 +23,6 @@ class PostTile extends StatelessWidget {
 
   const PostTile({
     super.key,
-    required this.community,
     required this.post,
     this.showThumbnail = true,
     required this.subtitle,
@@ -36,22 +34,22 @@ class PostTile extends StatelessWidget {
       context: context,
       title: post.title,
       options: {
-        'View ${community.platform.communityLabel} ${community.fullDisplayName}': () {
-          context.push(() => PostsScreen(community: community));
+        'View ${post.community.platform.communityLabel} ${post.community.fullDisplayName}': () {
+          context.push(() => PostsScreen(community: post.community));
 
         },
-        'View user ${community.platform.userPrefix}${post.author}': () {
+        'View user ${post.community.platform.userPrefix}${post.author}': () {
           context.push(
             () => UserDetailsScreen(
-              platform: community.platform,
+              platform: post.community.platform,
               username: post.author!
             )
           );
         },
         'View link in browser': () => openInBrowser(post.url),
-        'View comments in browser': () => openInBrowser(Api.of(community.platform).getPostDetailsUrl(post)),
+        'View comments in browser': () => openInBrowser(Api.of(post.community.platform).getPostDetailsUrl(post)),
         'Copy link': () => copyToClipboard(post.url),
-        'Copy comments link': () => copyToClipboard(Api.of(community.platform).getPostDetailsUrl(post))
+        'Copy comments link': () => copyToClipboard(Api.of(post.community.platform).getPostDetailsUrl(post))
       }      
     );
   }
@@ -145,7 +143,7 @@ class PostTile extends StatelessWidget {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () {
-                          navigate(context, post.url, community: community, post: post);
+                          navigate(context, post.url, post: post);
                           History.posts.setVisited(post.id);
                         }
                       ),

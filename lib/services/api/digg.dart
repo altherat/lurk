@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:graphql_flutter/graphql_flutter.dart' as gql;
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/comment.dart';
+import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/posts.dart';
@@ -45,7 +46,7 @@ class DiggApi extends Api {
   String getPostDetailsUrl(Post post) => '$baseUrl${post.urlPath}';
 
   @override
-  String getCommentUrl(Post post, Comment comment) => '$baseUrl/${post.communityName}/${post.id.split('-')[1]}/comment/${comment.id.split('-')[2]}';
+  String getCommentUrl(Post post, Comment comment) => '$baseUrl/${post.community.name}/${post.id.split('-')[1]}/comment/${comment.id.split('-')[2]}';
 
   @override
   Future<Posts> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
@@ -362,6 +363,10 @@ class DiggApi extends Api {
       galleryImageUrls = [];
     }
     return Post(
+      community: Community(
+        platform: Platform.digg,
+        name: json['community']['name']
+      ),
       id: id,
       title: (json['title'] as String).trim(),
       textHtml: text.isEmpty ? null : text,
@@ -369,7 +374,6 @@ class DiggApi extends Api {
       timestampMs: DateTime.tryParse(json['createdDate'])?.millisecondsSinceEpoch ?? 0,
       commentCount: json['commentCount'],
       author: authorUsername == '[deleted]' ? null : authorUsername,
-      communityName: json['community']['name'],
       domain: domain,
       isSelf: json['type'] == 'TEXT',
       isNsfw: json['nsfw'],

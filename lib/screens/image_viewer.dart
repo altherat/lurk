@@ -1,21 +1,19 @@
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
-import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
+import 'package:lurk/widgets/large_message.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
-import 'package:lurk/widgets/large_circular_progress_indicator.dart';
+import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 
 class ImageViewerScreen extends StatelessWidget {
 
   final String url;
-  final Community? community;
   final Post? post;
 
   const ImageViewerScreen({
     super.key,
     required this.url,
-    this.community,
     this.post,
   });
 
@@ -24,7 +22,6 @@ class ImageViewerScreen extends StatelessWidget {
     return MediaScaffold(
       url: url,
       type: 'image',
-      community: community,
       post: post,
       body: SizedBox.expand(
         child: ExtendedImage.network(
@@ -47,20 +44,16 @@ class ImageViewerScreen extends StatelessWidget {
           loadStateChanged: (state) {
             switch (state.extendedImageLoadState) {
               case LoadState.loading:
-                return LargeCircularProgressIndicator(platform: community?.platform);
+                return CenteredLargeCircularProgressIndicator(platform: post?.community.platform);
               case LoadState.completed:
                 return state.completedWidget;
               case LoadState.failed:
-                final color = Theme.of(context).disabledColor;
-                return Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.broken_image_rounded, size: 80, color: color),
-                      Text('Something went wrong', style: TextStyle(color: color)),
-                    ],
-                  ),
-              );
+                return const Center(
+                  child: LargeMessage(
+                    icon: Icons.broken_image_rounded,
+                    message: 'Something went wrong'
+                  )
+                );
             }
           },
         ),

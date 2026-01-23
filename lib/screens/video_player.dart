@@ -4,14 +4,12 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:lurk/app.dart';
 import 'package:lurk/core/constants.dart';
-import 'package:lurk/core/utils.dart';
-import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
 import 'package:media_kit/media_kit.dart';
 import 'package:media_kit_video/media_kit_video.dart';
-import 'package:lurk/widgets/large_circular_progress_indicator.dart';
+import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 
 const hideControlsAfterDuration = Duration(seconds: 2);
 const List<double> playbackSpeeds = [0.5, 1, 1.25, 1.5, 2];
@@ -20,14 +18,12 @@ class VideoPlayerScreen extends StatefulWidget {
 
   final String url;
   final String? audioUrl;
-  final Community? community;
   final Post? post;
 
   const VideoPlayerScreen({
     super.key,
     required this.url,
     this.audioUrl,
-    this.community,
     this.post
   });
 
@@ -150,7 +146,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
     return MediaScaffold(
       url: widget.url,
       type: 'video',
-      community: widget.community,
       post: widget.post,
       body: GestureDetector(
         onTap: () => _onControlsChanged(() => setState(() => _showControls = !_showControls)),
@@ -167,7 +162,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
               ),
             ),
             if (!_isInitialized)
-              LargeCircularProgressIndicator(platform: widget.community?.platform)
+              CenteredLargeCircularProgressIndicator(platform: widget.post?.community.platform)
             else ...[
               Positioned(
                 bottom: 0,
@@ -301,7 +296,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
               ),
               StreamBuilder(
                 stream: _player.stream.buffering,
-                builder: (context, snapshot) => snapshot.data == true ? LargeCircularProgressIndicator(platform: widget.community?.platform) : const SizedBox.shrink(),
+                builder: (context, snapshot) => snapshot.data == true ? CenteredLargeCircularProgressIndicator(platform: widget.post?.community.platform) : const SizedBox.shrink(),
               ),
             ]
           ],

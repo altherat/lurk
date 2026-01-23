@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/utils.dart';
-import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/services/api/api.dart';
@@ -11,7 +10,6 @@ class MediaScaffold extends StatelessWidget {
 
   final String url;
   final String type;
-  final Community? community;
   final Post? post;
   final Widget body;
 
@@ -19,7 +17,6 @@ class MediaScaffold extends StatelessWidget {
     super.key,
     required this.url,
     required this.type,
-    this.community,
     this.post,
     required this.body
   });
@@ -34,9 +31,8 @@ class MediaScaffold extends StatelessWidget {
         'View comments': () {
           context.push(
             () => PostDetailsScreen(
-              community: community!,
               post: post,
-              url: Api.of(community!.platform).getPostDetailsUrl(post!),
+              url: Api.of(post!.community.platform).getPostDetailsUrl(post!),
             )
           );
         },

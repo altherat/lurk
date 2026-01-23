@@ -9,10 +9,12 @@ import 'package:lurk/models/posts.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/services/api/api.dart';
+import 'package:lurk/widgets/centered_scroll_view.dart';
 import 'package:lurk/widgets/community_name.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/history_builder.dart';
-import 'package:lurk/widgets/large_circular_progress_indicator.dart';
+import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
+import 'package:lurk/widgets/large_message.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 import 'package:lurk/widgets/post_tile.dart';
 
@@ -87,7 +89,7 @@ class PostsListViewState extends State<PostsListView> {
   List<Post> _posts = [];
   String? _postsPageToken;
   bool _isSingleCommunity = false;
-  bool _isLoadingInitially = true;
+  bool _isLoading = true;
   bool _isLoadingMore = false;
 
   @override
@@ -102,7 +104,7 @@ class PostsListViewState extends State<PostsListView> {
     if (widget.community != oldWidget.community || !mapEquals(widget.feedOptions, oldWidget.feedOptions)) {
       setState(() {
         _posts.clear();
-        _isLoadingInitially = true;
+        _isLoading = true;
       });
       _getPosts();
     }
@@ -111,7 +113,7 @@ class PostsListViewState extends State<PostsListView> {
   Future<void> _getPosts() async {
     if (_posts.isEmpty) {
       setState(() {
-        _isLoadingInitially = true;
+        _isLoading = true;
       });
     }
     try {
@@ -120,14 +122,16 @@ class PostsListViewState extends State<PostsListView> {
         setState(() {
           _posts = result.posts;
           _postsPageToken = result.pageToken;
-          _isSingleCommunity = _posts.map((post) => post.communityName).toSet().length == 1;
-          _isLoadingInitially = false;
+          _isSingleCommunity = _posts.map((post) => post.community.name).toSet().length == 1;
+          _isLoading = false;
         });
       }
     }
     catch (e) {
       debugPrint('Error fetching posts: $e');
-      setState(() => _isLoadingInitially = false);
+      if (mounted) {
+        setState(() => _isLoading = false);
+      }
     }
   }
 
@@ -140,7 +144,7 @@ class PostsListViewState extends State<PostsListView> {
           _posts.addAll(result.posts);
           _postsPageToken = result.pageToken;
           if (_isSingleCommunity) {
-            _isSingleCommunity = result.posts.map((post) => post.communityName).toSet().length == 1;
+            _isSingleCommunity = result.posts.map((post) => post.community.name).toSet().length == 1;
           }
         });
       }
@@ -148,119 +152,88 @@ class PostsListViewState extends State<PostsListView> {
     catch (e) {
       debugPrint('Error fetching more posts: $e');
     }
-    finally {
-      _isLoadingMore = false;
-    }
+    _isLoadingMore = false;
   }
 
   Future<void>? _refresh() => _refreshIndicatorKey.currentState?.show();
 
   @override
   Widget build(BuildContext context) {
-    return _isLoadingInitially 
-      ? LargeCircularProgressIndicator(platform: widget.community.platform)
+    return _isLoading 
+      ? CenteredLargeCircularProgressIndicator(platform: widget.community.platform)
       : CustomRefreshIndicator(
           key: _refreshIndicatorKey,
           platform: widget.community.platform,
           onRefresh: _getPosts,
           child: _posts.isEmpty
-          ? LayoutBuilder(
-            builder: (context, constraints) {
-              return ListView(
-                padding: EdgeInsets.zero,
-                children: [
-                  SizedBox(
-                    height: constraints.maxHeight,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(
-                          Icons.feed_outlined,
-                          size: 160,
-                          color: Colors.white24
-                        ),
-                        Text(
-                          'No posts to show',
-                          style: TextStyle(
-                            fontSize: 24,
-                            color: Colors.white38
+            ? CenteredScrollView(
+                child: LargeMessage(
+                  icon: Icons.feed_outlined,
+                  message: 'No posts to show'
+                )
+              )
+            : NotificationListener<ScrollNotification>(
+                onNotification: (ScrollNotification scrollInfo) {
+                  if (!_isLoadingMore && scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+                    _getMorePosts();
+                  }
+                  return false;
+                },
+                child: Scrollbar(
+                  child: ListView.builder(
+                    padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+                    itemCount: _postsPageToken != null ? _posts.length + 1 : _posts.length,
+                    itemBuilder: (context, index) {
+                      if (index == _posts.length) {
+                        return Padding(
+                          padding: EdgeInsets.all(16),
+                          child: Center(
+                            child: SizedBox(
+                              width: 24,
+                              height: 24,
+                              child: CircularProgressIndicator(strokeWidth: 3)
+                            )
                           ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              );
-            }
-          )
-          : NotificationListener<ScrollNotification>(
-              onNotification: (ScrollNotification scrollInfo) {
-                if (!_isLoadingMore && scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
-                  _getMorePosts();
-                }
-                return false;
-              },
-              child: Scrollbar(
-                child: ListView.builder(
-                  padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
-                  itemCount: _postsPageToken != null ? _posts.length + 1 : _posts.length,
-                  itemBuilder: (context, index) {
-                    if (index == _posts.length) {
-                      return Padding(
-                        padding: EdgeInsets.all(16),
-                        child: Center(
-                          child: SizedBox(
-                            width: 24,
-                            height: 24,
-                            child: CircularProgressIndicator(strokeWidth: 3)
-                          )
+                        );
+                      }
+                          
+                      final Post post = _posts[index];
+                      return PostTile(
+                        post: post,
+                        onTap: () {
+                          context.push(() => PostDetailsScreen(post: post));
+                          if (post.isSelf) {
+                            History.posts.setVisited(post.id);
+                          }
+                        },
+                        subtitle: HistoryBuilder(
+                          id: post.id,
+                          history: History.postDetails,
+                          builder: (context, isVisited) {
+                            return Text.rich(
+                              TextSpan(
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Constants.secondaryTextColor,
+                                ),
+                                children: [
+                                  TextSpan(
+                                    text: post.commentsLabel,
+                                    style: TextStyle(color: isVisited ? Constants.visitedTextColor : null)
+                                  ),
+                                  TextSpan(
+                                    text: ' • ${post.timeAgoCompact}${_isSingleCommunity ? '' : ' • ${post.community.name}'}'
+                                  )
+                                ]
+                              )
+                            );
+                          }
                         ),
                       );
                     }
-                        
-                    final Post post = _posts[index];
-                    return PostTile(
-                      community: widget.community,
-                      post: post,
-                      onTap: () {
-                        context.push(
-                          () => PostDetailsScreen(
-                            community: widget.community,
-                            post: post
-                          )
-                        );
-                        if (post.isSelf) {
-                          History.posts.setVisited(post.id);
-                        }
-                      },
-                      subtitle: HistoryBuilder(
-                        id: post.id,
-                        history: History.postDetails,
-                        builder: (context, isVisited) {
-                          return Text.rich(
-                            TextSpan(
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: Constants.secondaryTextColor,
-                              ),
-                              children: [
-                                TextSpan(
-                                  text: post.commentsLabel,
-                                  style: TextStyle(color: isVisited ? Constants.visitedTextColor : null)
-                                ),
-                                TextSpan(
-                                  text: ' • ${post.timeAgoCompact}${_isSingleCommunity ? '' : ' • ${post.communityName}'}'
-                                )
-                              ]
-                            )
-                          );
-                        }
-                      ),
-                    );
-                  }
+                  ),
                 ),
               ),
-            ),
       );
   }
 

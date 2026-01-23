@@ -1,10 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lurk/core/utils.dart';
-import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/services/settings.dart';
-import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -12,13 +10,11 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 class WebViewerScreen extends StatefulWidget {
 
   final String url;
-  final Community? community;
   final Post? post;
 
   const WebViewerScreen({
     super.key,
     required this.url,
-    this.community,
     this.post
   });
 
@@ -86,7 +82,6 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
             'View comments': () {
               context.push(
                 () => PostDetailsScreen(
-                  community: widget.community!,
                   post: widget.post,
                   url: widget.url
                 )
@@ -102,7 +97,6 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
                 _WebView(
                     controller: _controller,
                     url: widget.url,
-                    community: widget.community,
                     post: widget.post,
                   ),
                   ValueListenableBuilder(
@@ -114,7 +108,7 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
                           if (progress == 1) return SizedBox.shrink();
                           return LinearProgressIndicator(
                             value: progress,
-                            color: showMorePlatformColorAccents ? widget.community?.platform.color : null,
+                            color: showMorePlatformColorAccents ? widget.post?.community.platform.color : null,
                             backgroundColor: Colors.transparent,
                             minHeight: 3,
                           );
@@ -134,14 +128,12 @@ class _WebView extends StatefulWidget {
 
   final WebViewController controller;
   final String url;
-  final Community? community;
   final Post? post;
 
   const _WebView({
     super.key,
     required this.controller,
     required this.url,
-    required this.community,
     required this.post,
   });
 

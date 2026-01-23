@@ -4,6 +4,7 @@ enum Platform {
   
   reddit(
     color: Color(0xFFFF4500),
+    hostName: 'reddit.com',
     communityLabel: 'subreddit',
     communityPrefix: 'r/',
     communityHome: 'popular',
@@ -49,6 +50,7 @@ enum Platform {
 
   digg(
     color: Color(0xFF1F65DB),
+    hostName: 'digg.com',
     communityLabel: 'community',
     communityPrefix: '/',
     userPrefix: '@',
@@ -90,6 +92,7 @@ enum Platform {
   );
 
   final Color color;
+  final String hostName;
   final String communityLabel;
   final String communityPrefix;
   final String? communityHome;
@@ -101,6 +104,7 @@ enum Platform {
 
   const Platform({
     required this.color,
+    required this.hostName,
     required this.communityLabel,
     required this.communityPrefix,
     this.communityHome,
@@ -110,6 +114,16 @@ enum Platform {
     required this.userPostsFeedOptions,
     required this.userCommentsFeedOptions,
   });
+
+  static Platform? forUrl(String url) {
+    final host = Uri.parse(url).host;
+    for (var platform in Platform.values) {
+      if (host.endsWith(platform.hostName)) {
+        return platform;
+      }
+    }
+    return null;
+  }
   
 }
 

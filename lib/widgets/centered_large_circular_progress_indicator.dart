@@ -5,11 +5,11 @@ import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 const _size = 64.0;
 const _strokeWidth = 6.0;
 
-class LargeCircularProgressIndicator extends StatelessWidget {
+class CenteredLargeCircularProgressIndicator extends StatelessWidget {
 
   final Platform? platform;
   
-  const LargeCircularProgressIndicator({
+  const CenteredLargeCircularProgressIndicator({
     super.key,
     this.platform
   });

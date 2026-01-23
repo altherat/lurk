@@ -3,26 +3,23 @@ import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
-import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/image_viewer.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
 import 'package:lurk/services/api/api.dart';
-import 'package:lurk/widgets/large_circular_progress_indicator.dart';
+import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 
 class ImageGalleryViewerScreen extends StatefulWidget {
 
   final String url;
   final Platform platform;
-  final Community? community;
   final Post? post;
 
   const ImageGalleryViewerScreen({
     super.key,
     required this.url,
     required this.platform,
-    this.community,
     this.post
   });
 
@@ -64,10 +61,9 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
     return MediaScaffold(
       url: widget.url,
       type: 'images',
-      community: widget.community,
       post: widget.post,
       body: _isLoading
-        ? LargeCircularProgressIndicator(platform: widget.community?.platform)
+        ? CenteredLargeCircularProgressIndicator(platform: widget.post?.community.platform)
         : ListView.separated(
             padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
             cacheExtent: MediaQuery.of(context).size.height,
@@ -108,7 +104,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                         case LoadState.loading:
                           return Padding(
                             padding: EdgeInsets.all(16),
-                            child: LargeCircularProgressIndicator(platform: widget.community?.platform)
+                            child: CenteredLargeCircularProgressIndicator(platform: widget.post?.community.platform)
                           );
                         case LoadState.completed:
                           return state.completedWidget;
@@ -137,7 +133,6 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                           context.push(
                             () => ImageViewerScreen(
                               url: url,
-                              community: widget.community,
                               post: widget.post,
                             )
                           );
