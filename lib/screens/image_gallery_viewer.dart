@@ -6,11 +6,10 @@ import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/image_viewer.dart';
+import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/widgets/large_circular_progress_indicator.dart';
-
-import '../services/settings.dart';
 
 class ImageGalleryViewerScreen extends StatefulWidget {
 
