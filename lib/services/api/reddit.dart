@@ -9,6 +9,7 @@ import 'package:lurk/models/community.dart';
 import 'package:lurk/models/paged_result.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
+import 'package:lurk/models/user_stat.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/settings.dart';
 
@@ -117,6 +118,15 @@ class RedditApi extends Api {
   }
 
   @override
+  UserDetailsResponse getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
+    debugPrint('[Reddit] getUserDetails: id=$id, options=[${options?.values.map((option) => option.apiValue).join(', ')}]');
+    return UserDetailsResponse(
+      stats: _get(Uri.parse('$_baseUrl/u/$id/about.json')).then((response) => _parseUserStats(response.body)),
+      items: getUserItems(id, options: options)
+    );
+  }
+
+  @override
   Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // debugPrint('[Reddit] getUserItems: id=$id, options=[${options?.values.map((option) => option.apiValue).join(', ')}], pageToken=$pageToken');
     final FeedOption? type = options?[FeedOptionType.type];
@@ -142,7 +152,6 @@ class RedditApi extends Api {
     if (params.isNotEmpty) {
       uri = uri.replace(queryParameters: params);
     }
-    debugPrint(uri.toString());
     return compute(_parseUserItemsResult, (await _get(uri)).body);
   }
 
@@ -360,7 +369,29 @@ class RedditApi extends Api {
     );
   }
 
-PagedResult<dynamic> _parseUserItemsResult(String body) {
+  List<UserStat> _parseUserStats(String body) {
+    final data = jsonDecode(body)['data'];
+    return [
+      DateTimeUserStat(
+        label: 'Joined',
+        value: DateTime.fromMillisecondsSinceEpoch((data['created_utc'] as num).toInt() * 1000, isUtc: true)
+      ),
+      NumberUserStat(
+        label: 'Karma',
+        value: data['total_karma']
+      ),
+      NumberUserStat(
+        label: 'Post karma',
+        value: data['link_karma']
+      ),
+      NumberUserStat(
+        label: 'Comment karma',
+        value: data['comment_karma']
+      )
+    ];
+  }
+
+  PagedResult<dynamic> _parseUserItemsResult(String body) {
     final json = jsonDecode(body);
     final data = json['data'];
     final children = data['children'] as List;

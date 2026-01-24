@@ -6,7 +6,6 @@ import 'package:lurk/screens/feed_screen.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/history.dart';
-import 'package:lurk/widgets/centered_scroll_view.dart';
 import 'package:lurk/widgets/community_name.dart';
 import 'package:lurk/widgets/history_builder.dart';
 import 'package:lurk/widgets/large_message.dart';
@@ -36,16 +35,16 @@ class _PostsScreenState extends State<PostsScreen> {
   Widget build(BuildContext context) {
     return FeedScreen(
       platform: widget.community.platform,
-      title: CommunityName(community: widget.community),
-      activeCommunityName: widget.community.name,
-      feedOptions: widget.community.platform.postsFeedOptions,
-      get: (options, pageToken) async {
+      getItems: (options, pageToken) async {
         final result = await Api.of(widget.community.platform).getPosts(widget.community.name, options: options, pageToken: pageToken);
         setState(() {
           _isSingleCommunity = result.items.map((post) => post.community.name).toSet().length == 1;
         });
         return result;
       },
+      title: CommunityName(community: widget.community),
+      activeCommunityName: widget.community.name,
+      feedOptions: widget.community.platform.postsFeedOptions,
       itemBuilder: (context, post) {
         return PostTile(
           post: post,
@@ -81,11 +80,9 @@ class _PostsScreenState extends State<PostsScreen> {
         );
       },
       noItemsBuilder: (context) { 
-        return const CenteredScrollView(
-          child: LargeMessage(
-            icon: Icons.feed_outlined,
-            message: 'Nothing to show'
-          )
+        return const LargeMessage(
+          icon: Icons.feed_outlined,
+          message: 'Nothing to show'
         );
       },
     );

@@ -2,22 +2,25 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/paged_result.dart';
+import 'package:lurk/services/api/api.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 
-class FeedScreen<T> extends StatefulWidget {
+class FeedScreen<R extends FeedResponse<T>, T> extends StatefulWidget {
 
   final GlobalKey<ScaffoldState>? scaffoldKey;
   final Platform platform;
   final String? activeCommunityName;
   final FeedOptionsGroup? feedOptions;
+  final R Function(Map<FeedOptionType, FeedOption>? feedOptions)? getAll;
+  final Future<PagedResult<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) getItems;
   final Widget title;
   final Widget? subtitle;
-  final Future<PagedResult<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) get;
+  final List<Widget> Function(BuildContext context, R? response)? headersBuilder;
   final Widget Function(BuildContext context, T item) itemBuilder;
-  final Widget Function(BuildContext context) noItemsBuilder;
+  final Widget? Function(BuildContext context) noItemsBuilder;
 
   const FeedScreen({
     super.key,
@@ -25,19 +28,21 @@ class FeedScreen<T> extends StatefulWidget {
     required this.platform,
     this.activeCommunityName,
     this.feedOptions,
+    this.getAll,
+    required this.getItems,
     required this.title,
     this.subtitle,
-    required this.get,
+    this.headersBuilder,
     required this.itemBuilder,
     required this.noItemsBuilder,
   });
 
   @override
-  State<FeedScreen<T>> createState() => _FeedScreenState<T>();
+  State<FeedScreen<R, T>> createState() => _FeedScreenState<R, T>();
 
 }
 
-class _FeedScreenState<T> extends State<FeedScreen<T>> {
+class _FeedScreenState<R extends FeedResponse<T>, T> extends State<FeedScreen<R, T>> {
 
   final _contentKey = GlobalKey<_ContentState>();
   Map<FeedOptionType, FeedOption>? _feedOptions;
@@ -58,11 +63,13 @@ class _FeedScreenState<T> extends State<FeedScreen<T>> {
           _feedOptions = mapEquals(options, widget.platform.postsFeedOptions.defaults) ? null : options;
         });
       },
-      body: _Content<T>(
+      body: _Content<R, T>(
         key: _contentKey,
         platform: widget.platform,
         feedOptions: _feedOptions,
-        get: widget.get,
+        getAll: widget.getAll,
+        getItems: widget.getItems,
+        headersBuilder: widget.headersBuilder,
         itemBuilder: widget.itemBuilder,
         noItemsBuilder: widget.noItemsBuilder,
       ),
@@ -72,36 +79,41 @@ class _FeedScreenState<T> extends State<FeedScreen<T>> {
 
 }
 
-class _Content<T> extends StatefulWidget {
+class _Content<R extends FeedResponse<T>, T> extends StatefulWidget {
 
   final Platform platform;
   final Map<FeedOptionType, FeedOption>? feedOptions;
-  final Future<PagedResult<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) get;
+  final R Function(Map<FeedOptionType, FeedOption>? feedOptions)? getAll;
+  final Future<PagedResult<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) getItems;
+  final List<Widget> Function(BuildContext context, R? response)? headersBuilder;
   final Widget Function(BuildContext context, T item) itemBuilder;
-  final Widget Function(BuildContext context) noItemsBuilder;
+  final Widget? Function(BuildContext context) noItemsBuilder;
 
   const _Content({
     super.key,
     required this.platform,
     required this.feedOptions,
-    required this.get,
+    required this.getAll,
+    required this.getItems,
+    required this.headersBuilder,
     required this.itemBuilder,
     required this.noItemsBuilder,
   });
 
   @override
-  State<_Content<T>> createState() => _ContentState<T>();
+  State<_Content<R, T>> createState() => _ContentState<R, T>();
 
 }
 
-class _ContentState<T> extends State<_Content<T>> {
+class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> {
 
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
+  R? _response;
 
   List<T> _items = [];
   String? _pageToken;
-  bool _isLoading = true;
-  bool _isLoadingMore = false;
+  bool _isLoadingItems = true;
+  bool _isLoadingMoreItems = false;
 
   @override
   void initState() {
@@ -110,12 +122,12 @@ class _ContentState<T> extends State<_Content<T>> {
   }
 
   @override
-  void didUpdateWidget(covariant _Content<T> oldWidget) {
+  void didUpdateWidget(covariant _Content<R, T> oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!mapEquals(widget.feedOptions, oldWidget.feedOptions)) {
       setState(() {
         _items.clear();
-        _isLoading = true;
+        _isLoadingItems = true;
       });
       _get();
     }
@@ -124,16 +136,23 @@ class _ContentState<T> extends State<_Content<T>> {
   Future<void> _get() async {
     if (_items.isEmpty) {
       setState(() {
-        _isLoading = true;
+        _isLoadingItems = true;
       });
     }
     try {
-      final response = await widget.get(widget.feedOptions, null);
+      final PagedResult<T> itemsResult;
+      if (widget.getAll != null) {
+        _response = widget.getAll!(widget.feedOptions);
+        itemsResult = await _response!.items;
+      }
+      else {
+        itemsResult = await widget.getItems(widget.feedOptions, null);
+      }
       if (mounted) {
         setState(() {
-          _items = response.items;
-          _pageToken = response.pageToken;
-          _isLoading = false;
+          _items = itemsResult.items;
+          _pageToken = itemsResult.pageToken;
+          _isLoadingItems = false;
         });
       }
     }
@@ -141,15 +160,15 @@ class _ContentState<T> extends State<_Content<T>> {
       debugPrint('Error loading feed: $e');
       debugPrint(stackTrace.toString());
       if (mounted) {
-        setState(() => _isLoading = false);
+        setState(() => _isLoadingItems = false);
       }
     }
   }
 
   Future<void> _getMore() async {
-    _isLoadingMore = true;
+    _isLoadingMoreItems = true;
     try {
-      final response = await widget.get(widget.feedOptions, _pageToken);
+      final response = await widget.getItems(widget.feedOptions, _pageToken);
       if (mounted) {
         setState(() {
           _items.addAll(response.items);
@@ -160,7 +179,7 @@ class _ContentState<T> extends State<_Content<T>> {
     catch (e) {
       debugPrint('Error loading more feed: $e');
     }
-    _isLoadingMore = false;
+    _isLoadingMoreItems = false;
   }
 
   Future<void> _refresh() async {
@@ -174,16 +193,22 @@ class _ContentState<T> extends State<_Content<T>> {
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoading) return CenteredLargeCircularProgressIndicator(platform: widget.platform);
+    if (_isLoadingItems) return CenteredLargeCircularProgressIndicator(platform: widget.platform);
+    final headers = widget.headersBuilder?.call(context, _response) ?? [];
     return CustomRefreshIndicator(
       flutterRefreshIndicatorKey: _refreshIndicatorKey,
       platform: widget.platform,
       onRefresh: _get,
       child: _items.isEmpty
-        ? widget.noItemsBuilder(context)
+        ? Column(
+            children: [
+              ...headers,
+              Expanded(child: Center(child: widget.noItemsBuilder(context)))
+            ],
+        )
         : NotificationListener<ScrollNotification>(
             onNotification: (ScrollNotification scrollInfo) {
-              if (!_isLoadingMore && _pageToken != null && scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+              if (!_isLoadingMoreItems && _pageToken != null && scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
                 _getMore();
               }
               return false;
@@ -191,9 +216,13 @@ class _ContentState<T> extends State<_Content<T>> {
             child: Scrollbar(
               child: ListView.builder(
                 padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
-                itemCount: _pageToken != null ? _items.length + 1 : _items.length,
+                itemCount: headers.length + (_pageToken != null ? _items.length + 1 : _items.length),
                 itemBuilder: (context, index) {
-                  if (index == _items.length) {
+                  if (index < headers.length) {
+                    return headers[index];
+                  }
+                  final itemIndex = index - headers.length;
+                  if (_pageToken != null && itemIndex == _items.length) {
                     return Padding(
                       padding: EdgeInsets.all(16),
                       child: Center(
@@ -208,7 +237,7 @@ class _ContentState<T> extends State<_Content<T>> {
                       ),
                     );
                   }
-                  return widget.itemBuilder(context, _items[index]);
+                  return widget.itemBuilder(context, _items[itemIndex]);
                 }
               )
             ),

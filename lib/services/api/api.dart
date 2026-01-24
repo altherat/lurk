@@ -4,6 +4,7 @@ import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/paged_result.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
+import 'package:lurk/models/user_stat.dart';
 import 'package:lurk/services/api/digg.dart';
 import 'package:lurk/services/api/reddit.dart';
 import 'package:lurk/services/settings.dart';
@@ -26,6 +27,7 @@ abstract class Api {
   Future<PostDetails> getPostDetailsFromUrl(String url, {Map<FeedOptionType, FeedOption>? options});
   Future<PostDetails> getPostDetailsFromId(String id, {Map<FeedOptionType, FeedOption>? options});
   Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? level, Map<FeedOptionType, FeedOption>? options});
+  UserDetailsResponse getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options});
   Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
 
   @protected
@@ -35,5 +37,24 @@ abstract class Api {
       ...headers
     };
   }
+
+}
+
+abstract class FeedResponse<T> {
+
+  final Future<PagedResult<T>> items;
+
+  const FeedResponse({required this.items});
+
+}
+
+class UserDetailsResponse extends FeedResponse {
+
+  final Future<List<UserStat>> stats;
+
+  const UserDetailsResponse({
+    required this.stats,
+    required super.items
+  });
 
 }

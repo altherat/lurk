@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
-const _size = 160.0;
+const _iconSize = 160.0;
+const _fontSize = 24.0;
 
 class LargeMessage extends StatelessWidget {
 
@@ -19,9 +20,15 @@ class LargeMessage extends StatelessWidget {
     return Column(
       mainAxisSize: MainAxisSize.min,
       children: [
-        Icon(icon, size: _size, color: color),
+        Icon(icon, size: _iconSize, color: color),
         if (message != null)
-          Text(message!, style: TextStyle(color: color)),
+          Text(
+            message!,
+            style: TextStyle(
+              fontSize: _fontSize,
+              color: color
+            )
+          ),
       ],
     );
   }

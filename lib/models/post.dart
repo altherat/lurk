@@ -56,9 +56,9 @@ class Post {
     return '${formatted.replaceAll(RegExp(r'\.0$'), '')}K';
   }
 
-  String get timeAgo => utils.timeAgo(timestampMs);
+  String get timeAgo => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgo;
 
-  String get timeAgoCompact => utils.timeAgoCompact(timestampMs);
+  String get timeAgoCompact => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgoCompact;
 
   String get commentsLabel => commentCount == 1 ? '1 comment' : '${commentCount.toCommaString()} comments';
   

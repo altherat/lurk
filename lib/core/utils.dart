@@ -15,7 +15,7 @@ import 'package:url_launcher/url_launcher.dart';
 
 final _commaFormatter = NumberFormat.decimalPattern();
 
-extension IntExtension on int {
+extension NumExtension on num {
 
   String toCommaString() => _commaFormatter.format(this);
 
@@ -44,6 +44,41 @@ extension StringExtension on String {
     }
   }
   
+}
+
+extension DateTimeExtension on DateTime {
+
+  String get timeAgo {
+    final Duration diff = DateTime.now().difference(this);
+    final thresholds = {
+      'year': 31536000,
+      'month': 2592000,
+      'week': 604800,
+      'day': 86400,
+      'hour': 3600,
+      'minute': 60,
+      'second': 1,
+    };
+    for (var entry in thresholds.entries) {
+      final int count = diff.inSeconds ~/ entry.value;
+      if (count >= 1) {
+        return '$count ${entry.key}${count == 1 ? '' : 's'} ago';
+      }
+    }
+    return 'just now';
+  }
+
+  String get timeAgoCompact {
+    final Duration diff = DateTime.now().difference(this);
+    if (diff.inSeconds < 60) return '${diff.inSeconds}s';
+    if (diff.inMinutes < 60) return '${diff.inMinutes}m';
+    if (diff.inHours < 24)   return '${diff.inHours}h';
+    if (diff.inDays < 7)     return '${diff.inDays}d';
+    if (diff.inDays < 30)    return '${(diff.inDays / 7).floor()}w';
+    if (diff.inDays < 365)   return '${(diff.inDays / 30).floor()}mo';
+    return '${(diff.inDays / 365).floor()}y';
+  }
+
 }
 
 extension ColorExtension on Color {
@@ -84,37 +119,6 @@ class _PageRoute<T> extends MaterialPageRoute<T> {
   @override
   Duration get reverseTransitionDuration => Constants.pageTransitionDuration;
 
-}
-
-String timeAgo(int timestampMs) {
-  final Duration diff = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(timestampMs));
-  final thresholds = {
-    'year': 31536000,
-    'month': 2592000,
-    'week': 604800,
-    'day': 86400,
-    'hour': 3600,
-    'minute': 60,
-    'second': 1,
-  };
-  for (var entry in thresholds.entries) {
-    final int count = diff.inSeconds ~/ entry.value;
-    if (count >= 1) {
-      return '$count ${entry.key}${count == 1 ? '' : 's'} ago';
-    }
-  }
-  return 'just now';
-}
-
-String timeAgoCompact(int timestampMs) {
-  final Duration diff = DateTime.now().difference(DateTime.fromMillisecondsSinceEpoch(timestampMs));
-  if (diff.inSeconds < 60) return '${diff.inSeconds}s';
-  if (diff.inMinutes < 60) return '${diff.inMinutes}m';
-  if (diff.inHours < 24)   return '${diff.inHours}h';
-  if (diff.inDays < 7)     return '${diff.inDays}d';
-  if (diff.inDays < 30)    return '${(diff.inDays / 7).floor()}w';
-  if (diff.inDays < 365)   return '${(diff.inDays / 30).floor()}mo';
-  return '${(diff.inDays / 365).floor()}y';
 }
 
 Future<void> openInBrowser(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);

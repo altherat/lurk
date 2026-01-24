@@ -40,9 +40,9 @@ class Comment extends CommentItem {
     this.communityName,
   });
 
-  String get timeAgo => utils.timeAgo(timestampMs);
+  String get timeAgo => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgo;
 
-  String get timeAgoCompact => utils.timeAgoCompact(timestampMs);
+  String get timeAgoCompact => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgoCompact;
 
 }
 

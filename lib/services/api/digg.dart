@@ -1,11 +1,12 @@
 import 'package:flutter/foundation.dart';
 import 'package:graphql_flutter/graphql_flutter.dart' as gql;
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/enums.dart' hide UserStat;
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/paged_result.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
+import 'package:lurk/models/user_stat.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/settings.dart';
 
@@ -54,7 +55,7 @@ class DiggApi extends Api {
   Future<PagedResult<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     debugPrint('[Digg] getPosts: id=$id, options=[${options?.values.map((option) => option.apiValue).join(', ')}], pageToken=$pageToken');
     final sort = options?[FeedOptionType.sort];
-    final variables = {
+    return _getPostsRecursive({
       'first': resultsLimit,
       'where': {
         'isPersonalized': false,
@@ -66,8 +67,7 @@ class DiggApi extends Api {
       'sort': (sort ?? Platform.digg.postsFeedOptions.options.first).apiValue,
       if (pageToken != null)
         'after': pageToken
-    };
-    return _getPostsRecursive(variables);
+    });
   }
 
   @override
@@ -258,22 +258,186 @@ class DiggApi extends Api {
     );
 
     final response = await _client.query(queryOptions);
-    return compute((data) {
-      final List edges = data['comments']['edges'];
-      final Map<String, dynamic> pageInfo = data['comments']['pageInfo'];
-      final List<CommentItem> comments = _parseComments(edges, '', level ?? 0);
-      if (pageInfo['hasNextPage']) {
-        comments.add(
-          LoadMoreComment(
-            level: 0,
-            count: data['posts']['edges'][0]['node']['commentCount'] - comments.length,
-            pageToken: pageInfo['endCursor'],
-          ),
-        );
-      }
+    return compute(
+      (data) {
+        final List edges = data['comments']['edges'];
+        final Map<String, dynamic> pageInfo = data['comments']['pageInfo'];
+        final List<CommentItem> comments = _parseComments(edges, '', level ?? 0);
+        if (pageInfo['hasNextPage']) {
+          comments.add(
+            LoadMoreComment(
+              level: 0,
+              count: data['posts']['edges'][0]['node']['commentCount'] - comments.length,
+              pageToken: pageInfo['endCursor'],
+            ),
+          );
+        }
+        return comments;
+      },
+      response.data!
+    );
+  }
 
-      return comments;
-    }, response.data!);
+  @override
+  UserDetailsResponse getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
+    // debugPrint('[Digg] getUserDetails: id=$id, options=[${options?.values.map((option) => option.apiValue).join(', ')}]');
+    final DiggUserFeedType type = options?[FeedOptionType.type]?.apiValue ?? Platform.digg.userFeedOptions.options.first.apiValue;
+    final FeedOption? sort = options?[FeedOptionType.sort];
+    switch (type) {
+      case DiggUserFeedType.posts:
+        final gql.QueryOptions queryOptions = gql.QueryOptions(
+          document: gql.gql(r'''
+            query PostsQuery($first: Int, $username: String!, $where: PostWhere, $sort: PostSort) {
+
+              accounts(first: 1, where: { username_EQ: $username }) {
+                edges {
+                  node {
+                    _id
+                    createdDate
+                    score
+                    diggsGiven
+                    postCount
+                    commentCount
+                  }
+                }
+              }
+
+              posts(first: $first, where: $where, sort: $sort) {
+                edges {
+                  node {
+                    _id
+                    title
+                    score
+                    upvoteCount
+                    commentCount
+                    createdDate
+                    deletedDate
+                    slug
+                    type
+                    nsfw
+                    text
+                    author {
+                      username
+                    }
+                    community {
+                      name
+                    }
+                    externalContent {
+                      url,
+                      imageUrl
+                    }
+                    attachments {
+                      __typename
+                      ... on Image {
+                        url
+                      }
+                    }
+                  }
+                }
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                }
+              }
+
+            }
+          '''),
+          variables: {
+            'first': resultsLimit,
+            'username': id,
+            'where': {
+              'author': {
+                'username_EQ': id
+              },
+            },
+            if (sort != null)
+              'sort': sort.apiValue
+          }
+        );
+        
+        final responseFuture = _client.query(queryOptions);
+        return UserDetailsResponse(
+          stats: responseFuture.then((response) => _parseUserStats(response.data!['accounts']['edges'].first['node'])),
+          items: responseFuture.then((response) => _parsePostsResult(response.data!))
+        );
+      case DiggUserFeedType.comments:
+        final gql.QueryOptions queryOptions = gql.QueryOptions(
+          document: gql.gql(r'''
+            query UserDetailsQuery($first: Int, $username: String!, $where: CommentWhere!, $sort: CommentSort) {
+            
+              accounts(first: 1, where: { username_EQ: $username }) {
+                edges {
+                  node {
+                    _id
+                    createdDate
+                    score
+                    diggsGiven
+                    postCount
+                    commentCount
+                  }
+                }
+              }
+
+              comments(first: $first, where: $where, sort: $sort) {
+                edges {
+                  node {
+                    _id
+                    text
+                    score
+                    createdDate
+                    deletedDate
+                    commentCount
+                    post {
+                      title
+                      community {
+                        name
+                      }
+                    }
+                    pm
+                    attachments {
+                      __typename
+                      ... on Image {
+                        url
+                      }
+                      ... on GiphyGIF {
+                        id
+                      }
+                    }
+                  }
+                }
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                }
+              }
+            }
+          '''),
+          variables: {
+            'first': resultsLimit,
+            'username': id,
+            'where': {
+              'author': {
+                'username_EQ': id
+              }
+            },
+            if (sort != null)
+              'sort': sort.apiValue
+          },
+        );
+        
+        final responseFuture = _client.query(queryOptions);
+        return UserDetailsResponse(
+          stats: responseFuture.then((response) => _parseUserStats(response.data!['accounts']['edges'].first['node'])),
+          items: responseFuture.then((response) {
+            final comments = response.data!['comments'];
+            final pageInfo = comments['pageInfo'];
+            return PagedResult(
+              items: (comments['edges'] as List).map((edge) => _parseComment(edge['node'])).toList(),
+              pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
+            );
+          })
+        );
+    }
   }
 
   @override
@@ -283,80 +447,122 @@ class DiggApi extends Api {
     final FeedOption? sort = options?[FeedOptionType.sort];
     switch (type) {
       case DiggUserFeedType.posts:
-        return _getPosts({
-          'first': resultsLimit,
-          'where': {
-            'author': {
-              'username_EQ': id
-            },
-          },
-          if (sort != null)
-            'sort': sort.apiValue,
-          if (pageToken != null)
-            'after': pageToken
-        });
-        case DiggUserFeedType.comments:
-          final gql.QueryOptions queryOptions = gql.QueryOptions(
-            document: gql.gql(r'''
-              query CommentsQuery($first: Int, $after: String, $sort: CommentSort, $where: CommentWhere!) {
-              
-                comments(first: $first, where: $where, sort: $sort, after: $after) {
-                  edges {
-                    node {
-                      _id
-                      text
-                      score
-                      createdDate
-                      deletedDate
-                      commentCount
-                      post {
-                        title
-                        community {
-                          name
-                        }
-                      }
-                      pm
-                      attachments {
-                        __typename
-                        ... on Image {
-                          url
-                        }
-                        ... on GiphyGIF {
-                          id
-                        }
+        final gql.QueryOptions queryOptions = gql.QueryOptions(
+          document: gql.gql(r'''
+            query PostsQuery($first: Int, $where: PostWhere, $sort: PostSort, $after: String) {
+
+              posts(first: $first, where: $where, sort: $sort, after: $after) {
+                edges {
+                  node {
+                    _id
+                    title
+                    score
+                    upvoteCount
+                    commentCount
+                    createdDate
+                    deletedDate
+                    slug
+                    type
+                    nsfw
+                    text
+                    author {
+                      username
+                    }
+                    community {
+                      name
+                    }
+                    externalContent {
+                      url,
+                      imageUrl
+                    }
+                    attachments {
+                      __typename
+                      ... on Image {
+                        url
                       }
                     }
                   }
-                  pageInfo {
-                    hasNextPage
-                    endCursor
-                  }
+                }
+                pageInfo {
+                  hasNextPage
+                  endCursor
                 }
               }
-            '''),
-            variables: {
-              'first': resultsLimit,
-              'where': {
-                'author': {
-                  'username_EQ': id
-                }
-              },
-              if (sort != null)
-                'sort': sort.apiValue,
-              if (pageToken != null)
-                'after': pageToken,
-            },
-          );
-          
-          final response = await _client.query(queryOptions);
-          final data = response.data!['comments'];
-          final List edges = data['edges'];
-          final pageInfo = data['pageInfo'];
 
-          return PagedResult(
-            items: edges.map((edge) => _parseComment(edge['node'])).toList(),
-            pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
-          );
+            }
+          '''),
+          variables: {
+            'first': resultsLimit,
+            'username': id,
+            'where': {
+              'author': {
+                'username_EQ': id
+              },
+            },
+            if (sort != null)
+              'sort': sort.apiValue,
+            if (pageToken != null)
+              'after': pageToken
+          }
+        );
+        
+        final response = await _client.query(queryOptions);
+        return compute(_parsePostsResult, response.data!);
+      case DiggUserFeedType.comments:
+        final gql.QueryOptions queryOptions = gql.QueryOptions(
+          document: gql.gql(r'''
+            query UserDetailsQuery($first: Int, $where: CommentWhere!, $sort: CommentSort, $after: String) {
+
+              comments(first: $first, where: $where, sort: $sort, after: $after) {
+                edges {
+                  node {
+                    _id
+                    text
+                    score
+                    createdDate
+                    deletedDate
+                    commentCount
+                    post {
+                      title
+                      community {
+                        name
+                      }
+                    }
+                    pm
+                    attachments {
+                      __typename
+                      ... on Image {
+                        url
+                      }
+                      ... on GiphyGIF {
+                        id
+                      }
+                    }
+                  }
+                }
+                pageInfo {
+                  hasNextPage
+                  endCursor
+                }
+              }
+            }
+          '''),
+          variables: {
+            'first': resultsLimit,
+            'where': {
+              'author': {
+                'username_EQ': id
+              }
+            },
+            if (sort != null)
+              'sort': sort.apiValue,
+            if (pageToken != null)
+              'after': pageToken
+          },
+        );
+        
+        final response = await _client.query(queryOptions);
+        return compute(_parseCommentsResult, response.data!);
     }
   }
 
@@ -431,63 +637,21 @@ class DiggApi extends Api {
 
   }
 
-  Future<PagedResult<Post>> _getPosts(Map<String, dynamic> variables) async {
-    final gql.QueryOptions queryOptions = gql.QueryOptions(
-      document: gql.gql(r'''
-        query PostsQuery($first: Int, $where: PostWhere, $sort: PostSort, $after: String) {
-
-          posts(first: $first, where: $where, sort: $sort, after: $after) {
-            edges {
-              node {
-                _id
-                title
-                score
-                upvoteCount
-                commentCount
-                createdDate
-                deletedDate
-                slug
-                type
-                nsfw
-                text
-                author {
-                  username
-                }
-                community {
-                  name
-                }
-                externalContent {
-                  url,
-                  imageUrl
-                }
-                attachments {
-                  __typename
-                  ... on Image {
-                    url
-                  }
-                }
-              }
-            }
-            pageInfo {
-              hasNextPage
-              endCursor
-            }
-          }
-
-        }
-      '''),
-      variables: variables
-    );
-    final response = await _client.query(queryOptions);
-    return compute(_parsePostsResult, response.data!);
-  }
-
   static PagedResult<Post> _parsePostsResult(Map<String, dynamic> data) {
     final postsData = data['posts'];
     final List edges = postsData['edges'];
     final pageInfo = postsData['pageInfo'];
     return PagedResult(
       items: edges.map((edge) => _parsePost(edge['node'])).toList(),
+      pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
+    );
+  }
+
+  static PagedResult<Comment> _parseCommentsResult(Map<String, dynamic> data) {
+    final comments = data['comments'];
+    final pageInfo = comments['pageInfo'];
+    return PagedResult(
+      items: (comments['edges'] as List).map((edge) => _parseComment(edge['node'])).toList(),
       pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
     );
   }
@@ -681,6 +845,31 @@ class DiggApi extends Api {
       }
     }
     return html.toString();
+  }
+
+  List<UserStat> _parseUserStats(Map<String, dynamic> data) {
+    return [
+      DateTimeUserStat(
+        label: 'Joined',
+        value: DateTime.parse(data['createdDate'])
+      ),
+      NumberUserStat(
+        label: 'Total score',
+        value: data['score']
+      ),
+      NumberUserStat(
+        label: 'Diggs given',
+        value: data['diggsGiven']
+      ),
+      NumberUserStat(
+        label: 'Post count',
+        value: data['postCount'],
+      ),
+      NumberUserStat(
+        label: 'Comment count',
+        value: data['commentCount']
+      )
+    ];
   }
   
 }

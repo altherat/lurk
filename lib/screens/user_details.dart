@@ -6,10 +6,11 @@ import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/post.dart';
+import 'package:lurk/models/user_stat.dart';
 import 'package:lurk/screens/feed_screen.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/history.dart';
-import 'package:lurk/widgets/centered_scroll_view.dart';
+import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/history_builder.dart';
 import 'package:lurk/widgets/html.dart';
 import 'package:lurk/widgets/large_message.dart';
@@ -31,6 +32,8 @@ class UserDetailsScreen extends StatelessWidget {
     return FeedScreen(
       platform: platform,
       feedOptions: platform.userFeedOptions,
+      getAll: (options) => Api.of(platform).getUserDetails(username, options: options),
+      getItems: (options, pageToken) => Api.of(platform).getUserItems(username, options: options, pageToken: pageToken),
       title: Builder(
         builder: (context) {
           final parentColor = DefaultTextStyle.of(context).style.color;
@@ -49,7 +52,48 @@ class UserDetailsScreen extends StatelessWidget {
           );
         }
       ),
-      get: (options, pageToken) => Api.of(platform).getUserItems(username, options: options, pageToken: pageToken),
+      headersBuilder: (context, response) {
+        if (response == null) return const [SizedBox.shrink()];
+        return [
+          FutureBuilder(
+            future: response.stats,
+            builder: (BuildContext context, AsyncSnapshot<List<UserStat>> snapshot) { 
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return CenteredLargeCircularProgressIndicator(platform: platform);
+              }
+              return SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                child: Row(
+                  children: snapshot.data!.map((stat) {
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            stat.displayValue,
+                            style: const TextStyle(
+                              fontSize: 16,
+                            ),
+                          ),
+                          Text(
+                            stat.label,
+                            style: TextStyle(
+                              fontSize: 12,
+                              color: Constants.secondaryTextColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                ),
+              );
+            },
+          )
+        ];
+      },
       itemBuilder: (context, item) { 
         if (item is Post) {
           return PostTile(
@@ -85,21 +129,11 @@ class UserDetailsScreen extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text.rich(
-                  TextSpan(
-                    children: [
-                      TextSpan(
-                        text: item.postTitle,
-                      ),
-                      TextSpan(
-                        text: ' ${platform.communityPrefix}${item.communityName}',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: Constants.secondaryTextColor,
-                        )
-                      ),
-                    ],
-                  ),
+                Text(
+                  item.postTitle!,
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(color: Constants.secondaryTextColor),
                 ),
                 Text.rich(
                   TextSpan(
@@ -115,7 +149,7 @@ class UserDetailsScreen extends StatelessWidget {
                           color: Constants.commentAuthorColor
                         ),
                       ),
-                      TextSpan(text: ' • ${item.score?.toPluralString('point') ?? '[~]'} • ${item.timeAgoCompact}'),
+                      TextSpan(text: ' • ${item.score?.toPluralString('point') ?? '[~]'} • ${item.timeAgoCompact} • ${platform.communityPrefix}${item.communityName}'),
                     ],
                   ),
                 ),
@@ -130,12 +164,10 @@ class UserDetailsScreen extends StatelessWidget {
         }
         return const SizedBox.shrink();
       },
-      noItemsBuilder: (context) { 
-        return const CenteredScrollView(
-          child: LargeMessage(
-            icon: Icons.feed_outlined,
-            message: 'Nothing to show'
-          )
+      noItemsBuilder: (context) {
+        return const LargeMessage(
+          icon: Icons.feed_outlined,
+          message: 'Nothing to show'
         );
       },
     );
