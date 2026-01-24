@@ -187,17 +187,19 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
           ],
         );
       }
-      else if (_visibleComments == null) {
-        body = SingleChildScrollView(
-          child: Column(
-            children: [
-              ...headers,
-              const Padding(
-                padding: EdgeInsets.all(16),
-                child: Text('No comments'),
+      else if (_visibleComments == null || _visibleComments!.isEmpty) {
+        body = Column(
+          children: [
+            ...headers,
+            Expanded(
+              child: Center(
+                child: LargeMessage(
+                  icon: Icons.feed_outlined,
+                  message: 'No comments'
+                ),
               )
-            ]
-          )
+            )
+          ],
         );
       }
       else {

@@ -14,14 +14,14 @@ import 'package:lurk/services/settings.dart';
 
 class RedditApi extends Api {
 
-  static const baseUrl = 'https://reddit.com';
-  static const baseUrlOld = 'https://old.reddit.com';
-  static const headers = {
+  static const _baseUrl = 'https://reddit.com';
+  static const _baseUrlOld = 'https://old.reddit.com';
+  static const _headers = {
     'Accept': 'application/json'
   };
     
   @override
-  String getPostDetailsUrl(Post post) => '${Settings.copyOldRedditLinks.value ? baseUrlOld : baseUrl}${post.urlPath}';
+  String getPostDetailsUrl(Post post) => '${Settings.redditCopyOldRedditLinks.value ? _baseUrlOld : _baseUrl}${post.urlPath}';
 
   @override
   String getCommentUrl(Post post, Comment comment) => '${getPostDetailsUrl(post)}${comment.id}';
@@ -32,7 +32,7 @@ class RedditApi extends Api {
     final sort = options?[FeedOptionType.sort];
     final timeRange = options?[FeedOptionType.time];
     final subreddit = id ?? Platform.reddit.communityHome;
-    String url = '$baseUrl/r/$subreddit/';
+    String url = '$_baseUrl/r/$subreddit/';
     if (sort != null) {
       url += '${sort.apiValue}/';
     }
@@ -54,7 +54,7 @@ class RedditApi extends Api {
 
   @override
   Future<PostDetails> getPostDetailsFromUrl(String url, {Map<FeedOptionType, FeedOption>? options}) async {
-    // debugPrint('[Reddit] getPostDetailsFromUrl: url=$url, sort=$sort');
+    // debugPrint('[Reddit] getPostDetailsFromUrl: url=$url, options=[${options?.values.map((option) => option.apiValue).join(', ')}]');
     final sort = options?[FeedOptionType.sort];
     var uri = Uri.parse(url);
     if (uri.queryParameters['sort'] == null && sort != null) {
@@ -72,12 +72,13 @@ class RedditApi extends Api {
   }
 
   @override
-  Future<PostDetails> getPostDetailsFromId(String id, {Map<FeedOptionType, FeedOption>? options}) => getPostDetailsFromUrl('$baseUrl/comments/$id', options: options);
+  Future<PostDetails> getPostDetailsFromId(String id, {Map<FeedOptionType, FeedOption>? options}) => getPostDetailsFromUrl('$_baseUrl/comments/$id', options: options);
 
   @override
   Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? level, Map<FeedOptionType, FeedOption>? options}) async {
+    // debugPrint('[Reddit] getPostDetailsFromUrl: id=$id, pageToken=$pageToken, options=[${options?.values.map((option) => option.apiValue).join(', ')}]');
     final sort = options?[FeedOptionType.sort];
-    final uri = Uri.parse('$baseUrlOld/api/morechildren');
+    final uri = Uri.parse('$_baseUrlOld/api/morechildren');
     final body = {
       'api_type': 'json',
       'link_id': 't3_$id',
@@ -117,10 +118,11 @@ class RedditApi extends Api {
 
   @override
   Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+    // debugPrint('[Reddit] getUserItems: id=$id, options=[${options?.values.map((option) => option.apiValue).join(', ')}], pageToken=$pageToken');
     final FeedOption? type = options?[FeedOptionType.type];
     final FeedOption? sort = options?[FeedOptionType.sort];
     final FeedOption? timeRange = options?[FeedOptionType.time];
-    String url = '$baseUrl/u/$id/';
+    String url = '$_baseUrl/u/$id/';
     if (type?.apiValue != null) {
       url += type!.apiValue;
     }
@@ -148,7 +150,7 @@ class RedditApi extends Api {
     return _handleResponse(
       get(
         uri,
-        headers: getHeaders(headers)
+        headers: getHeaders(_headers)
       )
     );
   }
@@ -157,7 +159,7 @@ class RedditApi extends Api {
     return _handleResponse(
       post(
         uri,
-        headers: getHeaders(headers),
+        headers: getHeaders(_headers),
         body: body
       )
     );

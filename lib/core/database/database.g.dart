@@ -132,41 +132,54 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
           Constants.defaultShowPlatformColorTextAccents,
         ),
       );
-  static const VerificationMeta _clientIdMeta = const VerificationMeta(
-    'clientId',
+  static const VerificationMeta _redditClientIdMeta = const VerificationMeta(
+    'redditClientId',
   );
   @override
-  late final GeneratedColumn<String> clientId = GeneratedColumn<String>(
-    'client_id',
+  late final GeneratedColumn<String> redditClientId = GeneratedColumn<String>(
+    'reddit_client_id',
     aliasedName,
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _redirectUriMeta = const VerificationMeta(
-    'redirectUri',
+  static const VerificationMeta _redditRedirectUriMeta = const VerificationMeta(
+    'redditRedirectUri',
   );
   @override
-  late final GeneratedColumn<String> redirectUri = GeneratedColumn<String>(
-    'redirect_uri',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _copyOldRedditLinksMeta =
-      const VerificationMeta('copyOldRedditLinks');
+  late final GeneratedColumn<String> redditRedirectUri =
+      GeneratedColumn<String>(
+        'reddit_redirect_uri',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _redditCopyOldRedditLinksMeta =
+      const VerificationMeta('redditCopyOldRedditLinks');
   @override
-  late final GeneratedColumn<bool> copyOldRedditLinks = GeneratedColumn<bool>(
-    'copy_old_reddit_links',
+  late final GeneratedColumn<bool> redditCopyOldRedditLinks =
+      GeneratedColumn<bool>(
+        'reddit_copy_old_reddit_links',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("reddit_copy_old_reddit_links" IN (0, 1))',
+        ),
+        defaultValue: const Constant(Constants.defaultRedditCopyOldRedditLinks),
+      );
+  static const VerificationMeta _diggPostsFetchDepthMeta =
+      const VerificationMeta('diggPostsFetchDepth');
+  @override
+  late final GeneratedColumn<int> diggPostsFetchDepth = GeneratedColumn<int>(
+    'digg_posts_fetch_depth',
     aliasedName,
     false,
-    type: DriftSqlType.bool,
+    type: DriftSqlType.int,
     requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("copy_old_reddit_links" IN (0, 1))',
-    ),
-    defaultValue: const Constant(Constants.defaultCopyOldRedditLinks),
+    defaultValue: const Constant(Constants.diggPostsFetchDepth),
   );
   static const VerificationMeta _userAgentMeta = const VerificationMeta(
     'userAgent',
@@ -190,9 +203,10 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     useBottomBar,
     showMorePlatformColorAccents,
     showPlatformColorTextAccents,
-    clientId,
-    redirectUri,
-    copyOldRedditLinks,
+    redditClientId,
+    redditRedirectUri,
+    redditCopyOldRedditLinks,
+    diggPostsFetchDepth,
     userAgent,
   ];
   @override
@@ -273,27 +287,39 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         ),
       );
     }
-    if (data.containsKey('client_id')) {
+    if (data.containsKey('reddit_client_id')) {
       context.handle(
-        _clientIdMeta,
-        clientId.isAcceptableOrUnknown(data['client_id']!, _clientIdMeta),
-      );
-    }
-    if (data.containsKey('redirect_uri')) {
-      context.handle(
-        _redirectUriMeta,
-        redirectUri.isAcceptableOrUnknown(
-          data['redirect_uri']!,
-          _redirectUriMeta,
+        _redditClientIdMeta,
+        redditClientId.isAcceptableOrUnknown(
+          data['reddit_client_id']!,
+          _redditClientIdMeta,
         ),
       );
     }
-    if (data.containsKey('copy_old_reddit_links')) {
+    if (data.containsKey('reddit_redirect_uri')) {
       context.handle(
-        _copyOldRedditLinksMeta,
-        copyOldRedditLinks.isAcceptableOrUnknown(
-          data['copy_old_reddit_links']!,
-          _copyOldRedditLinksMeta,
+        _redditRedirectUriMeta,
+        redditRedirectUri.isAcceptableOrUnknown(
+          data['reddit_redirect_uri']!,
+          _redditRedirectUriMeta,
+        ),
+      );
+    }
+    if (data.containsKey('reddit_copy_old_reddit_links')) {
+      context.handle(
+        _redditCopyOldRedditLinksMeta,
+        redditCopyOldRedditLinks.isAcceptableOrUnknown(
+          data['reddit_copy_old_reddit_links']!,
+          _redditCopyOldRedditLinksMeta,
+        ),
+      );
+    }
+    if (data.containsKey('digg_posts_fetch_depth')) {
+      context.handle(
+        _diggPostsFetchDepthMeta,
+        diggPostsFetchDepth.isAcceptableOrUnknown(
+          data['digg_posts_fetch_depth']!,
+          _diggPostsFetchDepthMeta,
         ),
       );
     }
@@ -351,17 +377,21 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.bool,
         data['${effectivePrefix}show_platform_color_text_accents'],
       )!,
-      clientId: attachedDatabase.typeMapping.read(
+      redditClientId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}client_id'],
+        data['${effectivePrefix}reddit_client_id'],
       ),
-      redirectUri: attachedDatabase.typeMapping.read(
+      redditRedirectUri: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}redirect_uri'],
+        data['${effectivePrefix}reddit_redirect_uri'],
       ),
-      copyOldRedditLinks: attachedDatabase.typeMapping.read(
+      redditCopyOldRedditLinks: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
-        data['${effectivePrefix}copy_old_reddit_links'],
+        data['${effectivePrefix}reddit_copy_old_reddit_links'],
+      )!,
+      diggPostsFetchDepth: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}digg_posts_fetch_depth'],
       )!,
       userAgent: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -395,9 +425,10 @@ class Setting extends DataClass implements Insertable<Setting> {
   final bool useBottomBar;
   final bool showMorePlatformColorAccents;
   final bool showPlatformColorTextAccents;
-  final String? clientId;
-  final String? redirectUri;
-  final bool copyOldRedditLinks;
+  final String? redditClientId;
+  final String? redditRedirectUri;
+  final bool redditCopyOldRedditLinks;
+  final int diggPostsFetchDepth;
   final String? userAgent;
   const Setting({
     required this.id,
@@ -409,9 +440,10 @@ class Setting extends DataClass implements Insertable<Setting> {
     required this.useBottomBar,
     required this.showMorePlatformColorAccents,
     required this.showPlatformColorTextAccents,
-    this.clientId,
-    this.redirectUri,
-    required this.copyOldRedditLinks,
+    this.redditClientId,
+    this.redditRedirectUri,
+    required this.redditCopyOldRedditLinks,
+    required this.diggPostsFetchDepth,
     this.userAgent,
   });
   @override
@@ -440,13 +472,16 @@ class Setting extends DataClass implements Insertable<Setting> {
     map['show_platform_color_text_accents'] = Variable<bool>(
       showPlatformColorTextAccents,
     );
-    if (!nullToAbsent || clientId != null) {
-      map['client_id'] = Variable<String>(clientId);
+    if (!nullToAbsent || redditClientId != null) {
+      map['reddit_client_id'] = Variable<String>(redditClientId);
     }
-    if (!nullToAbsent || redirectUri != null) {
-      map['redirect_uri'] = Variable<String>(redirectUri);
+    if (!nullToAbsent || redditRedirectUri != null) {
+      map['reddit_redirect_uri'] = Variable<String>(redditRedirectUri);
     }
-    map['copy_old_reddit_links'] = Variable<bool>(copyOldRedditLinks);
+    map['reddit_copy_old_reddit_links'] = Variable<bool>(
+      redditCopyOldRedditLinks,
+    );
+    map['digg_posts_fetch_depth'] = Variable<int>(diggPostsFetchDepth);
     if (!nullToAbsent || userAgent != null) {
       map['user_agent'] = Variable<String>(userAgent);
     }
@@ -470,13 +505,14 @@ class Setting extends DataClass implements Insertable<Setting> {
       useBottomBar: Value(useBottomBar),
       showMorePlatformColorAccents: Value(showMorePlatformColorAccents),
       showPlatformColorTextAccents: Value(showPlatformColorTextAccents),
-      clientId: clientId == null && nullToAbsent
+      redditClientId: redditClientId == null && nullToAbsent
           ? const Value.absent()
-          : Value(clientId),
-      redirectUri: redirectUri == null && nullToAbsent
+          : Value(redditClientId),
+      redditRedirectUri: redditRedirectUri == null && nullToAbsent
           ? const Value.absent()
-          : Value(redirectUri),
-      copyOldRedditLinks: Value(copyOldRedditLinks),
+          : Value(redditRedirectUri),
+      redditCopyOldRedditLinks: Value(redditCopyOldRedditLinks),
+      diggPostsFetchDepth: Value(diggPostsFetchDepth),
       userAgent: userAgent == null && nullToAbsent
           ? const Value.absent()
           : Value(userAgent),
@@ -507,9 +543,16 @@ class Setting extends DataClass implements Insertable<Setting> {
       showPlatformColorTextAccents: serializer.fromJson<bool>(
         json['showPlatformColorTextAccents'],
       ),
-      clientId: serializer.fromJson<String?>(json['clientId']),
-      redirectUri: serializer.fromJson<String?>(json['redirectUri']),
-      copyOldRedditLinks: serializer.fromJson<bool>(json['copyOldRedditLinks']),
+      redditClientId: serializer.fromJson<String?>(json['redditClientId']),
+      redditRedirectUri: serializer.fromJson<String?>(
+        json['redditRedirectUri'],
+      ),
+      redditCopyOldRedditLinks: serializer.fromJson<bool>(
+        json['redditCopyOldRedditLinks'],
+      ),
+      diggPostsFetchDepth: serializer.fromJson<int>(
+        json['diggPostsFetchDepth'],
+      ),
       userAgent: serializer.fromJson<String?>(json['userAgent']),
     );
   }
@@ -534,9 +577,12 @@ class Setting extends DataClass implements Insertable<Setting> {
       'showPlatformColorTextAccents': serializer.toJson<bool>(
         showPlatformColorTextAccents,
       ),
-      'clientId': serializer.toJson<String?>(clientId),
-      'redirectUri': serializer.toJson<String?>(redirectUri),
-      'copyOldRedditLinks': serializer.toJson<bool>(copyOldRedditLinks),
+      'redditClientId': serializer.toJson<String?>(redditClientId),
+      'redditRedirectUri': serializer.toJson<String?>(redditRedirectUri),
+      'redditCopyOldRedditLinks': serializer.toJson<bool>(
+        redditCopyOldRedditLinks,
+      ),
+      'diggPostsFetchDepth': serializer.toJson<int>(diggPostsFetchDepth),
       'userAgent': serializer.toJson<String?>(userAgent),
     };
   }
@@ -551,9 +597,10 @@ class Setting extends DataClass implements Insertable<Setting> {
     bool? useBottomBar,
     bool? showMorePlatformColorAccents,
     bool? showPlatformColorTextAccents,
-    Value<String?> clientId = const Value.absent(),
-    Value<String?> redirectUri = const Value.absent(),
-    bool? copyOldRedditLinks,
+    Value<String?> redditClientId = const Value.absent(),
+    Value<String?> redditRedirectUri = const Value.absent(),
+    bool? redditCopyOldRedditLinks,
+    int? diggPostsFetchDepth,
     Value<String?> userAgent = const Value.absent(),
   }) => Setting(
     id: id ?? this.id,
@@ -571,9 +618,15 @@ class Setting extends DataClass implements Insertable<Setting> {
         showMorePlatformColorAccents ?? this.showMorePlatformColorAccents,
     showPlatformColorTextAccents:
         showPlatformColorTextAccents ?? this.showPlatformColorTextAccents,
-    clientId: clientId.present ? clientId.value : this.clientId,
-    redirectUri: redirectUri.present ? redirectUri.value : this.redirectUri,
-    copyOldRedditLinks: copyOldRedditLinks ?? this.copyOldRedditLinks,
+    redditClientId: redditClientId.present
+        ? redditClientId.value
+        : this.redditClientId,
+    redditRedirectUri: redditRedirectUri.present
+        ? redditRedirectUri.value
+        : this.redditRedirectUri,
+    redditCopyOldRedditLinks:
+        redditCopyOldRedditLinks ?? this.redditCopyOldRedditLinks,
+    diggPostsFetchDepth: diggPostsFetchDepth ?? this.diggPostsFetchDepth,
     userAgent: userAgent.present ? userAgent.value : this.userAgent,
   );
   Setting copyWithCompanion(SettingsCompanion data) {
@@ -603,13 +656,18 @@ class Setting extends DataClass implements Insertable<Setting> {
       showPlatformColorTextAccents: data.showPlatformColorTextAccents.present
           ? data.showPlatformColorTextAccents.value
           : this.showPlatformColorTextAccents,
-      clientId: data.clientId.present ? data.clientId.value : this.clientId,
-      redirectUri: data.redirectUri.present
-          ? data.redirectUri.value
-          : this.redirectUri,
-      copyOldRedditLinks: data.copyOldRedditLinks.present
-          ? data.copyOldRedditLinks.value
-          : this.copyOldRedditLinks,
+      redditClientId: data.redditClientId.present
+          ? data.redditClientId.value
+          : this.redditClientId,
+      redditRedirectUri: data.redditRedirectUri.present
+          ? data.redditRedirectUri.value
+          : this.redditRedirectUri,
+      redditCopyOldRedditLinks: data.redditCopyOldRedditLinks.present
+          ? data.redditCopyOldRedditLinks.value
+          : this.redditCopyOldRedditLinks,
+      diggPostsFetchDepth: data.diggPostsFetchDepth.present
+          ? data.diggPostsFetchDepth.value
+          : this.diggPostsFetchDepth,
       userAgent: data.userAgent.present ? data.userAgent.value : this.userAgent,
     );
   }
@@ -630,9 +688,10 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write(
             'showPlatformColorTextAccents: $showPlatformColorTextAccents, ',
           )
-          ..write('clientId: $clientId, ')
-          ..write('redirectUri: $redirectUri, ')
-          ..write('copyOldRedditLinks: $copyOldRedditLinks, ')
+          ..write('redditClientId: $redditClientId, ')
+          ..write('redditRedirectUri: $redditRedirectUri, ')
+          ..write('redditCopyOldRedditLinks: $redditCopyOldRedditLinks, ')
+          ..write('diggPostsFetchDepth: $diggPostsFetchDepth, ')
           ..write('userAgent: $userAgent')
           ..write(')'))
         .toString();
@@ -649,9 +708,10 @@ class Setting extends DataClass implements Insertable<Setting> {
     useBottomBar,
     showMorePlatformColorAccents,
     showPlatformColorTextAccents,
-    clientId,
-    redirectUri,
-    copyOldRedditLinks,
+    redditClientId,
+    redditRedirectUri,
+    redditCopyOldRedditLinks,
+    diggPostsFetchDepth,
     userAgent,
   );
   @override
@@ -669,9 +729,10 @@ class Setting extends DataClass implements Insertable<Setting> {
               this.showMorePlatformColorAccents &&
           other.showPlatformColorTextAccents ==
               this.showPlatformColorTextAccents &&
-          other.clientId == this.clientId &&
-          other.redirectUri == this.redirectUri &&
-          other.copyOldRedditLinks == this.copyOldRedditLinks &&
+          other.redditClientId == this.redditClientId &&
+          other.redditRedirectUri == this.redditRedirectUri &&
+          other.redditCopyOldRedditLinks == this.redditCopyOldRedditLinks &&
+          other.diggPostsFetchDepth == this.diggPostsFetchDepth &&
           other.userAgent == this.userAgent);
 }
 
@@ -685,9 +746,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<bool> useBottomBar;
   final Value<bool> showMorePlatformColorAccents;
   final Value<bool> showPlatformColorTextAccents;
-  final Value<String?> clientId;
-  final Value<String?> redirectUri;
-  final Value<bool> copyOldRedditLinks;
+  final Value<String?> redditClientId;
+  final Value<String?> redditRedirectUri;
+  final Value<bool> redditCopyOldRedditLinks;
+  final Value<int> diggPostsFetchDepth;
   final Value<String?> userAgent;
   const SettingsCompanion({
     this.id = const Value.absent(),
@@ -699,9 +761,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.useBottomBar = const Value.absent(),
     this.showMorePlatformColorAccents = const Value.absent(),
     this.showPlatformColorTextAccents = const Value.absent(),
-    this.clientId = const Value.absent(),
-    this.redirectUri = const Value.absent(),
-    this.copyOldRedditLinks = const Value.absent(),
+    this.redditClientId = const Value.absent(),
+    this.redditRedirectUri = const Value.absent(),
+    this.redditCopyOldRedditLinks = const Value.absent(),
+    this.diggPostsFetchDepth = const Value.absent(),
     this.userAgent = const Value.absent(),
   });
   SettingsCompanion.insert({
@@ -714,9 +777,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.useBottomBar = const Value.absent(),
     this.showMorePlatformColorAccents = const Value.absent(),
     this.showPlatformColorTextAccents = const Value.absent(),
-    this.clientId = const Value.absent(),
-    this.redirectUri = const Value.absent(),
-    this.copyOldRedditLinks = const Value.absent(),
+    this.redditClientId = const Value.absent(),
+    this.redditRedirectUri = const Value.absent(),
+    this.redditCopyOldRedditLinks = const Value.absent(),
+    this.diggPostsFetchDepth = const Value.absent(),
     this.userAgent = const Value.absent(),
   });
   static Insertable<Setting> custom({
@@ -729,9 +793,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<bool>? useBottomBar,
     Expression<bool>? showMorePlatformColorAccents,
     Expression<bool>? showPlatformColorTextAccents,
-    Expression<String>? clientId,
-    Expression<String>? redirectUri,
-    Expression<bool>? copyOldRedditLinks,
+    Expression<String>? redditClientId,
+    Expression<String>? redditRedirectUri,
+    Expression<bool>? redditCopyOldRedditLinks,
+    Expression<int>? diggPostsFetchDepth,
     Expression<String>? userAgent,
   }) {
     return RawValuesInsertable({
@@ -747,10 +812,12 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
         'show_more_platform_color_accents': showMorePlatformColorAccents,
       if (showPlatformColorTextAccents != null)
         'show_platform_color_text_accents': showPlatformColorTextAccents,
-      if (clientId != null) 'client_id': clientId,
-      if (redirectUri != null) 'redirect_uri': redirectUri,
-      if (copyOldRedditLinks != null)
-        'copy_old_reddit_links': copyOldRedditLinks,
+      if (redditClientId != null) 'reddit_client_id': redditClientId,
+      if (redditRedirectUri != null) 'reddit_redirect_uri': redditRedirectUri,
+      if (redditCopyOldRedditLinks != null)
+        'reddit_copy_old_reddit_links': redditCopyOldRedditLinks,
+      if (diggPostsFetchDepth != null)
+        'digg_posts_fetch_depth': diggPostsFetchDepth,
       if (userAgent != null) 'user_agent': userAgent,
     });
   }
@@ -765,9 +832,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<bool>? useBottomBar,
     Value<bool>? showMorePlatformColorAccents,
     Value<bool>? showPlatformColorTextAccents,
-    Value<String?>? clientId,
-    Value<String?>? redirectUri,
-    Value<bool>? copyOldRedditLinks,
+    Value<String?>? redditClientId,
+    Value<String?>? redditRedirectUri,
+    Value<bool>? redditCopyOldRedditLinks,
+    Value<int>? diggPostsFetchDepth,
     Value<String?>? userAgent,
   }) {
     return SettingsCompanion(
@@ -783,9 +851,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           showMorePlatformColorAccents ?? this.showMorePlatformColorAccents,
       showPlatformColorTextAccents:
           showPlatformColorTextAccents ?? this.showPlatformColorTextAccents,
-      clientId: clientId ?? this.clientId,
-      redirectUri: redirectUri ?? this.redirectUri,
-      copyOldRedditLinks: copyOldRedditLinks ?? this.copyOldRedditLinks,
+      redditClientId: redditClientId ?? this.redditClientId,
+      redditRedirectUri: redditRedirectUri ?? this.redditRedirectUri,
+      redditCopyOldRedditLinks:
+          redditCopyOldRedditLinks ?? this.redditCopyOldRedditLinks,
+      diggPostsFetchDepth: diggPostsFetchDepth ?? this.diggPostsFetchDepth,
       userAgent: userAgent ?? this.userAgent,
     );
   }
@@ -828,14 +898,19 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
         showPlatformColorTextAccents.value,
       );
     }
-    if (clientId.present) {
-      map['client_id'] = Variable<String>(clientId.value);
+    if (redditClientId.present) {
+      map['reddit_client_id'] = Variable<String>(redditClientId.value);
     }
-    if (redirectUri.present) {
-      map['redirect_uri'] = Variable<String>(redirectUri.value);
+    if (redditRedirectUri.present) {
+      map['reddit_redirect_uri'] = Variable<String>(redditRedirectUri.value);
     }
-    if (copyOldRedditLinks.present) {
-      map['copy_old_reddit_links'] = Variable<bool>(copyOldRedditLinks.value);
+    if (redditCopyOldRedditLinks.present) {
+      map['reddit_copy_old_reddit_links'] = Variable<bool>(
+        redditCopyOldRedditLinks.value,
+      );
+    }
+    if (diggPostsFetchDepth.present) {
+      map['digg_posts_fetch_depth'] = Variable<int>(diggPostsFetchDepth.value);
     }
     if (userAgent.present) {
       map['user_agent'] = Variable<String>(userAgent.value);
@@ -859,9 +934,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write(
             'showPlatformColorTextAccents: $showPlatformColorTextAccents, ',
           )
-          ..write('clientId: $clientId, ')
-          ..write('redirectUri: $redirectUri, ')
-          ..write('copyOldRedditLinks: $copyOldRedditLinks, ')
+          ..write('redditClientId: $redditClientId, ')
+          ..write('redditRedirectUri: $redditRedirectUri, ')
+          ..write('redditCopyOldRedditLinks: $redditCopyOldRedditLinks, ')
+          ..write('diggPostsFetchDepth: $diggPostsFetchDepth, ')
           ..write('userAgent: $userAgent')
           ..write(')'))
         .toString();
@@ -1284,9 +1360,10 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<bool> useBottomBar,
       Value<bool> showMorePlatformColorAccents,
       Value<bool> showPlatformColorTextAccents,
-      Value<String?> clientId,
-      Value<String?> redirectUri,
-      Value<bool> copyOldRedditLinks,
+      Value<String?> redditClientId,
+      Value<String?> redditRedirectUri,
+      Value<bool> redditCopyOldRedditLinks,
+      Value<int> diggPostsFetchDepth,
       Value<String?> userAgent,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
@@ -1300,9 +1377,10 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<bool> useBottomBar,
       Value<bool> showMorePlatformColorAccents,
       Value<bool> showPlatformColorTextAccents,
-      Value<String?> clientId,
-      Value<String?> redirectUri,
-      Value<bool> copyOldRedditLinks,
+      Value<String?> redditClientId,
+      Value<String?> redditRedirectUri,
+      Value<bool> redditCopyOldRedditLinks,
+      Value<int> diggPostsFetchDepth,
       Value<String?> userAgent,
     });
 
@@ -1361,18 +1439,23 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get clientId => $composableBuilder(
-    column: $table.clientId,
+  ColumnFilters<String> get redditClientId => $composableBuilder(
+    column: $table.redditClientId,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get redirectUri => $composableBuilder(
-    column: $table.redirectUri,
+  ColumnFilters<String> get redditRedirectUri => $composableBuilder(
+    column: $table.redditRedirectUri,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get copyOldRedditLinks => $composableBuilder(
-    column: $table.copyOldRedditLinks,
+  ColumnFilters<bool> get redditCopyOldRedditLinks => $composableBuilder(
+    column: $table.redditCopyOldRedditLinks,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get diggPostsFetchDepth => $composableBuilder(
+    column: $table.diggPostsFetchDepth,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1436,18 +1519,23 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get clientId => $composableBuilder(
-    column: $table.clientId,
+  ColumnOrderings<String> get redditClientId => $composableBuilder(
+    column: $table.redditClientId,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get redirectUri => $composableBuilder(
-    column: $table.redirectUri,
+  ColumnOrderings<String> get redditRedirectUri => $composableBuilder(
+    column: $table.redditRedirectUri,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get copyOldRedditLinks => $composableBuilder(
-    column: $table.copyOldRedditLinks,
+  ColumnOrderings<bool> get redditCopyOldRedditLinks => $composableBuilder(
+    column: $table.redditCopyOldRedditLinks,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get diggPostsFetchDepth => $composableBuilder(
+    column: $table.diggPostsFetchDepth,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -1510,16 +1598,23 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get clientId =>
-      $composableBuilder(column: $table.clientId, builder: (column) => column);
-
-  GeneratedColumn<String> get redirectUri => $composableBuilder(
-    column: $table.redirectUri,
+  GeneratedColumn<String> get redditClientId => $composableBuilder(
+    column: $table.redditClientId,
     builder: (column) => column,
   );
 
-  GeneratedColumn<bool> get copyOldRedditLinks => $composableBuilder(
-    column: $table.copyOldRedditLinks,
+  GeneratedColumn<String> get redditRedirectUri => $composableBuilder(
+    column: $table.redditRedirectUri,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get redditCopyOldRedditLinks => $composableBuilder(
+    column: $table.redditCopyOldRedditLinks,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get diggPostsFetchDepth => $composableBuilder(
+    column: $table.diggPostsFetchDepth,
     builder: (column) => column,
   );
 
@@ -1564,9 +1659,10 @@ class $$SettingsTableTableManager
                 Value<bool> useBottomBar = const Value.absent(),
                 Value<bool> showMorePlatformColorAccents = const Value.absent(),
                 Value<bool> showPlatformColorTextAccents = const Value.absent(),
-                Value<String?> clientId = const Value.absent(),
-                Value<String?> redirectUri = const Value.absent(),
-                Value<bool> copyOldRedditLinks = const Value.absent(),
+                Value<String?> redditClientId = const Value.absent(),
+                Value<String?> redditRedirectUri = const Value.absent(),
+                Value<bool> redditCopyOldRedditLinks = const Value.absent(),
+                Value<int> diggPostsFetchDepth = const Value.absent(),
                 Value<String?> userAgent = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
@@ -1578,9 +1674,10 @@ class $$SettingsTableTableManager
                 useBottomBar: useBottomBar,
                 showMorePlatformColorAccents: showMorePlatformColorAccents,
                 showPlatformColorTextAccents: showPlatformColorTextAccents,
-                clientId: clientId,
-                redirectUri: redirectUri,
-                copyOldRedditLinks: copyOldRedditLinks,
+                redditClientId: redditClientId,
+                redditRedirectUri: redditRedirectUri,
+                redditCopyOldRedditLinks: redditCopyOldRedditLinks,
+                diggPostsFetchDepth: diggPostsFetchDepth,
                 userAgent: userAgent,
               ),
           createCompanionCallback:
@@ -1594,9 +1691,10 @@ class $$SettingsTableTableManager
                 Value<bool> useBottomBar = const Value.absent(),
                 Value<bool> showMorePlatformColorAccents = const Value.absent(),
                 Value<bool> showPlatformColorTextAccents = const Value.absent(),
-                Value<String?> clientId = const Value.absent(),
-                Value<String?> redirectUri = const Value.absent(),
-                Value<bool> copyOldRedditLinks = const Value.absent(),
+                Value<String?> redditClientId = const Value.absent(),
+                Value<String?> redditRedirectUri = const Value.absent(),
+                Value<bool> redditCopyOldRedditLinks = const Value.absent(),
+                Value<int> diggPostsFetchDepth = const Value.absent(),
                 Value<String?> userAgent = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
@@ -1608,9 +1706,10 @@ class $$SettingsTableTableManager
                 useBottomBar: useBottomBar,
                 showMorePlatformColorAccents: showMorePlatformColorAccents,
                 showPlatformColorTextAccents: showPlatformColorTextAccents,
-                clientId: clientId,
-                redirectUri: redirectUri,
-                copyOldRedditLinks: copyOldRedditLinks,
+                redditClientId: redditClientId,
+                redditRedirectUri: redditRedirectUri,
+                redditCopyOldRedditLinks: redditCopyOldRedditLinks,
+                diggPostsFetchDepth: diggPostsFetchDepth,
                 userAgent: userAgent,
               ),
           withReferenceMapper: (p0) => p0

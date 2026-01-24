@@ -17,9 +17,11 @@ class Settings extends Table {
   BoolColumn get showMorePlatformColorAccents => boolean().withDefault(const Constant(Constants.defaultShowMorePlatformColorAccents))();
   BoolColumn get showPlatformColorTextAccents => boolean().withDefault(const Constant(Constants.defaultShowPlatformColorTextAccents))();
 
-  TextColumn get clientId => text().nullable()();
-  TextColumn get redirectUri => text().nullable()();
-  BoolColumn get copyOldRedditLinks => boolean().withDefault(const Constant(Constants.defaultCopyOldRedditLinks))();
+  TextColumn get redditClientId => text().nullable()();
+  TextColumn get redditRedirectUri => text().nullable()();
+  BoolColumn get redditCopyOldRedditLinks => boolean().withDefault(const Constant(Constants.defaultRedditCopyOldRedditLinks))();
+  
+  IntColumn get diggPostsFetchDepth => integer().withDefault(const Constant(Constants.diggPostsFetchDepth))();
   
   TextColumn get userAgent => text().nullable()();
   

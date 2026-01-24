@@ -92,15 +92,18 @@ class _MainScaffoldState extends State<MainScaffold> {
       showDragHandle: true,
       isScrollControlled: true,
       builder: (context) {
-        return SafeArea(
-          child: _FeedOptionsSelector(
-            platform: widget.platform!,
-            optionsGroup: widget.feedOptions!,
-            selected: widget.selectedFeedOptions,
-            onSelected: (options) {
-              widget.onFeedOptionsSelected!(options);
-              Navigator.pop(context);
-            }
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 16),
+          child: SafeArea(
+            child: _FeedOptionsSelector(
+              platform: widget.platform!,
+              optionsGroup: widget.feedOptions!,
+              selected: widget.selectedFeedOptions,
+              onSelected: (options) {
+                widget.onFeedOptionsSelected!(options);
+                Navigator.pop(context);
+              }
+            ),
           ),
         );
       }
@@ -420,6 +423,7 @@ class _CommunityListState extends State<_CommunityList> {
   final FocusNode _searchBarFocusNode = FocusNode();
   late Platform _searchPlatform;
   String _searchQuery = '';
+  bool _showSearchBarPlatformPrefix = false;
 
   @override
   void initState() {
@@ -478,7 +482,7 @@ class _CommunityListState extends State<_CommunityList> {
               final double rightCornerRadius;
               final Alignment? alignment;
               final Widget child;
-              if (hasSearchQuery) {
+              if (_showSearchBarPlatformPrefix) {
                 width = 48;
                 rightCornerRadius = 6;
                 alignment = Alignment.centerRight;
@@ -520,7 +524,7 @@ class _CommunityListState extends State<_CommunityList> {
                 keyboardType: TextInputType.url,
                 textInputAction: TextInputAction.go,
                 padding: const WidgetStatePropertyAll<EdgeInsets>(EdgeInsets.only(right: 16)),
-                hintText: 'Search ${_searchPlatform.communityLabel}',
+                hintText: !_showSearchBarPlatformPrefix ? 'Search ${_searchPlatform.communityLabel}' : null,
                 inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_/]'))],
                 backgroundColor: WidgetStateProperty.all(Constants.lighterBackgroundColor),
                 leading: Container(
@@ -538,22 +542,36 @@ class _CommunityListState extends State<_CommunityList> {
                     : searchIcon
                 ),
                 onChanged: (value) {
-                  
-                  String cleanValue = value.toLowerCase();
-                  if (isCombinedFlavor) {
+                  String cleanValue;
+                  if (value.isEmpty) {
+                    _showSearchBarPlatformPrefix = false;
+                    cleanValue = '';
+                  }
+                  else {
+                    cleanValue = value.toLowerCase();
+
+                    bool removedPlatformPrefix = false;
                     for (Platform platform in Platform.values) {
                       if (cleanValue.startsWith(platform.communityPrefix)) {
                         cleanValue = cleanValue.substring(platform.communityPrefix.length);
                         _searchPlatform = platform;
+                        _showSearchBarPlatformPrefix = true;
+                        removedPlatformPrefix = true;
                         break;
                       }
                     }
-                  }
 
-                  cleanValue = cleanValue.replaceAll('/', '');
-                  if (cleanValue != value) {
-                    _searchController.text = cleanValue;
-                    _searchController.selection = TextSelection.fromPosition(TextPosition(offset: cleanValue.length));
+                    cleanValue = cleanValue.replaceAll('/', '');
+
+                    if (!removedPlatformPrefix) {
+                      _showSearchBarPlatformPrefix = cleanValue.isNotEmpty;
+                    }
+
+                    if (cleanValue != value) {
+                      _searchController.text = cleanValue;
+                      _searchController.selection = TextSelection.fromPosition(TextPosition(offset: cleanValue.length));
+                    }
+
                   }
               
                   setState(() {
@@ -590,7 +608,12 @@ class _CommunityListState extends State<_CommunityList> {
                       onKeyEvent: (KeyEvent event) {
                         if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.backspace && _searchController.text.isEmpty) {
                           setState(() {
-                            _searchPlatform = Platform.values[(Platform.values.indexOf(_searchPlatform) - 1) % Platform.values.length];
+                            if (_showSearchBarPlatformPrefix) {
+                              _showSearchBarPlatformPrefix = false;
+                            }
+                            else {
+                              _searchPlatform = Platform.values[(Platform.values.indexOf(_searchPlatform) - 1) % Platform.values.length];
+                            }
                           });
                         }
                       },

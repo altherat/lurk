@@ -17,9 +17,13 @@ class Settings {
   static late final SettingNotifier<bool> useBottomBar;
   static late final SettingNotifier<bool> showMorePlatformColorAccents;
   static late final SettingNotifier<bool> showPlatformColorTextAccents;
-  static late final SettingNotifier<String?> clientId;
-  static late final SettingNotifier<String?> redirectUri;
-  static late final SettingNotifier<bool> copyOldRedditLinks;
+
+  static late final SettingNotifier<bool> redditCopyOldRedditLinks;
+  static late final SettingNotifier<String?> redditClientId;
+  static late final SettingNotifier<String?> redditRedirectUri;
+  
+  static late final SettingNotifier<int> diggPostsFetchDepth;
+
   static late final SettingNotifier<String> userAgent;
   static late final RelationalListSettingNotifier<Community> communities;
 
@@ -36,9 +40,10 @@ class Settings {
     useBottomBar = SettingNotifier(dbSettings.useBottomBar, (value) => SettingsCompanion(useBottomBar: Value(value)), Constants.defaultUseBottomBar);
     showMorePlatformColorAccents = SettingNotifier(dbSettings.showMorePlatformColorAccents, (value) => SettingsCompanion(showMorePlatformColorAccents: Value(value)), Constants.defaultShowMorePlatformColorAccents);
     showPlatformColorTextAccents = SettingNotifier(dbSettings.showPlatformColorTextAccents, (value) => SettingsCompanion(showPlatformColorTextAccents: Value(value)), Constants.defaultShowPlatformColorTextAccents);
-    clientId = SettingNotifier(dbSettings.clientId, (value) => SettingsCompanion(clientId: Value(value)));
-    redirectUri = SettingNotifier(dbSettings.redirectUri, (value) => SettingsCompanion(redirectUri: Value(value)));
-    copyOldRedditLinks = SettingNotifier(dbSettings.copyOldRedditLinks, (value) => SettingsCompanion(copyOldRedditLinks: Value(value)), Constants.defaultCopyOldRedditLinks);
+    redditCopyOldRedditLinks = SettingNotifier(dbSettings.redditCopyOldRedditLinks, (value) => SettingsCompanion(redditCopyOldRedditLinks: Value(value)), Constants.defaultRedditCopyOldRedditLinks);
+    redditClientId = SettingNotifier(dbSettings.redditClientId, (value) => SettingsCompanion(redditClientId: Value(value)));
+    redditRedirectUri = SettingNotifier(dbSettings.redditRedirectUri, (value) => SettingsCompanion(redditRedirectUri: Value(value)));
+    diggPostsFetchDepth = SettingNotifier(dbSettings.diggPostsFetchDepth, (value) => SettingsCompanion(diggPostsFetchDepth: Value(value)), Constants.defaultDiggPostsFetchDepth);
     userAgent = SettingNotifier(dbSettings.userAgent, (value) => SettingsCompanion(userAgent: Value(value)), Constants.defaultUserAgent);
     communities = RelationalListSettingNotifier<Community>(
       dbCommunities,

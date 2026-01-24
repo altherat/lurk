@@ -41,10 +41,11 @@ class Constants {
   static const defaultAutoplayVideos = true;
   static const defaultAppBarColor = Color(0xFF000000);
   static const defaultUseBottomBar = false;
+  static const diggPostsFetchDepth = 3;
   static const defaultShowMorePlatformColorAccents = false;
   static const defaultShowPlatformColorTextAccents = false;
-  static const defaultCopyOldRedditLinks = false;
-  
+  static const defaultRedditCopyOldRedditLinks = false;
+  static const defaultDiggPostsFetchDepth = 3;
   static final defaultUserAgent = '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by u/altherat)';
   // static const defaultUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36';
     

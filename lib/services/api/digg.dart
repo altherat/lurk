@@ -7,15 +7,17 @@ import 'package:lurk/models/paged_result.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/api/api.dart';
+import 'package:lurk/services/settings.dart';
 
 class DiggApi extends Api {
 
-  static const baseUrl = 'https://digg.com';
-  static const baseUrlGraphQl = 'https://apineapple-prod.digg.com/graphql';
-  static const headers = {
+  static const _baseUrl = 'https://digg.com';
+  static const _baseUrlGraphQl = 'https://apineapple-prod.digg.com/graphql';
+  static const _headers = {
     'Accept': 'application/graphql-response+json',
     'Content-Type': 'application/json',
   };
+  static const resultsLimit = 30;
   
   late gql.GraphQLClient _client;
 
@@ -27,12 +29,12 @@ class DiggApi extends Api {
             (headers) => gql.HttpLinkHeaders(
               headers: {
                 ...?headers?.headers,
-                ...getHeaders(DiggApi.headers),
+                ...getHeaders(DiggApi._headers),
               },
             ),
           )
         );
-      }).concat(gql.HttpLink(baseUrlGraphQl)),
+      }).concat(gql.HttpLink(_baseUrlGraphQl)),
       cache: gql.GraphQLCache(),
       defaultPolicies: gql.DefaultPolicies(
         query: gql.Policies(
@@ -43,75 +45,29 @@ class DiggApi extends Api {
   }
   
   @override
-  String getPostDetailsUrl(Post post) => '$baseUrl${post.urlPath}';
+  String getPostDetailsUrl(Post post) => '$_baseUrl${post.urlPath}';
 
   @override
-  String getCommentUrl(Post post, Comment comment) => '$baseUrl/${post.community.name}/${post.id.split('-')[1]}/comment/${comment.id.split('-')[2]}';
+  String getCommentUrl(Post post, Comment comment) => '$_baseUrl/${post.community.name}/${post.id.split('-')[1]}/comment/${comment.id.split('-')[2]}';
 
   @override
   Future<PagedResult<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    // debugPrint('[Digg] getPosts: id=$id, sort=${sort?.label}, timeRange=$timeRange, pageToken=$pageToken');
+    debugPrint('[Digg] getPosts: id=$id, options=[${options?.values.map((option) => option.apiValue).join(', ')}], pageToken=$pageToken');
     final sort = options?[FeedOptionType.sort];
-    final gql.QueryOptions queryOptions = gql.QueryOptions(
-      document: gql.gql(r'''
-        query PostsQuery($first: Int, $where: PostWhere, $sort: PostSort, $after: String) {
-
-          posts(first: $first, where: $where, sort: $sort, after: $after) {
-            edges {
-              node {
-                _id
-                title
-                score
-                upvoteCount
-                commentCount
-                createdDate
-                deletedDate
-                slug
-                type
-                nsfw
-                text
-                author {
-                  username
-                }
-                community {
-                  name
-                }
-                externalContent {
-                  url,
-                  imageUrl
-                }
-                attachments {
-                  __typename
-                  ... on Image {
-                    url
-                  }
-                }
-              }
-            }
-            pageInfo {
-              hasNextPage
-              endCursor
-            }
-          }
-
-        }
-      '''),
-      variables: {
-        'first': 30,
-        'where': {
-          'isPersonalized': false,
-          if (id != null)
-            'community': {'slug_EQ': id},
-          if (sort?.apiValue == 'MOST_DUGG')
-            'publishedDate_GT': DateTime.now().toUtc().subtract(const Duration(days: 1)).toIso8601String(), // Current functionality of Digg website/app is to only return most dugg posts in past day
-        },
-        'sort': (sort ?? Platform.digg.postsFeedOptions.options.first).apiValue,
-        if (pageToken != null)
-          'after': pageToken
-      }
-    );
-    final response = await _client.query(queryOptions);
-    return compute(_parsePostsResult, response.data!);
+    final variables = {
+      'first': resultsLimit,
+      'where': {
+        'isPersonalized': false,
+        if (id != null)
+          'community': {'slug_EQ': id},
+        if (sort?.apiValue == 'MOST_DUGG')
+          'publishedDate_GT': DateTime.now().toUtc().subtract(const Duration(days: 1)).toIso8601String(), // Current functionality of Digg website/app is to only return most dugg posts in past day
+      },
+      'sort': (sort ?? Platform.digg.postsFeedOptions.options.first).apiValue,
+      if (pageToken != null)
+        'after': pageToken
+    };
+    return _getPostsRecursive(variables);
   }
 
   @override
@@ -119,7 +75,7 @@ class DiggApi extends Api {
 
   @override
   Future<PostDetails> getPostDetailsFromId(String id, {Map<FeedOptionType, FeedOption>? options}) async {
-    // debugPrint('[Digg] getPostDetails: id=$id, sort=$sort');
+    // debugPrint('[Digg] getPostDetailsFromId: id=$id, options=[${options?.values.map((option) => option.apiValue).join(', ')}]');
     final sort = options?[FeedOptionType.sort];
     final gql.QueryOptions queryOptions = gql.QueryOptions(
       document: gql.gql(r'''
@@ -224,7 +180,7 @@ class DiggApi extends Api {
 
   @override
   Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? level, Map<FeedOptionType, FeedOption>? options}) async {
-    // debugPrint('[Digg] getMoreComments: id=$id, pageToken=$pageToken');
+    // debugPrint('[Digg] getMoreComments: id=$id, pageToken=$pageToken, options=[${options?.values.map((option) => option.apiValue).join(', ')}]');
     final sort = options?[FeedOptionType.sort];
     final gql.QueryOptions queryOptions = gql.QueryOptions(
       document: gql.gql(r'''
@@ -322,13 +278,13 @@ class DiggApi extends Api {
 
   @override
   Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    debugPrint('[Digg] getUserItems: id=$id, options=$options, pageToken=$pageToken');
+    // debugPrint('[Digg] getUserItems: id=$id, options=[${options?.values.map((option) => option.apiValue).join(', ')}], pageToken=$pageToken');
     final DiggUserFeedType type = options?[FeedOptionType.type]?.apiValue ?? Platform.digg.userFeedOptions.options.first.apiValue;
     final FeedOption? sort = options?[FeedOptionType.sort];
     switch (type) {
       case DiggUserFeedType.posts:
         return _getPosts({
-          'first': 30,
+          'first': resultsLimit,
           'where': {
             'author': {
               'username_EQ': id
@@ -379,7 +335,7 @@ class DiggApi extends Api {
               }
             '''),
             variables: {
-              'first': 30,
+              'first': resultsLimit,
               'where': {
                 'author': {
                   'username_EQ': id
@@ -391,19 +347,7 @@ class DiggApi extends Api {
                 'after': pageToken,
             },
           );
-          debugPrint({
-              'first': 30,
-              'where': {
-                'author': {
-                  'username_EQ': id
-                }
-              },
-              if (sort != null)
-                'sort': sort?.apiValue,
-              if (pageToken != null)
-                'after': pageToken,
-            }.toString());
-
+          
           final response = await _client.query(queryOptions);
           final data = response.data!['comments'];
           final List edges = data['edges'];
@@ -414,6 +358,77 @@ class DiggApi extends Api {
             pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
           );
     }
+  }
+
+  Future<PagedResult<Post>> _getPostsRecursive(Map<String, dynamic> variables, {List<Post>? accumulatedPosts, int depth = 0}) async {
+    // debugPrint('[Digg] _getPostsRecursive: variables=[${variables.entries.map((entry) => '${entry.key}=${entry.value}').join(', ')}], posts=${accumulatedPosts?.length}, depth=$depth');
+    final gql.QueryOptions queryOptions = gql.QueryOptions(
+      document: gql.gql(r'''
+        query PostsQuery($first: Int, $where: PostWhere, $sort: PostSort, $after: String) {
+
+          posts(first: $first, where: $where, sort: $sort, after: $after) {
+            edges {
+              node {
+                _id
+                title
+                score
+                upvoteCount
+                commentCount
+                createdDate
+                deletedDate
+                slug
+                type
+                nsfw
+                text
+                author {
+                  username
+                }
+                community {
+                  name
+                }
+                externalContent {
+                  url,
+                  imageUrl
+                }
+                attachments {
+                  __typename
+                  ... on Image {
+                    url
+                  }
+                }
+              }
+            }
+            pageInfo {
+              hasNextPage
+              endCursor
+            }
+          }
+
+        }
+      '''),
+      variables: variables
+    );
+    final response = await _client.query(queryOptions);
+    final postsData = response.data!['posts'];
+    final Map<String, dynamic> pageInfo = postsData['pageInfo'];
+    final List<Post> allPosts = [...?accumulatedPosts, ...postsData['edges'].map((edge) => _parsePost(edge['node']))];
+    if (allPosts.length < resultsLimit && pageInfo['hasNextPage'] == true && pageInfo['endCursor'] != null && depth < Settings.diggPostsFetchDepth.value + 1) {
+      return _getPostsRecursive(
+        {
+          ...variables,
+          'after': pageInfo['endCursor'],
+        },
+        accumulatedPosts: allPosts,
+        depth: depth + 1,
+      );
+    }
+
+    // debugPrint('[Digg] _getPostsRecursive posts found: ${allPosts.length}');
+    return PagedResult(
+      items: allPosts,
+      pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
+    );
+
   }
 
   Future<PagedResult<Post>> _getPosts(Map<String, dynamic> variables) async {
@@ -503,7 +518,7 @@ class DiggApi extends Api {
         thumbnailUrl = externalContent['imageUrl'];
       }
       else {
-        url = '$baseUrl$urlPath';
+        url = '$_baseUrl$urlPath';
         domain = 'self.digg';
         thumbnailUrl = null;
       }
