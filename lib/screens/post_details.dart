@@ -245,16 +245,17 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                       HapticFeedback.mediumImpact();
                       showSimpleOptionsBottomSheet(
                         context: context,
-                        title: '${commentItem.author!.toPosessive()} comment',
+                        title: '${commentItem.author == null ? 'Deleted' : commentItem.author!.toPosessive()} comment',
                         options: {
-                          'View user': () {
-                            context.push(
-                              () => UserDetailsScreen(
-                                platform: _post!.community.platform,
-                                username: commentItem.author!
-                              )
-                            );
-                          },
+                          if (commentItem.author != null)
+                            'View ${_post!.community.platform.userPrefix}${commentItem.author}': () {
+                              context.push(
+                                () => UserDetailsScreen(
+                                  platform: _post!.community.platform,
+                                  username: commentItem.author!
+                                )
+                              );
+                            },
                           if (commentItem.text != null)
                             'Copy text': () => copyToClipboard(commentItem.text!),
                           'Copy link': () => copyToClipboard(Api.of(_post!.community.platform).getCommentUrl(_post!, commentItem)),

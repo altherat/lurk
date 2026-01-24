@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
-import 'package:lurk/screens/feed_screen.dart';
+import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/history.dart';
@@ -33,7 +33,7 @@ class _PostsScreenState extends State<PostsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return FeedScreen(
+    return SimpleFeedScreen(
       platform: widget.community.platform,
       getItems: (options, pageToken) async {
         final result = await Api.of(widget.community.platform).getPosts(widget.community.name, options: options, pageToken: pageToken);

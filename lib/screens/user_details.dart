@@ -7,7 +7,7 @@ import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user_stat.dart';
-import 'package:lurk/screens/feed_screen.dart';
+import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
@@ -29,7 +29,7 @@ class UserDetailsScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return FeedScreen(
+    return SimpleFeedScreen(
       platform: platform,
       feedOptions: platform.userFeedOptions,
       getAll: (options) => Api.of(platform).getUserDetails(username, options: options),

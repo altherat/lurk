@@ -33,18 +33,19 @@ class PostTile extends StatelessWidget {
       context: context,
       title: post.title,
       options: {
-        'View ${post.community.platform.communityLabel} ${post.community.fullDisplayName}': () {
+        'View ${post.community.fullDisplayName}': () {
           context.push(() => PostsScreen(community: post.community));
 
         },
-        'View user ${post.community.platform.userPrefix}${post.author}': () {
-          context.push(
-            () => UserDetailsScreen(
-              platform: post.community.platform,
-              username: post.author!
-            )
-          );
-        },
+        if (post.author != null)
+          'View ${post.community.platform.userPrefix}${post.author}': () {
+            context.push(
+              () => UserDetailsScreen(
+                platform: post.community.platform,
+                username: post.author!
+              )
+            );
+          },
         'View link in browser': () => openInBrowser(post.url),
         'View comments in browser': () => openInBrowser(Api.of(post.community.platform).getPostDetailsUrl(post)),
         'Copy link': () => copyToClipboard(post.url),

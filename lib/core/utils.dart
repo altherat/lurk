@@ -9,6 +9,7 @@ import 'package:lurk/screens/image_gallery_viewer.dart';
 import 'package:lurk/screens/image_viewer.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/screens/posts.dart';
+import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/screens/video_player.dart';
 import 'package:lurk/screens/web_viewer.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -141,21 +142,14 @@ Future navigate(BuildContext context, String url, {Post? post}) async {
   }
 
   if (uri.host == 'v.redd.it') {
-    final pathSegments = uri.pathSegments.toList();
-    String? audioUrl;
-    if (pathSegments[1].startsWith('CMAF')) {
-      pathSegments.removeLast();
-      pathSegments.add('CMAF_AUDIO_128.mp4');
-      audioUrl = Uri(
-        scheme: uri.scheme,
-        host: uri.host,
-        pathSegments: pathSegments
-      ).toString();
-    }
+    final videoId = uri.pathSegments.first;
     return context.push(
       () => VideoPlayerScreen(
-        url: url, //'$url/HLSPlaylist.m3u8',
-        audioUrl: audioUrl,
+        url: uri.replace(
+          path: '/$videoId/DASHPlaylist.mpd',
+          queryParameters: {},
+          fragment: null,
+        ).toString(),
         post: post,
       )
     );
@@ -197,7 +191,12 @@ Future navigate(BuildContext context, String url, {Post? post}) async {
       else if ((firstPathSegment == 'u' || firstPathSegment == 'user')) {
         if (pathSegments.length >= 2) {
           final username = pathSegments[1];
-          // TODO: Navigator.push(context, MaterialPageRoute(builder: (_) => UserProfileScreen(username: username)));
+          context.push(
+            () => UserDetailsScreen(
+              platform: Platform.reddit,
+              username: username
+            )
+          );
           return;
         }
       }

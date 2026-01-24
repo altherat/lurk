@@ -1,7 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/comment.dart';
-import 'package:lurk/models/paged_result.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user_stat.dart';
@@ -38,6 +37,18 @@ abstract class Api {
     };
   }
 
+}
+
+class PagedResult<T> {
+
+  final List<T> items;
+  final String? pageToken;
+
+  PagedResult({
+    required this.items,
+    this.pageToken,
+  });
+  
 }
 
 abstract class FeedResponse<T> {

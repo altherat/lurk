@@ -215,7 +215,7 @@ class _DiggPostsFetchDepthSetting extends StatelessWidget {
     return _ChoiceSettingListTile(
       title: 'Posts fetch depth',
       setting: Settings.diggPostsFetchDepth,
-      infoText: "Digg's website and app seems to show fewer posts than what actually might exist (unsure if intentional). This setting causes additional requests in attempt to retrieve more posts (up to ${DiggApi.resultsLimit}). When loading popular communties with many posts, this setting will have no effect.\n\nExample (setting value of 3):\nWhen requesting posts from a lesser-known community, Digg might respond with 10 posts but also indicate that there are more posts available. Lurk will do up to 3 more requests to try and get a total of ${DiggApi.resultsLimit} posts.",
+      infoText: "Digg's website and app seems to show fewer posts than what actually might exist for smaller communities (unsure if intentional). This setting causes additional requests in attempt to retrieve more posts (up to ${DiggApi.resultsLimit}). When loading popular communties with many posts, this setting will have no effect.\n\nExample (setting value of 3):\nWhen requesting posts from a lesser-known community, Digg might respond with 10 posts but also indicate that there are more posts available. Lurk will do up to 3 more requests to try and get a total of ${DiggApi.resultsLimit} posts.",
       choices: List.generate(_maxDepth, (index) => index + 1),
     );
   }
@@ -549,37 +549,32 @@ class _ChoiceSettingListTile<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       title: title != null ? Text(title!) : null,
-      // trailing: infoText != null
-      //   ? _InfoIconButton(
-      //       title: title,
-      //       text: infoText!
-      //     )
-      //   : null,
       subtitle: Row(
         children: [
           Expanded(
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
-              child: Row(
-                children: List.generate(choices.length, (index) {
-                  final choice = choices[index];
-                  final labelString = choiceLabel?.call(choice) ?? choice.toString();
-                  return [
-                    ValueListenableBuilder(
-                      valueListenable: setting,
-                      builder: (context, value, child) {
-                        final bool isSelected = value == choice;
-                        final Color? selectedColor;
-                        final TextStyle? labelStyle;
-                        if (isSelected && this.selectedColor != null) {
-                          selectedColor = this.selectedColor?.call(choice);
-                          labelStyle = TextStyle(color: selectedColor!.contrast);
-                        }
-                        else {
-                          selectedColor = null;
-                          labelStyle = null;
-                        }
-                        return ChoiceChip(
+              child: ValueListenableBuilder(
+                valueListenable: setting,
+                builder: (context, value, child) {
+                  return Row(
+                    children: List.generate(choices.length, (index) {
+                      final choice = choices[index];
+                      final labelString = choiceLabel?.call(choice) ?? choice.toString();
+                      final bool isSelected = value == choice;
+                      final Color? selectedColor;
+                      final TextStyle? labelStyle;
+                      if (isSelected && this.selectedColor != null) {
+                        selectedColor = this.selectedColor?.call(choice);
+                        labelStyle = TextStyle(color: selectedColor!.contrast);
+                      }
+                      else {
+                        selectedColor = null;
+                        labelStyle = null;
+                      }
+                      return Padding(
+                        padding: EdgeInsets.only(left: index == 0 ? 0 : 8, right: index == choices.length - 1 ? 0 : 8),
+                        child: ChoiceChip(
                           label: Text(labelString),
                           selected: isSelected,
                           showCheckmark: false, 
@@ -594,12 +589,11 @@ class _ChoiceSettingListTile<T> extends StatelessWidget {
                               setting.value = choice;
                             }
                           },
-                        );
-                      }
-                    ),
-                    if (index < choices.length - 1) const SizedBox(width: 16)
-                  ];
-                }).expand((i) => i).toList(),
+                        ),
+                      );
+                    })
+                  );
+                }
               ),
             ),
           ),

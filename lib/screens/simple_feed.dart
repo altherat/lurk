@@ -1,14 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
-import 'package:lurk/models/paged_result.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 
-class FeedScreen<R extends FeedResponse<T>, T> extends StatefulWidget {
+class SimpleFeedScreen<R extends FeedResponse<T>, T> extends StatefulWidget {
 
   final GlobalKey<ScaffoldState>? scaffoldKey;
   final Platform platform;
@@ -22,7 +21,7 @@ class FeedScreen<R extends FeedResponse<T>, T> extends StatefulWidget {
   final Widget Function(BuildContext context, T item) itemBuilder;
   final Widget? Function(BuildContext context) noItemsBuilder;
 
-  const FeedScreen({
+  const SimpleFeedScreen({
     super.key,
     this.scaffoldKey,
     required this.platform,
@@ -38,11 +37,11 @@ class FeedScreen<R extends FeedResponse<T>, T> extends StatefulWidget {
   });
 
   @override
-  State<FeedScreen<R, T>> createState() => _FeedScreenState<R, T>();
+  State<SimpleFeedScreen<R, T>> createState() => _SimpleFeedScreenState<R, T>();
 
 }
 
-class _FeedScreenState<R extends FeedResponse<T>, T> extends State<FeedScreen<R, T>> {
+class _SimpleFeedScreenState<R extends FeedResponse<T>, T> extends State<SimpleFeedScreen<R, T>> {
 
   final _contentKey = GlobalKey<_ContentState>();
   Map<FeedOptionType, FeedOption>? _feedOptions;
