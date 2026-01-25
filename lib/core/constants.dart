@@ -10,6 +10,7 @@ class Constants {
   static const appBarSubtitleAlpha = 175;
   static const namePrefixAlpha = 125;
   static const refreshIndicatorDisplacement = 15.0;
+  static const choiceChipGapSize = 12.0;
   static const primaryColor = Color(0xFFAADFF1);
   static const splashColor = Color(0x30AADFF1);
   static const highlightColor = Color(0x30AADFF1);

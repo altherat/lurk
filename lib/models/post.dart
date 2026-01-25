@@ -6,6 +6,7 @@ class Post {
 
   final Community community;
   final String id;
+  final String permalink;
   final int score;
   final int timestampMs;
   final String title;
@@ -13,7 +14,6 @@ class Post {
   final String? author;
   final int commentCount;
   final String url;
-  final String urlPath;
   final String domain;
   final String? thumbnailUrl;
   final bool isDeleted;
@@ -26,6 +26,7 @@ class Post {
   Post({
     required this.community,
     required this.id,
+    required this.permalink,
     required this.score,
     required this.timestampMs,
     required this.title,
@@ -33,7 +34,6 @@ class Post {
     required this.author,
     required this.commentCount,
     required this.url,
-    required this.urlPath,
     required this.domain,
     this.thumbnailUrl,
     this.isStickied = false,
@@ -56,9 +56,9 @@ class Post {
     return '${formatted.replaceAll(RegExp(r'\.0$'), '')}K';
   }
 
-  String get timeAgo => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgo;
-
   String get timeAgoCompact => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgoCompact;
+
+  String get timeAgoLong => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgoLong;
 
   String get commentsLabel => commentCount == 1 ? '1 comment' : '${commentCount.toCommaString()} comments';
   

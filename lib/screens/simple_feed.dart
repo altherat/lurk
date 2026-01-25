@@ -192,11 +192,13 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingItems) return CenteredLargeCircularProgressIndicator(platform: widget.platform);
+    if (_isLoadingItems) {
+      return CenteredLargeCircularProgressIndicator(platform: widget.platform);
+    }
     final headers = widget.headersBuilder?.call(context, _response) ?? [];
     return CustomRefreshIndicator(
-      flutterRefreshIndicatorKey: _refreshIndicatorKey,
       platform: widget.platform,
+      flutterRefreshIndicatorKey: _refreshIndicatorKey,
       onRefresh: _get,
       child: _items.isEmpty
         ? Column(
@@ -222,16 +224,13 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
                   }
                   final itemIndex = index - headers.length;
                   if (_pageToken != null && itemIndex == _items.length) {
-                    return Padding(
+                    return const Padding(
                       padding: EdgeInsets.all(16),
                       child: Center(
                         child: SizedBox(
                           width: 24,
                           height: 24,
-                          child: CustomCircularProgressIndicator(
-                            platform: widget.platform,
-                            strokeWidth: 3
-                          )
+                          child: CustomCircularProgressIndicator(strokeWidth: 3)
                         )
                       ),
                     );

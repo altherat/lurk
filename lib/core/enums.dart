@@ -1,10 +1,19 @@
 import 'dart:ui';
 
+import 'package:lurk/services/api/api.dart';
+import 'package:lurk/services/api/digg.dart';
+import 'package:lurk/services/api/reddit.dart';
+
 enum Platform {
   
   reddit(
+    api: RedditApi(),
+    domains: ['reddit.com', 'redd.it'],
+    communityPath: r'^\/r\/([^\/]+)\/?$',
+    userPath: r'^\/(?:u|user)\/([^\/]+)\/?$',
+    postPath: r'^\/r\/([^\/]+)\/comments\/([^\/]+)',
+    galleryPath: r'^\/gallery\/([^\/]+)\/?$',
     color: Color(0xFFFF4500),
-    hostName: 'reddit.com',
     communityLabel: 'subreddit',
     communityPrefix: 'r/',
     communityHome: 'popular',
@@ -41,8 +50,12 @@ enum Platform {
   ),
 
   digg(
+    api: DiggApi(),
+    domains: ['digg.com'],
+    communityPath: r'^\/(?!d\/)([^\/]+)\/?$',
+    userPath: r'^\/@([^\/]+)\/?$',
+    postPath: r'^\/(?!d\/)([^\/]+)\/([^\/]+)',
     color: Color(0xFF1F65DB),
-    hostName: 'digg.com',
     communityLabel: 'community',
     communityPrefix: '/',
     userPrefix: '@',
@@ -96,8 +109,13 @@ enum Platform {
     )
   );
 
+  final Api api;
+  final List<String> domains;
+  final String communityPath;
+  final String userPath;
+  final String postPath;
+  final String? galleryPath;
   final Color color;
-  final String hostName;
   final String communityLabel;
   final String communityPrefix;
   final String? communityHome;
@@ -107,8 +125,13 @@ enum Platform {
   final FeedOptionsGroup userFeedOptions;
 
   const Platform({
+    required this.api,
+    required this.domains,
+    required this.communityPath,
+    required this.userPath,
+    required this.postPath,
+    this.galleryPath,
     required this.color,
-    required this.hostName,
     required this.communityLabel,
     required this.communityPrefix,
     this.communityHome,
@@ -118,15 +141,26 @@ enum Platform {
     required this.userFeedOptions,
   });
 
-  static Platform? forUrl(String url) {
-    final host = Uri.parse(url).host;
+  static Platform? forHost(String host) {
     for (var platform in Platform.values) {
-      if (host.endsWith(platform.hostName)) {
-        return platform;
+      for (var domain in platform.domains) {
+        if (host == domain || host.endsWith('.$domain')) {
+          return platform;
+        }
       }
     }
     return null;
   }
+
+  static Platform? forUrl(String url) => forHost(Uri.parse(url).host);
+
+  String? getCommunityName(String urlPath) => RegExp(communityPath).firstMatch(urlPath)?.group(1);
+  
+  String? getUserName(String urlPath) => RegExp(userPath).firstMatch(urlPath)?.group(1);
+
+  bool isPostDetails(String urlPath) => RegExp(postPath).hasMatch(urlPath);
+
+  bool isGallery(String urlPath) => galleryPath != null && RegExp(galleryPath!).hasMatch(urlPath);
   
 }
 

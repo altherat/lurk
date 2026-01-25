@@ -1,18 +1,23 @@
 
 
+import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart' as utils;
 
 abstract class CommentItem {
 
-  final int level;
+  final int depth;
 
-  const CommentItem({required this.level});
+  const CommentItem({
+    required this.depth
+  });
   
 }
 
 class Comment extends CommentItem {
   
+  final Platform platform;
   final String id;
+  final String permalink;
   final bool isDeleted;
   final String? author;
   final bool isModerator;
@@ -26,8 +31,10 @@ class Comment extends CommentItem {
   final String? communityName;
 
   const Comment({
-    required super.level,
+    required super.depth,
+    required this.platform,
     required this.id,
+    required this.permalink,
     required this.isDeleted,
     required this.author,
     required this.isModerator,
@@ -40,9 +47,9 @@ class Comment extends CommentItem {
     this.communityName,
   });
 
-  String get timeAgo => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgo;
-
   String get timeAgoCompact => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgoCompact;
+
+  String get timeAgoLong => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgoLong;
 
 }
 
@@ -52,7 +59,7 @@ class LoadMoreComment extends CommentItem {
   final String? pageToken;
 
   const LoadMoreComment({
-    required super.level,
+    required super.depth,
     required this.count,
     required this.pageToken
   });

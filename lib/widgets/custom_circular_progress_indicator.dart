@@ -9,13 +9,15 @@ class CustomCircularProgressIndicator extends StatelessWidget {
 
   const CustomCircularProgressIndicator({
     super.key,
-    required this.platform,
+    this.platform,
     this.strokeWidth
   });
 
   @override
   Widget build(BuildContext context) {
-    if (platform == null) return CircularProgressIndicator.adaptive(strokeWidth: strokeWidth);
+    if (platform == null) {
+      return CircularProgressIndicator.adaptive(strokeWidth: strokeWidth);
+    }
     return ValueListenableBuilder(
       valueListenable: Settings.showMorePlatformColorAccents,
       builder: (context, showMorePlatformColorAccents, child) {

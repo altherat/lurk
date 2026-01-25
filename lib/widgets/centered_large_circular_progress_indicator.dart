@@ -22,7 +22,7 @@ class CenteredLargeCircularProgressIndicator extends StatelessWidget {
         height: _size,
         child: CustomCircularProgressIndicator(
           platform: platform,
-          strokeWidth: _strokeWidth,
+          strokeWidth: _strokeWidth
         )
       )
     );

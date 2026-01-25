@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/services/settings.dart';
 
@@ -26,7 +27,7 @@ class FeedOptionSelector extends StatelessWidget {
       children: [
         if (header != null)
           Padding(
-            padding: EdgeInsetsGeometry.only(bottom: 8),
+            padding: EdgeInsetsGeometry.only(bottom: 4),
             child: Text(
               header!,
               style: TextStyle(
@@ -39,8 +40,8 @@ class FeedOptionSelector extends StatelessWidget {
           valueListenable: Settings.showMorePlatformColorAccents,
           builder: (context, showMorePlatformColorAccents, child) {
             return Wrap(
-              spacing: 8,
-              runSpacing: 4,
+              spacing: Constants.choiceChipGapSize,
+              runSpacing: Constants.choiceChipGapSize / 2,
               children: options.map((filter) {
                 final Color? backgroundColor;
                 final Color? foregroundColor;

@@ -3,6 +3,7 @@ import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
+import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
@@ -14,11 +15,13 @@ const List<double> playbackSpeeds = [0.5, 1, 1.25, 1.5, 2];
 
 class VideoPlayerScreen extends StatefulWidget {
 
+  final Platform platform;
   final String url;
   final Post? post;
 
   const VideoPlayerScreen({
     super.key,
+    required this.platform,
     required this.url,
     this.post
   });
@@ -126,7 +129,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 ),
               ),
             if (!_isInitialized)
-              CenteredLargeCircularProgressIndicator(platform: widget.post?.community.platform)
+              CenteredLargeCircularProgressIndicator(platform: widget.platform)
             else ...[
               Positioned(
                 bottom: 0,
@@ -236,9 +239,11 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                             child: ValueListenableBuilder(
                                               valueListenable: Settings.showMorePlatformColorAccents,
                                               builder: (context, showMorePlatformColorAccents, child) {
+                                                final color = showMorePlatformColorAccents ? widget.post?.community.platform.color : null;
                                                 return Slider(
-                                                  thumbColor: showMorePlatformColorAccents ? widget.post?.community.platform.color : null,
-                                                  inactiveColor: (showMorePlatformColorAccents ? widget.post?.community.platform.color ?? Constants.primaryColor : Constants.primaryColor).withAlpha(100),
+                                                  thumbColor: color,
+                                                  activeColor: color,
+                                                  inactiveColor: (color ?? Constants.primaryColor).withAlpha(100),
                                                   value: min(sliderValue, duration.inMilliseconds.toDouble()),
                                                   max: duration.inMilliseconds.toDouble(),
                                                   onChangeStart: (_) {
@@ -276,7 +281,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 valueListenable: _videoController,
                 builder: (context, VideoPlayerValue value, child) {
                   return value.isBuffering
-                      ? CenteredLargeCircularProgressIndicator(platform: widget.post?.community.platform)
+                      ? const CenteredLargeCircularProgressIndicator()
                       : const SizedBox.shrink();
                 },
               )

@@ -27,6 +27,8 @@ class Settings {
   static late final SettingNotifier<String> userAgent;
   static late final RelationalListSettingNotifier<Community> communities;
 
+  static bool isInitialized = false;
+
   static Future<void> init() async {
 
     final db = Database.instance;
@@ -36,7 +38,7 @@ class Settings {
     homeCommunityName = SettingNotifier(dbSettings.homeCommunityName, (value) => SettingsCompanion(homeCommunityName: Value(value)), homeCommunityPlatform.value.communityHome);
     showCommentImages = SettingNotifier(dbSettings.showCommentImages, (value) => SettingsCompanion(showCommentImages: Value(value)), Constants.defaultShowCommentImages);
     autoplayVideos = SettingNotifier(dbSettings.autoplayVideos, (value) => SettingsCompanion(autoplayVideos: Value(value)), Constants.defaultAutoplayVideos);
-    appBarColor = SettingNotifier(dbSettings.appBarColor != null ? Color(dbSettings.appBarColor!) : null, (value) => SettingsCompanion(appBarColor: Value(value?.toARGB32())), Constants.defaultAppBarColor);
+    appBarColor = SettingNotifier(dbSettings.appBarColor != null ? Color(dbSettings.appBarColor!) : null, (value) => SettingsCompanion(appBarColor: Value(value.toARGB32())), Constants.defaultAppBarColor);
     useBottomBar = SettingNotifier(dbSettings.useBottomBar, (value) => SettingsCompanion(useBottomBar: Value(value)), Constants.defaultUseBottomBar);
     showMorePlatformColorAccents = SettingNotifier(dbSettings.showMorePlatformColorAccents, (value) => SettingsCompanion(showMorePlatformColorAccents: Value(value)), Constants.defaultShowMorePlatformColorAccents);
     showPlatformColorTextAccents = SettingNotifier(dbSettings.showPlatformColorTextAccents, (value) => SettingsCompanion(showPlatformColorTextAccents: Value(value)), Constants.defaultShowPlatformColorTextAccents);
@@ -50,7 +52,7 @@ class Settings {
       save: db.saveCommunity,
       delete: db.deleteCommunity,
     );
-    
+    isInitialized = true;
   }
 
 }
@@ -58,17 +60,26 @@ class Settings {
 class SettingNotifier<T> extends ValueNotifier<T> {
 
   final SettingsCompanion Function(T) companionBuilder;
-  final T? defaultValue;
+  T? _defaultValue;
   bool hasSavedValue;
 
-  SettingNotifier(T? initialValue, this.companionBuilder, [this.defaultValue]) : hasSavedValue = initialValue != null, super(initialValue ?? defaultValue as T);
+  SettingNotifier(T? initialValue, this.companionBuilder, [T? defaultValue]) : _defaultValue = defaultValue, hasSavedValue = initialValue != null, super(initialValue ?? defaultValue as T);
 
   @override
   set value(T newValue) {
     if (super.value == newValue) return;
-    super.value = newValue ?? defaultValue as T;
+    super.value = newValue ?? _defaultValue as T;
     Database.instance.updateSettings(companionBuilder(newValue));
     hasSavedValue = true;
+  }
+  
+  T? get defaultValue => _defaultValue;
+
+  set defaultValue(T? newValue) {
+    _defaultValue = newValue;
+    if (!hasSavedValue) {
+      super.value = newValue as T;
+    }
   }
   
 }

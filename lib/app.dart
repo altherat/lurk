@@ -2,7 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/models/community.dart';
-import 'package:lurk/screens/posts.dart';
+import 'package:lurk/screens/home.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
@@ -104,7 +104,7 @@ class _HomeState extends State<_Home> {
                 return ValueListenableBuilder(
                   valueListenable: Settings.homeCommunityName,
                   builder: (context, homeCommunityName, child) {
-                    return PostsScreen(
+                    return HomeScreen(
                       community: Community(
                         platform: homeCommunityPlatform,
                         name: homeCommunityName
@@ -117,7 +117,7 @@ class _HomeState extends State<_Home> {
             )
           );
         }
-        return CenteredLargeCircularProgressIndicator();
+        return const CenteredLargeCircularProgressIndicator();
       },
     );
   }

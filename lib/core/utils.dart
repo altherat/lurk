@@ -49,25 +49,9 @@ extension StringExtension on String {
 
 extension DateTimeExtension on DateTime {
 
-  String get timeAgo {
-    final Duration diff = DateTime.now().difference(this);
-    final thresholds = {
-      'year': 31536000,
-      'month': 2592000,
-      'week': 604800,
-      'day': 86400,
-      'hour': 3600,
-      'minute': 60,
-      'second': 1,
-    };
-    for (var entry in thresholds.entries) {
-      final int count = diff.inSeconds ~/ entry.value;
-      if (count >= 1) {
-        return '$count ${entry.key}${count == 1 ? '' : 's'} ago';
-      }
-    }
-    return 'just now';
-  }
+  String get timeAgo => _timeAgo(false);
+
+  String get timeAgoLong => _timeAgo(true);
 
   String get timeAgoCompact {
     final Duration diff = DateTime.now().difference(this);
@@ -78,6 +62,28 @@ extension DateTimeExtension on DateTime {
     if (diff.inDays < 30)    return '${(diff.inDays / 7).floor()}w';
     if (diff.inDays < 365)   return '${(diff.inDays / 30).floor()}mo';
     return '${(diff.inDays / 365).floor()}y';
+  }
+
+  String _timeAgo(bool showAgo) {
+    final Duration diff = DateTime.now().difference(this);
+    final thresholds = {
+      'year': 31536000,
+      'month': 2592000,
+      'week': 604800,
+      'day': 86400,
+      'hour': 3600,
+      'minute': 60,
+      'second': 1,
+    };
+
+    for (var entry in thresholds.entries) {
+      final int count = diff.inSeconds ~/ entry.value;
+      if (count >= 1) {
+        final String unit = '$count ${entry.key}${count == 1 ? '' : 's'}';
+        return showAgo ? '$unit ago' : unit;
+      }
+    }
+    return 'just now';
   }
 
 }
@@ -92,7 +98,7 @@ extension ColorExtension on Color {
   
 }
 
-extension NavigationOffsets on BuildContext {
+extension BuildContextExtension on BuildContext {
 
   Future<T?> push<T>(Widget Function() builder) {
     return Navigator.push<T>(
@@ -124,12 +130,14 @@ class _PageRoute<T> extends MaterialPageRoute<T> {
 
 Future<void> openInBrowser(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
-Future navigate(BuildContext context, String url, {Post? post}) async {
+Future navigate(BuildContext context, Platform platform, String url, {Post? post}) async {
   // debugPrint('navigate: $url');
   final uri = Uri.tryParse(url);
   if (uri == null) return;
 
-  final host = uri.host.toLowerCase();
+  final host = uri.host;
+  if (host.isEmpty) return;
+
   final path = uri.path.toLowerCase();
 
   if (host == 'i.redd.it' || host.endsWith('.imgix.net') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || path.endsWith('.gif') || path.endsWith('.webp')) {
@@ -142,11 +150,11 @@ Future navigate(BuildContext context, String url, {Post? post}) async {
   }
 
   if (uri.host == 'v.redd.it') {
-    final videoId = uri.pathSegments.first;
     return context.push(
       () => VideoPlayerScreen(
+        platform: platform,
         url: uri.replace(
-          path: '/$videoId/DASHPlaylist.mpd',
+          path: '/${uri.pathSegments.first}/DASHPlaylist.mpd',
           queryParameters: {},
           fragment: null,
         ).toString(),
@@ -154,80 +162,65 @@ Future navigate(BuildContext context, String url, {Post? post}) async {
       )
     );
   }
-  
   if (path.endsWith('.mp4') || path.endsWith('.mov')) {
     return context.push(
       () => VideoPlayerScreen(
+        platform: platform,
         url: url,
         post: post
       )
     );
   }
 
-  if (host == 'reddit.com' || host == 'redd.it' || host.endsWith('.reddit.com') || host.endsWith('.redd.it')) {
-    final pathSegments = uri.pathSegments;
-    if (pathSegments.isNotEmpty) {
-      final firstPathSegment = pathSegments[0].toLowerCase();
-      if (firstPathSegment == 'r') {
-        if (pathSegments.length == 2) {
-          return context.push(
-            () => PostsScreen(
-              community: Community(
-                platform: Platform.reddit,
-                name: pathSegments[1].toLowerCase()
-              )
-            )
-          );
-        }
-        if (pathSegments[2] == 'comments' && pathSegments.length >= 4) {
-          return context.push(
-            () => PostDetailsScreen(
-              post: post,
-              url: url
-            )
-          );
-        }
-      }
-      else if ((firstPathSegment == 'u' || firstPathSegment == 'user')) {
-        if (pathSegments.length >= 2) {
-          final username = pathSegments[1];
-          context.push(
-            () => UserDetailsScreen(
-              platform: Platform.reddit,
-              username: username
-            )
-          );
-          return;
-        }
-      }
-      else if (firstPathSegment == 'gallery') {
-        if (pathSegments.length == 2) {
-          return context.push(
-            () => ImageGalleryViewerScreen(
-              url: url,
-              platform: Platform.reddit,
-              post: post,
-            )
-          );
-        }
-      }
-    }
-  }
+  final resolvedPlatform = Platform.forHost(host);
+  if (resolvedPlatform != null) {
 
-  if (host == 'digg.com' || host == 'www.digg.com') {
-    final pathSegments = uri.pathSegments;
-    if (pathSegments.length >= 2) {
+    final communityName = resolvedPlatform.getCommunityName(path);
+    if (communityName != null) {
       return context.push(
-        () => PostDetailsScreen(
-          post: post,
-          url: url,
+        () => PostsScreen(
+          community: Community(
+            platform: resolvedPlatform,
+            name: communityName
+          )
         )
       );
     }
+
+    final userName = resolvedPlatform.getUserName(path);
+    if (userName != null) {
+      return context.push(
+        () => UserDetailsScreen(
+          platform: resolvedPlatform,
+          username: userName
+        )
+      );
+    }
+
+    if (resolvedPlatform.isPostDetails(path)) {
+      return context.push(
+        () => PostDetailsScreen.fromUrl(
+          platform: resolvedPlatform,
+          url: url
+        )
+      );
+    }
+
+    if (resolvedPlatform.isGallery(path)) {
+      return context.push(
+        () => ImageGalleryViewerScreen(
+          platform: resolvedPlatform,
+          post: post,
+          url: url
+        )
+      );
+    }
+
   }
 
   return context.push(
     () => WebViewerScreen(
+      platform: platform,
       post: post,
       url: url,
     )

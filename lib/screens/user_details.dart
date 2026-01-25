@@ -8,9 +8,9 @@ import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user_stat.dart';
 import 'package:lurk/screens/simple_feed.dart';
-import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
+import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/history_builder.dart';
 import 'package:lurk/widgets/html.dart';
 import 'package:lurk/widgets/large_message.dart';
@@ -32,8 +32,8 @@ class UserDetailsScreen extends StatelessWidget {
     return SimpleFeedScreen(
       platform: platform,
       feedOptions: platform.userFeedOptions,
-      getAll: (options) => Api.of(platform).getUserDetails(username, options: options),
-      getItems: (options, pageToken) => Api.of(platform).getUserItems(username, options: options, pageToken: pageToken),
+      getAll: (options) => platform.api.getUserDetails(username, options: options),
+      getItems: (options, pageToken) => platform.api.getUserItems(username, options: options, pageToken: pageToken),
       title: Builder(
         builder: (context) {
           final parentColor = DefaultTextStyle.of(context).style.color;
@@ -67,24 +67,27 @@ class UserDetailsScreen extends StatelessWidget {
                 child: Row(
                   children: snapshot.data!.map((stat) {
                     return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 8),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            stat.displayValue,
-                            style: const TextStyle(
-                              fontSize: 16,
+                      padding: const EdgeInsets.symmetric(horizontal: 12),
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(minWidth: 40),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              stat.displayValue,
+                              style: const TextStyle(
+                                fontSize: 16,
+                              ),
                             ),
-                          ),
-                          Text(
-                            stat.label,
-                            style: TextStyle(
-                              fontSize: 12,
-                              color: Constants.secondaryTextColor,
+                            Text(
+                              stat.label,
+                              style: TextStyle(
+                                fontSize: 11,
+                                color: Constants.secondaryTextColor,
+                              ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
                     );
                   }).toList(),
@@ -98,6 +101,7 @@ class UserDetailsScreen extends StatelessWidget {
         if (item is Post) {
           return PostTile(
             post: item,
+            showViewUserOption: false,
             subtitle: HistoryBuilder(
               id: item.id,
               history: History.postDetails,
@@ -124,42 +128,18 @@ class UserDetailsScreen extends StatelessWidget {
           );
         }
         if (item is Comment) {
-          return Padding(
+          return CommentTile(
             padding: const EdgeInsets.symmetric(vertical: 8),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  item.postTitle!,
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(color: Constants.secondaryTextColor),
-                ),
-                Text.rich(
-                  TextSpan(
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Constants.secondaryTextColor,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: username,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: Constants.commentAuthorColor
-                        ),
-                      ),
-                      TextSpan(text: ' • ${item.score?.toPluralString('point') ?? '[~]'} • ${item.timeAgoCompact} • ${platform.communityPrefix}${item.communityName}'),
-                    ],
-                  ),
-                ),
-                if (item.textHtml != null)
-                  Html(
-                    platform: platform,
-                    html: item.textHtml!
-                  )
-              ],
-            ),
+            comment: item,
+            showCommunityName: true,
+            showViewContextOption: true,
+            showViewUserOption: false,
+            header: Text(
+              item.postTitle!,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(color: Constants.secondaryTextColor),
+            )
           );
         }
         return const SizedBox.shrink();

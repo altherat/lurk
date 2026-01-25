@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/post_details.dart';
@@ -9,13 +10,15 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 class WebViewerScreen extends StatefulWidget {
 
+  final Platform platform;
   final String url;
   final Post? post;
 
   const WebViewerScreen({
     super.key,
+    required this.platform,
     required this.url,
-    this.post
+    this.post,
   });
 
   @override
@@ -79,43 +82,32 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
         ],
         popupMenuActions: {
           if (widget.post != null)
-            'View comments': () {
-              context.push(
-                () => PostDetailsScreen(
-                  post: widget.post,
-                  url: widget.url
-                )
-              );
-            },
-        'View in browser': () => openInBrowser(widget.url),
-        'Copy link': () => copyToClipboard(widget.url)
+            'View comments': () => context.push(() => PostDetailsScreen.fromPost(post: widget.post!)),
+          'View in browser': () => openInBrowser(widget.url),
+          'Copy link': () => copyToClipboard(widget.url)
         },
         body: _isExiting
           ? const SizedBox.shrink()
           : Stack(
               children: [
-                _WebView(
-                    controller: _controller,
-                    url: widget.url,
-                    post: widget.post,
-                  ),
-                  ValueListenableBuilder(
-                    valueListenable: Settings.showMorePlatformColorAccents,
-                    builder: (context, showMorePlatformColorAccents, child) {
-                      return ValueListenableBuilder(
-                        valueListenable: _progressNotifier,
-                        builder: (context, progress, child) {
-                          if (progress == 1) return SizedBox.shrink();
-                          return LinearProgressIndicator(
-                            value: progress,
-                            color: showMorePlatformColorAccents ? widget.post?.community.platform.color : null,
-                            backgroundColor: Colors.transparent,
-                            minHeight: 3,
-                          );
-                        }
-                      );
-                    }
-                  )
+                _WebView(controller: _controller),
+                ValueListenableBuilder(
+                  valueListenable: Settings.showMorePlatformColorAccents,
+                  builder: (context, showMorePlatformColorAccents, child) {
+                    return ValueListenableBuilder(
+                      valueListenable: _progressNotifier,
+                      builder: (context, progress, child) {
+                        if (progress == 1) return SizedBox.shrink();
+                        return LinearProgressIndicator(
+                          value: progress,
+                          color: showMorePlatformColorAccents ? widget.post?.community.platform.color ?? widget.platform?.color : null,
+                          backgroundColor: Colors.transparent,
+                          minHeight: 3,
+                        );
+                      }
+                    );
+                  }
+                )
               ],
           )
       )
@@ -127,14 +119,10 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
 class _WebView extends StatefulWidget {
 
   final WebViewController controller;
-  final String url;
-  final Post? post;
 
   const _WebView({
     super.key,
     required this.controller,
-    required this.url,
-    required this.post,
   });
 
   @override

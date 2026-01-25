@@ -7,19 +7,18 @@ import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/image_viewer.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
-import 'package:lurk/services/api/api.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 
 class ImageGalleryViewerScreen extends StatefulWidget {
 
-  final String url;
   final Platform platform;
+  final String url;
   final Post? post;
 
   const ImageGalleryViewerScreen({
     super.key,
-    required this.url,
     required this.platform,
+    required this.url,
     this.post
   });
 
@@ -47,7 +46,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
   }
 
   Future<void> _getGallery() async {
-    final postDetails = await Api.of(widget.platform).getPostDetailsFromUrl(widget.url);
+    final postDetails = await widget.platform.api.getPostDetailsFromUrl(widget.url);
     if (mounted) {
       setState(() {
         _post = postDetails.post;
@@ -63,7 +62,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
       type: 'images',
       post: widget.post,
       body: _isLoading
-        ? CenteredLargeCircularProgressIndicator(platform: widget.post?.community.platform)
+        ? CenteredLargeCircularProgressIndicator(platform: widget.platform)
         : ListView.separated(
             padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
             cacheExtent: MediaQuery.of(context).size.height,
@@ -78,7 +77,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                     children: [
                       Text(_post.title),
                       Text(
-                        'by ${_post.author ?? '[deleted]'} • ${_post.timeAgo}',
+                        'by ${_post.author ?? '[deleted]'} • ${_post.timeAgoLong}',
                         style: const TextStyle(
                           fontSize: 12,
                           color: Constants.secondaryTextColor
@@ -104,7 +103,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                         case LoadState.loading:
                           return Padding(
                             padding: EdgeInsets.all(16),
-                            child: CenteredLargeCircularProgressIndicator(platform: widget.post?.community.platform)
+                            child: CenteredLargeCircularProgressIndicator(platform: widget.platform)
                           );
                         case LoadState.completed:
                           return state.completedWidget;

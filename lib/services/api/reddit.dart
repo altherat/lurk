@@ -19,12 +19,11 @@ class RedditApi extends Api {
   static const _headers = {
     'Accept': 'application/json'
   };
-    
-  @override
-  String getPostDetailsUrl(Post post) => '${Settings.redditCopyOldRedditLinks.value ? _baseUrlOld : _baseUrl}${post.urlPath}';
+
+  const RedditApi();
 
   @override
-  String getCommentUrl(Post post, Comment comment) => '${getPostDetailsUrl(post)}${comment.id}';
+  String get baseUrl => Settings.redditCopyOldRedditLinks.value ? _baseUrlOld : _baseUrl;
 
   @override
   Future<PagedResult<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
@@ -75,7 +74,7 @@ class RedditApi extends Api {
   Future<PostDetails> getPostDetailsFromId(String id, {Map<FeedOptionType, FeedOption>? options}) => getPostDetailsFromUrl('$_baseUrl/comments/$id', options: options);
 
   @override
-  Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? level, Map<FeedOptionType, FeedOption>? options}) async {
+  Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? depth, Map<FeedOptionType, FeedOption>? options}) async {
     // debugPrint('[Reddit] getPostDetailsFromUrl: id=$id, pageToken=$pageToken, options=[${options?.values.map((option) => option.apiValue).join(', ')}]');
     final sort = options?[FeedOptionType.sort];
     final uri = Uri.parse('$_baseUrlOld/api/morechildren');
@@ -96,18 +95,18 @@ class RedditApi extends Api {
         final Map<String, dynamic> jsonResponse = jsonDecode(body);
         final List<dynamic> things = jsonResponse['json']?['data']?['things'] ?? [];
         final List<CommentItem> items = [];
-        final Map<String, int> batchLevelCache = {};
+        final Map<String, int> batchDepthCache = {};
         for (var thing in things) {
           final kind = thing['kind'];
           final data = thing['data'];
           final parentId = data['parent'];
-          final currentLevel = batchLevelCache.containsKey(parentId) ? batchLevelCache[parentId]! + 1 : level!;
-          batchLevelCache[data['id']] = currentLevel;
+          final currentDepth = batchDepthCache.containsKey(parentId) ? batchDepthCache[parentId]! + 1 : depth!;
+          batchDepthCache[data['id']] = currentDepth;
           if (kind == 't1') {
-            items.add(_parseCommentFromHtml(parse(parse(data['content']).body?.text).querySelector('.thing')!, currentLevel));
+            items.add(_parseCommentFromHtml(parse(parse(data['content']).body?.text).querySelector('.thing')!, currentDepth));
           }
           else if (kind == 'more') {
-            items.add(_parseLoadMoreCommentFromHtml(parse(parse(data['content']).body?.text).querySelector('.thing')!, currentLevel));
+            items.add(_parseLoadMoreCommentFromHtml(parse(parse(data['content']).body?.text).querySelector('.thing')!, currentDepth));
           }
         }
         return items;
@@ -158,7 +157,7 @@ class RedditApi extends Api {
     return _handleResponse(
       get(
         uri,
-        headers: getHeaders(_headers)
+        headers: Api.getHeaders(_headers)
       )
     );
   }
@@ -167,7 +166,7 @@ class RedditApi extends Api {
     return _handleResponse(
       post(
         uri,
-        headers: getHeaders(_headers),
+        headers: Api.getHeaders(_headers),
         body: body
       )
     );
@@ -263,6 +262,7 @@ class RedditApi extends Api {
         name: data['subreddit'].toLowerCase()
       ),
       id: data['id'],
+      permalink: data['permalink'],
       score: data['score'],
       timestampMs: (data['created_utc'] as num).toInt() * 1000,
       title: parse(data['title']).body!.text,
@@ -270,7 +270,6 @@ class RedditApi extends Api {
       author: author,
       commentCount: data['num_comments'],
       url: videoUrl ?? data['url'],
-      urlPath: data['permalink'],
       domain: domain,
       thumbnailUrl: thumbnail,
       isStickied: data['stickied'],
@@ -282,34 +281,36 @@ class RedditApi extends Api {
     );
   }
 
-  List<CommentItem> _parseComments(List<dynamic> json, int level) {
+  List<CommentItem> _parseComments(List<dynamic> json, int depth) {
     List<CommentItem> items = [];
     for (var child in json) {
       final kind = child['kind'];
       final data = child['data'];
       if (kind == 't1') { 
-        items.add(_parseCommentFromJson(data, level));
+        items.add(_parseCommentFromJson(data, depth));
         if (data['replies'] is Map) {
           final repliesData = data['replies']['data'];
           if (repliesData != null && repliesData['children'] != null) {
-            items.addAll(_parseComments(repliesData['children'], level + 1));
+            items.addAll(_parseComments(repliesData['children'], depth + 1));
           }
         }
       }
       else if (kind == 'more') {
         if (data['count'] != 0) {
-          items.add(_parseLoadMoreCommentFromJson(data, level));
+          items.add(_parseLoadMoreCommentFromJson(data, depth));
         }
       }
     }
     return items;
   }
 
-  Comment _parseCommentFromJson(Map<String, dynamic> data, int level) {
+  Comment _parseCommentFromJson(Map<String, dynamic> data, int depth) {
     final author = data['author'];
     return Comment(
-      level: level,
+      depth: depth,
+      platform: Platform.digg,
       id: data['id'],
+      permalink: data['permalink'],
       isDeleted: author == '[deleted]',
       author: author,
       isModerator: data['distinguished'] == 'moderator',
@@ -323,7 +324,7 @@ class RedditApi extends Api {
     );
   }
 
-  Comment _parseCommentFromHtml(Element element, int level) {
+  Comment _parseCommentFromHtml(Element element, int depth) {
     final entry = element.querySelector('.entry');
     final authorElement = entry?.querySelector('.author');
     final author = authorElement?.text;
@@ -336,8 +337,10 @@ class RedditApi extends Api {
       timestampMs = DateTime.tryParse(dateTimeString)?.millisecondsSinceEpoch ?? 0;
     }
     return Comment(
-      level: level,
+      depth: depth,
+      platform: Platform.digg,
       id: element.attributes['data-fullname']!,
+      permalink: element.attributes['data-permalink']!,
       isDeleted: author == '[deleted]',
       author: author,
       isModerator: authorElement?.classes.contains('moderator') ?? false,
@@ -349,20 +352,20 @@ class RedditApi extends Api {
     );
   }
 
-  LoadMoreComment _parseLoadMoreCommentFromJson(Map<String, dynamic> data, int level) {
+  LoadMoreComment _parseLoadMoreCommentFromJson(Map<String, dynamic> data, int depth) {
     return LoadMoreComment(
-      level: level,
+      depth: depth,
       count: data['count']!,
       pageToken: List<String>.from(data['children']!).join(','),
     );
   }
 
-  LoadMoreComment _parseLoadMoreCommentFromHtml(Element element, int level) {
+  LoadMoreComment _parseLoadMoreCommentFromHtml(Element element, int depth) {
     final moreLink = element.querySelector('.morecomments a');
     final countMatch = RegExp(r'(\d+)').firstMatch(moreLink!.text.trim());
     final idMatch = RegExp(r"morechildren\(.*?\s*'.*?'\s*,\s*'.*?'\s*,\s*'(.*?)'").firstMatch(moreLink.attributes['onclick']!);
     return LoadMoreComment(
-      level: level,
+      depth: depth,
       count: int.tryParse(countMatch!.group(1)!)!,
       pageToken: idMatch!.group(1)!
     );
@@ -372,7 +375,7 @@ class RedditApi extends Api {
     final data = jsonDecode(body)['data'];
     return [
       DateTimeUserStat(
-        label: 'Joined',
+        label: 'Reddit age',
         value: DateTime.fromMillisecondsSinceEpoch((data['created_utc'] as num).toInt() * 1000, isUtc: true)
       ),
       NumberUserStat(

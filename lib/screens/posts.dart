@@ -4,7 +4,6 @@ import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/screens/post_details.dart';
-import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/widgets/community_name.dart';
 import 'package:lurk/widgets/history_builder.dart';
@@ -36,9 +35,9 @@ class _PostsScreenState extends State<PostsScreen> {
     return SimpleFeedScreen(
       platform: widget.community.platform,
       getItems: (options, pageToken) async {
-        final result = await Api.of(widget.community.platform).getPosts(widget.community.name, options: options, pageToken: pageToken);
+        final result = await widget.community.platform.api.getPosts(widget.community.name, options: options, pageToken: pageToken);
         setState(() {
-          _isSingleCommunity = result.items.map((post) => post.community.name).toSet().length == 1;
+          _isSingleCommunity = result.items.every((post) => post.community.name == widget.community.name);
         });
         return result;
       },
@@ -48,12 +47,7 @@ class _PostsScreenState extends State<PostsScreen> {
       itemBuilder: (context, post) {
         return PostTile(
           post: post,
-          onTap: () {
-            context.push(() => PostDetailsScreen(post: post));
-            if (post.isSelf) {
-              History.posts.setVisited(post.id);
-            }
-          },
+          showViewCommunityOption: post.community != widget.community,
           subtitle: HistoryBuilder(
             id: post.id,
             history: History.postDetails,

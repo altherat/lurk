@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/post_details.dart';
-import 'package:lurk/services/api/api.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 
 class MediaScaffold extends StatelessWidget {
@@ -28,14 +27,7 @@ class MediaScaffold extends StatelessWidget {
         //TODO
       },
       if (post != null)
-        'View comments': () {
-          context.push(
-            () => PostDetailsScreen(
-              post: post,
-              url: Api.of(post!.community.platform).getPostDetailsUrl(post!),
-            )
-          );
-        },
+        'View comments': () => context.push(() => PostDetailsScreen.fromPost(post: post!)),
       'View in browser': () => openInBrowser(url),
       'Copy link': () => copyToClipboard(url)
     };

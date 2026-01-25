@@ -110,6 +110,7 @@ class Html extends StatelessWidget {
             }
             else if (element.localName == 'img') {
               return _HtmlLink(
+                platform: platform,
                 url: element.attributes['src']!,
                 placeholder: '[gif]',
                 textStyle: textStyle
@@ -119,6 +120,7 @@ class Html extends StatelessWidget {
               final String url = element.attributes['href']!;
               if (Uri.tryParse(url)?.host == 'preview.redd.it') {
                 return _HtmlLink(
+                  platform: platform,
                   url: url,
                   placeholder: '[image]',
                   textStyle: textStyle
@@ -147,14 +149,14 @@ class Html extends StatelessWidget {
               );
             }
             else {
-              navigate(context, url);
+              navigate(context, platform, url);
             }
             return true;
           },
           onTapImage: (imageMetadata) {
             final url = imageMetadata.sources.firstOrNull?.url;
              if (url != null) {
-              navigate(context, url);
+              navigate(context, platform, url);
              }
           },
         );
@@ -166,12 +168,14 @@ class Html extends StatelessWidget {
 
 class _HtmlLink extends StatelessWidget {
 
+  final Platform platform;
   final String url;
   final String placeholder;
   final TextStyle textStyle;
 
   const _HtmlLink({
     super.key,
+    required this.platform,
     required this.url,
     required this.placeholder,
     required this.textStyle
@@ -182,7 +186,7 @@ class _HtmlLink extends StatelessWidget {
     return Align(
       alignment: Alignment.topLeft,
       child: InkWell(
-        onTap: () => navigate(context, url),
+        onTap: () => navigate(context, platform, url),
         child: Padding(
           padding: EdgeInsets.only(right: 64),
           child: Text(
@@ -224,9 +228,9 @@ class _Image extends StatelessWidget {
         loadStateChanged: (state) {
           switch (state.extendedImageLoadState) {
             case LoadState.loading:
-              return Padding(
+              return const Padding(
                 padding: EdgeInsets.symmetric(vertical: 16),
-                child: CustomCircularProgressIndicator(platform: platform),
+                child: CustomCircularProgressIndicator(),
               );
             case LoadState.completed:
               return Stack(

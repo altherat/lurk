@@ -19,40 +19,35 @@ class DiggApi extends Api {
   };
   static const resultsLimit = 30;
   
-  late gql.GraphQLClient _client;
-
-  DiggApi() {
-    _client = gql.GraphQLClient(
-      link: gql.Link.function((request, [forward]) {
-        return forward!(
-          request.updateContextEntry<gql.HttpLinkHeaders>(
-            (headers) => gql.HttpLinkHeaders(
-              headers: {
-                ...?headers?.headers,
-                ...getHeaders(DiggApi._headers),
-              },
-            ),
-          )
-        );
-      }).concat(gql.HttpLink(_baseUrlGraphQl)),
-      cache: gql.GraphQLCache(),
-      defaultPolicies: gql.DefaultPolicies(
-        query: gql.Policies(
-          fetch: gql.FetchPolicy.networkOnly,
+  static final gql.GraphQLClient _client = gql.GraphQLClient(
+    link: gql.Link.function((request, [forward]) {
+      return forward!(
+        request.updateContextEntry<gql.HttpLinkHeaders>(
+          (headers) => gql.HttpLinkHeaders(
+            headers: {
+              ...?headers?.headers,
+              ...Api.getHeaders(DiggApi._headers),
+            },
+          ),
         )
+      );
+    }).concat(gql.HttpLink(_baseUrlGraphQl)),
+    cache: gql.GraphQLCache(),
+    defaultPolicies: gql.DefaultPolicies(
+      query: gql.Policies(
+        fetch: gql.FetchPolicy.networkOnly,
       )
-    );
-  }
-  
-  @override
-  String getPostDetailsUrl(Post post) => '$_baseUrl${post.urlPath}';
+    )
+  );
+
+  const DiggApi();
 
   @override
-  String getCommentUrl(Post post, Comment comment) => '$_baseUrl/${post.community.name}/${post.id.split('-')[1]}/comment/${comment.id.split('-')[2]}';
+  String get baseUrl => _baseUrl;
 
   @override
   Future<PagedResult<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    debugPrint('[Digg] getPosts: id=$id, options=[${options?.values.map((option) => option.apiValue).join(', ')}], pageToken=$pageToken');
+    // debugPrint('[Digg] getPosts: id=$id, options=[${options?.values.map((option) => option.apiValue).join(', ')}], pageToken=$pageToken');
     final sort = options?[FeedOptionType.sort];
     return _getPostsRecursive({
       'first': resultsLimit,
@@ -178,7 +173,7 @@ class DiggApi extends Api {
   }
 
   @override
-  Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? level, Map<FeedOptionType, FeedOption>? options}) async {
+  Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? depth, Map<FeedOptionType, FeedOption>? options}) async {
     // debugPrint('[Digg] getMoreComments: id=$id, pageToken=$pageToken, options=[${options?.values.map((option) => option.apiValue).join(', ')}]');
     final sort = options?[FeedOptionType.sort];
     final gql.QueryOptions queryOptions = gql.QueryOptions(
@@ -261,11 +256,11 @@ class DiggApi extends Api {
       (data) {
         final List edges = data['comments']['edges'];
         final Map<String, dynamic> pageInfo = data['comments']['pageInfo'];
-        final List<CommentItem> comments = _parseComments(edges, '', level ?? 0);
+        final List<CommentItem> comments = _parseComments(edges, '', depth ?? 0);
         if (pageInfo['hasNextPage']) {
           comments.add(
             LoadMoreComment(
-              level: 0,
+              depth: 0,
               count: data['posts']['edges'][0]['node']['commentCount'] - comments.length,
               pageToken: pageInfo['endCursor'],
             ),
@@ -661,7 +656,10 @@ class DiggApi extends Api {
     final authorUsername = json['author']['username'];
     final List attachments = json['attachments'];
     final externalContent = json['externalContent'];
-    final urlPath = '/${id.replaceAll('-', '/')}/${json['slug']}';
+
+    final idLastDashIndex = id.lastIndexOf('-');
+    final permalink = '/${id.substring(0, idLastDashIndex)}/${id.substring(idLastDashIndex + 1)}/${json['slug']}';
+
     final String url;
     final String domain;
     final String? thumbnailUrl;
@@ -681,7 +679,7 @@ class DiggApi extends Api {
         thumbnailUrl = externalContent['imageUrl'];
       }
       else {
-        url = '$_baseUrl$urlPath';
+        url = '$_baseUrl$permalink';
         domain = 'self.digg';
         thumbnailUrl = null;
       }
@@ -693,6 +691,7 @@ class DiggApi extends Api {
         name: json['community']['name'].toLowerCase()
       ),
       id: id,
+      permalink: permalink,
       title: (json['title'] as String).trim(),
       textHtml: text != null && text.isNotEmpty ? text : null,
       score: json['score'],
@@ -703,7 +702,6 @@ class DiggApi extends Api {
       isSelf: json['type'] == 'TEXT',
       isNsfw: json['nsfw'],
       url: url,
-      urlPath: urlPath,
       thumbnailUrl: thumbnailUrl,
       isGallery: attachments.length > 1,
       isDeleted: json['deletedDate'] != null,
@@ -720,7 +718,7 @@ class DiggApi extends Api {
     if (pageInfo['hasNextPage']) {
       comments.add(
         LoadMoreComment(
-          level: 0,
+          depth: 0,
           count: post.commentCount - comments.length,
           pageToken: pageInfo['endCursor']
         )
@@ -732,17 +730,17 @@ class DiggApi extends Api {
     );
   }
 
-  static List<CommentItem> _parseComments(List<dynamic> children, String postAuthorId, [int level = 0]) {
+  static List<CommentItem> _parseComments(List<dynamic> children, String postAuthorId, [int depth = 0]) {
     final List<CommentItem> comments = [];
 
     for (int i = 0; i < children.length; i++) {
       final item = children[i];
       final Map<String, dynamic> data = (item is Map && item.containsKey('node')) ? item['node'] : item as Map<String, dynamic>;
-      comments.add(_parseComment((item is Map && item.containsKey('node')) ? item['node'] : item as Map<String, dynamic>, level, postAuthorId));
-      if (level < 4) {
+      comments.add(_parseComment((item is Map && item.containsKey('node')) ? item['node'] : item as Map<String, dynamic>, depth, postAuthorId));
+      if (depth < 4) {
         final List? replyComments = data['comments'];
         if (replyComments != null && replyComments.isNotEmpty) {
-          comments.addAll(_parseComments(replyComments, postAuthorId, level + 1));
+          comments.addAll(_parseComments(replyComments, postAuthorId, depth + 1));
         }
       }
       else {
@@ -752,7 +750,7 @@ class DiggApi extends Api {
           if (remainingItems.isNotEmpty) {
             final int itemsToTake = replyCount > remainingItems.length ? remainingItems.length : replyCount;
             final childrenToIndent = remainingItems.sublist(0, itemsToTake);
-            comments.addAll(_parseComments(childrenToIndent, postAuthorId, level + 1));
+            comments.addAll(_parseComments(childrenToIndent, postAuthorId, depth + 1));
             i += itemsToTake;
           }
         }
@@ -763,12 +761,18 @@ class DiggApi extends Api {
     return comments; 
   }
 
-  static Comment _parseComment(Map<String, dynamic> data, [int level = 0, String? postAuthorId]) {
+  static Comment _parseComment(Map<String, dynamic> data, [int depth = 0, String? postAuthorId]) {
+    final String id = data['_id'];
     final text = data['text'];
     final author = data['author'];
     final postData = data['post'];
     final pm = data['pm'];
     final List attachments = data['attachments'];
+
+    final idLastDashIndex = id.lastIndexOf('-');
+    final idSecondLastDash = id.lastIndexOf('-', idLastDashIndex - 1);
+    final commentId = id.substring(idLastDashIndex + 1);
+
     final bool isSubmitter;
     final String? authorUsername;
     final String? postTitle;
@@ -803,8 +807,10 @@ class DiggApi extends Api {
 
 
     return Comment(
-      level: level,
-      id: data['_id'],
+      depth: depth,
+      platform: Platform.digg,
+      id: id,
+      permalink: '/${id.substring(0, idSecondLastDash)}/${id.substring(idSecondLastDash + 1, idLastDashIndex)}/comment/$commentId',
       isDeleted: data['deletedDate'] != null,
       author: authorUsername,
       isModerator: false,
@@ -849,11 +855,11 @@ class DiggApi extends Api {
   List<UserStat> _parseUserStats(Map<String, dynamic> data) {
     return [
       DateTimeUserStat(
-        label: 'Joined',
+        label: 'Digg age',
         value: DateTime.parse(data['createdDate'])
       ),
       NumberUserStat(
-        label: 'Total score',
+        label: 'Score',
         value: data['score']
       ),
       NumberUserStat(
@@ -861,11 +867,11 @@ class DiggApi extends Api {
         value: data['diggsGiven']
       ),
       NumberUserStat(
-        label: 'Post count',
+        label: 'Posts',
         value: data['postCount'],
       ),
       NumberUserStat(
-        label: 'Comment count',
+        label: 'Comments',
         value: data['commentCount']
       )
     ];

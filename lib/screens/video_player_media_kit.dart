@@ -1,4 +1,4 @@
-// Video randomly skips, cannot seem to fix
+// Unsued: videos from Reddit randomly skip, cannot seem to fix
 
 import 'dart:async';
 import 'dart:math';
@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:lurk/app.dart';
 import 'package:lurk/core/constants.dart';
+import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
@@ -18,12 +19,14 @@ const List<double> playbackSpeeds = [0.5, 1, 1.25, 1.5, 2];
 
 class VideoPlayerScreen extends StatefulWidget {
 
+  final Platform platform;
   final String url;
   final String? audioUrl;
   final Post? post;
 
   const VideoPlayerScreen({
     super.key,
+    required this.platform,
     required this.url,
     this.audioUrl,
     this.post
@@ -165,7 +168,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
               ),
             ),
             if (!_isInitialized)
-              CenteredLargeCircularProgressIndicator(platform: widget.post?.community.platform)
+              CenteredLargeCircularProgressIndicator(platform: widget.platform)
             else ...[
               Positioned(
                 bottom: 0,
@@ -299,7 +302,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
               ),
               StreamBuilder(
                 stream: _player.stream.buffering,
-                builder: (context, snapshot) => snapshot.data == true ? CenteredLargeCircularProgressIndicator(platform: widget.post?.community.platform) : const SizedBox.shrink(),
+                builder: (context, snapshot) => snapshot.data == true ? CenteredLargeCircularProgressIndicator(platform: widget.platform) : const SizedBox.shrink(),
               ),
             ]
           ],

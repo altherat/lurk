@@ -742,9 +742,9 @@ class _FeedOptionsSelectorState extends State<_FeedOptionsSelector> {
     }
   }
 
-  void _onOptionSelected(int level, FeedOptionType feedOptionType, FeedOption option) {
-    if (_selected.length > level) {
-      _selected.removeRange(level, _selected.length);
+  void _onOptionSelected(int index, FeedOptionType feedOptionType, FeedOption option) {
+    if (_selected.length > index) {
+      _selected.removeRange(index, _selected.length);
     }
     _selected.add((feedOptionType, option));
     if (option.subGroup != null) {

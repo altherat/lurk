@@ -35,7 +35,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 setting: Settings.homeCommunityPlatform,
                 choices: Platform.values,
                 choiceLabel: (platform) => platform.name.toTitleCase(),
-                selectedColor: (platform) => platform.color
+                selectedColor: (platform) => platform.color,
+                onSelected: (platform) {
+                  Settings.homeCommunityName.defaultValue = platform.communityHome;
+                }
               ),
             ],
             ListTile(
@@ -281,34 +284,6 @@ class _TextField extends StatefulWidget {
 
 }
 
-class _InfoIconButton extends StatelessWidget {
-
-  final String? title;
-  final String text;
-
-  const _InfoIconButton({
-    super.key,
-    required this.title,
-    required this.text
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return IconButton(
-      icon: const Icon(Icons.info_outline_rounded),
-      color: Theme.of(context).inputDecorationTheme.suffixIconColor,
-      onPressed: () {
-        showSimpleBottomSheet(
-          context: context,
-          title: title,
-          content: text
-        );
-      }
-    );
-  }
-
-}
-
 class _TextFieldState extends State<_TextField> {
 
   late final TextEditingController _controller = TextEditingController(text: widget.defaultValue ?? '');
@@ -355,6 +330,34 @@ class _TextFieldState extends State<_TextField> {
           : null,
       ),
       onSubmitted: widget.onSubmitted,
+    );
+  }
+
+}
+
+class _InfoIconButton extends StatelessWidget {
+
+  final String? title;
+  final String text;
+
+  const _InfoIconButton({
+    super.key,
+    required this.title,
+    required this.text
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.info_outline_rounded),
+      color: Theme.of(context).inputDecorationTheme.suffixIconColor,
+      onPressed: () {
+        showSimpleBottomSheet(
+          context: context,
+          title: title,
+          content: text
+        );
+      }
     );
   }
 
@@ -534,6 +537,7 @@ class _ChoiceSettingListTile<T> extends StatelessWidget {
   final String? infoText;
   final String Function(T choice)? choiceLabel;
   final Color Function(T choice)? selectedColor;
+  final Function(T choice)? onSelected;
 
   const _ChoiceSettingListTile({
     super.key,
@@ -543,6 +547,7 @@ class _ChoiceSettingListTile<T> extends StatelessWidget {
     this.infoText,
     this.choiceLabel,
     this.selectedColor,
+    this.onSelected
   });
 
   @override
@@ -573,7 +578,7 @@ class _ChoiceSettingListTile<T> extends StatelessWidget {
                         labelStyle = null;
                       }
                       return Padding(
-                        padding: EdgeInsets.only(left: index == 0 ? 0 : 8, right: index == choices.length - 1 ? 0 : 8),
+                        padding: EdgeInsets.only(left: index == 0 ? 0 : Constants.choiceChipGapSize / 2, right: index == choices.length - 1 ? 0 : Constants.choiceChipGapSize / 2),
                         child: ChoiceChip(
                           label: Text(labelString),
                           selected: isSelected,
@@ -587,6 +592,7 @@ class _ChoiceSettingListTile<T> extends StatelessWidget {
                           onSelected: (bool selected) {
                             if (selected) {
                               setting.value = choice;
+                              onSelected?.call(choice);
                             }
                           },
                         ),

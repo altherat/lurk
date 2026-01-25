@@ -7,9 +7,8 @@ import 'package:lurk/models/post.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/history.dart';
-import 'package:lurk/services/api/api.dart';
 import 'package:lurk/core/utils.dart';
-import 'package:lurk/widgets/centered_scroll_view.dart';
+import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
@@ -20,14 +19,40 @@ import 'package:lurk/widgets/post_tile.dart';
 
 class PostDetailsScreen extends StatefulWidget {
 
-  final Post? post;
+  final Platform platform;
   final String? url;
+  final Post? post;
 
-  const PostDetailsScreen({
+  const PostDetailsScreen._({
     super.key,
+    required this.platform,
+    this.url,
     this.post,
-    this.url
-  }) : assert(post != null || url != null);
+  })  : assert(post != null || url != null, 'Must provide either a post or a url');
+
+  factory PostDetailsScreen.fromPost({
+    Key? key,
+    required Post post
+  }) {
+    return PostDetailsScreen._(
+      key: key,
+      platform: post.community.platform,
+      url: post.url,
+      post: post,
+    );
+  }
+
+  factory PostDetailsScreen.fromUrl({
+    Key? key,
+    required Platform platform,
+    required String url
+  }) {
+    return PostDetailsScreen._(
+      key: key,
+      platform: platform,
+      url: url,
+    );
+  }
 
   @override
   State<PostDetailsScreen> createState() => _PostDetailsScreenState();
@@ -37,7 +62,6 @@ class PostDetailsScreen extends StatefulWidget {
 class _PostDetailsScreenState extends State<PostDetailsScreen> {
 
   final _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
-  late final Platform _platform;
 
   Post? _post;
   Map<FeedOptionType, FeedOption>? _feedOptions;
@@ -50,14 +74,12 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
   void initState() {
     super.initState();
     if (widget.post != null) {
-      _platform = widget.post!.community.platform;
       _post = widget.post!;
       _getPostDetailsFromPost();
     }
     else {
       final platform = Platform.forUrl(widget.url!);
       if (platform != null) {
-        _platform = platform;
         _getPostDetails();
       }
       else {
@@ -66,9 +88,9 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     }
   }
 
-  Future<void> _getPostDetails() => _get(() => Api.of(_platform).getPostDetailsFromUrl(widget.url!));
+  Future<void> _getPostDetails() => _get(() => widget.platform.api.getPostDetailsFromUrl(widget.url!));
 
-  Future<void> _getPostDetailsFromPost() => _get(() => Api.of(_post!.community.platform).getPostDetailsFromId(_post!.id, options: _feedOptions));
+  Future<void> _getPostDetailsFromPost() => _get(() => _post!.community.platform.api.getPostDetailsFromId(_post!.id, options: _feedOptions));
 
   Future<void> _get(Future<PostDetails> Function() get) async {
     try {
@@ -94,19 +116,19 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
   void _onCommentCollapseChanged() {
     if (_comments == null) return;
     _visibleComments!.clear();
-    int? currentCollapsedLevel;
+    int? currentCollapsedDepth;
     for (var item in _comments!) {
-      if (currentCollapsedLevel != null) {
-        if (item.level > currentCollapsedLevel) {
+      if (currentCollapsedDepth != null) {
+        if (item.depth > currentCollapsedDepth) {
           continue; 
         }
         else {
-          currentCollapsedLevel = null;
+          currentCollapsedDepth = null;
         }
       }
       _visibleComments!.add(item);
       if (item is Comment && _collapsedCommentIds.contains(item.id)) {
-        currentCollapsedLevel = item.level;
+        currentCollapsedDepth = item.depth;
       }
     }
     setState(() {});
@@ -115,33 +137,26 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final String? title;
+    final Map<String, VoidCallback> popupMenuActions;
     final RefreshCallback? onRefresh;
     final Widget body;
-    if (_post == null) {
-      title = widget.url;
-      if (_isLoading) {
-        onRefresh = null;
-        body = CenteredLargeCircularProgressIndicator(platform: _platform);
-      }
-      else {
-        onRefresh = _getPostDetails;
-        body = const CenteredScrollView(
-          child: LargeMessage(
-            icon: Icons.error_outline_rounded,
-            message: 'Something went wrong',
-          )
-        );
-      }
-    }
-    else {
+    if (_post != null) {
+      final url = widget.url ?? _post!.url;
       title = _post!.title;
+      popupMenuActions = {
+        'View in browser': () => openInBrowser(url),
+        'View comments in browser': () => openInBrowser(_post!.community.platform.api.getPostDetailsUrl(_post!)),
+        'Copy link': () => copyToClipboard(url),
+        'Copy comments link': () => copyToClipboard(_post!.community.platform.api.getPostDetailsUrl(_post!))
+      };
       onRefresh = _getPostDetailsFromPost;
       final List<Widget> headers = [
         PostTile(
           post: _post!,
+          onTapNavigate: false,
           showThumbnail: !_post!.isSelf,
           subtitle: Text(
-            'posted to ${_post!.community.name}\n${_post!.timeAgo} ago by ${_post!.author}',
+            'posted to ${_post!.community.name}\n${_post!.timeAgoLong} ago by ${_post!.author}',
             style: const TextStyle(color: Constants.secondaryTextColor, fontSize: 12)
           )
         ),
@@ -183,7 +198,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
         body = Column(
           children: [
             ...headers,
-            Expanded(child: CenteredLargeCircularProgressIndicator(platform: _platform))
+            Expanded(child: CenteredLargeCircularProgressIndicator(platform: widget.platform))
           ],
         );
       }
@@ -211,110 +226,36 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                 if (index < headers.length) {
                   return headers[index];
                 }
-                final commentItem = _visibleComments![index - headers.length];
-                if (commentItem is Comment) {
-                  final isCollapsed = _collapsedCommentIds.contains(commentItem.id);
-                  final String? authorTag;
-                  final Color authorColor;
-                  if (commentItem.isModerator) {
-                    authorTag = 'M';
-                    authorColor = Constants.commentModeratorColor;
-                  }
-                  else if (commentItem.isSubmitter) {
-                    authorTag = 'S';
-                    authorColor = Constants.commentSubmitterColor;
-                  }
-                  else {
-                    authorTag = null;
-                    authorColor = Constants.commentAuthorColor;
-                  }
-                  final String? htmlText = commentItem.isDeleted ? '[deleted]' : commentItem.textHtml;
-                  return InkWell(
+                final item = _visibleComments![index - headers.length];
+                if (item is Comment) {
+                  final isCollapsed = _collapsedCommentIds.contains(item.id);
+                  return CommentTile(
+                    padding: const EdgeInsets.only(top: 8, bottom: 4),
+                    comment: item,
+                    depth: item.depth,
+                    isCollapsed: isCollapsed,
                     onTap: () {
                       setState(() {
                         if (isCollapsed) {
-                          _collapsedCommentIds.remove(commentItem.id);
+                          _collapsedCommentIds.remove(item.id);
                         }
                         else {
-                          _collapsedCommentIds.add(commentItem.id);
+                          _collapsedCommentIds.add(item.id);
                         }
                         _onCommentCollapseChanged();
                       });
-                    },
-                    onLongPress: () {
-                      HapticFeedback.mediumImpact();
-                      showSimpleOptionsBottomSheet(
-                        context: context,
-                        title: '${commentItem.author == null ? 'Deleted' : commentItem.author!.toPosessive()} comment',
-                        options: {
-                          if (commentItem.author != null)
-                            'View ${_post!.community.platform.userPrefix}${commentItem.author}': () {
-                              context.push(
-                                () => UserDetailsScreen(
-                                  platform: _post!.community.platform,
-                                  username: commentItem.author!
-                                )
-                              );
-                            },
-                          if (commentItem.text != null)
-                            'Copy text': () => copyToClipboard(commentItem.text!),
-                          'Copy link': () => copyToClipboard(Api.of(_post!.community.platform).getCommentUrl(_post!, commentItem)),
-                        }
-                      );
-                    },
-                    child: _Indented(
-                      level: commentItem.level,
-                      child: Padding(
-                        padding: const EdgeInsets.only(top: 8, bottom: 4),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text.rich(
-                              TextSpan(
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Constants.secondaryTextColor,
-                                  fontStyle: isCollapsed ? FontStyle.italic : null
-                                ),
-                                children: [
-                                  TextSpan(
-                                    text: !commentItem.isDeleted && commentItem.author != null ? commentItem.author : '[deleted]',
-                                    style: TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      color: authorColor
-                                    ),
-                                  ),
-                                  if (authorTag != null)
-                                    TextSpan(
-                                      text: ' [$authorTag]',
-                                      style: TextStyle(color: authorColor)
-                                    ),
-                                  TextSpan(text: ' • ${commentItem.score?.toPluralString('point') ?? '[~]'} • ${commentItem.timeAgo}'),
-                                  if (isCollapsed)
-                                    const TextSpan(text: ' [+]'),
-                                ],
-                              ),
-                            ),
-                            if (!isCollapsed && htmlText != null)
-                              Html(
-                                platform: _post!.community.platform,
-                                html: htmlText
-                              )
-                          ],
-                        ),
-                      ),
-                    ),
+                    }
                   );
                 }
-                else if (commentItem is LoadMoreComment) {
+                else if (item is LoadMoreComment) {
                   return _LoadMoreComments(
                     platform: _post!.community.platform,
-                    postId: _post!.id,
-                    comment: commentItem,
-                    onMoreCommentsLoaded: (comments) {
+                    comment: item,
+                    onLoadMoreComments: () async {
+                      final comments = await _post!.community.platform.api.getMoreComments(_post!.id, item.pageToken!, depth: item.depth);
                       if (mounted) {
                         setState(() {
-                          final index = _comments!.indexOf(commentItem);
+                          final index = _comments!.indexOf(item);
                           if (index != -1) {
                             _comments!.removeAt(index);
                             _comments!.insertAll(index, comments);
@@ -322,7 +263,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                           }
                         });
                       }
-                    }
+                    },
                   );
                 }
                 return const SizedBox.shrink();
@@ -331,22 +272,45 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
         );
       }
     }
+    else {
+      title = widget.url;
+      popupMenuActions = const {};
+      if (_isLoading) {
+        onRefresh = null;
+        body = CenteredLargeCircularProgressIndicator(platform: widget.platform);
+      }
+      else {
+        onRefresh = _getPostDetails;
+        body = LayoutBuilder(
+          builder: (context, constraints) {
+            return SingleChildScrollView(
+              child: ConstrainedBox(
+                constraints: BoxConstraints(
+                  minHeight: constraints.maxHeight,
+                ),
+                child: Center(
+                  child: LargeMessage(
+                    icon: Icons.error_outline_rounded,
+                    message: 'Something went wrong',
+                  )
+                ),
+              )
+            );
+          },
+        );
+      }
+    }
     return MainScaffold(
-      platform: _platform,
+      platform: widget.platform,
       title: title != null ? Text(title) : null,
       subtitle: _post != null ? Text(_post!.community.fullDisplayName) : null,
-      popupMenuActions: {
-        'View in browser': () => openInBrowser(widget.url ?? widget.post!.url),
-        'View comments in browser': () => openInBrowser(Api.of(_platform).getPostDetailsUrl(widget.post!)),
-        'Copy link': () => copyToClipboard(widget.url ?? widget.post!.url),
-        'Copy comments link': () => copyToClipboard(Api.of(_platform).getPostDetailsUrl(widget.post!))
-      },
-      feedOptions: _platform.postCommentsFeedOptions,
+      popupMenuActions: popupMenuActions,
+      feedOptions: widget.platform.postCommentsFeedOptions,
       selectedFeedOptions: _feedOptions,
       useSlivers: true,
       body: CustomRefreshIndicator(
+        platform: widget.platform,
         key: _refreshIndicatorKey,
-        platform: _platform,
         onRefresh: onRefresh,
         child: body
       ),
@@ -369,16 +333,14 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
 class _LoadMoreComments extends StatefulWidget {
 
   final Platform platform;
-  final String postId;
   final LoadMoreComment comment;
-  final Function(List<CommentItem> comments) onMoreCommentsLoaded;
+  final Future Function() onLoadMoreComments;
 
   const _LoadMoreComments({
     super.key,
     required this.platform,
-    required this.postId,
     required this.comment,
-    required this.onMoreCommentsLoaded,
+    required this.onLoadMoreComments,
   });
 
   @override
@@ -396,17 +358,14 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
     final Widget child;
     if (_isLoading) {
       onTap = null;
-      child = Align(
+      child = const Align(
         alignment: Alignment.topLeft,
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 8),
           child: SizedBox(
             height: 20,
             width: 20,
-            child: CustomCircularProgressIndicator(
-              platform: widget.platform,
-              strokeWidth: 2.5,
-            ),
+            child: CustomCircularProgressIndicator(strokeWidth: 2.5),
           ),
         ),
         );
@@ -414,7 +373,7 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
     else {
       onTap = () async {
         setState(() => _isLoading = true);
-        widget.onMoreCommentsLoaded(await Api.of(widget.platform).getMoreComments(widget.postId, widget.comment.pageToken!, level: widget.comment.level));
+        await widget.onLoadMoreComments();
         setState(() => _isLoading = false);
       };
       child = Padding(
@@ -431,54 +390,10 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
     }
     return InkWell(
       onTap: onTap,
-      child: _Indented(
-        level: widget.comment.level,
+      child: CommentIndent(
+        depth: widget.comment.depth,
         child: child
       ),
-    );
-  }
-
-}
-
-class _Indented extends StatelessWidget {
-
-  final int level;
-  final Widget child;
-
-  const _Indented({
-    super.key,
-    required this.level,
-    required this.child
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    if (level == 0) return child;
-    return Stack(
-      children: [
-        Positioned(
-          left: 0,
-          top: 0,
-          bottom: 0,
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: List.generate(
-              level,
-              (index) {
-                return Container(
-                  margin: const EdgeInsets.only(right: 8),
-                  width: 1,
-                  color: Constants.commentIndentColor,
-                );
-              },
-            ),
-          ),
-        ),
-        Padding(
-          padding: EdgeInsets.only(left: level * 9),
-          child: child,
-        ),
-      ],
     );
   }
 

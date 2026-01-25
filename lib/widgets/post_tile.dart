@@ -2,12 +2,12 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/screens/posts.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/models/post.dart';
-import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/history_builder.dart';
 
@@ -17,15 +17,19 @@ class PostTile extends StatelessWidget {
 
   final Post post;
   final Widget subtitle;
+  final bool onTapNavigate;
   final bool showThumbnail;
-  final VoidCallback? onTap;
+  final bool showViewCommunityOption;
+  final bool showViewUserOption;
 
   const PostTile({
     super.key,
     required this.post,
+    this.onTapNavigate = true,
     this.showThumbnail = true,
+    this.showViewCommunityOption = true,
+    this.showViewUserOption = true,
     required this.subtitle,
-    this.onTap
   });
 
   void _showOptions(BuildContext context) {
@@ -33,11 +37,9 @@ class PostTile extends StatelessWidget {
       context: context,
       title: post.title,
       options: {
-        'View ${post.community.fullDisplayName}': () {
-          context.push(() => PostsScreen(community: post.community));
-
-        },
-        if (post.author != null)
+        if (showViewCommunityOption)
+          'View ${post.community.fullDisplayName}': () => context.push(() => PostsScreen(community: post.community)),
+        if (showViewUserOption && post.author != null)
           'View ${post.community.platform.userPrefix}${post.author}': () {
             context.push(
               () => UserDetailsScreen(
@@ -47,9 +49,9 @@ class PostTile extends StatelessWidget {
             );
           },
         'View link in browser': () => openInBrowser(post.url),
-        'View comments in browser': () => openInBrowser(Api.of(post.community.platform).getPostDetailsUrl(post)),
+        'View comments in browser': () => openInBrowser(post.community.platform.api.getPostDetailsUrl(post)),
         'Copy link': () => copyToClipboard(post.url),
-        'Copy comments link': () => copyToClipboard(Api.of(post.community.platform).getPostDetailsUrl(post))
+        'Copy comments link': () => copyToClipboard(post.community.platform.api.getPostDetailsUrl(post))
       }      
     );
   }
@@ -57,7 +59,14 @@ class PostTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: onTap ?? () => _showOptions(context),
+      onTap: onTapNavigate
+        ? () {
+            context.push(() => PostDetailsScreen.fromPost(post: post));
+            if (post.isSelf) {
+              History.posts.setVisited(post.id);
+            }
+          }
+        : () => _showOptions(context),
       onLongPress: () { 
         HapticFeedback.mediumImpact();
         _showOptions(context);
@@ -143,7 +152,7 @@ class PostTile extends StatelessWidget {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () {
-                          navigate(context, post.url, post: post);
+                          navigate(context, post.community.platform, post.url, post: post);
                           History.posts.setVisited(post.id);
                         }
                       ),
