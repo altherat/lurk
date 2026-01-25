@@ -61,10 +61,10 @@ class PostTile extends StatelessWidget {
     return InkWell(
       onTap: onTapNavigate
         ? () {
-            context.push(() => PostDetailsScreen.fromPost(post: post));
             if (post.isSelf) {
               History.posts.setVisited(post.id);
             }
+            context.push(() => PostDetailsScreen.fromPost(post: post));
           }
         : () => _showOptions(context),
       onLongPress: () { 
@@ -152,8 +152,8 @@ class PostTile extends StatelessWidget {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () {
-                          navigate(context, post.community.platform, post.url, post: post);
                           History.posts.setVisited(post.id);
+                          navigate(context, post.community.platform, post.url, post: post);
                         }
                       ),
                     ),

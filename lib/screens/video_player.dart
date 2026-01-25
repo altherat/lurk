@@ -1,13 +1,20 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:io';
 import 'dart:math';
 
+import 'package:ffmpeg_kit_flutter_new/ffmpeg_kit.dart';
+import 'package:ffmpeg_kit_flutter_new/return_code.dart';
 import 'package:flutter/material.dart';
+import 'package:gal/gal.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
 
 const hideControlsAfterDuration = Duration(seconds: 2);
@@ -35,10 +42,12 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
 
   late VideoPlayerController _videoController;
   final ValueNotifier<double> _sliderNotifier = ValueNotifier(0);
+  late final Uri _uri = Uri.parse(widget.url);
   bool _isInitialized = false;
   bool _showControls = true;
   bool _isDragging = false;
   Timer? _hideControlsTimer;
+  String? _dashManifest;
 
   @override
   void initState() {
@@ -56,14 +65,34 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   }
 
   Future<void> _init() async {
-    debugPrint('_init: ${widget.url}');
-    _videoController = VideoPlayerController.networkUrl(
-      Uri.parse(widget.url),
-      httpHeaders: {
-        'User-Agent': Settings.userAgent.value,
-      },
-      videoPlayerOptions: VideoPlayerOptions(allowBackgroundPlayback: false),
-    );
+    if (_uri.host == 'v.redd.it') {
+      final client = HttpClient();
+
+      debugPrint('${widget.url}/DASHPlaylist.mpd');
+      final request = await client.getUrl(Uri.parse('${widget.url}/DASHPlaylist.mpd'));
+      request.headers.set('User-Agent', Settings.userAgent.value);
+
+      final response = await request.close();
+      _dashManifest = await response.transform(utf8.decoder).join();
+      _dashManifest = _dashManifest!.replaceFirstMapped(
+        RegExp(r'(<MPD[^>]*>)'), 
+        (match) => '${match.group(1)}<BaseURL>${widget.url}/</BaseURL>'
+      );
+
+      final tempDir = await getTemporaryDirectory();
+      final tempFile = File('${tempDir.path}/manifest.mpd');
+      await tempFile.writeAsString(_dashManifest!);
+      _videoController = VideoPlayerController.file(tempFile);
+    }
+    else {
+      _videoController = VideoPlayerController.networkUrl(
+        _uri,
+        httpHeaders: {
+          'User-Agent': Settings.userAgent.value,
+        },
+        videoPlayerOptions: VideoPlayerOptions(allowBackgroundPlayback: false),
+      );
+    }
 
     _videoController.addListener(_videoListener);
 
@@ -115,6 +144,57 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       url: widget.url,
       type: 'video',
       post: widget.post,
+      onSave: () async {
+        if (_dashManifest != null) {
+          saveMedia(
+            context: context,
+            platform: widget.platform,
+            uri: _uri,
+            mediaType: 'video',
+            save: () async {
+
+              String getBestUrl(String setContent) {
+                final reps = RegExp(r'<Representation [^>]*bandwidth="(\d+)"[^>]*>.*?<BaseURL>(.*?)<\/BaseURL>', dotAll: true).allMatches(setContent);
+                int maxBandwidth = -1;
+                String? bestSegment;
+                for (final match in reps) {
+                  final bandwidth = int.parse(match.group(1)!);
+                  if (bandwidth > maxBandwidth) {
+                    maxBandwidth = bandwidth;
+                    bestSegment = match.group(2);
+                  }
+                }
+                return '${widget.url}/$bestSegment';
+              }
+
+              final videoSet = RegExp(r'<AdaptationSet [^>]*contentType="video".*?<\/AdaptationSet>', dotAll: true).firstMatch(_dashManifest!)!.group(0)!;
+              final audioSet = RegExp(r'<AdaptationSet [^>]*contentType="audio".*?<\/AdaptationSet>', dotAll: true).firstMatch(_dashManifest!)!.group(0)!;
+              final bestVideoUrl = getBestUrl(videoSet);
+              final bestAudioUrl = getBestUrl(audioSet);
+              final videoPath = await downloadMediaToTemp(Uri.parse(bestVideoUrl));
+              final audioPath = await downloadMediaToTemp(Uri.parse(bestAudioUrl));
+              final tempDir = await getTemporaryDirectory();
+              final outputPath = '${tempDir.path}/${_uri.pathSegments.last}';
+              final session = await FFmpegKit.execute('-y -i "$videoPath" -i "$audioPath" -c copy -map 0:v:0 -map 1:a:0 "$outputPath"');
+              final returnCode = await session.getReturnCode();
+              if (ReturnCode.isSuccess(returnCode)) {
+                Gal.putVideo(outputPath);
+              }
+              else {
+                final stackTrace = await session.getFailStackTrace();
+                throw Exception(stackTrace);
+              }
+            }
+          );
+        }
+        else {
+          saveVideo(
+            context: context,
+            platform: widget.platform,
+            url: widget.url,
+          );
+        }
+      },
       body: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTap: () => _onControlsChanged(() => setState(() => _showControls = !_showControls)),
@@ -239,7 +319,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                             child: ValueListenableBuilder(
                                               valueListenable: Settings.showMorePlatformColorAccents,
                                               builder: (context, showMorePlatformColorAccents, child) {
-                                                final color = showMorePlatformColorAccents ? widget.post?.community.platform.color : null;
+                                                final color = showMorePlatformColorAccents ? widget.platform.color : null;
                                                 return Slider(
                                                   thumbColor: color,
                                                   activeColor: color,

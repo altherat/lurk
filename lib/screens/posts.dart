@@ -36,9 +36,11 @@ class _PostsScreenState extends State<PostsScreen> {
       platform: widget.community.platform,
       getItems: (options, pageToken) async {
         final result = await widget.community.platform.api.getPosts(widget.community.name, options: options, pageToken: pageToken);
-        setState(() {
-          _isSingleCommunity = result.items.every((post) => post.community.name == widget.community.name);
-        });
+        if (mounted) {
+          setState(() {
+            _isSingleCommunity = result.items.every((post) => post.community.name == widget.community.name);
+          });
+        }
         return result;
       },
       title: CommunityName(community: widget.community),
@@ -64,6 +66,7 @@ class _PostsScreenState extends State<PostsScreen> {
                       style: TextStyle(color: isVisited ? Constants.visitedTextColor : null)
                     ),
                     TextSpan(
+                      // text: '${_isSingleCommunity ? '' : ' • ${post.community.name}'} • ${post.timeAgoCompact}'
                       text: ' • ${post.timeAgoCompact}${_isSingleCommunity ? '' : ' • ${post.community.name}'}'
                     )
                   ]

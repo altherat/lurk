@@ -11,21 +11,21 @@ class MediaScaffold extends StatelessWidget {
   final String type;
   final Post? post;
   final Widget body;
+  final VoidCallback onSave;
 
   const MediaScaffold({
     super.key,
     required this.url,
     required this.type,
     this.post,
-    required this.body
+    required this.body,
+    required this.onSave
   });
 
   @override
   Widget build(BuildContext context) {
     final options = {
-      'Save $type': () {
-        //TODO
-      },
+      'Save $type': onSave,
       if (post != null)
         'View comments': () => context.push(() => PostDetailsScreen.fromPost(post: post!)),
       'View in browser': () => openInBrowser(url),

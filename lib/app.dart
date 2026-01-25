@@ -34,6 +34,14 @@ class App extends StatelessWidget {
         popupMenuTheme: const PopupMenuThemeData(
           color: Constants.popupMenuColor
         ),
+        snackBarTheme: const SnackBarThemeData(
+          backgroundColor: Colors.black,
+          contentTextStyle: TextStyle(
+            fontSize: 18,
+            color: Colors.white,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         dialogTheme: DialogThemeData(
           backgroundColor: Constants.dialogBackgroundColor
         ),

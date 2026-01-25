@@ -358,14 +358,17 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
     final Widget child;
     if (_isLoading) {
       onTap = null;
-      child = const Align(
+      child = Align(
         alignment: Alignment.topLeft,
         child: Padding(
           padding: EdgeInsets.symmetric(vertical: 8),
           child: SizedBox(
             height: 20,
             width: 20,
-            child: CustomCircularProgressIndicator(strokeWidth: 2.5),
+            child: CustomCircularProgressIndicator(
+              platform: widget.platform,
+              strokeWidth: 2.5
+            ),
           ),
         ),
         );

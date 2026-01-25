@@ -52,6 +52,8 @@ dependencies:
   webview_flutter: ^4.13.1
   webview_flutter_android: ^4.10.11
   video_player: ^2.10.1
+  gal: ^2.3.2
+  ffmpeg_kit_flutter_new: ^4.1.0
   # flutter_flavorizr: ^2.4.1
 
 dev_dependencies:

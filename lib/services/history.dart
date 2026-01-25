@@ -35,11 +35,11 @@ class History {
     return notifier;
   }
 
-  Future<void> setVisited(String id) async {
+  void setVisited(String id) {
     if (_ids.contains(id)) return;
     _ids.add(id);
     _notifiers[id]?.value = true;
-    await _db.addHistory(id, _type);
+    _db.addHistory(id, _type);
   }
 
 }

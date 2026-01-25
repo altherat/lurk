@@ -1,5 +1,8 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:gal/gal.dart';
 import 'package:intl/intl.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
@@ -12,6 +15,10 @@ import 'package:lurk/screens/posts.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/screens/video_player.dart';
 import 'package:lurk/screens/web_viewer.dart';
+import 'package:lurk/services/settings.dart';
+import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+import 'package:lurk/widgets/snack_bar_progress_content.dart';
+import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 final _commaFormatter = NumberFormat.decimalPattern();
@@ -107,12 +114,17 @@ extension BuildContextExtension on BuildContext {
     );
   }
 
-  // Future<T?> push<T>(Widget Function() builder) {
-  //   return Navigator.push<T>(
-  //     this,
-  //     MaterialPageRoute(builder: (_) => builder()),
-  //   );
-  // }
+    ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showSnackBar({Duration duration = const Duration(seconds: 4), required Widget content}) {
+    return ScaffoldMessenger.of(this).showSnackBar(
+      SnackBar(
+        duration: duration,
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        content: content
+      )
+    );
+  }
+
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showSnackBarMessage(String text) => showSnackBar(content: Text(text));
 
 }
 
@@ -143,26 +155,14 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
   if (host == 'i.redd.it' || host.endsWith('.imgix.net') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || path.endsWith('.gif') || path.endsWith('.webp')) {
     return context.push(
       () => ImageViewerScreen(
+        platform: platform,
         url: url,
         post: post,
       )
     );
   }
 
-  if (uri.host == 'v.redd.it') {
-    return context.push(
-      () => VideoPlayerScreen(
-        platform: platform,
-        url: uri.replace(
-          path: '/${uri.pathSegments.first}/DASHPlaylist.mpd',
-          queryParameters: {},
-          fragment: null,
-        ).toString(),
-        post: post,
-      )
-    );
-  }
-  if (path.endsWith('.mp4') || path.endsWith('.mov')) {
+  if (uri.host == 'v.redd.it' || path.endsWith('.mp4') || path.endsWith('.mov')) {
     return context.push(
       () => VideoPlayerScreen(
         platform: platform,
@@ -353,3 +353,103 @@ Future<void> showSimpleOptionsDialog({
 }
 
 Future<void> copyToClipboard(String text) => Clipboard.setData(ClipboardData(text: text));
+
+Future<String> downloadMediaToTemp(Uri uri) async {
+  final client = HttpClient();
+  try {
+    client.connectionTimeout = const Duration(seconds: 10);
+    final request = await client.getUrl(uri);
+    request.headers.set('User-Agent', Settings.userAgent.value);
+    final response = await request.close();
+    final bytes = await response.fold<List<int>>([], (p, e) => p..addAll(e));
+    final tempDir = await getTemporaryDirectory();
+    final file = File('${tempDir.path}/${uri.pathSegments.last}');
+    await file.writeAsBytes(bytes);
+    return file.path;
+  }
+  catch (e) {
+    rethrow;
+  }
+  finally {
+    client.close();
+  }
+}
+
+Future<void> saveImage({
+  required BuildContext context,
+  required Platform platform,
+  required String url,
+}) {
+  final uri = Uri.parse(url);
+  return saveMedia(
+    context: context,
+    platform: platform,
+    uri: uri,
+    mediaType: 'video',
+    save: () async {
+      final filePath = await downloadMediaToTemp(uri);
+      await Gal.putImage(filePath);
+    }
+  );
+}
+
+Future<void> saveVideo({
+  required BuildContext context,
+  required Platform platform,
+  required String url,
+}) {
+  final uri = Uri.parse(url);
+  return saveMedia(
+    context: context,
+    platform: platform,
+    uri: uri,
+    mediaType: 'video',
+    save: () async {
+      final filePath = await downloadMediaToTemp(uri);
+      await Gal.putVideo(filePath);
+    }
+  );
+}
+
+Future<void> saveMedia({required BuildContext context, required Platform platform, required Uri uri, required String mediaType, required Future<void> Function() save}) async {
+  if (!await Gal.hasAccess()) {
+    if (!await Gal.requestAccess()) {
+      if (context.mounted) {
+        context.showSnackBarMessage('Permission denied — could not save $mediaType');
+      }
+      return;
+    }
+  }
+
+  if (!context.mounted) return;
+  
+  try {
+
+    ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? controller;
+    controller = context.showSnackBar(
+      duration: const Duration(days: 1),
+      content: SnackBarProgressContent(
+        platform: platform,
+        progressMessage: 'Saving $mediaType...',
+        completedMessage: 'Successfully saved $mediaType',
+        subtext: uri.pathSegments.last,
+        action: save,
+        onComplete: () async {
+          if (context.mounted) {
+            await Future.delayed(const Duration(seconds: 5));
+            controller?.close();
+          }
+        }
+      )
+    );
+
+  }
+  catch (e) {
+    if (context.mounted) {
+      ScaffoldMessenger.of(context).hideCurrentSnackBar();
+      context.showSnackBarMessage('Something went wrong — could not save $mediaType');
+    }
+    rethrow;
+  }
+
+}

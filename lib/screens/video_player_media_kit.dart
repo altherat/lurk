@@ -153,6 +153,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> with RouteAware {
       url: widget.url,
       type: 'video',
       post: widget.post,
+      onSave: () {
+
+      },
       body: GestureDetector(
         onTap: () => _onControlsChanged(() => setState(() => _showControls = !_showControls)),
         child: Stack(

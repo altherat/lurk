@@ -228,9 +228,9 @@ class _Image extends StatelessWidget {
         loadStateChanged: (state) {
           switch (state.extendedImageLoadState) {
             case LoadState.loading:
-              return const Padding(
-                padding: EdgeInsets.symmetric(vertical: 16),
-                child: CustomCircularProgressIndicator(),
+              return Padding(
+                padding: EdgeInsets.symmetric(vertical: 8),
+                child: CustomCircularProgressIndicator(platform: platform),
               );
             case LoadState.completed:
               return Stack(
@@ -254,7 +254,14 @@ class _Image extends StatelessWidget {
                             }
                           );
                         },
-                        onTap: () => context.push(() => ImageViewerScreen(url: url))
+                        onTap: () {
+                          context.push(() {
+                            return ImageViewerScreen(
+                              platform: platform,
+                              url: url
+                            );
+                          });
+                        }
                       ),
                     ),
                   )

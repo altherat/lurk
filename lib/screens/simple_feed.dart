@@ -225,13 +225,16 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
                   }
                   final itemIndex = index - headers.length;
                   if (_pageToken != null && itemIndex == _items.length) {
-                    return const Padding(
+                    return Padding(
                       padding: EdgeInsets.all(16),
                       child: Center(
                         child: SizedBox(
                           width: 24,
                           height: 24,
-                          child: CustomCircularProgressIndicator(strokeWidth: 3)
+                          child: CustomCircularProgressIndicator(
+                            platform: widget.platform,
+                            strokeWidth: 3
+                          )
                         )
                       ),
                     );

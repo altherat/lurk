@@ -1,5 +1,7 @@
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
+import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/large_message.dart';
@@ -8,21 +10,31 @@ import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 
 class ImageViewerScreen extends StatelessWidget {
 
+  final Platform platform;
   final String url;
   final Post? post;
 
   const ImageViewerScreen({
     super.key,
+    required this.platform,
     required this.url,
     this.post,
   });
 
   @override
   Widget build(BuildContext context) {
+    debugPrint(url);
     return MediaScaffold(
       url: url,
       type: 'image',
       post: post,
+      onSave: () {
+        saveImage(
+          context: context,
+          platform: platform,
+          url: url,
+        );
+      },
       body: SizedBox.expand(
         child: ExtendedImage.network(
           url,
@@ -44,7 +56,7 @@ class ImageViewerScreen extends StatelessWidget {
           loadStateChanged: (state) {
             switch (state.extendedImageLoadState) {
               case LoadState.loading:
-                return CenteredLargeCircularProgressIndicator(platform: post?.community.platform);
+                return CenteredLargeCircularProgressIndicator(platform: platform);
               case LoadState.completed:
                 return state.completedWidget;
               case LoadState.failed:

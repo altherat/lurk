@@ -61,6 +61,9 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
       url: widget.url,
       type: 'images',
       post: widget.post,
+      onSave: () {
+
+      },
       body: _isLoading
         ? CenteredLargeCircularProgressIndicator(platform: widget.platform)
         : ListView.separated(
@@ -131,6 +134,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                         onTap: () {
                           context.push(
                             () => ImageViewerScreen(
+                              platform: widget.platform,
                               url: url,
                               post: widget.post,
                             )
