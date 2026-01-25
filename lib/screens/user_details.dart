@@ -32,6 +32,7 @@ class UserDetailsScreen extends StatelessWidget {
     return SimpleFeedScreen(
       platform: platform,
       feedOptions: platform.userFeedOptions,
+      showDefaultFeedOptionsInSubtitle: platform.userFeedOptions.options.first.id != UserFeedType.all,
       getAll: (options) => platform.api.getUserDetails(username, options: options),
       getItems: (options, pageToken) => platform.api.getUserItems(username, options: options, pageToken: pageToken),
       title: Builder(

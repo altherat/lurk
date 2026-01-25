@@ -55,10 +55,10 @@ class DiggApi extends Api {
         'isPersonalized': false,
         if (id != null)
           'community': {'slug_EQ': id},
-        if (sort?.apiValue == 'MOST_DUGG')
+        if (sort?.id == 'MOST_DUGG')
           'publishedDate_GT': DateTime.now().toUtc().subtract(const Duration(days: 1)).toIso8601String(), // Current functionality of Digg website/app is to only return most dugg posts in past day
       },
-      'sort': (sort ?? Platform.digg.postsFeedOptions.options.first).apiValue,
+      'sort': (sort ?? Platform.digg.postsFeedOptions.options.first).id,
       if (pageToken != null)
         'after': pageToken
     });
@@ -165,7 +165,7 @@ class DiggApi extends Api {
         'commentWhere': {
           'postId_EQ': id,
         },
-        'sort': (sort ?? Platform.digg.postCommentsFeedOptions.options.first).apiValue
+        'sort': (sort ?? Platform.digg.postCommentsFeedOptions.options.first).id
       }
     );
     final response = await _client.query(queryOptions);
@@ -246,7 +246,7 @@ class DiggApi extends Api {
         'commentWhere': {
           'postId_EQ': id,
         },
-        'sort': (sort ?? Platform.digg.postCommentsFeedOptions.options.first).apiValue,
+        'sort': (sort ?? Platform.digg.postCommentsFeedOptions.options.first).id,
         'after': pageToken,
       },
     );
@@ -275,10 +275,10 @@ class DiggApi extends Api {
   @override
   UserDetailsResponse getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
     // debugPrint('[Digg] getUserDetails: id=$id, options=[${options?.values.map((option) => option.apiValue).join(', ')}]');
-    final DiggUserFeedType type = options?[FeedOptionType.type]?.apiValue ?? Platform.digg.userFeedOptions.options.first.apiValue;
+    final UserFeedType type = options?[FeedOptionType.type]?.id ?? Platform.digg.userFeedOptions.options.first.id;
     final FeedOption? sort = options?[FeedOptionType.sort];
     switch (type) {
-      case DiggUserFeedType.posts:
+      case UserFeedType.posts:
         final gql.QueryOptions queryOptions = gql.QueryOptions(
           document: gql.gql(r'''
             query PostsQuery($first: Int, $username: String!, $where: PostWhere, $sort: PostSort) {
@@ -345,7 +345,7 @@ class DiggApi extends Api {
               },
             },
             if (sort != null)
-              'sort': sort.apiValue
+              'sort': sort.id
           }
         );
         
@@ -354,7 +354,7 @@ class DiggApi extends Api {
           stats: responseFuture.then((response) => _parseUserStats(response.data!['accounts']['edges'].first['node'])),
           items: responseFuture.then((response) => _parsePostsResult(response.data!))
         );
-      case DiggUserFeedType.comments:
+      case UserFeedType.comments:
         final gql.QueryOptions queryOptions = gql.QueryOptions(
           document: gql.gql(r'''
             query UserDetailsQuery($first: Int, $username: String!, $where: CommentWhere!, $sort: CommentSort) {
@@ -415,7 +415,7 @@ class DiggApi extends Api {
               }
             },
             if (sort != null)
-              'sort': sort.apiValue
+              'sort': sort.id
           },
         );
         
@@ -431,16 +431,18 @@ class DiggApi extends Api {
             );
           })
         );
+      case _:
+        throw UnimplementedError();
     }
   }
 
   @override
   Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // debugPrint('[Digg] getUserItems: id=$id, options=[${options?.values.map((option) => option.apiValue).join(', ')}], pageToken=$pageToken');
-    final DiggUserFeedType type = options?[FeedOptionType.type]?.apiValue ?? Platform.digg.userFeedOptions.options.first.apiValue;
+    final UserFeedType type = options?[FeedOptionType.type]?.id ?? Platform.digg.userFeedOptions.options.first.id;
     final FeedOption? sort = options?[FeedOptionType.sort];
     switch (type) {
-      case DiggUserFeedType.posts:
+      case UserFeedType.posts:
         final gql.QueryOptions queryOptions = gql.QueryOptions(
           document: gql.gql(r'''
             query PostsQuery($first: Int, $where: PostWhere, $sort: PostSort, $after: String) {
@@ -494,7 +496,7 @@ class DiggApi extends Api {
               },
             },
             if (sort != null)
-              'sort': sort.apiValue,
+              'sort': sort.id,
             if (pageToken != null)
               'after': pageToken
           }
@@ -502,7 +504,7 @@ class DiggApi extends Api {
         
         final response = await _client.query(queryOptions);
         return compute(_parsePostsResult, response.data!);
-      case DiggUserFeedType.comments:
+      case UserFeedType.comments:
         final gql.QueryOptions queryOptions = gql.QueryOptions(
           document: gql.gql(r'''
             query UserDetailsQuery($first: Int, $where: CommentWhere!, $sort: CommentSort, $after: String) {
@@ -549,7 +551,7 @@ class DiggApi extends Api {
               }
             },
             if (sort != null)
-              'sort': sort.apiValue,
+              'sort': sort.id,
             if (pageToken != null)
               'after': pageToken
           },
@@ -557,6 +559,8 @@ class DiggApi extends Api {
         
         final response = await _client.query(queryOptions);
         return compute(_parseCommentsResult, response.data!);
+      case _:
+        throw UnimplementedError();
     }
   }
 

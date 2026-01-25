@@ -33,12 +33,12 @@ class RedditApi extends Api {
     final subreddit = id ?? Platform.reddit.communityHome;
     String url = '$_baseUrl/r/$subreddit/';
     if (sort != null) {
-      url += '${sort.apiValue}/';
+      url += '${sort.id}/';
     }
 
     final Map<String, dynamic> params = {};
     if (timeRange != null) {
-      params['t'] = timeRange.apiValue;
+      params['t'] = timeRange.id;
     }
     if (pageToken != null) {
       params['after'] = pageToken;
@@ -60,7 +60,7 @@ class RedditApi extends Api {
       uri = uri.replace(
         queryParameters: {
           ...uri.queryParameters, 
-          'sort': sort.apiValue,
+          'sort': sort.id,
         },
       );
     }
@@ -84,7 +84,7 @@ class RedditApi extends Api {
       'children': pageToken,
     };
     if (sort != null) {
-      body['sort'] = sort.apiValue;
+      body['sort'] = sort.id;
     }
     final response = await _post(
       uri,
@@ -117,7 +117,7 @@ class RedditApi extends Api {
 
   @override
   UserDetailsResponse getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
-    debugPrint('[Reddit] getUserDetails: id=$id, options=[${options?.values.map((option) => option.apiValue).join(', ')}]');
+    // debugPrint('[Reddit] getUserDetails: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}]');
     return UserDetailsResponse(
       stats: _get(Uri.parse('$_baseUrl/u/$id/about.json')).then((response) => _parseUserStats(response.body)),
       items: getUserItems(id, options: options)
@@ -131,16 +131,21 @@ class RedditApi extends Api {
     final FeedOption? sort = options?[FeedOptionType.sort];
     final FeedOption? timeRange = options?[FeedOptionType.time];
     String url = '$_baseUrl/u/$id/';
-    if (type?.apiValue != null) {
-      url += type!.apiValue;
+    if (type != null) {
+      if (type.id == UserFeedType.posts) {
+        url += 'submitted';
+      }
+      else if (type.id == UserFeedType.comments) {
+        url += 'comments';
+      }
     }
 
     final Map<String, dynamic> params = {};
     if (sort != null) {
-      params['sort'] = sort.apiValue;
+      params['sort'] = sort.id;
     }
     if (timeRange != null) {
-      params['t'] = timeRange.apiValue;
+      params['t'] = timeRange.id;
     }
     if (pageToken != null) {
       params['after'] = pageToken;

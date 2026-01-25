@@ -13,10 +13,10 @@ class SimpleFeedScreen<R extends FeedResponse<T>, T> extends StatefulWidget {
   final Platform platform;
   final String? activeCommunityName;
   final FeedOptionsGroup? feedOptions;
+  final bool showDefaultFeedOptionsInSubtitle;
   final R Function(Map<FeedOptionType, FeedOption>? feedOptions)? getAll;
   final Future<PagedResult<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) getItems;
   final Widget title;
-  final Widget? subtitle;
   final List<Widget> Function(BuildContext context, R? response)? headersBuilder;
   final Widget Function(BuildContext context, T item) itemBuilder;
   final Widget? Function(BuildContext context) noItemsBuilder;
@@ -27,10 +27,10 @@ class SimpleFeedScreen<R extends FeedResponse<T>, T> extends StatefulWidget {
     required this.platform,
     this.activeCommunityName,
     this.feedOptions,
+    this.showDefaultFeedOptionsInSubtitle = false,
     this.getAll,
     required this.getItems,
     required this.title,
-    this.subtitle,
     this.headersBuilder,
     required this.itemBuilder,
     required this.noItemsBuilder,
@@ -48,18 +48,19 @@ class _SimpleFeedScreenState<R extends FeedResponse<T>, T> extends State<SimpleF
 
   @override
   Widget build(BuildContext context) {
+  final subtitleFeedOptions = _feedOptions ?? (widget.showDefaultFeedOptionsInSubtitle ? widget.feedOptions?.defaults : null);
     return MainScaffold(
       scaffoldKey: widget.scaffoldKey,
       platform: widget.platform,
       activeCommunityName: widget.activeCommunityName,
       feedOptions: widget.feedOptions,
       title: widget.title,
-      subtitle: widget.subtitle ?? (_feedOptions != null ? Text(_feedOptions!.values.map((option) => option.description.toLowerCase()).join(' / ')) : null),
+      subtitle: subtitleFeedOptions != null ? Text(subtitleFeedOptions.values.map((o) => o.description.toLowerCase()).join(' / ')) : null,
       selectedFeedOptions: _feedOptions,
       useSlivers: true,
       onFeedOptionsSelected: (options) {
         setState(() {
-          _feedOptions = mapEquals(options, widget.platform.postsFeedOptions.defaults) ? null : options;
+          _feedOptions = mapEquals(options, widget.feedOptions!.defaults) ? null : options;
         });
       },
       body: _Content<R, T>(
