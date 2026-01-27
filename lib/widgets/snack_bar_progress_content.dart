@@ -2,22 +2,24 @@ import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 
+const _indicatorSize = 40.0;
+
 class SnackBarProgressContent extends StatefulWidget {
 
   final Platform platform;
   final String progressMessage;
-  final String completedMessage;
-  final String? subtext;
-  final Future<void> Function() action;
+  final String completeMessage;
+  final String errorMessage;
+  final Future<void> future;
   final VoidCallback onComplete;
 
   const SnackBarProgressContent({
     super.key,
     required this.platform,
     required this.progressMessage,
-    required this.completedMessage,
-    this.subtext,
-    required this.action, 
+    required this.completeMessage,
+    required this.errorMessage,
+    required this.future, 
     required this.onComplete,
   });
 
@@ -29,62 +31,96 @@ class SnackBarProgressContent extends StatefulWidget {
 class _SnackBarProgressContentState extends State<SnackBarProgressContent> {
 
   bool _isComplete = false;
+  bool _isErrored = false;
 
   @override
   void initState() {
     super.initState();
-    _startAction();
+    _waitForFuture();
   }
 
-  Future<void> _startAction() async {
-    await widget.action();
-    if (mounted) {
-      setState(() => _isComplete = true);
+  Future<void> _waitForFuture() async {
+    try {
+      await widget.future;
+      if (mounted) {
+        setState(() => _isComplete = true);
+      }
+    }
+    catch (e) {
+      if (mounted) {
+        setState(() => _isErrored = true);
+      }
+    }
+    finally {
       widget.onComplete();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      key: const ValueKey(2),
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        SizedBox(
-          width: 48,
-          height: 48,
-          child: AnimatedSwitcher(
-            duration: const Duration(milliseconds: 500),
-            transitionBuilder: (Widget child, Animation<double> animation) {
-              return ScaleTransition(scale: animation, child: FadeTransition(opacity: animation, child: child));
-            },
-            child: _isComplete
-              ? Icon(
-                  Icons.check_rounded,
-                  color: widget.platform.color,
-                  size: 48
-                )
-              : CustomCircularProgressIndicator(
-                  platform: widget.platform,
-                  strokeWidth: 5,
-                ),
-          ) 
+    final Widget prefix;
+    final String message;
+    if (_isErrored) {
+      prefix = Icon(
+        key: ValueKey('error'),
+        Icons.close_rounded,
+        color: Colors.redAccent,
+        size: _indicatorSize,
+      );
+      message = widget.errorMessage;
+    }
+    else if (_isComplete) {
+      prefix = Icon(
+        key: ValueKey('complete'),
+        Icons.check_rounded,
+        color: Colors.greenAccent,
+        size: _indicatorSize,
+      );
+      message = widget.completeMessage;
+    }
+    else {
+      prefix = Center(
+        key: ValueKey('loading'),
+        child: SizedBox(
+          width: 24,
+          height: 24,
+          child: CustomCircularProgressIndicator(
+              // platform: widget.platform,
+              strokeWidth: 3,
+            ),
         ),
-        const SizedBox(height: 8),
-        Text(_isComplete ? widget.completedMessage : widget.progressMessage),
-        if (widget.subtext != null)
-          Padding(
-            padding: const EdgeInsets.only(top: 8),
-            child: Text(
-              widget.subtext!,
-              textAlign: TextAlign.center,
-              style: TextStyle(
-                fontSize: 14,
-                color: Theme.of(context).disabledColor
-              ),
+      );
+      message = widget.progressMessage;
+    }
+    return Padding(
+      padding: const EdgeInsets.only(left: 16),
+      child: Row(
+        key: const ValueKey(2),
+        children: [
+          SizedBox(
+            width: _indicatorSize,
+            height: _indicatorSize,
+            child: AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              transitionBuilder: (Widget child, Animation<double> animation) {
+                return ScaleTransition(
+                  scale: animation,
+                  child: FadeTransition(
+                    opacity: animation,
+                    child: child
+                  )
+                );
+              },
+              child: prefix
             ),
           ),
-      ],
+          const SizedBox(width: 6),
+          Text(
+            message,
+            style: const TextStyle(fontWeight: FontWeight.normal)
+          ),
+        ],
+      ),
     );
   }
 

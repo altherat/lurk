@@ -1,13 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/post_details.dart';
-import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/widgets/centered_full_height_scroll_view.dart';
 import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
@@ -67,6 +66,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
   Map<FeedOptionType, FeedOption>? _feedOptions;
   List<CommentItem>? _comments;
   List<CommentItem>? _visibleComments;
+  String? _contextCommentId;
   bool _isLoading = true;
   final Set<String> _collapsedCommentIds = {};
 
@@ -100,6 +100,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
           _isLoading = false;
           _post = postDetails.post;
           _comments = postDetails.comments;
+          _contextCommentId = postDetails.contextCommentId;
           _visibleComments = List.of(_comments!);
         });
         History.postDetails.setVisited(_post!.id);
@@ -192,7 +193,32 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
               )
             ],
           )
-        )
+        ),
+        if (_contextCommentId != null)
+          InkWell(
+            onTap: () => context.push(() => PostDetailsScreen.fromPost(post: _post!)),
+            child: Container(
+              padding: const EdgeInsets.symmetric(vertical: 8),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.arrow_back,
+                    size: 16,
+                  ),
+                  const SizedBox(width: 6),
+                  Text(
+                    'All comments (${_post!.commentCount.toCommaString()})',
+                    style: const TextStyle(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              )
+            ),
+          )
+        else
+          const SizedBox(height: 8)
       ];
       if (_isLoading) {
         body = Column(
@@ -226,11 +252,12 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                 if (index < headers.length) {
                   return headers[index];
                 }
-                final item = _visibleComments![index - headers.length];
+                index -= headers.length;
+                final item = _visibleComments![index];
                 if (item is Comment) {
                   final isCollapsed = _collapsedCommentIds.contains(item.id);
-                  return CommentTile(
-                    padding: const EdgeInsets.only(top: 8, bottom: 4),
+                  final child = CommentTile(
+                    padding: EdgeInsets.only(top: index == 0 ? 0 : 8, bottom: 4),
                     comment: item,
                     depth: item.depth,
                     isCollapsed: isCollapsed,
@@ -246,6 +273,14 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                       });
                     }
                   );
+                  return item.id == _contextCommentId
+                    ? DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: Constants.contextCommentBackgroundColor
+                        ),
+                        child: child
+                      )
+                    : child;
                 }
                 else if (item is LoadMoreComment) {
                   return _LoadMoreComments(
@@ -281,22 +316,11 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
       }
       else {
         onRefresh = _getPostDetails;
-        body = LayoutBuilder(
-          builder: (context, constraints) {
-            return SingleChildScrollView(
-              child: ConstrainedBox(
-                constraints: BoxConstraints(
-                  minHeight: constraints.maxHeight,
-                ),
-                child: Center(
-                  child: LargeMessage(
-                    icon: Icons.error_outline_rounded,
-                    message: 'Something went wrong',
-                  )
-                ),
-              )
-            );
-          },
+        body = const FeedScreenCenteredErrorMessage(
+          child: LargeMessage(
+            icon: Icons.error_outline_rounded,
+            message: 'Something went wrong',
+          )
         );
       }
     }

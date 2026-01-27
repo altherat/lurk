@@ -92,15 +92,15 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
               children: [
                 _WebView(controller: _controller),
                 ValueListenableBuilder(
-                  valueListenable: Settings.showMorePlatformColorAccents,
-                  builder: (context, showMorePlatformColorAccents, child) {
+                  valueListenable: Settings.showPlatformColorAccents,
+                  builder: (context, showPlatformColorAccents, child) {
                     return ValueListenableBuilder(
                       valueListenable: _progressNotifier,
                       builder: (context, progress, child) {
                         if (progress == 1) return SizedBox.shrink();
                         return LinearProgressIndicator(
                           value: progress,
-                          color: showMorePlatformColorAccents ? widget.post?.community.platform.color ?? widget.platform?.color : null,
+                          color: showPlatformColorAccents ? widget.post?.community.platform.color ?? widget.platform?.color : null,
                           backgroundColor: Colors.transparent,
                           minHeight: 3,
                         );

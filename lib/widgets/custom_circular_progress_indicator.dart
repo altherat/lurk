@@ -19,10 +19,10 @@ class CustomCircularProgressIndicator extends StatelessWidget {
       return CircularProgressIndicator.adaptive(strokeWidth: strokeWidth);
     }
     return ValueListenableBuilder(
-      valueListenable: Settings.showMorePlatformColorAccents,
-      builder: (context, showMorePlatformColorAccents, child) {
+      valueListenable: Settings.showPlatformColorAccents,
+      builder: (context, showPlatformColorAccents, child) {
         return CircularProgressIndicator.adaptive(
-          valueColor: showMorePlatformColorAccents ? AlwaysStoppedAnimation(platform!.color) : null,
+          valueColor: showPlatformColorAccents ? AlwaysStoppedAnimation(platform!.color) : null,
           strokeWidth: strokeWidth
         );
       }

@@ -21,12 +21,12 @@ class CustomRefreshIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ValueListenableBuilder(
-      valueListenable: Settings.showMorePlatformColorAccents,
-      builder: (context, showMorePlatformColorAccents, child) {
+      valueListenable: Settings.showPlatformColorAccents,
+      builder: (context, showPlatformColorAccents, child) {
         return RefreshIndicator(
           key: flutterRefreshIndicatorKey,
           displacement: Constants.refreshIndicatorDisplacement,
-          color: showMorePlatformColorAccents ? platform.color : null,
+          color: showPlatformColorAccents ? platform.color : null,
           notificationPredicate: onRefresh != null ? defaultScrollNotificationPredicate : (notification) => false,
           onRefresh: () async {
             onRefresh?.call();

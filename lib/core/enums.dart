@@ -1,5 +1,4 @@
-import 'dart:ui';
-
+import 'package:flutter/material.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/api/digg.dart';
 import 'package:lurk/services/api/reddit.dart';
@@ -9,15 +8,20 @@ enum Platform {
   reddit(
     api: RedditApi(),
     domains: ['reddit.com', 'redd.it'],
-    communityPath: r'^\/r\/([^\/]+)\/?$',
-    userPath: r'^\/(?:u|user)\/([^\/]+)\/?$',
-    postPath: r'^\/r\/([^\/]+)\/comments\/([^\/]+)',
-    galleryPath: r'^\/gallery\/([^\/]+)\/?$',
     color: Color(0xFFFF4500),
     communityLabel: 'subreddit',
     communityPrefix: 'r/',
     communityHome: 'popular',
     userPrefix: 'u/',
+    communityPath: r'^\/r\/([^\/]+)\/?$',
+    userPath: r'^\/(?:u|user)\/([^\/]+)\/?$',
+    postPath: r'^\/r\/([^\/]+)\/comments\/([^\/]+)',
+    galleryPath: r'^\/gallery\/([^\/]+)\/?$',
+    unresolvedPath: r'^\/r\/[^\/]+\/s\/[^\/]+\/?$',
+    communityNameAllowedChars: '_',
+    userNameAllowedChars: '_-',
+    communityNameValidation: r'^(?=.{3,21}$)[a-zA-Z0-9]([a-zA-Z0-9_]*[a-zA-Z0-9])?$',
+    userNameValidation: r'^(?=.{3,20}$)[a-zA-Z0-9][a-zA-Z0-9_-]*$',
     postsFeedOptions: FeedOptionsGroup(
       FeedOptionType.sort,
       [
@@ -47,18 +51,42 @@ enum Platform {
         FeedOption('Comments', id: UserFeedType.comments, subGroup: _redditUserFeedSortOptions)
       ]
     ),
+    searchFeedOptions: FeedOptionsGroup(
+      FeedOptionType.type,
+      [
+        FeedOption(
+          'Posts',
+          subGroup: FeedOptionsGroup(
+            FeedOptionType.sort,
+            [
+              FeedOption('Relevance', id: 'relevance'),
+              FeedOption('Hot', id: 'hot'),
+              FeedOption('Top', id: 'top', subGroup: _redditPostsFeedTimeOptions),
+              FeedOption('New', id: 'new'),
+              FeedOption('Comments', id: 'comments'),
+            ],
+          )
+        ),
+        FeedOption('Subreddits', id: SearchFeedType.communities),
+        FeedOption('Users', id: SearchFeedType.users)
+      ]
+    ),
   ),
 
   digg(
     api: DiggApi(),
     domains: ['digg.com'],
-    communityPath: r'^\/(?!d\/)([^\/]+)\/?$',
-    userPath: r'^\/@([^\/]+)\/?$',
-    postPath: r'^\/(?!d\/)([^\/]+)\/([^\/]+)',
     color: Color(0xFF1F65DB),
     communityLabel: 'community',
     communityPrefix: '/',
     userPrefix: '@',
+    communityPath: r'^\/(?!d\/)([^\/]+)\/?$',
+    userPath: r'^\/@([^\/]+)\/?$',
+    postPath: r'^\/(?!d\/)([^\/]+)\/([^\/]+)',
+    communityNameAllowedChars: '-',
+    userNameAllowedChars: '_-',
+    communityNameValidation: r'^(?=.{3,24}$)[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$',
+    userNameValidation: r'^[a-zA-Z0-9_-]{2,24}$',
     postsFeedOptions: FeedOptionsGroup(
       FeedOptionType.sort,
       [
@@ -106,39 +134,60 @@ enum Platform {
           )
         )
       ]
+    ),
+    searchFeedOptions: FeedOptionsGroup(
+      FeedOptionType.type,
+      [
+        FeedOption('Posts', id: SearchFeedType.posts),
+        FeedOption('Communities', id: SearchFeedType.communities),
+        FeedOption('Users', id: SearchFeedType.users)
+      ]
     )
+  
   );
 
   final Api api;
   final List<String> domains;
-  final String communityPath;
-  final String userPath;
-  final String postPath;
-  final String? galleryPath;
   final Color color;
   final String communityLabel;
   final String communityPrefix;
   final String? communityHome;
   final String userPrefix;
+  final String communityPath;
+  final String userPath;
+  final String postPath;
+  final String? unresolvedPath;
+  final String? galleryPath;
+  final String communityNameAllowedChars;
+  final String userNameAllowedChars;
+  final String communityNameValidation;
+  final String userNameValidation;
   final FeedOptionsGroup postsFeedOptions;
   final FeedOptionsGroup postCommentsFeedOptions;
   final FeedOptionsGroup userFeedOptions;
+  final FeedOptionsGroup searchFeedOptions;
 
   const Platform({
     required this.api,
     required this.domains,
-    required this.communityPath,
-    required this.userPath,
-    required this.postPath,
-    this.galleryPath,
     required this.color,
-    required this.communityLabel,
     required this.communityPrefix,
     this.communityHome,
     required this.userPrefix,
+    required this.communityPath,
+    required this.userPath,
+    required this.postPath,
+    this.unresolvedPath,
+    this.galleryPath,
+    required this.communityNameAllowedChars,
+    required this.userNameAllowedChars,
+    required this.communityNameValidation,
+    required this.userNameValidation,
+    required this.communityLabel,
     required this.postsFeedOptions,
     required this.postCommentsFeedOptions,
     required this.userFeedOptions,
+    required this.searchFeedOptions
   });
 
   static Platform? forHost(String host) {
@@ -161,13 +210,21 @@ enum Platform {
   bool isPostDetails(String urlPath) => RegExp(postPath).hasMatch(urlPath);
 
   bool isGallery(String urlPath) => galleryPath != null && RegExp(galleryPath!).hasMatch(urlPath);
-  
+
+  bool isUnresolved(String urlPath) => unresolvedPath != null && RegExp(unresolvedPath!).hasMatch(urlPath);
+
 }
 
 enum UserFeedType {
   all,
   posts,
   comments
+}
+
+enum SearchFeedType {
+  posts,
+  communities,
+  users,
 }
 
 const _redditPostsFeedTimeOptions = FeedOptionsGroup(
@@ -190,7 +247,6 @@ const _redditUserFeedSortOptions = FeedOptionsGroup(
     FeedOption('Top', id: 'top', subGroup: _redditPostsFeedTimeOptions),
   ],
 );
-  
 
 enum FeedOptionType {
 
@@ -258,5 +314,17 @@ class FeedOptionsGroup {
     
     return defaults;
   }
+
+}
+
+enum SearchType {
+
+  community(Icons.groups_2_rounded),
+  user(Icons.person_rounded),
+  all(Icons.public);
+
+  final IconData icon;
+
+  const SearchType(this.icon);
 
 }

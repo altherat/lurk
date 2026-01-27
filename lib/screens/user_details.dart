@@ -6,15 +6,16 @@ import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/post.dart';
-import 'package:lurk/models/user_stat.dart';
+import 'package:lurk/models/user.dart';
+import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/history_builder.dart';
-import 'package:lurk/widgets/html.dart';
 import 'package:lurk/widgets/large_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
+import 'package:lurk/widgets/user_stats.dart';
 
 class UserDetailsScreen extends StatelessWidget {
 
@@ -41,7 +42,6 @@ class UserDetailsScreen extends StatelessWidget {
           final parentAlpha = (parentColor!.a * 255).toInt();
           return Text.rich(
             TextSpan(
-              // style: baseStyle,
               children: [
                 TextSpan(
                   text: platform.userPrefix,
@@ -62,37 +62,9 @@ class UserDetailsScreen extends StatelessWidget {
               if (snapshot.connectionState == ConnectionState.waiting) {
                 return CenteredLargeCircularProgressIndicator(platform: platform);
               }
-              return SingleChildScrollView(
-                scrollDirection: Axis.horizontal,
+              return UserStats(
+                stats: snapshot.data!,
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-                child: Row(
-                  children: snapshot.data!.map((stat) {
-                    return Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 12),
-                      child: ConstrainedBox(
-                        constraints: const BoxConstraints(minWidth: 40),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              stat.displayValue,
-                              style: const TextStyle(
-                                fontSize: 16,
-                              ),
-                            ),
-                            Text(
-                              stat.label,
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Constants.secondaryTextColor,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
-                    );
-                  }).toList(),
-                ),
               );
             },
           )
@@ -133,8 +105,15 @@ class UserDetailsScreen extends StatelessWidget {
             padding: const EdgeInsets.symmetric(vertical: 8),
             comment: item,
             showCommunityName: true,
-            showViewContextOption: true,
             showViewUserOption: false,
+            options: {
+              'View context': () => context.push(() {
+                return PostDetailsScreen.fromUrl(
+                  platform: platform,
+                  url: platform.api.getCommentUrl(item)
+                );
+              })
+            },
             header: Text(
               item.postTitle!,
               maxLines: 2,
@@ -143,7 +122,6 @@ class UserDetailsScreen extends StatelessWidget {
             )
           );
         }
-        return const SizedBox.shrink();
       },
       noItemsBuilder: (context) {
         return const LargeMessage(

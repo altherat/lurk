@@ -5,7 +5,6 @@ import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/image_viewer.dart';
-import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 
@@ -97,7 +96,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                 children: [
                   ExtendedImage.network(
                     url,
-                    headers: {'User-Agent': Settings.userAgent.value},
+                    headers: {'User-Agent': widget.platform.api.userAgent},
                     fit: BoxFit.fitWidth,
                     mode: ExtendedImageMode.gesture,
                     cacheWidth: (MediaQuery.of(context).size.width * MediaQuery.of(context).devicePixelRatio).toInt(),

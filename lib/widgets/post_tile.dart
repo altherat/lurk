@@ -16,7 +16,7 @@ final thumbnailSize = 70;
 class PostTile extends StatelessWidget {
 
   final Post post;
-  final Widget subtitle;
+  final Widget? subtitle;
   final bool onTapNavigate;
   final bool showThumbnail;
   final bool showViewCommunityOption;
@@ -25,11 +25,11 @@ class PostTile extends StatelessWidget {
   const PostTile({
     super.key,
     required this.post,
+    this.subtitle,
     this.onTapNavigate = true,
     this.showThumbnail = true,
     this.showViewCommunityOption = true,
     this.showViewUserOption = true,
-    required this.subtitle,
   });
 
   void _showOptions(BuildContext context) {
@@ -117,7 +117,10 @@ class PostTile extends StatelessWidget {
                       );
                     }
                   ),
-                  subtitle
+                  subtitle ?? PostTileCommentHistorySubtitle(
+                    post: post,
+                    extraTexts: [post.timeAgoCompact, post.community.name!]
+                  )
                 ],
               ),
             ),
@@ -132,7 +135,7 @@ class PostTile extends StatelessWidget {
                     child: post.thumbnailUrl != null
                         ? ExtendedImage.network(
                             post.thumbnailUrl!,
-                            headers: {'User-Agent': Settings.userAgent.value},
+                            headers: {'User-Agent': post.community.platform.api.userAgent},
                             cacheWidth: thumbnailSize * MediaQuery.devicePixelRatioOf(context).round(),
                             fit: BoxFit.cover,
                             loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed ? const Icon(Icons.broken_image_rounded) : null
@@ -163,6 +166,45 @@ class PostTile extends StatelessWidget {
             )
         ],
       ),
+    );
+  }
+
+}
+
+class PostTileCommentHistorySubtitle extends StatelessWidget {
+
+  final Post post;
+  final List<String>? extraTexts;
+
+  const PostTileCommentHistorySubtitle({
+    super.key,
+    required this.post,
+    this.extraTexts,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return HistoryBuilder(
+      id: post.id,
+      history: History.postDetails,
+      builder: (context, isVisited) {
+        return Text.rich(
+          TextSpan(
+            style: TextStyle(
+              fontSize: 12,
+              color: Constants.secondaryTextColor,
+            ),
+            children: [
+              TextSpan(
+                text: post.commentsLabel,
+                style: TextStyle(color: isVisited ? Constants.visitedTextColor : null)
+              ),
+              if (extraTexts != null)
+                TextSpan(text: ' • ${extraTexts!.join(' • ')}')
+            ]
+          )
+        );
+      }
     );
   }
 

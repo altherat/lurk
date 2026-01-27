@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:media_kit/media_kit.dart';
+// import 'package:media_kit/media_kit.dart';
 
 import 'app.dart';
 import 'core/flavors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  MediaKit.ensureInitialized();
+  // MediaKit.ensureInitialized();
   F.appFlavor = Flavor.values.firstWhere(
     (element) => element.name == appFlavor,
   );

@@ -14,7 +14,7 @@ class Settings extends Table {
 
   IntColumn get appBarColor => integer().nullable()();
   BoolColumn get useBottomBar => boolean().withDefault(const Constant(Constants.defaultUseBottomBar))();
-  BoolColumn get showMorePlatformColorAccents => boolean().withDefault(const Constant(Constants.defaultShowMorePlatformColorAccents))();
+  BoolColumn get showPlatformColorAccents => boolean().withDefault(const Constant(Constants.defaultShowPlatformColorAccents))();
   BoolColumn get showPlatformColorTextAccents => boolean().withDefault(const Constant(Constants.defaultShowPlatformColorTextAccents))();
 
   TextColumn get redditClientId => text().nullable()();
@@ -24,5 +24,8 @@ class Settings extends Table {
   IntColumn get diggPostsFetchDepth => integer().withDefault(const Constant(Constants.diggPostsFetchDepth))();
   
   TextColumn get userAgent => text().nullable()();
+
+  TextColumn get searchType => text().map(const EnumNameConverter<SearchType>(SearchType.values)).nullable()();
+  TextColumn get searchPlatform => text().map(const EnumNameConverter<Platform>(Platform.values)).nullable()();
   
 }

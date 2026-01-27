@@ -5,11 +5,15 @@ class Community {
   final Platform platform;
   final String? name;
   final bool isFavorite;
+  final String? description;
+  final int? subscriberCount;
 
   const Community({
     required this.platform,
     required this.name,
-    this.isFavorite = false
+    this.isFavorite = false,
+    this.description,
+    this.subscriberCount,
   });
 
   Community copyWith({

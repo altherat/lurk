@@ -86,7 +86,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               label: 'Bottom bar'
             ),
             _BoolSettingListTile(
-              setting: Settings.showMorePlatformColorAccents,
+              setting: Settings.showPlatformColorAccents,
               label: 'More $platformLabel color accents'
             ),
             _BoolSettingListTile(
@@ -116,7 +116,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const _DiggPostsFetchDepthSetting()
             ],
             _TextSettingListTile(
-              setting: Settings.userAgent,
+              setting: Settings.customUserAgent,
               label: 'User agent',
               floatingLabelBehavior: FloatingLabelBehavior.auto,
             ),
@@ -218,7 +218,7 @@ class _DiggPostsFetchDepthSetting extends StatelessWidget {
     return _ChoiceSettingListTile(
       title: 'Posts fetch depth',
       setting: Settings.diggPostsFetchDepth,
-      infoText: "Digg's website and app seems to show fewer posts than what actually might exist for smaller communities (unsure if intentional). This setting causes additional requests in attempt to retrieve more posts (up to ${DiggApi.resultsLimit}). When loading popular communties with many posts, this setting will have no effect.\n\nExample (setting value of 3):\nWhen requesting posts from a lesser-known community, Digg might respond with 10 posts but also indicate that there are more posts available. Lurk will do up to 3 more requests to try and get a total of ${DiggApi.resultsLimit} posts.",
+      infoText: "Digg's website and app seems to show fewer posts than what actually might exist for smaller communities (unsure if intentional). This setting causes additional requests in attempt to retrieve more posts (up to ${DiggApi.resultsLimit}). When loading popular communties with many posts, this setting should have no effect.\n\nExample (setting value of 3):\nWhen requesting posts from a lesser-known community, Digg might respond with 10 posts but also indicate that there are more posts available. Lurk will do up to 2 more requests to try and get a total of ${DiggApi.resultsLimit} posts.",
       choices: List.generate(_maxDepth, (index) => index + 1),
     );
   }
@@ -237,7 +237,7 @@ class _Header extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: EdgeInsets.only(left: 16, right: 16, bottom: 8),
+      padding: EdgeInsets.symmetric(horizontal: 16),
       child: Text(
         text,
         style: Theme.of(context).textTheme.titleMedium?.copyWith(

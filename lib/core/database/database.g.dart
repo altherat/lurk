@@ -98,22 +98,20 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     ),
     defaultValue: const Constant(Constants.defaultUseBottomBar),
   );
-  static const VerificationMeta _showMorePlatformColorAccentsMeta =
-      const VerificationMeta('showMorePlatformColorAccents');
+  static const VerificationMeta _showPlatformColorAccentsMeta =
+      const VerificationMeta('showPlatformColorAccents');
   @override
-  late final GeneratedColumn<bool> showMorePlatformColorAccents =
+  late final GeneratedColumn<bool> showPlatformColorAccents =
       GeneratedColumn<bool>(
-        'show_more_platform_color_accents',
+        'show_platform_color_accents',
         aliasedName,
         false,
         type: DriftSqlType.bool,
         requiredDuringInsert: false,
         defaultConstraints: GeneratedColumn.constraintIsAlways(
-          'CHECK ("show_more_platform_color_accents" IN (0, 1))',
+          'CHECK ("show_platform_color_accents" IN (0, 1))',
         ),
-        defaultValue: const Constant(
-          Constants.defaultShowMorePlatformColorAccents,
-        ),
+        defaultValue: const Constant(Constants.defaultShowPlatformColorAccents),
       );
   static const VerificationMeta _showPlatformColorTextAccentsMeta =
       const VerificationMeta('showPlatformColorTextAccents');
@@ -193,6 +191,24 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     requiredDuringInsert: false,
   );
   @override
+  late final GeneratedColumnWithTypeConverter<SearchType?, String> searchType =
+      GeneratedColumn<String>(
+        'search_type',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      ).withConverter<SearchType?>($SettingsTable.$convertersearchTypen);
+  @override
+  late final GeneratedColumnWithTypeConverter<Platform?, String>
+  searchPlatform = GeneratedColumn<String>(
+    'search_platform',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  ).withConverter<Platform?>($SettingsTable.$convertersearchPlatformn);
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     homeCommunityPlatform,
@@ -201,13 +217,15 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     autoplayVideos,
     appBarColor,
     useBottomBar,
-    showMorePlatformColorAccents,
+    showPlatformColorAccents,
     showPlatformColorTextAccents,
     redditClientId,
     redditRedirectUri,
     redditCopyOldRedditLinks,
     diggPostsFetchDepth,
     userAgent,
+    searchType,
+    searchPlatform,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -269,12 +287,12 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         ),
       );
     }
-    if (data.containsKey('show_more_platform_color_accents')) {
+    if (data.containsKey('show_platform_color_accents')) {
       context.handle(
-        _showMorePlatformColorAccentsMeta,
-        showMorePlatformColorAccents.isAcceptableOrUnknown(
-          data['show_more_platform_color_accents']!,
-          _showMorePlatformColorAccentsMeta,
+        _showPlatformColorAccentsMeta,
+        showPlatformColorAccents.isAcceptableOrUnknown(
+          data['show_platform_color_accents']!,
+          _showPlatformColorAccentsMeta,
         ),
       );
     }
@@ -369,9 +387,9 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.bool,
         data['${effectivePrefix}use_bottom_bar'],
       )!,
-      showMorePlatformColorAccents: attachedDatabase.typeMapping.read(
+      showPlatformColorAccents: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
-        data['${effectivePrefix}show_more_platform_color_accents'],
+        data['${effectivePrefix}show_platform_color_accents'],
       )!,
       showPlatformColorTextAccents: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
@@ -397,6 +415,18 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.string,
         data['${effectivePrefix}user_agent'],
       ),
+      searchType: $SettingsTable.$convertersearchTypen.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}search_type'],
+        ),
+      ),
+      searchPlatform: $SettingsTable.$convertersearchPlatformn.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}search_platform'],
+        ),
+      ),
     );
   }
 
@@ -413,6 +443,16 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
   $converterhomeCommunityPlatformn = JsonTypeConverter2.asNullable(
     $converterhomeCommunityPlatform,
   );
+  static JsonTypeConverter2<SearchType, String, String> $convertersearchType =
+      const EnumNameConverter<SearchType>(SearchType.values);
+  static JsonTypeConverter2<SearchType?, String?, String?>
+  $convertersearchTypen = JsonTypeConverter2.asNullable($convertersearchType);
+  static JsonTypeConverter2<Platform, String, String> $convertersearchPlatform =
+      const EnumNameConverter<Platform>(Platform.values);
+  static JsonTypeConverter2<Platform?, String?, String?>
+  $convertersearchPlatformn = JsonTypeConverter2.asNullable(
+    $convertersearchPlatform,
+  );
 }
 
 class Setting extends DataClass implements Insertable<Setting> {
@@ -423,13 +463,15 @@ class Setting extends DataClass implements Insertable<Setting> {
   final bool autoplayVideos;
   final int? appBarColor;
   final bool useBottomBar;
-  final bool showMorePlatformColorAccents;
+  final bool showPlatformColorAccents;
   final bool showPlatformColorTextAccents;
   final String? redditClientId;
   final String? redditRedirectUri;
   final bool redditCopyOldRedditLinks;
   final int diggPostsFetchDepth;
   final String? userAgent;
+  final SearchType? searchType;
+  final Platform? searchPlatform;
   const Setting({
     required this.id,
     this.homeCommunityPlatform,
@@ -438,13 +480,15 @@ class Setting extends DataClass implements Insertable<Setting> {
     required this.autoplayVideos,
     this.appBarColor,
     required this.useBottomBar,
-    required this.showMorePlatformColorAccents,
+    required this.showPlatformColorAccents,
     required this.showPlatformColorTextAccents,
     this.redditClientId,
     this.redditRedirectUri,
     required this.redditCopyOldRedditLinks,
     required this.diggPostsFetchDepth,
     this.userAgent,
+    this.searchType,
+    this.searchPlatform,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -466,8 +510,8 @@ class Setting extends DataClass implements Insertable<Setting> {
       map['app_bar_color'] = Variable<int>(appBarColor);
     }
     map['use_bottom_bar'] = Variable<bool>(useBottomBar);
-    map['show_more_platform_color_accents'] = Variable<bool>(
-      showMorePlatformColorAccents,
+    map['show_platform_color_accents'] = Variable<bool>(
+      showPlatformColorAccents,
     );
     map['show_platform_color_text_accents'] = Variable<bool>(
       showPlatformColorTextAccents,
@@ -484,6 +528,16 @@ class Setting extends DataClass implements Insertable<Setting> {
     map['digg_posts_fetch_depth'] = Variable<int>(diggPostsFetchDepth);
     if (!nullToAbsent || userAgent != null) {
       map['user_agent'] = Variable<String>(userAgent);
+    }
+    if (!nullToAbsent || searchType != null) {
+      map['search_type'] = Variable<String>(
+        $SettingsTable.$convertersearchTypen.toSql(searchType),
+      );
+    }
+    if (!nullToAbsent || searchPlatform != null) {
+      map['search_platform'] = Variable<String>(
+        $SettingsTable.$convertersearchPlatformn.toSql(searchPlatform),
+      );
     }
     return map;
   }
@@ -503,7 +557,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           ? const Value.absent()
           : Value(appBarColor),
       useBottomBar: Value(useBottomBar),
-      showMorePlatformColorAccents: Value(showMorePlatformColorAccents),
+      showPlatformColorAccents: Value(showPlatformColorAccents),
       showPlatformColorTextAccents: Value(showPlatformColorTextAccents),
       redditClientId: redditClientId == null && nullToAbsent
           ? const Value.absent()
@@ -516,6 +570,12 @@ class Setting extends DataClass implements Insertable<Setting> {
       userAgent: userAgent == null && nullToAbsent
           ? const Value.absent()
           : Value(userAgent),
+      searchType: searchType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(searchType),
+      searchPlatform: searchPlatform == null && nullToAbsent
+          ? const Value.absent()
+          : Value(searchPlatform),
     );
   }
 
@@ -537,8 +597,8 @@ class Setting extends DataClass implements Insertable<Setting> {
       autoplayVideos: serializer.fromJson<bool>(json['autoplayVideos']),
       appBarColor: serializer.fromJson<int?>(json['appBarColor']),
       useBottomBar: serializer.fromJson<bool>(json['useBottomBar']),
-      showMorePlatformColorAccents: serializer.fromJson<bool>(
-        json['showMorePlatformColorAccents'],
+      showPlatformColorAccents: serializer.fromJson<bool>(
+        json['showPlatformColorAccents'],
       ),
       showPlatformColorTextAccents: serializer.fromJson<bool>(
         json['showPlatformColorTextAccents'],
@@ -554,6 +614,12 @@ class Setting extends DataClass implements Insertable<Setting> {
         json['diggPostsFetchDepth'],
       ),
       userAgent: serializer.fromJson<String?>(json['userAgent']),
+      searchType: $SettingsTable.$convertersearchTypen.fromJson(
+        serializer.fromJson<String?>(json['searchType']),
+      ),
+      searchPlatform: $SettingsTable.$convertersearchPlatformn.fromJson(
+        serializer.fromJson<String?>(json['searchPlatform']),
+      ),
     );
   }
   @override
@@ -571,8 +637,8 @@ class Setting extends DataClass implements Insertable<Setting> {
       'autoplayVideos': serializer.toJson<bool>(autoplayVideos),
       'appBarColor': serializer.toJson<int?>(appBarColor),
       'useBottomBar': serializer.toJson<bool>(useBottomBar),
-      'showMorePlatformColorAccents': serializer.toJson<bool>(
-        showMorePlatformColorAccents,
+      'showPlatformColorAccents': serializer.toJson<bool>(
+        showPlatformColorAccents,
       ),
       'showPlatformColorTextAccents': serializer.toJson<bool>(
         showPlatformColorTextAccents,
@@ -584,6 +650,12 @@ class Setting extends DataClass implements Insertable<Setting> {
       ),
       'diggPostsFetchDepth': serializer.toJson<int>(diggPostsFetchDepth),
       'userAgent': serializer.toJson<String?>(userAgent),
+      'searchType': serializer.toJson<String?>(
+        $SettingsTable.$convertersearchTypen.toJson(searchType),
+      ),
+      'searchPlatform': serializer.toJson<String?>(
+        $SettingsTable.$convertersearchPlatformn.toJson(searchPlatform),
+      ),
     };
   }
 
@@ -595,13 +667,15 @@ class Setting extends DataClass implements Insertable<Setting> {
     bool? autoplayVideos,
     Value<int?> appBarColor = const Value.absent(),
     bool? useBottomBar,
-    bool? showMorePlatformColorAccents,
+    bool? showPlatformColorAccents,
     bool? showPlatformColorTextAccents,
     Value<String?> redditClientId = const Value.absent(),
     Value<String?> redditRedirectUri = const Value.absent(),
     bool? redditCopyOldRedditLinks,
     int? diggPostsFetchDepth,
     Value<String?> userAgent = const Value.absent(),
+    Value<SearchType?> searchType = const Value.absent(),
+    Value<Platform?> searchPlatform = const Value.absent(),
   }) => Setting(
     id: id ?? this.id,
     homeCommunityPlatform: homeCommunityPlatform.present
@@ -614,8 +688,8 @@ class Setting extends DataClass implements Insertable<Setting> {
     autoplayVideos: autoplayVideos ?? this.autoplayVideos,
     appBarColor: appBarColor.present ? appBarColor.value : this.appBarColor,
     useBottomBar: useBottomBar ?? this.useBottomBar,
-    showMorePlatformColorAccents:
-        showMorePlatformColorAccents ?? this.showMorePlatformColorAccents,
+    showPlatformColorAccents:
+        showPlatformColorAccents ?? this.showPlatformColorAccents,
     showPlatformColorTextAccents:
         showPlatformColorTextAccents ?? this.showPlatformColorTextAccents,
     redditClientId: redditClientId.present
@@ -628,6 +702,10 @@ class Setting extends DataClass implements Insertable<Setting> {
         redditCopyOldRedditLinks ?? this.redditCopyOldRedditLinks,
     diggPostsFetchDepth: diggPostsFetchDepth ?? this.diggPostsFetchDepth,
     userAgent: userAgent.present ? userAgent.value : this.userAgent,
+    searchType: searchType.present ? searchType.value : this.searchType,
+    searchPlatform: searchPlatform.present
+        ? searchPlatform.value
+        : this.searchPlatform,
   );
   Setting copyWithCompanion(SettingsCompanion data) {
     return Setting(
@@ -650,9 +728,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       useBottomBar: data.useBottomBar.present
           ? data.useBottomBar.value
           : this.useBottomBar,
-      showMorePlatformColorAccents: data.showMorePlatformColorAccents.present
-          ? data.showMorePlatformColorAccents.value
-          : this.showMorePlatformColorAccents,
+      showPlatformColorAccents: data.showPlatformColorAccents.present
+          ? data.showPlatformColorAccents.value
+          : this.showPlatformColorAccents,
       showPlatformColorTextAccents: data.showPlatformColorTextAccents.present
           ? data.showPlatformColorTextAccents.value
           : this.showPlatformColorTextAccents,
@@ -669,6 +747,12 @@ class Setting extends DataClass implements Insertable<Setting> {
           ? data.diggPostsFetchDepth.value
           : this.diggPostsFetchDepth,
       userAgent: data.userAgent.present ? data.userAgent.value : this.userAgent,
+      searchType: data.searchType.present
+          ? data.searchType.value
+          : this.searchType,
+      searchPlatform: data.searchPlatform.present
+          ? data.searchPlatform.value
+          : this.searchPlatform,
     );
   }
 
@@ -682,9 +766,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('autoplayVideos: $autoplayVideos, ')
           ..write('appBarColor: $appBarColor, ')
           ..write('useBottomBar: $useBottomBar, ')
-          ..write(
-            'showMorePlatformColorAccents: $showMorePlatformColorAccents, ',
-          )
+          ..write('showPlatformColorAccents: $showPlatformColorAccents, ')
           ..write(
             'showPlatformColorTextAccents: $showPlatformColorTextAccents, ',
           )
@@ -692,7 +774,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('redditRedirectUri: $redditRedirectUri, ')
           ..write('redditCopyOldRedditLinks: $redditCopyOldRedditLinks, ')
           ..write('diggPostsFetchDepth: $diggPostsFetchDepth, ')
-          ..write('userAgent: $userAgent')
+          ..write('userAgent: $userAgent, ')
+          ..write('searchType: $searchType, ')
+          ..write('searchPlatform: $searchPlatform')
           ..write(')'))
         .toString();
   }
@@ -706,13 +790,15 @@ class Setting extends DataClass implements Insertable<Setting> {
     autoplayVideos,
     appBarColor,
     useBottomBar,
-    showMorePlatformColorAccents,
+    showPlatformColorAccents,
     showPlatformColorTextAccents,
     redditClientId,
     redditRedirectUri,
     redditCopyOldRedditLinks,
     diggPostsFetchDepth,
     userAgent,
+    searchType,
+    searchPlatform,
   );
   @override
   bool operator ==(Object other) =>
@@ -725,15 +811,16 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.autoplayVideos == this.autoplayVideos &&
           other.appBarColor == this.appBarColor &&
           other.useBottomBar == this.useBottomBar &&
-          other.showMorePlatformColorAccents ==
-              this.showMorePlatformColorAccents &&
+          other.showPlatformColorAccents == this.showPlatformColorAccents &&
           other.showPlatformColorTextAccents ==
               this.showPlatformColorTextAccents &&
           other.redditClientId == this.redditClientId &&
           other.redditRedirectUri == this.redditRedirectUri &&
           other.redditCopyOldRedditLinks == this.redditCopyOldRedditLinks &&
           other.diggPostsFetchDepth == this.diggPostsFetchDepth &&
-          other.userAgent == this.userAgent);
+          other.userAgent == this.userAgent &&
+          other.searchType == this.searchType &&
+          other.searchPlatform == this.searchPlatform);
 }
 
 class SettingsCompanion extends UpdateCompanion<Setting> {
@@ -744,13 +831,15 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<bool> autoplayVideos;
   final Value<int?> appBarColor;
   final Value<bool> useBottomBar;
-  final Value<bool> showMorePlatformColorAccents;
+  final Value<bool> showPlatformColorAccents;
   final Value<bool> showPlatformColorTextAccents;
   final Value<String?> redditClientId;
   final Value<String?> redditRedirectUri;
   final Value<bool> redditCopyOldRedditLinks;
   final Value<int> diggPostsFetchDepth;
   final Value<String?> userAgent;
+  final Value<SearchType?> searchType;
+  final Value<Platform?> searchPlatform;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.homeCommunityPlatform = const Value.absent(),
@@ -759,13 +848,15 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.autoplayVideos = const Value.absent(),
     this.appBarColor = const Value.absent(),
     this.useBottomBar = const Value.absent(),
-    this.showMorePlatformColorAccents = const Value.absent(),
+    this.showPlatformColorAccents = const Value.absent(),
     this.showPlatformColorTextAccents = const Value.absent(),
     this.redditClientId = const Value.absent(),
     this.redditRedirectUri = const Value.absent(),
     this.redditCopyOldRedditLinks = const Value.absent(),
     this.diggPostsFetchDepth = const Value.absent(),
     this.userAgent = const Value.absent(),
+    this.searchType = const Value.absent(),
+    this.searchPlatform = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -775,13 +866,15 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.autoplayVideos = const Value.absent(),
     this.appBarColor = const Value.absent(),
     this.useBottomBar = const Value.absent(),
-    this.showMorePlatformColorAccents = const Value.absent(),
+    this.showPlatformColorAccents = const Value.absent(),
     this.showPlatformColorTextAccents = const Value.absent(),
     this.redditClientId = const Value.absent(),
     this.redditRedirectUri = const Value.absent(),
     this.redditCopyOldRedditLinks = const Value.absent(),
     this.diggPostsFetchDepth = const Value.absent(),
     this.userAgent = const Value.absent(),
+    this.searchType = const Value.absent(),
+    this.searchPlatform = const Value.absent(),
   });
   static Insertable<Setting> custom({
     Expression<int>? id,
@@ -791,13 +884,15 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<bool>? autoplayVideos,
     Expression<int>? appBarColor,
     Expression<bool>? useBottomBar,
-    Expression<bool>? showMorePlatformColorAccents,
+    Expression<bool>? showPlatformColorAccents,
     Expression<bool>? showPlatformColorTextAccents,
     Expression<String>? redditClientId,
     Expression<String>? redditRedirectUri,
     Expression<bool>? redditCopyOldRedditLinks,
     Expression<int>? diggPostsFetchDepth,
     Expression<String>? userAgent,
+    Expression<String>? searchType,
+    Expression<String>? searchPlatform,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -808,8 +903,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (autoplayVideos != null) 'autoplay_videos': autoplayVideos,
       if (appBarColor != null) 'app_bar_color': appBarColor,
       if (useBottomBar != null) 'use_bottom_bar': useBottomBar,
-      if (showMorePlatformColorAccents != null)
-        'show_more_platform_color_accents': showMorePlatformColorAccents,
+      if (showPlatformColorAccents != null)
+        'show_platform_color_accents': showPlatformColorAccents,
       if (showPlatformColorTextAccents != null)
         'show_platform_color_text_accents': showPlatformColorTextAccents,
       if (redditClientId != null) 'reddit_client_id': redditClientId,
@@ -819,6 +914,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (diggPostsFetchDepth != null)
         'digg_posts_fetch_depth': diggPostsFetchDepth,
       if (userAgent != null) 'user_agent': userAgent,
+      if (searchType != null) 'search_type': searchType,
+      if (searchPlatform != null) 'search_platform': searchPlatform,
     });
   }
 
@@ -830,13 +927,15 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<bool>? autoplayVideos,
     Value<int?>? appBarColor,
     Value<bool>? useBottomBar,
-    Value<bool>? showMorePlatformColorAccents,
+    Value<bool>? showPlatformColorAccents,
     Value<bool>? showPlatformColorTextAccents,
     Value<String?>? redditClientId,
     Value<String?>? redditRedirectUri,
     Value<bool>? redditCopyOldRedditLinks,
     Value<int>? diggPostsFetchDepth,
     Value<String?>? userAgent,
+    Value<SearchType?>? searchType,
+    Value<Platform?>? searchPlatform,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -847,8 +946,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       autoplayVideos: autoplayVideos ?? this.autoplayVideos,
       appBarColor: appBarColor ?? this.appBarColor,
       useBottomBar: useBottomBar ?? this.useBottomBar,
-      showMorePlatformColorAccents:
-          showMorePlatformColorAccents ?? this.showMorePlatformColorAccents,
+      showPlatformColorAccents:
+          showPlatformColorAccents ?? this.showPlatformColorAccents,
       showPlatformColorTextAccents:
           showPlatformColorTextAccents ?? this.showPlatformColorTextAccents,
       redditClientId: redditClientId ?? this.redditClientId,
@@ -857,6 +956,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           redditCopyOldRedditLinks ?? this.redditCopyOldRedditLinks,
       diggPostsFetchDepth: diggPostsFetchDepth ?? this.diggPostsFetchDepth,
       userAgent: userAgent ?? this.userAgent,
+      searchType: searchType ?? this.searchType,
+      searchPlatform: searchPlatform ?? this.searchPlatform,
     );
   }
 
@@ -888,9 +989,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     if (useBottomBar.present) {
       map['use_bottom_bar'] = Variable<bool>(useBottomBar.value);
     }
-    if (showMorePlatformColorAccents.present) {
-      map['show_more_platform_color_accents'] = Variable<bool>(
-        showMorePlatformColorAccents.value,
+    if (showPlatformColorAccents.present) {
+      map['show_platform_color_accents'] = Variable<bool>(
+        showPlatformColorAccents.value,
       );
     }
     if (showPlatformColorTextAccents.present) {
@@ -915,6 +1016,16 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     if (userAgent.present) {
       map['user_agent'] = Variable<String>(userAgent.value);
     }
+    if (searchType.present) {
+      map['search_type'] = Variable<String>(
+        $SettingsTable.$convertersearchTypen.toSql(searchType.value),
+      );
+    }
+    if (searchPlatform.present) {
+      map['search_platform'] = Variable<String>(
+        $SettingsTable.$convertersearchPlatformn.toSql(searchPlatform.value),
+      );
+    }
     return map;
   }
 
@@ -928,9 +1039,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('autoplayVideos: $autoplayVideos, ')
           ..write('appBarColor: $appBarColor, ')
           ..write('useBottomBar: $useBottomBar, ')
-          ..write(
-            'showMorePlatformColorAccents: $showMorePlatformColorAccents, ',
-          )
+          ..write('showPlatformColorAccents: $showPlatformColorAccents, ')
           ..write(
             'showPlatformColorTextAccents: $showPlatformColorTextAccents, ',
           )
@@ -938,7 +1047,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('redditRedirectUri: $redditRedirectUri, ')
           ..write('redditCopyOldRedditLinks: $redditCopyOldRedditLinks, ')
           ..write('diggPostsFetchDepth: $diggPostsFetchDepth, ')
-          ..write('userAgent: $userAgent')
+          ..write('userAgent: $userAgent, ')
+          ..write('searchType: $searchType, ')
+          ..write('searchPlatform: $searchPlatform')
           ..write(')'))
         .toString();
   }
@@ -1358,13 +1469,15 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<bool> autoplayVideos,
       Value<int?> appBarColor,
       Value<bool> useBottomBar,
-      Value<bool> showMorePlatformColorAccents,
+      Value<bool> showPlatformColorAccents,
       Value<bool> showPlatformColorTextAccents,
       Value<String?> redditClientId,
       Value<String?> redditRedirectUri,
       Value<bool> redditCopyOldRedditLinks,
       Value<int> diggPostsFetchDepth,
       Value<String?> userAgent,
+      Value<SearchType?> searchType,
+      Value<Platform?> searchPlatform,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -1375,13 +1488,15 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<bool> autoplayVideos,
       Value<int?> appBarColor,
       Value<bool> useBottomBar,
-      Value<bool> showMorePlatformColorAccents,
+      Value<bool> showPlatformColorAccents,
       Value<bool> showPlatformColorTextAccents,
       Value<String?> redditClientId,
       Value<String?> redditRedirectUri,
       Value<bool> redditCopyOldRedditLinks,
       Value<int> diggPostsFetchDepth,
       Value<String?> userAgent,
+      Value<SearchType?> searchType,
+      Value<Platform?> searchPlatform,
     });
 
 class $$SettingsTableFilterComposer
@@ -1429,8 +1544,8 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<bool> get showMorePlatformColorAccents => $composableBuilder(
-    column: $table.showMorePlatformColorAccents,
+  ColumnFilters<bool> get showPlatformColorAccents => $composableBuilder(
+    column: $table.showPlatformColorAccents,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -1462,6 +1577,18 @@ class $$SettingsTableFilterComposer
   ColumnFilters<String> get userAgent => $composableBuilder(
     column: $table.userAgent,
     builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<SearchType?, SearchType, String>
+  get searchType => $composableBuilder(
+    column: $table.searchType,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<Platform?, Platform, String>
+  get searchPlatform => $composableBuilder(
+    column: $table.searchPlatform,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 }
 
@@ -1509,8 +1636,8 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<bool> get showMorePlatformColorAccents => $composableBuilder(
-    column: $table.showMorePlatformColorAccents,
+  ColumnOrderings<bool> get showPlatformColorAccents => $composableBuilder(
+    column: $table.showPlatformColorAccents,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -1541,6 +1668,16 @@ class $$SettingsTableOrderingComposer
 
   ColumnOrderings<String> get userAgent => $composableBuilder(
     column: $table.userAgent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get searchType => $composableBuilder(
+    column: $table.searchType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get searchPlatform => $composableBuilder(
+    column: $table.searchPlatform,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -1588,8 +1725,8 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<bool> get showMorePlatformColorAccents => $composableBuilder(
-    column: $table.showMorePlatformColorAccents,
+  GeneratedColumn<bool> get showPlatformColorAccents => $composableBuilder(
+    column: $table.showPlatformColorAccents,
     builder: (column) => column,
   );
 
@@ -1620,6 +1757,18 @@ class $$SettingsTableAnnotationComposer
 
   GeneratedColumn<String> get userAgent =>
       $composableBuilder(column: $table.userAgent, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<SearchType?, String> get searchType =>
+      $composableBuilder(
+        column: $table.searchType,
+        builder: (column) => column,
+      );
+
+  GeneratedColumnWithTypeConverter<Platform?, String> get searchPlatform =>
+      $composableBuilder(
+        column: $table.searchPlatform,
+        builder: (column) => column,
+      );
 }
 
 class $$SettingsTableTableManager
@@ -1657,13 +1806,15 @@ class $$SettingsTableTableManager
                 Value<bool> autoplayVideos = const Value.absent(),
                 Value<int?> appBarColor = const Value.absent(),
                 Value<bool> useBottomBar = const Value.absent(),
-                Value<bool> showMorePlatformColorAccents = const Value.absent(),
+                Value<bool> showPlatformColorAccents = const Value.absent(),
                 Value<bool> showPlatformColorTextAccents = const Value.absent(),
                 Value<String?> redditClientId = const Value.absent(),
                 Value<String?> redditRedirectUri = const Value.absent(),
                 Value<bool> redditCopyOldRedditLinks = const Value.absent(),
                 Value<int> diggPostsFetchDepth = const Value.absent(),
                 Value<String?> userAgent = const Value.absent(),
+                Value<SearchType?> searchType = const Value.absent(),
+                Value<Platform?> searchPlatform = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 homeCommunityPlatform: homeCommunityPlatform,
@@ -1672,13 +1823,15 @@ class $$SettingsTableTableManager
                 autoplayVideos: autoplayVideos,
                 appBarColor: appBarColor,
                 useBottomBar: useBottomBar,
-                showMorePlatformColorAccents: showMorePlatformColorAccents,
+                showPlatformColorAccents: showPlatformColorAccents,
                 showPlatformColorTextAccents: showPlatformColorTextAccents,
                 redditClientId: redditClientId,
                 redditRedirectUri: redditRedirectUri,
                 redditCopyOldRedditLinks: redditCopyOldRedditLinks,
                 diggPostsFetchDepth: diggPostsFetchDepth,
                 userAgent: userAgent,
+                searchType: searchType,
+                searchPlatform: searchPlatform,
               ),
           createCompanionCallback:
               ({
@@ -1689,13 +1842,15 @@ class $$SettingsTableTableManager
                 Value<bool> autoplayVideos = const Value.absent(),
                 Value<int?> appBarColor = const Value.absent(),
                 Value<bool> useBottomBar = const Value.absent(),
-                Value<bool> showMorePlatformColorAccents = const Value.absent(),
+                Value<bool> showPlatformColorAccents = const Value.absent(),
                 Value<bool> showPlatformColorTextAccents = const Value.absent(),
                 Value<String?> redditClientId = const Value.absent(),
                 Value<String?> redditRedirectUri = const Value.absent(),
                 Value<bool> redditCopyOldRedditLinks = const Value.absent(),
                 Value<int> diggPostsFetchDepth = const Value.absent(),
                 Value<String?> userAgent = const Value.absent(),
+                Value<SearchType?> searchType = const Value.absent(),
+                Value<Platform?> searchPlatform = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 homeCommunityPlatform: homeCommunityPlatform,
@@ -1704,13 +1859,15 @@ class $$SettingsTableTableManager
                 autoplayVideos: autoplayVideos,
                 appBarColor: appBarColor,
                 useBottomBar: useBottomBar,
-                showMorePlatformColorAccents: showMorePlatformColorAccents,
+                showPlatformColorAccents: showPlatformColorAccents,
                 showPlatformColorTextAccents: showPlatformColorTextAccents,
                 redditClientId: redditClientId,
                 redditRedirectUri: redditRedirectUri,
                 redditCopyOldRedditLinks: redditCopyOldRedditLinks,
                 diggPostsFetchDepth: diggPostsFetchDepth,
                 userAgent: userAgent,
+                searchType: searchType,
+                searchPlatform: searchPlatform,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,7 +17,6 @@ import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/screens/video_player.dart';
 import 'package:lurk/screens/web_viewer.dart';
 import 'package:lurk/services/settings.dart';
-import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/snack_bar_progress_content.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -114,12 +114,13 @@ extension BuildContextExtension on BuildContext {
     );
   }
 
-    ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showSnackBar({Duration duration = const Duration(seconds: 4), required Widget content}) {
+    ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showSnackBar({Duration duration = const Duration(seconds: 4), required Widget content, SnackBarAction? action}) {
     return ScaffoldMessenger.of(this).showSnackBar(
       SnackBar(
         duration: duration,
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-        content: content
+        content: content,
+        action: action
       )
     );
   }
@@ -138,6 +139,12 @@ class _PageRoute<T> extends MaterialPageRoute<T> {
   @override
   Duration get reverseTransitionDuration => Constants.pageTransitionDuration;
 
+}
+
+String generateDeviceId() {
+  final random = Random.secure();
+  final values = List<int>.generate(16, (i) => random.nextInt(256));
+  return values.map((e) => e.toRadixString(16).padLeft(2, '0')).join();
 }
 
 Future<void> openInBrowser(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
@@ -216,7 +223,16 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
       );
     }
 
+    if (resolvedPlatform.isUnresolved(path)) {
+      final resolvedUrl = await resolvedPlatform.api.resolveUrl(url);
+      if (context.mounted && resolvedUrl != null) {
+        return navigate(context, platform, resolvedUrl, post: post);
+      }
+    }
+
   }
+
+  if (!context.mounted) return;
 
   return context.push(
     () => WebViewerScreen(
@@ -354,12 +370,13 @@ Future<void> showSimpleOptionsDialog({
 
 Future<void> copyToClipboard(String text) => Clipboard.setData(ClipboardData(text: text));
 
-Future<String> downloadMediaToTemp(Uri uri) async {
+Future<String> downloadMediaToTemp(String path, String userAgent) async {
   final client = HttpClient();
   try {
+    final uri = Uri.parse(path);
     client.connectionTimeout = const Duration(seconds: 10);
     final request = await client.getUrl(uri);
-    request.headers.set('User-Agent', Settings.userAgent.value);
+    request.headers.set('User-Agent', userAgent);
     final response = await request.close();
     final bytes = await response.fold<List<int>>([], (p, e) => p..addAll(e));
     final tempDir = await getTemporaryDirectory();
@@ -379,39 +396,31 @@ Future<void> saveImage({
   required BuildContext context,
   required Platform platform,
   required String url,
-}) {
-  final uri = Uri.parse(url);
-  return saveMedia(
-    context: context,
-    platform: platform,
-    uri: uri,
-    mediaType: 'video',
-    save: () async {
-      final filePath = await downloadMediaToTemp(uri);
-      await Gal.putImage(filePath);
-    }
-  );
-}
+}) => saveMedia(
+  context: context,
+  platform: platform,
+  mediaType: 'video',
+  save: () async {
+    final filePath = await downloadMediaToTemp(url, platform.api.userAgent);
+    await Gal.putImage(filePath);
+  }
+);
 
 Future<void> saveVideo({
   required BuildContext context,
   required Platform platform,
   required String url,
-}) {
-  final uri = Uri.parse(url);
-  return saveMedia(
-    context: context,
-    platform: platform,
-    uri: uri,
-    mediaType: 'video',
-    save: () async {
-      final filePath = await downloadMediaToTemp(uri);
-      await Gal.putVideo(filePath);
-    }
-  );
-}
+}) => saveMedia(
+  context: context,
+  platform: platform,
+  mediaType: 'video',
+  save: () async {
+    final filePath = await downloadMediaToTemp(url, platform.api.userAgent);
+    await Gal.putVideo(filePath);
+  }
+);
 
-Future<void> saveMedia({required BuildContext context, required Platform platform, required Uri uri, required String mediaType, required Future<void> Function() save}) async {
+Future<void> saveMedia({required BuildContext context, required Platform platform, required String mediaType, required Future<void> Function() save}) async {
   if (!await Gal.hasAccess()) {
     if (!await Gal.requestAccess()) {
       if (context.mounted) {
@@ -422,34 +431,40 @@ Future<void> saveMedia({required BuildContext context, required Platform platfor
   }
 
   if (!context.mounted) return;
-  
-  try {
 
-    ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? controller;
-    controller = context.showSnackBar(
-      duration: const Duration(days: 1),
-      content: SnackBarProgressContent(
-        platform: platform,
-        progressMessage: 'Saving $mediaType...',
-        completedMessage: 'Successfully saved $mediaType',
-        subtext: uri.pathSegments.last,
-        action: save,
-        onComplete: () async {
-          if (context.mounted) {
-            await Future.delayed(const Duration(seconds: 5));
-            controller?.close();
-          }
+  final future = save();
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason>? controller;
+  controller = context.showSnackBar(
+    duration: const Duration(days: 1),
+    content: SnackBarProgressContent(
+      platform: platform,
+      progressMessage: 'Saving $mediaType...',
+      completeMessage: 'Successfully saved $mediaType',
+      errorMessage: 'Something went wrong',
+      future: future,
+      onComplete: () async {
+        await Future.delayed(const Duration(seconds: 4));
+        if (context.mounted) {
+          controller?.close();
         }
-      )
-    );
+      }
+    ),
+    action: SnackBarAction(
+      label: 'Cancel',
+      onPressed: () => controller?.close()
+    )
+  );
 
-  }
-  catch (e) {
-    if (context.mounted) {
-      ScaffoldMessenger.of(context).hideCurrentSnackBar();
-      context.showSnackBarMessage('Something went wrong — could not save $mediaType');
+}
+
+final alphaNumericRegex = RegExp(r'[a-zA-Z0-9]');
+Set<String> hexEscape(String string) {
+  final Set<String> escaped = {};
+  for (final char in string.runes) {
+    final s = String.fromCharCode(char);
+    if (!alphaNumericRegex.hasMatch(s)) {
+      escaped.add('\\x${char.toRadixString(16).padLeft(2, '0')}');
     }
-    rethrow;
   }
-
+  return escaped;
 }

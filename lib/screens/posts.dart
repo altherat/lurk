@@ -1,12 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:lurk/core/constants.dart';
-import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/simple_feed.dart';
-import 'package:lurk/screens/post_details.dart';
-import 'package:lurk/services/history.dart';
 import 'package:lurk/widgets/community_name.dart';
-import 'package:lurk/widgets/history_builder.dart';
 import 'package:lurk/widgets/large_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
 
@@ -50,29 +45,9 @@ class _PostsScreenState extends State<PostsScreen> {
         return PostTile(
           post: post,
           showViewCommunityOption: post.community != widget.community,
-          subtitle: HistoryBuilder(
-            id: post.id,
-            history: History.postDetails,
-            builder: (context, isVisited) {
-              return Text.rich(
-                TextSpan(
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Constants.secondaryTextColor,
-                  ),
-                  children: [
-                    TextSpan(
-                      text: post.commentsLabel,
-                      style: TextStyle(color: isVisited ? Constants.visitedTextColor : null)
-                    ),
-                    TextSpan(
-                      // text: '${_isSingleCommunity ? '' : ' • ${post.community.name}'} • ${post.timeAgoCompact}'
-                      text: ' • ${post.timeAgoCompact}${_isSingleCommunity ? '' : ' • ${post.community.name}'}'
-                    )
-                  ]
-                )
-              );
-            }
+          subtitle: PostTileCommentHistorySubtitle(
+            post: post,
+            extraTexts: [post.timeAgoCompact, if (!_isSingleCommunity) post.community.name!],
           ),
         );
       },

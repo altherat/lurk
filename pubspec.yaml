@@ -45,15 +45,16 @@ dependencies:
   path_provider: ^2.1.5
   drift_flutter: ^0.2.8
   graphql_flutter: ^5.2.1
-  media_kit: ^1.2.6
-  media_kit_video: ^2.0.1
-  media_kit_libs_video: ^1.0.7
+  # media_kit: ^1.2.6
+  # media_kit_video: ^2.0.1
+  # media_kit_libs_video: ^1.0.7
   extended_image: ^10.0.1
   webview_flutter: ^4.13.1
   webview_flutter_android: ^4.10.11
   video_player: ^2.10.1
   gal: ^2.3.2
   ffmpeg_kit_flutter_new: ^4.1.0
+  oauth2_client: ^4.2.3
   # flutter_flavorizr: ^2.4.1
 
 dev_dependencies:

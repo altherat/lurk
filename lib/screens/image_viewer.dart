@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
-import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/large_message.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
@@ -23,7 +22,6 @@ class ImageViewerScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint(url);
     return MediaScaffold(
       url: url,
       type: 'image',
@@ -38,7 +36,7 @@ class ImageViewerScreen extends StatelessWidget {
       body: SizedBox.expand(
         child: ExtendedImage.network(
           url,
-          headers: {'User-Agent': Settings.userAgent.value},
+          headers: {'User-Agent': platform.api.userAgent},
           fit: BoxFit.fitWidth,
           alignment: Alignment.topCenter,
           mode: ExtendedImageMode.gesture,

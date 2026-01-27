@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/services/api/api.dart';
+import 'package:lurk/widgets/centered_full_height_scroll_view.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
@@ -17,9 +18,10 @@ class SimpleFeedScreen<R extends FeedResponse<T>, T> extends StatefulWidget {
   final R Function(Map<FeedOptionType, FeedOption>? feedOptions)? getAll;
   final Future<PagedResult<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) getItems;
   final Widget title;
+  final Widget? subtitle;
   final List<Widget> Function(BuildContext context, R? response)? headersBuilder;
-  final Widget Function(BuildContext context, T item) itemBuilder;
-  final Widget? Function(BuildContext context) noItemsBuilder;
+  final Widget? Function(BuildContext context, T item) itemBuilder;
+  final Widget Function(BuildContext context) noItemsBuilder;
 
   const SimpleFeedScreen({
     super.key,
@@ -31,6 +33,7 @@ class SimpleFeedScreen<R extends FeedResponse<T>, T> extends StatefulWidget {
     this.getAll,
     required this.getItems,
     required this.title,
+    this.subtitle,
     this.headersBuilder,
     required this.itemBuilder,
     required this.noItemsBuilder,
@@ -55,7 +58,7 @@ class _SimpleFeedScreenState<R extends FeedResponse<T>, T> extends State<SimpleF
       activeCommunityName: widget.activeCommunityName,
       feedOptions: widget.feedOptions,
       title: widget.title,
-      subtitle: subtitleFeedOptions != null ? Text(subtitleFeedOptions.values.map((o) => o.description.toLowerCase()).join(' / ')) : null,
+      subtitle: subtitleFeedOptions != null ? Text(subtitleFeedOptions.values.map((o) => o.description.toLowerCase()).join(' / ')) : widget.subtitle,
       selectedFeedOptions: _feedOptions,
       useSlivers: true,
       onFeedOptionsSelected: (options) {
@@ -86,8 +89,8 @@ class _Content<R extends FeedResponse<T>, T> extends StatefulWidget {
   final R Function(Map<FeedOptionType, FeedOption>? feedOptions)? getAll;
   final Future<PagedResult<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) getItems;
   final List<Widget> Function(BuildContext context, R? response)? headersBuilder;
-  final Widget Function(BuildContext context, T item) itemBuilder;
-  final Widget? Function(BuildContext context) noItemsBuilder;
+  final Widget? Function(BuildContext context, T item) itemBuilder;
+  final Widget Function(BuildContext context) noItemsBuilder;
 
   const _Content({
     super.key,
@@ -156,9 +159,9 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
         });
       }
     }
-    catch (e, stackTrace) {
-      debugPrint('Error loading feed: $e');
-      debugPrint(stackTrace.toString());
+    catch (e) {
+      debugPrint('Error fetching feed: $e');
+      rethrow;
       if (mounted) {
         setState(() => _isLoadingItems = false);
       }
@@ -177,7 +180,7 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
       }
     }
     catch (e) {
-      debugPrint('Error loading more feed: $e');
+      debugPrint('Error fetching more feed: $e');
     }
     _isLoadingMoreItems = false;
   }
@@ -202,12 +205,10 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
       flutterRefreshIndicatorKey: _refreshIndicatorKey,
       onRefresh: _get,
       child: _items.isEmpty
-        ? Column(
-            children: [
-              ...headers,
-              Expanded(child: Center(child: widget.noItemsBuilder(context)))
-            ],
-        )
+        ? FeedScreenCenteredErrorMessage(
+            headers: headers,
+            child: widget.noItemsBuilder(context)
+          )
         : NotificationListener<ScrollNotification>(
             onNotification: (ScrollNotification scrollInfo) {
               if (!_isLoadingMoreItems && _pageToken != null && scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
@@ -239,7 +240,7 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
                       ),
                     );
                   }
-                  return widget.itemBuilder(context, _items[itemIndex]);
+                  return widget.itemBuilder(context, _items[itemIndex]) ?? const SizedBox.shrink();
                 }
               )
             ),

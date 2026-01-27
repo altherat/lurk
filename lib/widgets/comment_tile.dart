@@ -3,7 +3,6 @@ import 'package:flutter/services.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
-import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/widgets/html.dart';
 
@@ -14,8 +13,8 @@ class CommentTile extends StatelessWidget {
   final int depth;
   final bool isCollapsed;
   final bool showCommunityName;
-  final bool showViewContextOption;
   final bool showViewUserOption;
+  final Map<String, Function()>? options;
   final Widget? header;
   final VoidCallback? onTap;
   
@@ -26,8 +25,8 @@ class CommentTile extends StatelessWidget {
     this.depth = 0,
     this.isCollapsed = false,
     this.showCommunityName = false,
-    this.showViewContextOption = false,
     this.showViewUserOption = true,
+    this.options,
     this.header,
     this.onTap
   });
@@ -106,13 +105,7 @@ class CommentTile extends StatelessWidget {
           context: context,
           title: '${comment.author == null ? 'Deleted' : comment.author!.toPosessive()} comment',
           options: {
-            if (showViewContextOption)
-              'View context': () => context.push(() {
-                return PostDetailsScreen.fromUrl(
-                  platform: comment.platform,
-                  url: comment.platform.api.getCommentUrl(comment)
-                );
-              }),
+            ...?options,
             if (showViewUserOption && comment.author != null)
               'View ${comment.platform.userPrefix}${comment.author}': () {
                 context.push(

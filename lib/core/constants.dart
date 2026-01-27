@@ -23,7 +23,7 @@ class Constants {
   static const secondaryTextColor = Color(0xFFB3B3B3);
   static const visitedTextColor = Color(0xFFAAAAFF);
   static const linkTextColor = Color(0xFF2676AF);
-  static const postSelectedBackgroundColor = Color(0xFF0C1A2B);
+  static const contextCommentBackgroundColor = Color(0xFF0C1A2B);
   static const postStickiedTitleColor = Color(0xFF99CC00);
   static const postVisitedTitleColor = Color(0xFFAAAAFF);
   static const postTextHtmlBorderColor = Color(0xFFCCCCCC);
@@ -43,11 +43,9 @@ class Constants {
   static const defaultAppBarColor = Color(0xFF000000);
   static const defaultUseBottomBar = false;
   static const diggPostsFetchDepth = 3;
-  static const defaultShowMorePlatformColorAccents = false;
+  static const defaultShowPlatformColorAccents = true;
   static const defaultShowPlatformColorTextAccents = false;
   static const defaultRedditCopyOldRedditLinks = false;
   static const defaultDiggPostsFetchDepth = 3;
-  static final defaultUserAgent = '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by u/altherat)';
-  // static const defaultUserAgent = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/143.0.0.0 Safari/537.36';
     
 }

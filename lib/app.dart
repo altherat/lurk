@@ -24,6 +24,7 @@ class App extends StatelessWidget {
         colorScheme: .dark(
           primary: Constants.primaryColor,
           surface: Colors.black,
+          onSurfaceVariant: Constants.secondaryTextColor,
           secondaryContainer: Constants.primaryColor, 
         ),
         // splashColor: Constants.splashColor,
@@ -41,6 +42,8 @@ class App extends StatelessWidget {
             color: Colors.white,
             fontWeight: FontWeight.w500,
           ),
+          actionTextColor: Constants.primaryColor,
+          actionBackgroundColor: Constants.lighterBackgroundColor,
         ),
         dialogTheme: DialogThemeData(
           backgroundColor: Constants.dialogBackgroundColor

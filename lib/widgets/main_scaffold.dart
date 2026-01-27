@@ -9,7 +9,9 @@ import 'package:lurk/core/utils.dart';
 import 'package:lurk/core/flavors.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/posts.dart';
+import 'package:lurk/screens/search.dart';
 import 'package:lurk/screens/settings.dart';
+import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/community_name.dart';
 import 'package:lurk/widgets/feed_option_selector.dart';
@@ -139,28 +141,35 @@ class _MainScaffoldState extends State<MainScaffold> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (widget.title != null)
-              DefaultTextStyle.merge(
-                style: const TextStyle(height: 1),
-                child: widget.title!
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: DefaultTextStyle.merge(
+                  style: const TextStyle(height: 1),
+                  child: widget.title!
+                ),
               ),
             if (widget.subtitle != null)
-              ValueListenableBuilder(
-                valueListenable: Settings.appBarColor,
-                builder: (context, appBarColor, child) {
-                  return Builder(
-                    builder: (context) {
-                      final parentAlpha = (DefaultTextStyle.of(context).style.color!.a * 255).toInt();
-                      return DefaultTextStyle.merge(
-                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                          color: appBarColor.contrast.withAlpha(min(parentAlpha, Constants.appBarSubtitleAlpha)),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        child: widget.subtitle!
-                      );
-                    },
-                  );
-                }
+              Padding(
+                padding: const EdgeInsets.symmetric(vertical: 2),
+                child: ValueListenableBuilder(
+                  valueListenable: Settings.appBarColor,
+                  builder: (context, appBarColor, child) {
+                    return Builder(
+                      builder: (context) {
+                        final parentAlpha = (DefaultTextStyle.of(context).style.color!.a * 255).toInt();
+                        
+                        return DefaultTextStyle.merge(
+                          style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                            color: appBarColor.contrast.withAlpha(min(parentAlpha, Constants.appBarSubtitleAlpha)),
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          child: widget.subtitle!
+                        );
+                      },
+                    );
+                  }
+                ),
               )
           ],
         );
@@ -319,7 +328,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                           actions: actions,
                           backgroundColor: appBarColor,
                           surfaceTintColor: appBarColor,
-                          foregroundColor: appBarColor?.contrast,
+                          foregroundColor: appBarColor.contrast,
                           leading: appBarDrawerIcon
                         ),
                         ...widget.slivers
@@ -419,23 +428,46 @@ class _CommunityList extends StatefulWidget {
 
 class _CommunityListState extends State<_CommunityList> {
 
+  static final RegExp _searchNameAllowedRegex = RegExp(
+    '[a-zA-Z0-9${
+      F.appFlavor.platforms
+      .expand((platform) => hexEscape('${platform.communityPrefix}${platform.userPrefix}${platform.communityNameAllowedChars}${platform.userNameAllowedChars}'))
+      .toSet()
+      .join()
+    }]'
+  );
+
   final TextEditingController _searchController = TextEditingController();
   final FocusNode _searchBarFocusNode = FocusNode();
   late Platform _searchPlatform;
+  late SearchType _searchType;
   String _searchQuery = '';
-  bool _showSearchBarPlatformPrefix = false;
+  String? _searchBarPrefixText;
+  String? _searchBarHint;
+  bool _isSearchBarFocused = false;
+  bool _isSearchValid = false;
 
   @override
   void initState() {
     super.initState();
-    _searchPlatform = widget.activeCommunityPlatform ?? F.appFlavor.platforms.first;
+    _searchPlatform = Settings.searchPlatform.value ?? widget.activeCommunityPlatform ?? F.appFlavor.platforms.first;
+    _searchType = Settings.searchType.value ?? SearchType.all;
+    _updateSearchBarTexts();
+    _searchBarFocusNode.addListener(_onSearchBarFocusChanged);
   }
 
   @override
   void dispose() {
+    _searchBarFocusNode.removeListener(_onSearchBarFocusChanged);
     _searchController.dispose();
     _searchBarFocusNode.dispose();
     super.dispose();
+  }
+
+  void _onSearchBarFocusChanged() {
+    setState(() {
+      _isSearchBarFocused = _searchBarFocusNode.hasFocus;
+    });
   }
 
   void _navigateToCommunity(Community community) {
@@ -465,6 +497,51 @@ class _CommunityListState extends State<_CommunityList> {
     });
   }
 
+  void _cyclePlatform() {
+
+    setState(() {
+      _searchPlatform = Platform.values[(Platform.values.indexOf(_searchPlatform) + 1) % Platform.values.length];
+      _updateSearchBarTexts();
+      _updateIsSearchValid();
+      Settings.searchPlatform.value = _searchPlatform;
+    });
+  }
+
+  void _cycleSearchType() {
+    setState(() {
+      _updateSearchType(SearchType.values[(SearchType.values.indexOf(_searchType) + 1) % SearchType.values.length]);
+      _updateSearchBarTexts();
+      _updateIsSearchValid();
+    });
+  }
+
+  void _updateSearchType(SearchType searchType) {
+    _searchType = searchType;
+    Settings.searchType.value = searchType;
+  }
+
+  void _updateSearchBarTexts() {
+    switch (_searchType) {
+      case SearchType.community:
+        _searchBarPrefixText = _searchPlatform.communityPrefix;
+        _searchBarHint = _searchPlatform.communityLabel;
+      case SearchType.user:
+        _searchBarPrefixText = _searchPlatform.userPrefix;
+        _searchBarHint = 'username';
+      case SearchType.all:
+        _searchBarPrefixText = null;
+        _searchBarHint = 'Search ${_searchPlatform.name.toTitleCase()}';
+    }
+  }
+
+  void _updateIsSearchValid() {
+    _isSearchValid = switch (_searchType) {
+      SearchType.community => RegExp(_searchPlatform.communityNameValidation).hasMatch(_searchQuery),
+      SearchType.user => RegExp(_searchPlatform.userNameValidation).hasMatch(_searchQuery),
+      SearchType.all => _searchQuery.isNotEmpty,
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
     final bool hasSearchQuery = _searchQuery.isNotEmpty;
@@ -472,223 +549,296 @@ class _CommunityListState extends State<_CommunityList> {
       valueListenable: Settings.communities,
       builder: (context, communities, child) {
         final visibleItems = hasSearchQuery ? communities.where((community) => community.name?.toLowerCase().contains(_searchQuery) ?? false).toList() : communities;
-        return ListView.builder(
-          padding: widget.padding,
-          itemCount: 1 + visibleItems.length,
-          itemBuilder: (context, index) {
-            if (index == 0) {
-              final bool isCombinedFlavor = F.appFlavor == Flavor.combined;
-              final double width;
-              final double rightCornerRadius;
-              final Alignment? alignment;
-              final Widget child;
-              if (_showSearchBarPlatformPrefix) {
-                width = 48;
-                rightCornerRadius = 6;
-                alignment = Alignment.centerRight;
-                child = Transform.translate(
-                  offset: const Offset(0, 0.5), // Can't get text aligned without this
-                  child: Text(
-                    _searchPlatform.communityPrefix,
-                    style: TextStyle(
-                      fontSize: Theme.of(context).searchBarTheme.textStyle?.resolve({})?.fontSize ?? 16,
-                      // color: Colors.white.withAlpha(Constants.communityPrefixAlpha)
-                      // fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                );
-              }
-              else {
-                width = 40;
-                rightCornerRadius = 20;
-                alignment = null;
-                child = const Icon(Icons.search_rounded, color: Colors.white);
-              }
-              final searchIcon = AnimatedContainer(
-                duration: const Duration(milliseconds: 200),
-                width: width,
-                height: 40,
-                alignment: alignment,
-                decoration: BoxDecoration(
-                  color: _searchPlatform.color,
-                  // color: _searchPlatform.color.withAlpha(Constants.platformColorBackgroundAlpha),
-                  borderRadius: BorderRadius.horizontal(
-                    left: const Radius.circular(20),
-                    right: Radius.circular(rightCornerRadius),
-                  ),
-                ),
-                child: child
-              );
-              final searchBar = SearchBar(
-                controller: _searchController,
-                keyboardType: TextInputType.url,
-                textInputAction: TextInputAction.go,
-                padding: const WidgetStatePropertyAll<EdgeInsets>(EdgeInsets.only(right: 16)),
-                hintText: !_showSearchBarPlatformPrefix ? 'Search ${_searchPlatform.communityLabel}' : null,
-                inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[a-zA-Z0-9_/]'))],
-                backgroundColor: WidgetStateProperty.all(Constants.lighterBackgroundColor),
-                leading: Container(
-                  width: 48,
-                  height: 48,
-                  alignment: Alignment.centerLeft,
-                  margin: EdgeInsets.only(left: 8),
-                  child: isCombinedFlavor
-                    ? GestureDetector(
-                        onTap: () => setState(() {
-                          _searchPlatform = Platform.values[(Platform.values.indexOf(_searchPlatform) + 1) % Platform.values.length];
-                        }),
-                        child: searchIcon
-                      )
-                    : searchIcon
-                ),
-                onChanged: (value) {
-                  String cleanValue;
-                  if (value.isEmpty) {
-                    _showSearchBarPlatformPrefix = false;
-                    cleanValue = '';
-                  }
-                  else {
-                    cleanValue = value.toLowerCase();
-
-                    bool removedPlatformPrefix = false;
-                    for (Platform platform in Platform.values) {
-                      if (cleanValue.startsWith(platform.communityPrefix)) {
-                        cleanValue = cleanValue.substring(platform.communityPrefix.length);
-                        _searchPlatform = platform;
-                        _showSearchBarPlatformPrefix = true;
-                        removedPlatformPrefix = true;
-                        break;
-                      }
-                    }
-
-                    cleanValue = cleanValue.replaceAll('/', '');
-
-                    if (!removedPlatformPrefix) {
-                      _showSearchBarPlatformPrefix = cleanValue.isNotEmpty;
-                    }
-
-                    if (cleanValue != value) {
-                      _searchController.text = cleanValue;
-                      _searchController.selection = TextSelection.fromPosition(TextPosition(offset: cleanValue.length));
-                    }
-
-                  }
-              
-                  setState(() {
-                    _searchQuery = cleanValue;
-                  });
-
-                },
-                onSubmitted: (value) async {
-                  String? name = value.trim();
-                  if (name.isEmpty) {
-                    if (_searchPlatform.communityHome != null) {
-                      return;
-                    }
-                    name = null;
-                  }
-                  final community = Community(
-                    platform: _searchPlatform,
-                    name: name
-                  );
-                  Navigator.pop(context);
-                  _navigateToCommunity(community);
-                  Settings.communities.add(community);
-                  _sort();
-                },
-              );
-
-              return ListTile(
-                minVerticalPadding: 0,
-                title: Padding(
-                  padding: const EdgeInsets.only(bottom: 8),
-                  child: F.appFlavor == Flavor.combined
-                  ? KeyboardListener(
-                      focusNode: _searchBarFocusNode,
-                      onKeyEvent: (KeyEvent event) {
-                        if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.backspace && _searchController.text.isEmpty) {
-                          setState(() {
-                            if (_showSearchBarPlatformPrefix) {
-                              _showSearchBarPlatformPrefix = false;
-                            }
-                            else {
-                              _searchPlatform = Platform.values[(Platform.values.indexOf(_searchPlatform) - 1) % Platform.values.length];
-                            }
-                          });
-                        }
-                      },
-                      child: searchBar,
-                    )
-                  : searchBar
-                ),
-              );
+        return ValueListenableBuilder(
+          valueListenable: Settings.showPlatformColorAccents,
+          builder: (context, showPlatformColorAccents, child) {
+            final Color leadingBackgroundColor;
+            final Color leadingForegroundColor;
+            if (showPlatformColorAccents) {
+              leadingBackgroundColor = _searchPlatform.color;
+              leadingForegroundColor = Colors.white;
             }
-        
-            final community = visibleItems[index - 1];
-
-            return Stack(
-              children: [
-                ListTile(
-                  contentPadding: EdgeInsets.symmetric(horizontal: 16),
-                  horizontalTitleGap: 8,
-                  title: F.appFlavor == Flavor.combined || community.platform.communityHome == null ? CommunityName(community: community) : Text(community.name!),
-                  leading: IconButton(
-                    icon: ValueListenableBuilder(
-                      valueListenable: Settings.showMorePlatformColorAccents,
-                      builder: (context, showMorePlatformColorAccents, child) {
-                        final IconData icon;
-                        final Color? color;
-                        if (community.isFavorite) {
-                          icon = Icons.star_rounded;
-                          color = showMorePlatformColorAccents ? Theme.of(context).iconTheme.color : Theme.of(context).colorScheme.primary;
-                        }
-                        else {
-                          icon = Icons.star_border_rounded;
-                          color = null;
-                        }
-                        return Icon(
-                          icon,
-                          color: color,
-                          size: 24
-                        );
-                      }
-                    ),
-                    onPressed: () {
-                      Settings.communities.update(community.copyWith(isFavorite: !community.isFavorite));
-                      _sort();
-                    }
-                  ),
-                  onTap: () => _onCommunityTap(community),
-                  onLongPress: () {
-                    HapticFeedback.mediumImpact();
-                    showSimpleOptionsDialog(
-                      context: context,
-                      title: community.fullDisplayName,
-                      options: {
-                        'Remove': () => Settings.communities.remove(community)
-                      },
+            else {
+              leadingBackgroundColor = Theme.of(context).colorScheme.primary;
+              leadingForegroundColor = Colors.black;
+            }
+            return ListView.builder(
+              padding: widget.padding,
+              itemCount: 1 + visibleItems.length,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  final bool isCombinedFlavor = F.appFlavor == Flavor.combined;
+                  final double width;
+                  final double rightCornerRadius;
+                  final Alignment? alignment;
+                  final Widget child;
+                  if (_searchBarPrefixText != null) {
+                    width = 48;
+                    rightCornerRadius = 6;
+                    alignment = Alignment.centerRight;
+                    child = Transform.translate(
+                      offset: const Offset(0, 0.5), // Can't get text aligned without this
+                      child: Text(
+                        _searchBarPrefixText!,
+                        style: TextStyle(
+                          fontSize: Theme.of(context).searchBarTheme.textStyle?.resolve({})?.fontSize ?? 16,
+                          color: leadingForegroundColor.withAlpha(200),
+                          // color: Colors.black
+                          // fontWeight: FontWeight.bold
+                        ),
+                      ),
                     );
                   }
-                ),
-                if (community.platform == widget.activeCommunityPlatform && community.name == (widget.activeCommunityName ?? widget.activeCommunityPlatform?.communityHome))
-                  Positioned(
-                    left: 0,
-                    top: 8,
-                    bottom: 8,
-                    child: ValueListenableBuilder(
-                      valueListenable: Settings.showMorePlatformColorAccents,
-                      builder: (context, showMorePlatformColorAccents, child) {
-                        return Container(
-                          width: 4,
-                          decoration: BoxDecoration(
-                            color: showMorePlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary,
-                            borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
-                          ),
+                  else {
+                    width = 40;
+                    rightCornerRadius = 20;
+                    alignment = null;
+                    child = Icon(
+                      Icons.search_rounded,
+                      color: leadingForegroundColor
+                    );
+                  }
+                  final leadingIcon = AnimatedContainer(
+                    duration: const Duration(milliseconds: 200),
+                    width: width,
+                    height: 40,
+                    alignment: alignment,
+                    decoration: BoxDecoration(
+                      color: leadingBackgroundColor,
+                      // color: _searchPlatform.color.withAlpha(Constants.platformColorBackgroundAlpha),
+                      borderRadius: BorderRadius.horizontal(
+                        left: const Radius.circular(20),
+                        right: Radius.circular(rightCornerRadius),
+                      ),
+                    ),
+                    child: child
+                  );
+                  final searchBar = SearchBar(
+                    controller: _searchController,
+                    keyboardType: TextInputType.url,
+                    textInputAction: TextInputAction.go,
+                    padding: const WidgetStatePropertyAll<EdgeInsets>(EdgeInsets.only(right: 8)),
+                    hintText: _searchBarHint,
+                    hintStyle: WidgetStatePropertyAll(TextStyle(color: Colors.white60)),
+                    inputFormatters: _searchType != SearchType.all ? [FilteringTextInputFormatter.allow(_searchNameAllowedRegex)] : null,
+                    backgroundColor: WidgetStateProperty.all(Constants.lighterBackgroundColor),
+                    side: _isSearchValid ? WidgetStatePropertyAll(
+                      BorderSide(color: _searchPlatform.color),
+                    ) : null,
+                    leading: Container(
+                      width: 48,
+                      height: 48,
+                      alignment: Alignment.centerLeft,
+                      margin: EdgeInsets.only(left: 8),
+                      child: isCombinedFlavor
+                        ? GestureDetector(
+                            onTap: _cyclePlatform,
+                            child: leadingIcon
+                          )
+                        : leadingIcon
+                    ),
+                    trailing: _isSearchBarFocused
+                      ? [
+                          IconButton(
+                            icon: Icon(
+                              _searchType.icon,
+                              color: Colors.white54
+                            ),
+                            onPressed: _cycleSearchType,
+                          )
+                        ]
+                      : null,
+                    onChanged: (value) {
+            
+                      var cleanValue = value;
+                      var lowerCase = value.toLowerCase();
+            
+                      bool handledPrefix = false;
+                      for (Platform platform in F.appFlavor.platforms) {
+                        if (lowerCase.startsWith(platform.communityPrefix)) {
+                          cleanValue = cleanValue.substring(platform.communityPrefix.length);
+                          _updateSearchType(SearchType.community);
+                          _searchPlatform = platform;
+                          _searchBarPrefixText = platform.communityPrefix;
+                          _searchBarHint = platform.communityLabel;
+                          handledPrefix = true;
+                          break;
+                        }
+                        else if (lowerCase.startsWith(platform.userPrefix)) {
+                          cleanValue = cleanValue.substring(platform.userPrefix.length);
+                          _updateSearchType(SearchType.user);
+                          _searchPlatform = platform;
+                          _searchBarPrefixText = platform.userPrefix;
+                          _searchBarHint = 'username';
+                          handledPrefix = true;
+                          break;
+                        }
+                      }
+            
+                      if (cleanValue.isNotEmpty) {
+            
+                        void clean(String allowedChars) {
+                          final escaped = hexEscape(allowedChars).join();
+                          cleanValue = cleanValue
+                            .replaceAll(RegExp('[^a-zA-Z0-9$escaped]'), '')
+                            .replaceAllMapped(RegExp('[$escaped]{2,}'), (m) => m.group(0)![0])
+                            .replaceFirst(RegExp('^[$escaped]'), '');
+            
+                        }
+            
+                        if (_searchType == SearchType.community) {
+                          clean(_searchPlatform.communityNameAllowedChars);
+                        }
+                        else if (_searchType == SearchType.user) {
+                          clean(_searchPlatform.userNameAllowedChars);
+                        }
+                      }
+            
+                      if (cleanValue != value) {
+                        _searchController.text = cleanValue;
+                        _searchController.selection = TextSelection.fromPosition(TextPosition(offset: cleanValue.length));
+                      }
+                      
+                      if (handledPrefix || cleanValue != _searchQuery) {
+                        setState(() {
+                          _searchQuery = cleanValue;
+                          _updateIsSearchValid();
+                        });
+                      }
+                    },
+                    onSubmitted: (value) {
+                      switch (_searchType) {
+                        case SearchType.community:
+                          if (!RegExp(_searchPlatform.communityNameValidation).hasMatch(value)) {
+                            return;
+                          }
+                          String? query = value;
+                          if (query.isEmpty) {
+                            if (_searchPlatform.communityHome != null) {
+                              return;
+                            }
+                            query = null;
+                          }
+                          final community = Community(
+                            platform: _searchPlatform,
+                            name: query
+                          );
+                          Navigator.pop(context);
+                          _navigateToCommunity(community);
+                          Settings.communities.add(community);
+                        case SearchType.user:
+                          if (!RegExp(_searchPlatform.userNameValidation).hasMatch(value)) {
+                            return;
+                          }
+                          Navigator.pop(context);
+                          context.push(() {
+                            return UserDetailsScreen(
+                              platform: _searchPlatform,
+                              username: value
+                            );
+                          });
+                        case SearchType.all:
+                          if (value.isEmpty) return;
+                          Navigator.pop(context);
+                          context.push(() {
+                            return SearchScreen(
+                              platform: _searchPlatform,
+                              query: value
+                            );
+                          });
+                      }
+                    },
+                  );
+            
+                  return ListTile(
+                    minVerticalPadding: 0,
+                    title: Padding(
+                      padding: const EdgeInsets.only(bottom: 8),
+                      child: KeyboardListener(
+                        focusNode: _searchBarFocusNode,
+                        onKeyEvent: (KeyEvent event) {
+                          if (event is KeyDownEvent && event.logicalKey == LogicalKeyboardKey.backspace && _searchController.text.isEmpty) {
+                            if (isCombinedFlavor) {
+                              _cyclePlatform();
+                            }
+                            else {
+                              _cycleSearchType();
+                            }
+                          }
+                        },
+                        child: searchBar,
+                      )
+                    ),
+                  );
+                }
+            
+                final community = visibleItems[index - 1];
+            
+                return Stack(
+                  children: [
+                    ListTile(
+                      contentPadding: EdgeInsets.symmetric(horizontal: 16),
+                      horizontalTitleGap: 8,
+                      title: F.appFlavor == Flavor.combined || community.platform.communityHome == null ? CommunityName(community: community) : Text(community.name!),
+                      leading: IconButton(
+                        icon: ValueListenableBuilder(
+                          valueListenable: Settings.showPlatformColorAccents,
+                          builder: (context, showPlatformColorAccents, child) {
+                            final IconData icon;
+                            final Color? color;
+                            if (community.isFavorite) {
+                              icon = Icons.star_rounded;
+                              color = showPlatformColorAccents ? Theme.of(context).iconTheme.color : Theme.of(context).colorScheme.primary;
+                            }
+                            else {
+                              icon = Icons.star_border_rounded;
+                              color = null;
+                            }
+                            return Icon(
+                              icon,
+                              color: color,
+                              size: 24
+                            );
+                          }
+                        ),
+                        onPressed: () {
+                          Settings.communities.update(community.copyWith(isFavorite: !community.isFavorite));
+                          _sort();
+                        }
+                      ),
+                      onTap: () => _onCommunityTap(community),
+                      onLongPress: () {
+                        HapticFeedback.mediumImpact();
+                        showSimpleOptionsDialog(
+                          context: context,
+                          title: community.fullDisplayName,
+                          options: {
+                            'Remove': () => Settings.communities.remove(community)
+                          },
                         );
                       }
                     ),
-                  ),
-              ],
+                    if (community.platform == widget.activeCommunityPlatform && community.name == (widget.activeCommunityName ?? widget.activeCommunityPlatform?.communityHome))
+                      Positioned(
+                        left: 0,
+                        top: 8,
+                        bottom: 8,
+                        child: ValueListenableBuilder(
+                          valueListenable: Settings.showPlatformColorAccents,
+                          builder: (context, showPlatformColorAccents, child) {
+                            return Container(
+                              width: 4,
+                              decoration: BoxDecoration(
+                                color: showPlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary,
+                                borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
+                              ),
+                            );
+                          }
+                        ),
+                      ),
+                  ],
+                );
+              }
             );
           }
         );

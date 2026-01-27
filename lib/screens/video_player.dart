@@ -68,9 +68,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
     if (_uri.host == 'v.redd.it') {
       final client = HttpClient();
 
-      debugPrint('${widget.url}/DASHPlaylist.mpd');
       final request = await client.getUrl(Uri.parse('${widget.url}/DASHPlaylist.mpd'));
-      request.headers.set('User-Agent', Settings.userAgent.value);
+      request.headers.set('User-Agent', widget.platform.api.userAgent);
 
       final response = await request.close();
       _dashManifest = await response.transform(utf8.decoder).join();
@@ -88,7 +87,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       _videoController = VideoPlayerController.networkUrl(
         _uri,
         httpHeaders: {
-          'User-Agent': Settings.userAgent.value,
+          'User-Agent': widget.platform.api.userAgent,
         },
         videoPlayerOptions: VideoPlayerOptions(allowBackgroundPlayback: false),
       );
@@ -149,7 +148,6 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           saveMedia(
             context: context,
             platform: widget.platform,
-            uri: _uri,
             mediaType: 'video',
             save: () async {
 
@@ -171,17 +169,30 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               final audioSet = RegExp(r'<AdaptationSet [^>]*contentType="audio".*?<\/AdaptationSet>', dotAll: true).firstMatch(_dashManifest!)!.group(0)!;
               final bestVideoUrl = getBestUrl(videoSet);
               final bestAudioUrl = getBestUrl(audioSet);
-              final videoPath = await downloadMediaToTemp(Uri.parse(bestVideoUrl));
-              final audioPath = await downloadMediaToTemp(Uri.parse(bestAudioUrl));
+              final userAgent = widget.platform.api.userAgent;
+              final videoPath = await downloadMediaToTemp(bestVideoUrl, userAgent);
+              final audioPath = await downloadMediaToTemp(bestAudioUrl, userAgent);
               final tempDir = await getTemporaryDirectory();
-              final outputPath = '${tempDir.path}/${_uri.pathSegments.last}';
-              final session = await FFmpegKit.execute('-y -i "$videoPath" -i "$audioPath" -c copy -map 0:v:0 -map 1:a:0 "$outputPath"');
+              final outputPath = '${tempDir.path}/${_uri.pathSegments.last}.mp4';
+              final session = await FFmpegKit.executeWithArguments([
+                '-y', 
+                '-i', videoPath, 
+                '-i', audioPath, 
+                '-c', 'copy', 
+                '-map', '0:v:0', 
+                '-map', '1:a:0', 
+                outputPath
+              ]);
               final returnCode = await session.getReturnCode();
               if (ReturnCode.isSuccess(returnCode)) {
                 Gal.putVideo(outputPath);
               }
               else {
                 final stackTrace = await session.getFailStackTrace();
+                // final logs = await session.getLogs();
+                // final errorLog = logs.isNotEmpty ? logs.map((l) => l.getMessage()).join('\n') : "Unknown FFmpeg error";
+                // debugPrint('FFmpeg error Log:\n$errorLog');
+                // debugPrint(stackTrace.toString());
                 throw Exception(stackTrace);
               }
             }
@@ -317,9 +328,9 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                                           ),
                                           Expanded(
                                             child: ValueListenableBuilder(
-                                              valueListenable: Settings.showMorePlatformColorAccents,
-                                              builder: (context, showMorePlatformColorAccents, child) {
-                                                final color = showMorePlatformColorAccents ? widget.platform.color : null;
+                                              valueListenable: Settings.showPlatformColorAccents,
+                                              builder: (context, showPlatformColorAccents, child) {
+                                                final color = showPlatformColorAccents ? widget.platform.color : null;
                                                 return Slider(
                                                   thumbColor: color,
                                                   activeColor: color,
