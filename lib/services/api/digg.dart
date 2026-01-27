@@ -19,10 +19,19 @@ class DiggApi extends Api {
 
   static gql.GraphQLClient? _clientInstance;
 
-  const DiggApi() : super(const {
+  const DiggApi();
+
+  @override
+  String get defaultUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by @altherat)';
+
+  @override
+  Map<String, String> get defaultHeaders => const {
     'Accept': 'application/graphql-response+json',
     'Content-Type': 'application/json',
-  });
+  };
+
+  @override
+  String get baseUrl => _baseUrl;
 
   gql.GraphQLClient get _client {
     return _clientInstance ??= gql.GraphQLClient(
@@ -46,12 +55,6 @@ class DiggApi extends Api {
       )
     );
   }
-
-  @override
-  String get defaultUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by @altherat)';
-
-  @override
-  String get baseUrl => _baseUrl;
 
   @override
   Future<PagedResult<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
@@ -1069,6 +1072,5 @@ class DiggApi extends Api {
       )
     ];
   }
-
   
 }

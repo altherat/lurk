@@ -12,6 +12,7 @@ import 'package:lurk/screens/posts.dart';
 import 'package:lurk/screens/search.dart';
 import 'package:lurk/screens/settings.dart';
 import 'package:lurk/screens/user_details.dart';
+import 'package:lurk/services/api/reddit.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/community_name.dart';
 import 'package:lurk/widgets/feed_option_selector.dart';
@@ -63,11 +64,14 @@ class _MainScaffoldState extends State<MainScaffold> {
   final ValueNotifier<bool> _isBottomBarVisible = ValueNotifier<bool>(true);
   final ScrollController _scrollController = ScrollController();
   late GlobalKey<ScaffoldState> _scaffoldKey;
+  late Future<bool> _isLoggedIn;
 
   @override
   void initState() {
     super.initState();
     _scaffoldKey = widget.scaffoldKey ?? GlobalKey<ScaffoldState>();
+    _isLoggedIn = widget.platform?.api is RedditApi ? (widget.platform!.api as RedditApi).isLoggedIn() : Future.value(false);
+    _isLoggedIn.then((value) => debugPrint("test: $value"));
   }
 
   @override
@@ -117,23 +121,67 @@ class _MainScaffoldState extends State<MainScaffold> {
     return ValueListenableBuilder(
       valueListenable: Settings.useBottomBar,
       builder: (context, useBottomBar, child) {
-
         final List<Widget> actions = [
           ...widget.iconActions,
-          PopupMenuButton(
-            onSelected: (callback) => callback(),
-            itemBuilder: (context) => [
-              ...widget.popupMenuActions.entries.map((entry) {
-                return PopupMenuItem<VoidCallback>(
-                  value: entry.value,
-                  child: Text(entry.key),
-                );
-              }),
-              PopupMenuItem<VoidCallback>(
-                value: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen())),
-                child: const Text('Settings'),
-              ),
-            ]
+          FutureBuilder(
+            future: _isLoggedIn,
+            builder: (context, asyncSnapshot) {
+              return ValueListenableBuilder(
+                valueListenable: Settings.redditClientId,
+                builder: (context, redditClientId, child) {
+                  return ValueListenableBuilder(
+                    valueListenable: Settings.redditRedirectUri,
+                    builder: (context, redditRedirectUri, child) {
+                      return PopupMenuButton(
+                        onSelected: (callback) => callback(),
+                        itemBuilder: (context) => [
+                          ...widget.popupMenuActions.entries.map((entry) {
+                            return PopupMenuItem<VoidCallback>(
+                              value: entry.value,
+                              child: Text(entry.key),
+                            );
+                          }),
+                          if (asyncSnapshot.data ?? false)
+                            PopupMenuItem<VoidCallback>(
+                              value: () async {
+                                try {
+                                  await (widget.platform!.api as RedditApi).logout();
+                                  if (mounted) {
+                                    setState(() {
+                                      _isLoggedIn = Future.value(false);
+                                    });
+                                    context.showSnackBarMessage('Successfully logged out');
+                                  }
+                                }
+                                catch (e) {
+                                  if (mounted) {
+                                    context.showSnackBarMessage('Something went wrong');
+                                  }
+                                }
+                              },
+                              child: const Text('Logout'),
+                            )
+                          else if (widget.platform == Platform.reddit && redditClientId != null && redditRedirectUri != null)
+                            PopupMenuItem<VoidCallback>(
+                              value: () async {
+                                final loggedInUsername = await (Platform.reddit.api as RedditApi).login();
+                                if (mounted && loggedInUsername != null) {
+                                  context.showSnackBarMessage('Logged in to Reddit as $loggedInUsername');
+                                }
+                              },
+                              child: const Text('Login'),
+                            ),
+                          PopupMenuItem<VoidCallback>(
+                            value: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen())),
+                            child: const Text('Settings'),
+                          ),
+                        ]
+                      );
+                    }
+                  );
+                }
+              );
+            }
           ),
         ];
 

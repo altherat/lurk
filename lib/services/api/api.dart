@@ -10,15 +10,17 @@ import 'package:lurk/services/settings.dart';
 
 abstract class Api {
 
-  final Map<String, String> _headers;
+  const Api();
 
-  const Api(this._headers);
+  String get userAgent => Settings.customUserAgent.value ?? defaultUserAgent;
 
   @protected
   String get defaultUserAgent;
 
-  String get userAgent => Settings.customUserAgent.value ?? defaultUserAgent;
+  @protected
+  Map<String, String> get defaultHeaders;
 
+  @protected
   String get baseUrl;
 
   String getPostDetailsUrl(Post post) => '$baseUrl${post.permalink}';
@@ -53,7 +55,7 @@ abstract class Api {
   Map<String, String> get headers {
     return {
       'User-Agent': userAgent,
-      ..._headers
+      ...defaultHeaders
     };
   }
 

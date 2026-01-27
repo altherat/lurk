@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'dart:math';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -16,7 +15,6 @@ import 'package:lurk/screens/posts.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/screens/video_player.dart';
 import 'package:lurk/screens/web_viewer.dart';
-import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/snack_bar_progress_content.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
@@ -139,12 +137,6 @@ class _PageRoute<T> extends MaterialPageRoute<T> {
   @override
   Duration get reverseTransitionDuration => Constants.pageTransitionDuration;
 
-}
-
-String generateDeviceId() {
-  final random = Random.secure();
-  final values = List<int>.generate(16, (i) => random.nextInt(256));
-  return values.map((e) => e.toRadixString(16).padLeft(2, '0')).join();
 }
 
 Future<void> openInBrowser(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);

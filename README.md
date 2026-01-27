@@ -9,8 +9,3 @@ It's called Lurk because I wasn't planning on adding logging into Reddit/Digg. I
 
 ## Versions
 There's 3 versions/APKs available with each release - a standalone Reddit app, a standalone Digg app, and one that combines both.
-
-## To do
-- View user details
-- Enable login?
-- Bug fixes

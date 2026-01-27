@@ -19,10 +19,9 @@ class SettingsScreen extends StatefulWidget {
 
 class _SettingsScreenState extends State<SettingsScreen> {
 
-
   @override
   Widget build(BuildContext context) {
-    final String platformLabel = F.appFlavor == Flavor.combined ? 'platform' : F.appFlavor.platforms.first.name;
+    final String platformLabel = F.appFlavor == Flavor.combined ? 'Platform' : F.appFlavor.platforms.first.name;
     return Scaffold(
       appBar: ThemedAppBar(title: const Text('Settings')),
       body: SafeArea(
@@ -87,18 +86,17 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             _BoolSettingListTile(
               setting: Settings.showPlatformColorAccents,
-              label: 'More $platformLabel color accents'
+              label: '$platformLabel color accents'
             ),
             _BoolSettingListTile(
               setting: Settings.showPlatformColorTextAccents,
-              label: '${platformLabel.toTitleCase()} color text accents'
+              label: '$platformLabel color text accents'
             ),
             if (F.appFlavor == Flavor.combined) ...[
               const _Divider(),
               const _Header(text: 'Reddit'),
               const _RedditLinksFromOldRedditSetting(),
-              const _RedditClientIdSetting(),
-              const _RedditRedirectUriSetting(),
+              const _RedditOAuthSettings(),
               const _Divider(),
               const _Header(text: 'Digg'),
               const _DiggPostsFetchDepthSetting()
@@ -109,8 +107,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             if (F.appFlavor == Flavor.reddit) ...[
               const _RedditLinksFromOldRedditSetting(),
-              const _RedditClientIdSetting(),
-              const _RedditRedirectUriSetting()
+              const _RedditOAuthSettings(),
             ]
             else if (F.appFlavor == Flavor.digg) ...[
               const _DiggPostsFetchDepthSetting()
@@ -161,45 +158,44 @@ class _RedditLinksFromOldRedditSetting extends StatelessWidget {
 
 }
 
-class _RedditClientIdSetting extends StatelessWidget {
+class _RedditOAuthSettings extends StatefulWidget {
 
-  const _RedditClientIdSetting({
+  const _RedditOAuthSettings({
     super.key
   });
 
   @override
-  Widget build(BuildContext context) {
-    return _TextSettingListTile(
-      setting: Settings.redditClientId,
-      label: 'Client ID',
-      hintText: 'Not yet implemented',
-      infoText: 'Without a client ID, Reddit limits you to 100 requests per 10 minutes.\n\nSpecifying a client ID increases this limit to 100 requests per 1 minute (per client ID) and enables login (not yet implemented).',
-    );
-  }
+  State<_RedditOAuthSettings> createState() => _RedditOAuthSettingsState();
 
 }
 
-class _RedditRedirectUriSetting extends StatelessWidget {
+class _RedditOAuthSettingsState extends State<_RedditOAuthSettings> {
 
-  const _RedditRedirectUriSetting({
-    super.key
-  });
+  String? _clientId = Settings.redditClientId.value;
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: Settings.redditClientId,
-      builder: (context, clientId, child) {
-        if (clientId != null && clientId.isNotEmpty) {
-          return _TextSettingListTile(
+    return Column(
+      children: [
+        _TextSettingListTile(
+          setting: Settings.redditClientId,
+          label: 'Client ID',
+          infoText: 'Without a client ID, Reddit limits you to 100 requests per 10 minutes.\n\nSpecifying a client ID increases this limit to 100 requests per 1 minute (per client ID) and enables login (not yet implemented).',
+          inputFormatters: [LengthLimitingTextInputFormatter(8)],
+          onChanged: (value) {
+            debugPrint('value: $value');
+            setState(() {
+              _clientId = value;
+            });
+          }
+        ),
+        if (_clientId != null && _clientId!.isNotEmpty)
+          _TextSettingListTile(
             setting: Settings.redditRedirectUri,
             label: 'Redirect URI',
-            hintText: 'Not yet implemented',
             infoText: "Possibly used to spoof another app's authorization flow. No one knows.",
-          );
-        }
-        return const SizedBox.shrink();
-      },
+          )
+      ],
     );
   }
 
@@ -262,7 +258,8 @@ class _TextField extends StatefulWidget {
   final FloatingLabelBehavior? floatingLabelBehavior;
   final TextInputType? keyboardType;
   final Widget? suffixIcon;
-  final Function(String) onSubmitted;
+  final Function(String value)? onChanged;
+  final Function(String value) onSubmitted;
 
   const _TextField({
     super.key,
@@ -276,6 +273,7 @@ class _TextField extends StatefulWidget {
     this.floatingLabelBehavior,
     this.keyboardType,
     this.suffixIcon,
+    this.onChanged,
     required this.onSubmitted,
   });
 
@@ -329,6 +327,7 @@ class _TextFieldState extends State<_TextField> {
             )
           : null,
       ),
+      onChanged: widget.onChanged,
       onSubmitted: widget.onSubmitted,
     );
   }
@@ -376,6 +375,7 @@ class _TextSettingListTile<T> extends StatelessWidget {
   final TextInputType? keyboardType;
   final String? Function(T? value)? toText;
   final T? Function(String? value)? fromText;
+  final Function(String value)? onChanged;
 
   const _TextSettingListTile({
     required this.setting,
@@ -389,6 +389,7 @@ class _TextSettingListTile<T> extends StatelessWidget {
     this.keyboardType,
     this.toText,
     this.fromText,
+    this.onChanged
   });
 
   @override
@@ -404,10 +405,11 @@ class _TextSettingListTile<T> extends StatelessWidget {
             hintText: hintText ?? (setting.defaultValue != null ? (toText?.call(setting.defaultValue) ?? setting.defaultValue.toString()) : null),
             infoText: infoText,
             prefixText: prefixText,
-            textCapitalization: textCapitalization,
             inputFormatters: inputFormatters,
+            textCapitalization: textCapitalization,
             floatingLabelBehavior: floatingLabelBehavior,
             keyboardType: keyboardType,
+            onChanged: onChanged,
             onSubmitted: (newValue) {
               setting.value = fromText == null ? (newValue.isEmpty ? null : newValue as T) : fromText!.call(newValue);
             },
@@ -442,9 +444,7 @@ class _IntSettingListTile extends StatelessWidget {
       hintText: hintText ?? setting.defaultValue?.toString(),
       infoText: infoText,
       keyboardType: TextInputType.number,
-      inputFormatters: [
-        FilteringTextInputFormatter.allow(RegExp(r'[0-9]')),
-      ],
+      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9]'))],
       textCapitalization: TextCapitalization.characters,
       toText: (value) => value?.toString(),
       fromText: (value) => value != null ? int.parse(value) : null
