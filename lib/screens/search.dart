@@ -9,6 +9,7 @@ import 'package:lurk/screens/posts.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/widgets/large_message.dart';
+import 'package:lurk/widgets/list_tile_icon.dart';
 import 'package:lurk/widgets/post_tile.dart';
 import 'package:lurk/widgets/user_stats.dart';
 
@@ -37,6 +38,11 @@ class SearchScreen extends StatelessWidget {
         }
         if (item is Community) {
           return ListTile(
+            leading: ListTileIcon(
+              platform: platform,
+              url: item.iconUrl,
+              placeholderIcon: Icons.groups_rounded,
+            ),
             title: Text(item.fullDisplayName.toLowerCase()),
             onTap: () {
               context.push(() {
@@ -69,27 +75,11 @@ class SearchScreen extends StatelessWidget {
             );
           }
           return ListTile(
-            leading: item.iconUrl != null
-              ? ExtendedImage.network(
-                  item.iconUrl!,
-                  width: 40,
-                  height: 40,
-                  cache: true,
-                  shape: BoxShape.circle,
-                )
-              : SizedBox(
-                  width: 40,
-                  height: 40,
-                  child: OverflowBox(
-                    maxWidth: 60,
-                    maxHeight: 60,
-                    child: const Icon(
-                      Icons.no_accounts_rounded,
-                      size: 48,
-                      color: Colors.white24,
-                    ),
-                  ),
-                ),
+            leading: ListTileIcon(
+              platform: platform,
+              url: item.iconUrl,
+              placeholderIcon: Icons.no_accounts_rounded,
+            ),
             title: Text(item.name),
             subtitle: subtitle,
             onTap: item.id != null

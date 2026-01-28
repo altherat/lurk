@@ -36,6 +36,16 @@ class _CollectionListenableBuilderState<T, R> extends State<CollectionListenable
     super.dispose();
   }
 
+  // @override
+  // void didUpdateWidget(CollectionListenableBuilder<T, R> oldWidget) {
+  //   super.didUpdateWidget(oldWidget);
+  //   if (widget.id != oldWidget.id || widget.collectionListenable != oldWidget.collectionListenable) {
+  //     oldWidget.collectionListenable.removeListener(oldWidget.id, _onChange);
+  //     widget.collectionListenable.addListener(widget.id, _onChange);
+  //     _value = widget.collectionListenable.value(widget.id);
+  //   }
+  // }
+
   void _onChange() {
     if (!mounted) return;
     setState(() {

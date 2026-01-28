@@ -1,3 +1,4 @@
+import 'dart:developer' as dev;
 import 'dart:io' as io;
 
 import 'package:flutter/foundation.dart';
@@ -20,6 +21,9 @@ class DiggApi extends Api {
   static gql.GraphQLClient? _clientInstance;
 
   const DiggApi();
+
+  @override
+  bool get hasLogin => false;
 
   @override
   String get defaultUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by @altherat)';
@@ -594,7 +598,24 @@ class DiggApi extends Api {
     final gql.QueryOptions queryOptions;
     final PagedResult<dynamic> Function(Map<String, dynamic>) parseFn;
     if (type == SearchFeedType.communities) {
-      parseFn = _parseCommunitiesResult;
+      parseFn = (data) {
+        final communitiesData = data['communities'];
+        final List edges = communitiesData['edges'];
+        final pageInfo = communitiesData['pageInfo'];
+        return PagedResult(
+          items: edges.map((edge) {
+            final node = edge['node'];
+            return Community(
+              platform: Platform.digg,
+              name: node['name'],
+              description: node['description'],
+              iconUrl: node['iconUrl'],
+              subscriberCount: node['memberCount'],
+            );
+          }).toList(),
+          pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
+        );
+      };
       queryOptions = gql.QueryOptions(
         document: gql.gql(r'''
           query CommunitiesQuery($first: Int, $where: CommunitiesWhere, $sort: CommunitiesSort, $after: String) {
@@ -604,6 +625,7 @@ class DiggApi extends Api {
                   _id
                   name
                   description
+                  iconUrl
                   memberCount
                 }
               }
@@ -623,7 +645,24 @@ class DiggApi extends Api {
       );
     }
     else if (type == SearchFeedType.users) {
-      parseFn = _parseUsersResult;
+      parseFn = (data) {
+        final accountsData = data['accounts'];
+        final List edges = accountsData['edges'];
+        final pageInfo = accountsData['pageInfo'];
+        return PagedResult(
+          items: edges.map((edge) {
+            final node = edge['node'];
+            return LookedUpUser(
+              id: node['_id'],
+              name: node['username'],
+              iconUrl: node['avatarUrl'],
+              isSuspended: false,
+              stats: _parseUserStats(node)
+            );
+          }).toList(),
+          pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
+        );
+      };
       queryOptions = gql.QueryOptions(
         document: gql.gql(r'''
           query AccountsQuery($after: String, $first: Int, $sort: AccountSort, $where: AccountWhere) {
@@ -803,43 +842,6 @@ class DiggApi extends Api {
     final pageInfo = comments['pageInfo'];
     return PagedResult(
       items: (comments['edges'] as List).map((edge) => _parseComment(edge['node'])).toList(),
-      pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
-    );
-  }
-
-  static PagedResult<Community> _parseCommunitiesResult(Map<String, dynamic> data) {
-    final communitiesData = data['communities'];
-    final List edges = communitiesData['edges'];
-    final pageInfo = communitiesData['pageInfo'];
-    return PagedResult(
-      items: edges.map((edge) {
-        final node = edge['node'];
-        return Community(
-          platform: Platform.digg,
-          name: node['slug'],
-          description: node['description'],
-          subscriberCount: node['memberCount'],
-        );
-      }).toList(),
-      pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
-    );
-  }
-
-  static PagedResult<LookedUpUser> _parseUsersResult(Map<String, dynamic> data) {
-    final accountsData = data['accounts'];
-    final List edges = accountsData['edges'];
-    final pageInfo = accountsData['pageInfo'];
-    return PagedResult(
-      items: edges.map((edge) {
-        final node = edge['node'];
-        return LookedUpUser(
-          id: node['_id'],
-          name: node['username'],
-          iconUrl: node['avatarUrl'],
-          isSuspended: false,
-          stats: _parseUserStats(node)
-        );
-      }).toList(),
       pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
     );
   }

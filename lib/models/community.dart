@@ -5,6 +5,8 @@ class Community {
   final Platform platform;
   final String? name;
   final bool isFavorite;
+
+  final String? iconUrl;
   final String? description;
   final int? subscriberCount;
 
@@ -12,6 +14,7 @@ class Community {
     required this.platform,
     required this.name,
     this.isFavorite = false,
+    this.iconUrl,
     this.description,
     this.subscriberCount,
   });

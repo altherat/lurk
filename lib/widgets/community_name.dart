@@ -43,3 +43,37 @@ class CommunityName extends StatelessWidget {
   }
 
 }
+
+// class PrefixedName extends StatelessWidget {
+
+//   final String prefix;
+//   final int? prefixAlpha;
+//   final String name;
+
+//   const PrefixedName({
+//     super.key,
+//     required this.prefix,
+//     required this.prefixAlpha,
+//     required this.name
+//   });
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final parentColor = DefaultTextStyle.of(context).style.color;
+//     final parentAlpha = (parentColor!.a * 255).toInt();
+//     return Text.rich(
+//       TextSpan(
+//         children: [
+//           TextSpan(
+//             text: prefix,
+//             style: TextStyle(color: parentColor.withAlpha(min(parentAlpha, Constants.namePrefixAlpha))),
+//           ),
+//           if (name.isNotEmpty)
+//             TextSpan(
+//               text: name,
+//             ),
+//         ],
+//       ),
+//     );
+//   }
+// }

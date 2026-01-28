@@ -105,6 +105,8 @@ extension ColorExtension on Color {
 
 extension BuildContextExtension on BuildContext {
 
+  void pop() => Navigator.pop(this);
+
   Future<T?> push<T>(Widget Function() builder) {
     return Navigator.push<T>(
       this,
@@ -309,7 +311,7 @@ Future<void> showSimpleTextOptionsBottomSheet({
         title: Text(entry.key),
         onTap: entry.value != null
         ? () {
-            Navigator.pop(context);
+            context.pop();
             entry.value?.call();
           }
         : null

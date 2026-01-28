@@ -62,7 +62,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
       type: 'images',
       post: widget.post,
       onSave: () {
-
+        
       },
       body: _isLoading
         ? CenteredLargeCircularProgressIndicator(platform: widget.platform)

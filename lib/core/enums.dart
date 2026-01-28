@@ -201,6 +201,8 @@ enum Platform {
     return null;
   }
 
+  String getPrefixedUsername(String username) => '$userPrefix$username';
+
   static Platform? forUrl(String url) => forHost(Uri.parse(url).host);
 
   String? getCommunityName(String urlPath) => RegExp(communityPath).firstMatch(urlPath)?.group(1);

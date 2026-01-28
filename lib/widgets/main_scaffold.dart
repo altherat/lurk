@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart' hide SearchBar;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -17,10 +16,10 @@ import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/api/reddit.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/community_name.dart';
-import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/feed_option_selector.dart';
 import 'package:lurk/widgets/custom_search_bar.dart';
 import 'package:lurk/widgets/custom_app_bar.dart';
+import 'package:lurk/widgets/list_tile_icon.dart';
 
 class MainScaffold extends StatefulWidget {
 
@@ -30,7 +29,7 @@ class MainScaffold extends StatefulWidget {
   final Widget? title;
   final Widget? subtitle;
   final List<Widget> iconActions;
-  final Map<String, VoidCallback> popupMenuActions;
+  final Map<String, VoidCallback>? popupMenuActions;
   final FeedOptionsGroup? feedOptions;
   final Map<FeedOptionType, FeedOption>? selectedFeedOptions;
   final bool useSlivers;
@@ -47,7 +46,7 @@ class MainScaffold extends StatefulWidget {
     required this.title,
     this.subtitle,
     this.iconActions = const [],
-    this.popupMenuActions = const {},
+    this.popupMenuActions,
     this.feedOptions,
     this.selectedFeedOptions,
     this.useSlivers = false,
@@ -107,34 +106,12 @@ class _MainScaffoldState extends State<MainScaffold> {
               selected: widget.selectedFeedOptions,
               onSelected: (options) {
                 widget.onFeedOptionsSelected!(options);
-                Navigator.pop(context);
+                context.pop();
               }
             ),
           ),
         );
       }
-    );
-  }
-
-  void _showUserSnackbar(String prefix, String userName) {
-    if (!mounted) return;
-    context.showSnackBar(
-      content: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text: prefix
-            ),
-            TextSpan(
-              text: userName,
-              style: TextStyle(
-                color: widget.platform.color,
-                fontWeight: FontWeight.bold
-              )
-            )
-          ]
-        )
-      )
     );
   }
 
@@ -145,106 +122,18 @@ class _MainScaffoldState extends State<MainScaffold> {
       builder: (context, useBottomBar, child) {
         final List<Widget> actions = [
           ...widget.iconActions,
-          ValueListenableBuilder(
-            valueListenable: Settings.activeUser,
-            builder: (context, activeUser, child) {
-              return ValueListenableBuilder(
-                valueListenable: Settings.redditClientId,
-                builder: (context, redditClientId, child) {
-                  return ValueListenableBuilder(
-                    valueListenable: Settings.redditRedirectUri,
-                    builder: (context, redditRedirectUri, child) {
-                      return PopupMenuButton(
-                        onSelected: (callback) => callback(),
-                        itemBuilder: (context) => [
-                          ...widget.popupMenuActions.entries.map((entry) {
-                            return PopupMenuItem<VoidCallback>(
-                              value: entry.value,
-                              child: Text(entry.key),
-                            );
-                          }),
-                          if (activeUser != null)
-                            PopupMenuItem<VoidCallback>(
-                              value: () async {
-                                (Platform.reddit.api as RedditApi).logout();
-                              },
-                              child: const Text('Logout')
-                            )
-                            //     if (mounted) {
-                            //       showOptionsBottomSheet(
-                            //         context: context,
-                            //         title: 'Accounts',
-                            //         options: Settings.loggedInUsers.value.map((user) {
-                            //           return ListTile(
-                            //             leading: ExtendedImage.network(
-                            //               user.iconUrl,
-                            //               width: 32,
-                            //               height: 32,
-                            //               cache: true,
-                            //               shape: BoxShape.circle,
-                            //               loadStateChanged: (ExtendedImageState state) {
-                            //                 switch (state.extendedImageLoadState) {
-                            //                   case LoadState.loading:
-                            //                     return Center(
-                            //                       child: SizedBox(
-                            //                         width: 24,
-                            //                         height: 24,
-                            //                         child: CustomCircularProgressIndicator(
-                            //                           platform: widget.platform,
-                            //                           strokeWidth: 2.5
-                            //                         ),
-                            //                       ),
-                            //                     );
-                            //                       case LoadState.completed:
-                            //                     return null; 
-                            //                   case LoadState.failed:
-                            //                     return OverflowBox(
-                            //                       maxWidth: 52,
-                            //                       maxHeight: 52,
-                            //                       child: const Icon(
-                            //                         Icons.no_accounts_rounded,
-                            //                         size: 40,
-                            //                         color: Colors.white24,
-                            //                       ),
-                            //                     );
-                            //                 }
-                            //               }
-                            //             ),
-                            //             title: Text(user.name),
-                            //             onTap: () {
-                            //               Navigator.pop(context);
-                            //               Settings.activeUser.value = user;
-                            //               _showUserSnackbar('Account switched to ', user.name);
-                            //             }
-                            //           );
-                            //         })
-                            //       );
-                            //     }
-                            //   },
-                            //   child: const Text('Accounts'),
-                            // )
-                          else if (widget.platform == Platform.reddit && redditClientId != null && redditRedirectUri != null)
-                            PopupMenuItem<VoidCallback>(
-                              value: () async {
-                                final userName = await (Platform.reddit.api as RedditApi).login();
-                                if (userName != null) {
-                                  _showUserSnackbar('Logged in to ${widget.platform.name.toTitleCase()} as ', userName);
-                                }
-                              },
-                              child: const Text('Login'),
-                            ),
-                          PopupMenuItem<VoidCallback>(
-                            value: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen())),
-                            child: const Text('Settings'),
-                          ),
-                        ]
-                      );
-                    }
+          if (widget.popupMenuActions != null)
+            PopupMenuButton(
+              onSelected: (callback) => callback(),
+              itemBuilder: (context) => [
+                ...widget.popupMenuActions!.entries.map((entry) {
+                  return PopupMenuItem<VoidCallback>(
+                    value: entry.value,
+                    child: Text(entry.key),
                   );
-                }
-              );
-            }
-          ),
+                }),
+              ]
+            ),
         ];
 
         final titleWidget = Column(
@@ -540,34 +429,112 @@ class _UserListState extends State<_UserList> {
 
   bool _isExpanded = false;
 
+  void _onLoginPressed() async {
+    context.pop();
+    final userName = await (Platform.reddit.api as RedditApi).login();
+    if (!mounted || userName == null) return;
+    context.showSnackBar(
+      content: Text.rich(
+        TextSpan(
+          children: [
+            TextSpan(
+              text: 'Logged in to ${widget.platform.name.toTitleCase()} as '
+            ),
+            TextSpan(
+              text: userName,
+              style: TextStyle(
+                color: widget.platform.color,
+                fontWeight: FontWeight.bold
+              )
+            )
+          ]
+        )
+      )
+    );
+  }
+
+  void _onTileLongPress(String userName) {
+    showSimpleOptionsDialog(
+      context: context,
+      title: widget.platform.getPrefixedUsername(userName),
+      options: {
+        'Logout': () {
+          (Platform.reddit.api as RedditApi).logout();
+        }
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
-    final temp = [Settings.activeUser.value!, Settings.activeUser.value!, Settings.activeUser.value!];
     return SafeArea(
       child: ValueListenableBuilder(
         valueListenable: Settings.loggedInUsers,
         builder: (context, loggedInUsers, child) {
+          if (loggedInUsers.isEmpty) {
+            if (widget.platform.api.hasLogin) {
+              return ValueListenableBuilder(
+                valueListenable: Settings.redditClientId,
+                builder: (context, redditClientId, child) {
+                  return ValueListenableBuilder(
+                    valueListenable: Settings.redditRedirectUri,
+                    builder: (context, redditRedirectUri, child) {
+                      debugPrint("here: $redditClientId, $redditRedirectUri");
+                      final Widget? title;
+                      final VoidCallback? onTap;
+                      if (redditClientId != null && redditRedirectUri != null) {
+                        title = Text('Login');
+                        onTap = _onLoginPressed;
+                      }
+                      else {
+                        title = null;
+                        onTap = null;
+                      }
+                      return ListTile(
+                        title: title,
+                        onTap: onTap,
+                        trailing: const _SettingsIconButton(),
+                      );
+                    }
+                  );
+                }
+              );
+            }
+            debugPrint("here123");
+            return const ListTile(trailing: _SettingsIconButton());
+          }
           return ValueListenableBuilder(
             valueListenable: Settings.activeUser,
             builder: (context, activeUser, child) {
-              if (activeUser == null) return const SizedBox.shrink();
+              final inactiveUsers = loggedInUsers.where((user) => user != activeUser);
               return Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   AnimatedCrossFade(
-                    // The "Collapsed" State
                     firstChild: const SizedBox(width: double.infinity, height: 0),
-                    // The "Expanded" State
                     secondChild: Column(
                       mainAxisSize: MainAxisSize.min,
-                      children: temp.map((user) => _UserListTile(
-                        platform: widget.platform,
-                        user: user,
-                        onTap: () {
-                          Settings.activeUser.value = user;
-                          setState(() => _isExpanded = false);
-                        },
-                      )).toList(),
+                      children: [
+                        ListTile(
+                          horizontalTitleGap: 8,
+                          leading: IconButton(
+                            icon: Icon(Icons.add_rounded),
+                            onPressed: _onLoginPressed
+                          ),
+                          title: Text('Add user'),
+                          trailing: const _SettingsIconButton(),
+                          onTap: _onLoginPressed,
+                        ),
+                        ...inactiveUsers.map((user) => _UserListTile(
+                          platform: widget.platform,
+                          user: user,
+                          onTap: () {
+                            Settings.activeUser.value = user;
+                            setState(() => _isExpanded = false);
+                          },
+                          onLongPress: () => _onTileLongPress(user.name)
+                        ))
+                      ],
                     ),
                     crossFadeState: _isExpanded 
                         ? CrossFadeState.showSecond 
@@ -576,36 +543,16 @@ class _UserListState extends State<_UserList> {
                     // This ensures the height animation is smooth
                     sizeCurve: Curves.fastOutSlowIn, 
                   ),
-                  // AnimatedContainer(
-                  //   duration: const Duration(milliseconds: 300),
-                  //   curve: Curves.fastOutSlowIn,
-                    // child: _isExpanded
-                    //   ? Column(
-                    //       key: ValueKey('expanded_list'),
-                    //       mainAxisSize: MainAxisSize.min,
-                    //       children: temp.map((user) {
-                    //         return _UserListTile(
-                    //           platform: widget.platform,
-                    //           user: user,
-                    //           onTap: () {
-                    //             setState(() {
-                    //               Settings.activeUser.value = user;
-                    //             });
-                    //           }
-                    //         );
-                    //       }).toList()
-                    //     )
-                    //   : const SizedBox(width: double.infinity, height: 0)
-                  // ),
                   _UserListTile(
                     platform: widget.platform,
-                    user: activeUser,
+                    user: activeUser!,
                     trailing: Icon(_isExpanded ? Icons.expand_more_rounded : Icons.expand_less_rounded),
                     onTap: () {
                       setState(() {
                         _isExpanded = !_isExpanded;
                       });
-                    }
+                    },
+                    onLongPress: () => _onTileLongPress(activeUser.name)
                   )
                 ],
               );
@@ -618,61 +565,62 @@ class _UserListState extends State<_UserList> {
 
 }
 
+class _SettingsIconButton extends StatelessWidget {
+
+  const _SettingsIconButton({
+    super.key
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: Icon(Icons.settings_rounded),
+      onPressed: () {
+        context.pop();
+        context.push(() => const SettingsScreen());
+      }
+    );
+  }
+}
+
 class _UserListTile extends StatelessWidget {
 
   final Platform platform;
   final LoggedInUser user;
   final Widget? trailing;
   final VoidCallback onTap;
+  final VoidCallback? onLongPress;
 
   const _UserListTile({
     super.key,
     required this.platform,
     required this.user,
     this.trailing,
-    required this.onTap
+    required this.onTap,
+    this.onLongPress
   });
 
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      leading: ExtendedImage.network(
-        user.iconUrl,
-        width: 32,
-        height: 32,
-        cache: true,
-        shape: BoxShape.circle,
-        loadStateChanged: (ExtendedImageState state) {
-          switch (state.extendedImageLoadState) {
-            case LoadState.loading:
-              return Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: CustomCircularProgressIndicator(
-                    platform: platform,
-                    strokeWidth: 2.5
-                  ),
-                ),
-              );
-                case LoadState.completed:
-              return null; 
-            case LoadState.failed:
-              return OverflowBox(
-                maxWidth: 52,
-                maxHeight: 52,
-                child: const Icon(
-                  Icons.no_accounts_rounded,
-                  size: 40,
-                  color: Colors.white24,
-                ),
-              );
-          }
-        }
+      horizontalTitleGap: 8,
+      leading: Container(
+        margin: const EdgeInsets.all(6), 
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          border: Border.all(color: platform.color, width: 1), 
+        ),
+        child: ListTileIcon(
+          platform: platform,
+          url: user.iconUrl,
+          size: 34,
+          placeholderIcon: Icons.no_accounts_rounded,
+        ),
       ),
       title: Text(user.name),
       trailing: trailing,
-      onTap: onTap
+      onTap: onTap,
+      onLongPress: onLongPress,
     );
   }
 
@@ -754,12 +702,12 @@ class _CommunityListState extends State<_CommunityList> {
 
   void _onCommunityTap(Community community) {
     if (community.platform == widget.platform && community.name == (widget.activeCommunityName ?? widget.platform?.communityHome)) {
-      Navigator.pop(context);
+      context.pop();
       widget.onActiveCommunitySelected?.call();
       return;
     }
     if ((widget.scaffoldKey.currentState?.isDrawerOpen ?? false)) {
-      Navigator.pop(context);
+      context.pop();
     }
     _navigateToCommunity(community);
   }
@@ -996,14 +944,14 @@ class _CommunityListState extends State<_CommunityList> {
                             platform: _searchPlatform,
                             name: query
                           );
-                          Navigator.pop(context);
+                          context.pop();
                           _navigateToCommunity(community);
                           Settings.communities.add(community);
                         case SearchType.user:
                           if (!RegExp(_searchPlatform.userNameValidation).hasMatch(value)) {
                             return;
                           }
-                          Navigator.pop(context);
+                          context.pop();
                           context.push(() {
                             return UserDetailsScreen(
                               platform: _searchPlatform,
@@ -1013,7 +961,7 @@ class _CommunityListState extends State<_CommunityList> {
                         case SearchType.all:
                           final query = value.trim();
                           if (query.isEmpty) return;
-                          Navigator.pop(context);
+                          context.pop();
                           context.push(() {
                             return SearchScreen(
                               platform: _searchPlatform,
@@ -1051,7 +999,6 @@ class _CommunityListState extends State<_CommunityList> {
                 return Stack(
                   children: [
                     ListTile(
-                      contentPadding: EdgeInsets.symmetric(horizontal: 16),
                       horizontalTitleGap: 8,
                       title: F.appFlavor == Flavor.combined || community.platform.communityHome == null ? CommunityName(community: community) : Text(community.name!),
                       leading: IconButton(

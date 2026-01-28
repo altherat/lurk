@@ -34,7 +34,9 @@ class RedditApi extends Api {
   const RedditApi();
 
   @override
-  // String get defaultUserAgent => 'RedReader/1.25.1';
+  bool get hasLogin => true;
+
+  @override
   String get defaultUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by u/altherat)';
 
   @override
@@ -550,10 +552,12 @@ class RedditApi extends Api {
                   .map((child) {
                     final childData = child['data'];
                     final String description = childData['public_description'];
+                    final String iconUrl = childData['icon_img'];
                     return Community(
                       platform: Platform.reddit,
                       name: childData['display_name'],
                       description: description.isNotEmpty ? description : null,
+                      iconUrl: iconUrl.isNotEmpty ? iconUrl : null,
                       subscriberCount: childData['subscribers'],
                     );
                   })

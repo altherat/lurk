@@ -23,6 +23,8 @@ abstract class Api {
   @protected
   String get baseUrl;
 
+  bool get hasLogin;
+
   String getPostDetailsUrl(Post post) => '$baseUrl${post.permalink}';
 
   String getCommentUrl(Comment comment) => '$baseUrl${comment.permalink}';
