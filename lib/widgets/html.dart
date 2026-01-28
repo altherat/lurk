@@ -245,7 +245,7 @@ class _Image extends StatelessWidget {
                       color: Colors.transparent,
                       child: InkWell(
                         onLongPress: () {
-                          showSimpleOptionsBottomSheet(
+                          showSimpleTextOptionsBottomSheet(
                             context: context,
                             options: {
                               'Save image': () {}, //TODO

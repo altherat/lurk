@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/post_details.dart';
@@ -7,6 +8,7 @@ import 'package:lurk/widgets/main_scaffold.dart';
 
 class MediaScaffold extends StatelessWidget {
 
+  final Platform platform;
   final String url;
   final String type;
   final Post? post;
@@ -15,6 +17,7 @@ class MediaScaffold extends StatelessWidget {
 
   const MediaScaffold({
     super.key,
+    required this.platform,
     required this.url,
     required this.type,
     this.post,
@@ -32,13 +35,14 @@ class MediaScaffold extends StatelessWidget {
       'Copy link': () => copyToClipboard(url)
     };
     return MainScaffold(
+      platform: platform,
       title: post != null ? Text(post!.title) : null,
       subtitle: Text(url),
       popupMenuActions: options,
       body: GestureDetector(
         onLongPress: () {
           HapticFeedback.mediumImpact();
-          showSimpleOptionsBottomSheet(
+          showSimpleTextOptionsBottomSheet(
             context: context,
             options: options
           );

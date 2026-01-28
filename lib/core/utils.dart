@@ -116,7 +116,7 @@ extension BuildContextExtension on BuildContext {
     return ScaffoldMessenger.of(this).showSnackBar(
       SnackBar(
         duration: duration,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
         content: content,
         action: action
       )
@@ -242,29 +242,7 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
   // }
 }
 
-Future<void> showSimpleAlertDialog({
-  required BuildContext context,
-  String? title,
-  required String content
-}) {
-  return showDialog(
-    context: context,
-    builder: (dialogContext) {
-      return AlertDialog(
-        title: title != null ? Text(title) : null,
-        content: Text(content),
-        actions: [
-          TextButton(
-            child: Text('OK'),
-            onPressed: () => Navigator.pop(context)
-          ),
-        ]
-      );
-    }
-  );
-}
-
-Future<void> showSimpleBottomSheet({
+Future<void> showSimpleTextBottomSheet({
   required BuildContext context,
   String? title,
   required String content
@@ -286,10 +264,11 @@ Future<void> showSimpleBottomSheet({
   );
 }
 
-Future<void> showSimpleOptionsBottomSheet({
+Future<void> showOptionsBottomSheet({
   required BuildContext context,
   String? title,
-  required Map<String, VoidCallback> options
+  required Iterable<Widget> options,
+  EdgeInsetsGeometry? padding
 }) {
   return showModalBottomSheet(
     context: context,
@@ -302,7 +281,7 @@ Future<void> showSimpleOptionsBottomSheet({
           children: [
             if (title != null)
               Padding(
-                padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                padding: padding ?? const EdgeInsets.fromLTRB(16, 0, 16, 8),
                 child: Text(
                   title,
                   maxLines: 2,
@@ -310,19 +289,32 @@ Future<void> showSimpleOptionsBottomSheet({
                   style: Theme.of(context).textTheme.titleLarge,
                 ),
               ),
-            ...options.entries.map((option) {
-              return ListTile(
-                title: Text(option.key),
-                onTap: () {
-                  Navigator.pop(context);
-                  option.value();
-                }
-              );
-            })
+            ...options
           ]
         ),
       );
     }
+  );
+}
+
+Future<void> showSimpleTextOptionsBottomSheet({
+  required BuildContext context,
+  String? title,
+  required Map<String, VoidCallback?> options
+}) {
+  return showOptionsBottomSheet(
+    context: context,
+    options: options.entries.map((entry) {
+      return ListTile(
+        title: Text(entry.key),
+        onTap: entry.value != null
+        ? () {
+            Navigator.pop(context);
+            entry.value?.call();
+          }
+        : null
+      );
+    })
   );
 }
 
@@ -391,7 +383,7 @@ Future<void> saveImage({
 }) => saveMedia(
   context: context,
   platform: platform,
-  mediaType: 'video',
+  mediaType: 'image',
   save: () async {
     final filePath = await downloadMediaToTemp(url, platform.api.userAgent);
     await Gal.putImage(filePath);

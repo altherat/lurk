@@ -23,6 +23,7 @@ class ImageViewerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MediaScaffold(
+      platform: platform,
       url: url,
       type: 'image',
       post: post,

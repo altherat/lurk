@@ -1,4 +1,4 @@
-class User {
+class LookedUpUser {
 
   final String? id;
   final String name;
@@ -6,12 +6,30 @@ class User {
   final bool isSuspended;
   final List<UserStat>? stats;
 
-  User({
+  LookedUpUser({
     required this.id,
     required this.name,
     required this.iconUrl,
     required this.isSuspended,
     required this.stats
+  });
+
+}
+
+class LoggedInUser {
+
+  final String id;
+  final String name;
+  final String iconUrl;
+  final int inboxCount;
+  final int score;
+
+  LoggedInUser({
+    required this.id,
+    required this.name,
+    required this.iconUrl,
+    required this.inboxCount,
+    required this.score,
   });
 
 }

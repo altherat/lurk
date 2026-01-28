@@ -6,6 +6,7 @@ import 'package:lurk/core/database/database.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/flavors.dart';
 import 'package:lurk/models/community.dart';
+import 'package:lurk/models/user.dart';
 
 import '../core/database/database.dart' as tbl;
 
@@ -29,16 +30,19 @@ class Settings {
   static late final SettingNotifier<String?> customUserAgent;
 
   static late final Setting<SearchType?> searchType;
-  static late final Setting<Platform?> searchPlatform;
+
+  static late final RelationalListSettingNotifier<LoggedInUser> loggedInUsers;
 
   static late final RelationalListSettingNotifier<Community> communities;
+
+  static late final SettingNotifier<LoggedInUser?> activeUser;
 
   static bool isInitialized = false;
 
   static Future<void> init() async {
 
     final db = Database.instance;
-    final [dbSettings as tbl.Setting, dbCommunities as List<Community>] = await Future.wait([db.getAllSettings(), db.getAllCommunities()]);
+    final [dbSettings as tbl.Setting, dbLoggedInUseres as List<LoggedInUser>, dbCommunities as List<Community>] = await Future.wait([db.getAllSettings(), db.getAllLoggedInUsers(), db.getAllCommunities()]);
 
     homeCommunityPlatform = SettingNotifier(dbSettings.homeCommunityPlatform, (value) => SettingsCompanion(homeCommunityPlatform: Value(value)), F.appFlavor.defaultCommunities.first.platform);
     homeCommunityName = SettingNotifier(dbSettings.homeCommunityName, (value) => SettingsCompanion(homeCommunityName: Value(value)), homeCommunityPlatform.value.communityHome);
@@ -54,12 +58,18 @@ class Settings {
     diggPostsFetchDepth = SettingNotifier(dbSettings.diggPostsFetchDepth, (value) => SettingsCompanion(diggPostsFetchDepth: Value(value)), Constants.defaultDiggPostsFetchDepth);
     customUserAgent = SettingNotifier(dbSettings.userAgent, (value) => SettingsCompanion(userAgent: Value(value)));
     searchType = Setting(dbSettings.searchType, (value) => SettingsCompanion(searchType: Value(value)));
-    searchPlatform = Setting(dbSettings.searchPlatform, (value) => SettingsCompanion(searchPlatform: Value(value)));
+    loggedInUsers = RelationalListSettingNotifier(
+      dbLoggedInUseres,
+      save: db.saveLoggedInUser,
+      delete: db.deleteLoggedInUser
+    );
     communities = RelationalListSettingNotifier<Community>(
       dbCommunities,
       save: db.saveCommunity,
       delete: db.deleteCommunity,
     );
+    final activeUserId = dbSettings.activeUserId;
+    activeUser = SettingNotifier(activeUserId != null ? loggedInUsers.value.firstWhere((user) => user.id == activeUserId) : null, (user) => SettingsCompanion(activeUserId: Value(user?.id)));
     isInitialized = true;
   }
 
@@ -121,6 +131,50 @@ class SettingNotifier<T> extends ValueNotifier<T> {
     }
   }
   
+}
+
+class RelationalListSetting<T> {
+
+  List<T> _value;
+  final Future<void> Function(T) save;
+  final Future<void> Function(T) delete;
+
+  RelationalListSetting(
+    List<T> initialValue, {
+    required this.save,
+    required this.delete,
+  }) : _value = List.unmodifiable(initialValue);
+
+  List<T> get value => _value;
+
+  Future<void> add(T item) async {
+    if (_value.contains(item)) return;
+    _value = List.unmodifiable([..._value, item]);
+    await save(item);
+  }
+
+  Future<void> remove(T item) async {
+    if (!_value.contains(item)) return;
+    _value = List.unmodifiable(_value.where((x) => x != item));
+    await delete(item);
+  }
+
+  Future<void> update(T item) async {
+    final index = _value.indexOf(item);
+    if (index != -1) {
+      final newList = List<T>.from(_value);
+      newList[index] = item;
+      _value = List.unmodifiable(newList);
+      await save(item);
+    }
+  }
+
+  void sort(int Function(T a, T b) compare) {
+    final newList = List<T>.from(_value);
+    newList.sort(compare);
+    _value = List.unmodifiable(newList);
+  }
+
 }
 
 class RelationalListSettingNotifier<T> extends ChangeNotifier implements ValueListenable<List<T>> {

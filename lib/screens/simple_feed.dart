@@ -205,7 +205,7 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
       flutterRefreshIndicatorKey: _refreshIndicatorKey,
       onRefresh: _get,
       child: _items.isEmpty
-        ? FeedScreenCenteredErrorMessage(
+        ? CenteredFullHeightScrollView(
             headers: headers,
             child: widget.noItemsBuilder(context)
           )

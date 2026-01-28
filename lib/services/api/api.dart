@@ -67,6 +67,8 @@ abstract class Api {
   Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
   Future<PagedResult<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
 
+  Future<void> vote(String id, bool? up);
+
 }
 
 class PagedResult<T> {

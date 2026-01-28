@@ -588,7 +588,7 @@ class DiggApi extends Api {
 
   @override
   Future<PagedResult<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    debugPrint('[Digg] search: query=$query, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
+    // debugPrint('[Digg] search: query=$query, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
     final type = options?[FeedOptionType.type]?.id ?? SearchFeedType.posts;
     final sort = options?[FeedOptionType.sort];
     final gql.QueryOptions queryOptions;
@@ -713,6 +713,11 @@ class DiggApi extends Api {
     return compute(parseFn, response.data!);
   }
 
+  @override
+  Future<void> vote(String id, bool? up) {
+    throw UnimplementedError();
+  }
+
   Future<PagedResult<Post>> _getPostsRecursive(Map<String, dynamic> variables, {List<Post>? accumulatedPosts, int depth = 0}) async {
     // debugPrint('[Digg] _getPostsRecursive: variables=[${variables.entries.map((entry) => '${entry.key}=${entry.value}').join(', ')}], posts=${accumulatedPosts?.length}, depth=$depth');
     final gql.QueryOptions queryOptions = gql.QueryOptions(
@@ -820,14 +825,14 @@ class DiggApi extends Api {
     );
   }
 
-  static PagedResult<User> _parseUsersResult(Map<String, dynamic> data) {
+  static PagedResult<LookedUpUser> _parseUsersResult(Map<String, dynamic> data) {
     final accountsData = data['accounts'];
     final List edges = accountsData['edges'];
     final pageInfo = accountsData['pageInfo'];
     return PagedResult(
       items: edges.map((edge) {
         final node = edge['node'];
-        return User(
+        return LookedUpUser(
           id: node['_id'],
           name: node['username'],
           iconUrl: node['avatarUrl'],

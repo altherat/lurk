@@ -72,6 +72,7 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
         }
       },
       child: MainScaffold(
+        platform: widget.platform,
         title: _title != null ? Text(_title!) : null,
         subtitle: Text(widget.url),
         iconActions: [

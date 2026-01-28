@@ -90,7 +90,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
 
   Future<void> _getPostDetails() => _get(() => widget.platform.api.getPostDetailsFromUrl(widget.url!));
 
-  Future<void> _getPostDetailsFromPost() => _get(() => _post!.community.platform.api.getPostDetailsFromId(_post!.id, options: _feedOptions));
+  Future<void> _getPostDetailsFromPost() => _get(() => _post!.community.platform.api.getPostDetailsFromId(_post!.shortId, options: _feedOptions));
 
   Future<void> _get(Future<PostDetails> Function() get) async {
     try {
@@ -103,7 +103,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
           _contextCommentId = postDetails.contextCommentId;
           _visibleComments = List.of(_comments!);
         });
-        History.postDetails.setVisited(_post!.id);
+        History.postDetails.add(_post!.id);
       }
     }
     catch (e) {
@@ -111,6 +111,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
       if (mounted) {
         setState(() => _isLoading = false);
       }
+      rethrow;
     }
   }
 
@@ -196,7 +197,13 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
         ),
         if (_contextCommentId != null)
           InkWell(
-            onTap: () => context.push(() => PostDetailsScreen.fromPost(post: _post!)),
+            onTap: () {
+              context.push(() {
+                return PostDetailsScreen.fromPost(
+                  post: _post!
+                );
+              });
+            },
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
@@ -229,18 +236,12 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
         );
       }
       else if (_visibleComments == null || _visibleComments!.isEmpty) {
-        body = Column(
-          children: [
-            ...headers,
-            Expanded(
-              child: Center(
-                child: LargeMessage(
-                  icon: Icons.feed_outlined,
-                  message: 'No comments'
-                ),
-              )
-            )
-          ],
+        body = CenteredFullHeightScrollView(
+          headers: headers,
+          child: LargeMessage(
+            icon: Icons.feed_outlined,
+            message: 'No comments'
+          )
         );
       }
       else {
@@ -316,7 +317,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
       }
       else {
         onRefresh = _getPostDetails;
-        body = const FeedScreenCenteredErrorMessage(
+        body = const CenteredFullHeightScrollView(
           child: LargeMessage(
             icon: Icons.error_outline_rounded,
             message: 'Something went wrong',
@@ -395,7 +396,7 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
             ),
           ),
         ),
-        );
+      );
     }
     else {
       onTap = () async {

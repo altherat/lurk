@@ -26,6 +26,7 @@ class Settings extends Table {
   TextColumn get userAgent => text().nullable()();
 
   TextColumn get searchType => text().map(const EnumNameConverter<SearchType>(SearchType.values)).nullable()();
-  TextColumn get searchPlatform => text().map(const EnumNameConverter<Platform>(Platform.values)).nullable()();
+  
+  TextColumn get activeUserId => text().nullable()();
   
 }

@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:developer' as dev;
 import 'dart:io' as io;
 import 'dart:math';
 import 'package:flutter/foundation.dart';
@@ -13,6 +14,7 @@ import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/settings.dart';
+import 'package:lurk/services/votes.dart';
 import 'package:oauth2_client/access_token_response.dart';
 import 'package:oauth2_client/oauth2_client.dart';
 import 'package:oauth2_client/oauth2_helper.dart';
@@ -23,7 +25,7 @@ class RedditApi extends Api {
   static const _baseUrl = 'https://$_domain';
   static const _baseUrlOld = 'https://old.$_domain';
   static const _oauthDomain = 'oauth.$_domain';
-  static const _oauthScopes = ['identity', 'read', 'submit', 'vote'];
+  static const _oauthScopes = ['history', 'identity', 'read', 'submit', 'vote'];
   
   static http.Client? _clientInstance;
   static OAuth2Helper? _oauth2Helper;
@@ -32,45 +34,45 @@ class RedditApi extends Api {
   const RedditApi();
 
   @override
-  String get defaultUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by @altherat)';
+  // String get defaultUserAgent => 'RedReader/1.25.1';
+  String get defaultUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by u/altherat)';
 
   @override
   Map<String, String> get defaultHeaders => const {'Accept': 'application/json'};
 
   Future<String?> login() async {
-    if (!await _ensureClientInitialized()) return null;
-    final (redirectUri, customUriScheme) = _redirectUriAndCustomUriScheme;
-    _oauth2Helper = OAuth2Helper(
-      OAuth2Client(
-        authorizeUrl: 'https://www.reddit.com/api/v1/authorize',
-        tokenUrl: 'https://www.reddit.com/api/v1/access_token',
-        redirectUri: redirectUri,
-        customUriScheme: customUriScheme,
-      ),
-      grantType: OAuth2Helper.authorizationCode,
-      clientId: Settings.redditClientId.value!,
-      clientSecret: '',
-      scopes: _oauthScopes,
-      authCodeParams: {'duration': 'permanent'},
-    );
-    final tokenResponse = await _oauth2Helper!.fetchToken();
-    if (tokenResponse.isValid()) {
-      _clientInstance?.close();
-      _clientInstance = null;
-      return jsonDecode((await _get('/api/v1/me')).body)['name'];
+    await _checkIfSettingsChanged();
+    if (await _ensureClientInitialized()) {
+      final tokenResponse = await _oauth2Helper!.fetchToken();
+      if (tokenResponse.isValid()) {
+        _clientInstance?.close();
+        _clientInstance = null;
+        final data = jsonDecode((await _get('/api/v1/me')).body);
+        final iconUri = Uri.parse(data['icon_img']);
+        final user = LoggedInUser(
+          id: data['name'],
+          name: data['name'],
+          iconUrl: Uri(scheme: iconUri.scheme,host: iconUri.host,path: iconUri.path).toString(),
+          inboxCount: data['inbox_count'],
+          score: data['link_karma'] + data['comment_karma']
+        );
+        Settings.loggedInUsers.add(user);
+        Settings.activeUser.value = user;
+        return user.name;
+      }
     }
     return null;
   }
 
-  Future<void> logout() async {
-    await _oauth2Helper?.removeAllTokens();
+  Future<String> logout() async {
+    await _ensureClientInitialized();
+    await _oauth2Helper!.removeAllTokens();
+    final user = Settings.activeUser.value!;
+    Settings.loggedInUsers.remove(user);
+    Settings.activeUser.value = null;
     _oauth2Helper = null;
     _initClientFuture = null;
-  }
-
-  Future<bool> isLoggedIn() async {
-    if (!await _ensureClientInitialized()) return false;
-    return (await _oauth2Helper?.getTokenFromStorage())?.hasRefreshToken() ?? false;
+    return user.name;
   }
 
   Future<bool> _ensureClientInitialized() => _initClientFuture ??= _initClient();
@@ -83,42 +85,56 @@ class RedditApi extends Api {
         _oauth2Helper = null;
       }
       _clientInstance ??= http.Client();
+      Settings.activeUser.value = null;
+      debugPrint('initialized http.Client');
       return false;
     }
 
-    _clientInstance?.close();
-    _clientInstance = null;
-
-    if (_oauth2Helper != null && _oauth2Helper!.clientId != clientId) {
-      await _oauth2Helper?.removeAllTokens();
-      _oauth2Helper = null;
-    }
-    if (_oauth2Helper == null) {
-      final (redirectUri, customUriScheme) = _redirectUriAndCustomUriScheme;
-      _oauth2Helper = OAuth2Helper(
-        OAuth2Client(
-          authorizeUrl: 'https://www.reddit.com/api/v1/authorize',
-          tokenUrl: 'https://www.reddit.com/api/v1/access_token',
-          redirectUri: redirectUri,
-          customUriScheme: customUriScheme
-        ),
-        grantType: OAuth2Helper.authorizationCode,
-        clientId: clientId,
-        clientSecret: '',
-        scopes: _oauthScopes,
-        authCodeParams: {'duration': 'permanent'},
-      );
-    }
+    final (redirectUri, customUriScheme) = _redirectUriAndCustomUriScheme;
+    _oauth2Helper = OAuth2Helper(
+      OAuth2Client(
+        authorizeUrl: 'https://www.reddit.com/api/v1/authorize',
+        tokenUrl: 'https://www.reddit.com/api/v1/access_token',
+        redirectUri: redirectUri,
+        customUriScheme: customUriScheme
+      ),
+      grantType: OAuth2Helper.authorizationCode,
+      clientId: clientId,
+      clientSecret: '',
+      scopes: _oauthScopes,
+      authCodeParams: {
+        'duration': 'permanent',
+        'prompt': 'select_account'
+      },
+    );
+      debugPrint('initialized OAuth2Helper');
     return true;
   }
 
+  Future<void> _checkIfSettingsChanged() async {
+    final clientId = Settings.redditClientId.value;
+    final redirectUri = Settings.redditRedirectUri.value;
+    if (clientId == null || redirectUri == null) {
+      if (_oauth2Helper != null) {
+        await _oauth2Helper!.removeAllTokens();
+        _initClientFuture = null;
+      }
+    }
+    else if (_oauth2Helper == null || _oauth2Helper!.clientId != clientId || _oauth2Helper!.client.redirectUri != redirectUri) {
+      await _oauth2Helper?.removeAllTokens();
+      if (_clientInstance != null) {
+        _clientInstance!.close();
+        _clientInstance = null;
+      }
+      _initClientFuture = null;
+    }
+  }
+
   Future<Response> _request(Future<Response> Function() request, Future<Response> Function() oAuthRequest) async {
+    await _checkIfSettingsChanged();
     if (await _ensureClientInitialized()) {
       final accessToken = await _oauth2Helper!.getTokenFromStorage();
-      debugPrint('Logged in: ${accessToken?.hasRefreshToken() ?? false}');
-      debugPrint('Access token: ${accessToken?.accessToken}');
       if (accessToken == null || (!accessToken.hasRefreshToken() && accessToken.isExpired())) {
-        debugPrint('Fetching new access token (${(accessToken?.isExpired() ?? false) ? 'expired' : 'new'})');
         final response = await http.post(
           Uri.parse('https://www.reddit.com/api/v1/access_token'),
           headers: {
@@ -130,7 +146,6 @@ class RedditApi extends Api {
             'device_id': List<int>.generate(16, (i) => Random.secure().nextInt(256)).map((e) => e.toRadixString(16).padLeft(2, '0')).join(),
           }
         );
-        debugPrint('response: ${response.body}');
         if (response.statusCode == 200) {
           final data = jsonDecode(response.body);
           await _oauth2Helper!.tokenStorage.addToken(AccessTokenResponse.fromMap({
@@ -141,42 +156,52 @@ class RedditApi extends Api {
           }));
         }
       }
-      debugPrint('_request OAuth');
       return _onResponse(await oAuthRequest());
     }
     return _onResponse(await request());
   }
 
-  Future<Response> _get(String path, {Map<String, dynamic>? params}) => _request(
-    () => _clientInstance!.get(
-      Uri.https(_domain, path, params),
-      headers: headers
-    ),
-    () => _oauth2Helper!.get(
-      Uri.https(_oauthDomain, path, params).toString(),
-      headers: headers
-    )
-  );
+  Future<Response> _get(String path, {Map<String, dynamic>? params}) async {
+    // debugPrint('[Reddit] _get: path=$path, params=$params]');
+    return _request(
+      () => _clientInstance!.get(
+        Uri.https(_domain, path, (params != null && params.isNotEmpty) ? params : null),
+        headers: headers
+      ),
+      () => _oauth2Helper!.get(
+        Uri.https(_oauthDomain, path, (params != null && params.isNotEmpty) ? params : null).toString(),
+        headers: headers
+      )
+    );
+  }
 
-  Future<Response> _post(String path, Map<String, dynamic> body) => _request(
-    () => _clientInstance!.post(
-      Uri.https(_domain, path),
-      headers: headers,
-      body: body
-    ),
-    () => _oauth2Helper!.post(
-      Uri.https(_oauthDomain, path).toString(),
-      headers: headers,
-      body: body
-    )
-  );
+  Future<Response> _post(String path, Map<String, String> body) async {
+    // debugPrint('[Reddit] _post: path=$path, params=$body]');
+    await _checkIfSettingsChanged();
+    await _ensureClientInitialized();
+    return _request(
+      () => _clientInstance!.post(
+        Uri.https(_domain, path),
+        headers: headers,
+        body: body
+      ),
+      () => _oauth2Helper!.post(
+        Uri.https(_oauthDomain, path).toString(),
+        headers: headers,
+        body: body
+      )
+    );
+  }
 
   Future<Response> _onResponse(Response response) async {
-    debugPrint('_onResponse: statusCode=${response.statusCode}');
-    debugPrint('\tHeaders:');
-    for (var header in response.headers.entries) {
-      debugPrint('\t\t${header.key}: ${header.value}');
-    }
+    // debugPrint('_onResponse: statusCode=${response.statusCode}');
+    // debugPrint('Response: ${response.body}');
+    // debugPrint('Headers:');
+    // for (var header in response.headers.entries) {
+    //   if (header.key.startsWith('x-ratelimit-')) {
+    //     debugPrint('\t${header.key}: ${header.value}');
+    //   }
+    // }
     return response;
   }
 
@@ -206,8 +231,10 @@ class RedditApi extends Api {
     if (pageToken != null) {
       params['after'] = pageToken;
     }
-
-    return compute(_parsePostsResult, (await _get('$path.json', params: params)).body);
+    
+    final (votes, result) = await compute(_parsePosts, (await _get('$path.json', params: params)).body);
+    votes.forEach((postId, vote) => Votes.posts.setVote(postId, vote));
+    return result;
   }
 
   @override
@@ -244,58 +271,116 @@ class RedditApi extends Api {
       segments.addAll(['comment', commentId]);
       params['context'] = '3';
     }
-    return compute(
+    final (postVote, commentVotes, postDetails) = await compute(
       ((String, String?) args) {
         final (body, contextCommentId) = args;
         final json = jsonDecode(body);
-        return PostDetails(
-          post: _parsePost(json[0]['data']['children'][0]),
-          comments: _parseComments(json[1]['data']['children'] as List, 0),
-          contextCommentId: contextCommentId
+        final (postVote, post) = _parsePost(json[0]['data']['children'][0]);
+        final (Map<String, bool?> commentVotes, List<CommentItem> comments) = _parseComments(json[1]['data']['children'] as List, 0);
+        return (
+          postVote,
+          commentVotes,
+          PostDetails(
+            post: post,
+            comments: comments,
+            contextCommentId: contextCommentId
+          )
         );
       },
-      ((await _get(segments.join('/'), params: params)).body, commentId)
+      ((await _get('/${segments.join('/')}.json', params: params)).body, commentId)
     );
+    Votes.posts.setVote(postDetails.post.id, postVote);
+    commentVotes.forEach((commentId, vote) => Votes.comments.setVote(commentId, vote));
+    return postDetails;
   }
 
   @override
   Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? depth, Map<FeedOptionType, FeedOption>? options}) async {
     // debugPrint('[Reddit] getPostDetailsFromUrl: id=$id, pageToken=$pageToken, options=[${options?.values.map((option) => option.id).join(', ')}]');
     final sort = options?[FeedOptionType.sort];
-    final response = await _post(
-      '/api/morechildren',
-      {
-        'api_type': 'json',
-        'link_id': 't3_$id',
-        'children': pageToken,
-        if (sort != null)
-          'sort': sort.id
-      }
-    );
-    return compute(
-      (String body) {
+    final body = {
+      'api_type': 'json',
+      'link_id': id,
+      'children': pageToken,
+      if (sort != null)
+        'sort': sort.id.toString()
+    };
+    final Future<Response> response;
+    final (Map<String, bool?>, List<CommentItem>) Function(String) parseFn;
+    if (_oauth2Helper != null) {
+      response = _oauth2Helper!.post(
+        Uri.https(_oauthDomain, '/api/morechildren').toString(),
+        headers: headers,
+        body: body
+      );
+      parseFn = (String body) {
         final Map<String, dynamic> jsonResponse = jsonDecode(body);
         final List<dynamic> things = jsonResponse['json']?['data']?['things'] ?? [];
+        
+        final Map<String, bool?> votes = {};
+        final List<CommentItem> items = [];
+        final Map<String, int> batchDepthCache = {};
+
+        for (var thing in things) {
+          final String kind = thing['kind'];
+          final Map<String, dynamic> data = thing['data'];
+          final String id = data['name'];
+          final String parentId = data['parent_id'];
+          final currentDepth = batchDepthCache.containsKey(parentId) ? batchDepthCache[parentId]! + 1 : (data['depth'] ?? depth ?? 0);
+          batchDepthCache[id] = currentDepth;
+          if (kind == 't1') {
+            final (vote, comment) = _parseCommentFromJson(data, currentDepth);
+            votes[comment.id] = vote;
+            items.add(comment);
+          } 
+          else if (kind == 'more') {
+            items.add(
+              LoadMoreComment(
+                depth: currentDepth,
+                count: data['count'] ?? 0,
+                pageToken: (data['children'] as List).join(','),
+              ),
+            );
+          }
+        }
+        return (votes, items);
+      };
+    }
+    else {
+      _clientInstance ??= http.Client();
+      response = _clientInstance!.post(
+        Uri.parse('$_baseUrlOld/api/morechildren'),
+        headers: headers,
+        body: body
+      );
+      parseFn = (String body) {
+        final Map<String, dynamic> jsonResponse = jsonDecode(body);
+        final List<dynamic> things = jsonResponse['json']['data']['things'];
+        final Map<String, bool?> votes = {};
         final List<CommentItem> items = [];
         final Map<String, int> batchDepthCache = {};
         for (var thing in things) {
           final kind = thing['kind'];
           final data = thing['data'];
+          final id = data['id'];
           final parentId = data['parent'];
           final currentDepth = batchDepthCache.containsKey(parentId) ? batchDepthCache[parentId]! + 1 : depth!;
-          batchDepthCache[data['id']] = currentDepth;
+          batchDepthCache[id] = currentDepth;
           if (kind == 't1') {
-            final element = parse(parse(data['content']).body?.text).querySelector('.thing')!;
+            final content = data['content'];
+            final element = parse(parse(content).body?.text).querySelector('.thing')!;
             final entry = element.querySelector('.entry');
             final authorElement = entry?.querySelector('.author');
             final author = authorElement?.text;
             final scoreTitle = entry?.querySelector('.tagline .score.unvoted')?.attributes['title'];
             final textHtml = entry?.querySelector('.usertext-body .md');
             final dateTimeString = entry?.querySelector('.tagline time')?.attributes['datetime'];
+            final midcol = element.querySelector('.midcol')!;
+            votes[id] = midcol.classes.contains('likes') ? true : midcol.classes.contains('dislikes') ? false : null;
             items.add(
               Comment(
                 depth: currentDepth,
-                platform: Platform.digg,
+                platform: Platform.reddit,
                 id: element.attributes['data-fullname']!,
                 permalink: element.attributes['data-permalink']!,
                 isDeleted: author == '[deleted]',
@@ -322,10 +407,12 @@ class RedditApi extends Api {
             );
           }
         }
-        return items;
-      },
-      response.body
-    );
+        return (votes, items);
+      };
+    }
+    final (votes, items) = await compute(parseFn, (await response).body);
+    votes.forEach((commentId, vote) => Votes.comments.setVote(commentId, vote));
+    return items;
   }
 
   @override
@@ -384,45 +471,76 @@ class RedditApi extends Api {
       params['after'] = pageToken;
     }
     
-    return compute(
+    final (postVotes, commentVotes, result) = await compute(
       (String body) {
+        final Map<String, bool?> postVotes = {};
+        final Map<String, bool?> commentVotes = {};
+        final List<dynamic> items = [];
         final json = jsonDecode(body);
         final data = json['data'];
         final children = data['children'] as List;
-        return PagedResult(
-          items: children.map((child) {
-            final String kind = child['kind'];
-            final Map<String, dynamic> childData = child['data'];
-
-            if (kind == 't3') {
-              return _parsePost(child);
-            } else if (kind == 't1') {
-              return _parseCommentFromJson(childData, 0);
-            }
-            return null;
-          }).toList(),
-          pageToken: data['after']
+        for (var child in children) {
+          final String kind = child['kind'];
+          if (kind == 't3') {
+            final (vote, post) = _parsePost(child);
+            postVotes[post.id] = vote;
+            items.add(post);
+          }
+          else if (kind == 't1') {
+            final (vote, comment) = _parseCommentFromJson(child['data'], 0);
+            commentVotes[comment.id] = vote;
+            items.add(comment);
+          }
+        }
+        return (
+          postVotes,
+          commentVotes,
+          PagedResult(
+            items: items,
+            pageToken: data['after'],
+          )
         );
       },
       (await _get('$path.json', params: params)).body
     );
+
+    postVotes.forEach((id, vote) => Votes.posts.setVote(id, vote));
+    commentVotes.forEach((id, vote) => Votes.comments.setVote(id, vote));
+
+    return result;
   }
 
   @override
   Future<PagedResult<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    debugPrint('[Reddit] search: query=$query, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
-    final type = options?[FeedOptionType.type];
+    // debugPrint('[Reddit] search: query=$query, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
+    final type = options?[FeedOptionType.type]?.id;
     final sort = options?[FeedOptionType.sort];
     final timeRange = options?[FeedOptionType.time];
     final Map<String, dynamic> params = {
       'q': query,
     };
-    final PagedResult<dynamic> Function(String) parseFn;
-    if (type != null) {
-      switch (type.id) {
-        case SearchFeedType.communities:
-          params['type'] = 'sr';
-          parseFn = (String body) {
+    if (sort != null) {
+      params['sort'] = sort.id;
+    }
+    if (timeRange != null) {
+      params['t'] = timeRange.id;
+    }
+    if (pageToken != null) {
+      params['after'] = pageToken;
+    }
+    switch (type) {
+      case SearchFeedType.communities:
+        params['type'] = 'sr';
+      case SearchFeedType.users:
+        params['type'] = 'user';
+    }
+
+    final responseBody = (await _get('/search.json', params: params)).body;
+
+    switch (type) {
+      case SearchFeedType.communities:
+        return compute(
+          (String body) {
             final json = jsonDecode(body);
             final data = json['data'];
             final children = data['children'] as List;
@@ -442,11 +560,12 @@ class RedditApi extends Api {
                   .toList(),
               pageToken: data['after'],
             );
-          };
-          break;
-        case SearchFeedType.users:
-          params['type'] = 'user';
-          parseFn = (String body) {
+          },
+          responseBody
+        );
+      case SearchFeedType.users:
+        return compute(
+          (String body) {
             final json = jsonDecode(body);
             final data = json['data'];
             final children = data['children'] as List;
@@ -456,8 +575,7 @@ class RedditApi extends Api {
                 .map((child) {
                   final childData = child['data'];
                   final bool isSuspended = childData['is_suspended'] ?? false;
-                  debugPrint(childData.toString());
-                  return User(
+                  return LookedUpUser(
                     id: childData['id'],
                     name: childData['name'],
                     iconUrl: (childData['icon_img'] as String?)?.replaceAll('&amp;', '&'),
@@ -479,45 +597,36 @@ class RedditApi extends Api {
                         ]
                       : null
                   );
-                })
-                  .toList(),
+                }).toList(),
               pageToken: data['after'],
             );
-          };
-          break;
-        default:
-          parseFn = _parsePostsResult;
-      }
+          },
+          responseBody
+        );
     }
-    else {
-      parseFn = _parsePostsResult;
-    }
-    if (sort != null) {
-      params['sort'] = sort.id;
-    }
-    if (timeRange != null) {
-      params['t'] = timeRange.id;
-    }
-    if (pageToken != null) {
-      params['after'] = pageToken;
-    }
-    return compute(parseFn, (await _get('/search.json', params: params)).body);
+    final (votes, result) = await compute(_parsePosts, responseBody);
+    votes.forEach((postId, vote) => Votes.posts.setVote(postId, vote));
+    return result;
   }
 
-  PagedResult<Post> _parsePostsResult(String body) {
-    final json = jsonDecode(body);
-    final data = json['data'];
-    final children = data['children'] as List;
-    return PagedResult(
-      items: children
-        .where((child) => child['kind'] == 't3')
-        .map((child) => _parsePost(child))
-        .toList(),
-      pageToken: data['after']
+  @override
+  Future<void> vote(String id, bool? up) {
+    // debugPrint('[Reddit] upvote: id=$id, up=$up');
+    return _post(
+      '/api/vote',
+      {
+        // 'api_type': 'json',
+        'id': id,
+        'dir': switch (up) {
+          true => '1',
+          false => '-1',
+          null => '0',
+        }
+      }
     );
   }
 
-  Post _parsePost(Map<String, dynamic> json) {
+  (bool?, Post) _parsePost(Map<String, dynamic> json) {
     final data = json['data'];
     final author = data['author'];
     String? thumbnail = data['thumbnail'];
@@ -572,48 +681,76 @@ class RedditApi extends Api {
       domain = (data['domain'] as String).toLowerCase();
     }
 
-    return Post(
-      community: Community(
-        platform: Platform.reddit,
-        name: data['subreddit'].toLowerCase()
-      ),
-      id: data['id'],
-      permalink: data['permalink'],
-      score: data['score'],
-      timestampMs: (data['created_utc'] as num).toInt() * 1000,
-      title: parse(data['title']).body!.text,
-      textHtml: textHtml,
-      author: author,
-      commentCount: data['num_comments'],
-      url: data['url'],
-      domain: domain,
-      thumbnailUrl: thumbnail,
-      isStickied: data['stickied'],
-      isSelf: data['is_self'],
-      isNsfw: data['over_18'],
-      isGallery: isGallery,
-      isDeleted: author == '[deleted]',
-      galleryImageUrls: galleryImageUrls
+    return (
+      data['likes'],
+      Post(
+        community: Community(
+          platform: Platform.reddit,
+          name: data['subreddit'].toLowerCase()
+        ),
+        id: data['name'],
+        shortId: data['id'],
+        permalink: data['permalink'],
+        score: data['score'],
+        timestampMs: (data['created_utc'] as num).toInt() * 1000,
+        title: parse(data['title']).body!.text,
+        textHtml: textHtml,
+        author: author,
+        commentCount: data['num_comments'],
+        url: data['url'],
+        domain: domain,
+        thumbnailUrl: thumbnail,
+        isStickied: data['stickied'],
+        isSelf: data['is_self'],
+        isNsfw: data['over_18'],
+        isGallery: isGallery,
+        isDeleted: author == '[deleted]',
+        galleryImageUrls: galleryImageUrls
+      )
     );
   }
 
-  List<CommentItem> _parseComments(List<dynamic> json, int depth) {
-    final List<CommentItem> items = [];
+  (Map<String, bool?>, PagedResult<Post>) _parsePosts(String body) {
+    final Map<String, bool?> votes = {};
+    final List<Post> posts = [];
+    final json = jsonDecode(body);
+    final data = json['data'];
+    for (var child in data['children'] as List) {
+      final (vote, post) = _parsePost(child);
+      votes[post.id] = vote;
+      posts.add(post);
+    }
+    return (
+      votes,
+      PagedResult(
+        items: posts,
+        pageToken: data['after']
+      )
+    );
+  }
+
+  (Map<String, bool?>, List<CommentItem>) _parseComments(List<dynamic> json, int depth) {
+    final Map<String, bool?> votes = {};
+    final List<CommentItem> comments = [];
     for (var child in json) {
       final kind = child['kind'];
       final data = child['data'];
       if (kind == 't1') { 
-        items.add(_parseCommentFromJson(data, depth));
+        final (vote, comment) = _parseCommentFromJson(data, depth);
+        votes[comment.id] = vote;
+        comments.add(comment);
         if (data['replies'] is Map) {
           final repliesData = data['replies']['data'];
           if (repliesData != null && repliesData['children'] != null) {
-            items.addAll(_parseComments(repliesData['children'], depth + 1));
+            final (childVotes, childItems) = _parseComments(repliesData['children'], depth + 1);
+            votes.addAll(childVotes);
+            comments.addAll(childItems);
           }
         }
       }
       else if (kind == 'more') {
         if (data['count'] != 0) {
-          items.add(
+          comments.add(
             LoadMoreComment(
               depth: depth,
               count: data['count']!,
@@ -623,27 +760,45 @@ class RedditApi extends Api {
         }
       }
     }
-    return items;
+    return (votes, comments);
   }
 
-  Comment _parseCommentFromJson(Map<String, dynamic> data, int depth) {
+  (bool?, Comment) _parseCommentFromJson(Map<String, dynamic> data, int depth) {
     final author = data['author'];
-    return Comment(
-      depth: depth,
-      platform: Platform.reddit,
-      id: data['id'],
-      permalink: data['permalink'],
-      isDeleted: author == '[deleted]',
-      author: author,
-      isModerator: data['distinguished'] == 'moderator',
-      isSubmitter: data['is_submitter'] ?? false,
-      score: data['score_hidden'] ? null : data['score'],
-      timestampMs: ((data['created_utc'] ?? 0) as num).toInt() * 1000,
-      text: data['body'],
-      textHtml: data['body_html'].replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&'),
-      postTitle: data['link_title'],
-      communityName: data['subreddit']?.toLowerCase()
+    return (
+      data['likes'],
+      Comment(
+        depth: depth,
+        platform: Platform.reddit,
+        id: data['name'],
+        permalink: data['permalink'],
+        isDeleted: author == '[deleted]',
+        author: author,
+        isModerator: data['distinguished'] == 'moderator',
+        isSubmitter: data['is_submitter'] ?? false,
+        score: data['score_hidden'] ? null : data['score'],
+        timestampMs: (data['created_utc'] as num).toInt() * 1000,
+        text: data['body'],
+        textHtml: (data['body_html'] as String).replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&'),
+        postTitle: data['link_title'],
+        communityName: (data['subreddit'] as String).toLowerCase()
+      )
     );
+  
   }
+
+}
+
+class _ParsedIds<T> {
+  
+  final List<String>? postIds;
+  final List<String>? commentIds;
+  final PagedResult<T>? result;
+
+  _ParsedIds({
+    required this.postIds,
+    required this.commentIds,
+    required this.result
+  });
 
 }

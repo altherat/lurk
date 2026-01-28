@@ -6,6 +6,7 @@ class Post {
 
   final Community community;
   final String id;
+  final String shortId;
   final String permalink;
   final int score;
   final int timestampMs;
@@ -26,6 +27,7 @@ class Post {
   Post({
     required this.community,
     required this.id,
+    String? shortId,
     required this.permalink,
     required this.score,
     required this.timestampMs,
@@ -41,8 +43,8 @@ class Post {
     required this.isSelf,
     required this.isNsfw,
     required this.isGallery,
-    this.galleryImageUrls = const []
-  });
+    this.galleryImageUrls = const [],
+  }) : shortId = shortId ?? id;
 
   String get compactScore {
     if (score < 1000) {

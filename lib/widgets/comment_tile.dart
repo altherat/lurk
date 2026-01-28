@@ -4,6 +4,8 @@ import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/screens/user_details.dart';
+import 'package:lurk/services/votes.dart';
+import 'package:lurk/widgets/collection_listenable_builder.dart';
 import 'package:lurk/widgets/html.dart';
 
 class CommentTile extends StatelessWidget {
@@ -52,31 +54,54 @@ class CommentTile extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ?header,
-        Text.rich(
-          TextSpan(
-            style: TextStyle(
-              fontSize: 12,
-              color: Constants.secondaryTextColor,
-              fontStyle: isCollapsed ? FontStyle.italic : null
-            ),
-            children: [
+        CollectionListenableBuilder(
+          id: comment.id,
+          collectionListenable: Votes.comments,
+          builder: (context, vote) {
+            return Text.rich(
               TextSpan(
-                text: !comment.isDeleted && comment.author != null ? comment.author : '[deleted]',
                 style: TextStyle(
-                  fontWeight: FontWeight.bold,
-                  color: authorColor
+                  fontSize: 12,
+                  color: Constants.secondaryTextColor,
+                  fontStyle: isCollapsed ? FontStyle.italic : null
                 ),
+                children: [
+                  if (vote != null)
+                    WidgetSpan(
+                      alignment: PlaceholderAlignment.middle,
+                      child: SizedBox(
+                        width: 16,
+                        height: 16,
+                        child: OverflowBox(
+                          maxWidth: 28,
+                          maxHeight: 28,
+                          child: Icon(
+                            vote ? Icons.arrow_drop_up_rounded : Icons.arrow_drop_down_rounded,
+                            size: 28, 
+                            color: vote ? Constants.upvoteColor : Constants.downvoteColor,
+                          ),
+                        ),
+                      ),
+                    ),
+                  TextSpan(
+                    text: !comment.isDeleted && comment.author != null ? comment.author : '[deleted]',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: authorColor
+                    ),
+                  ),
+                  if (authorTag != null)
+                    TextSpan(
+                      text: ' [$authorTag]',
+                      style: TextStyle(color: authorColor)
+                    ),
+                  TextSpan(text: ' • ${comment.score?.toPluralString('point') ?? '[~]'} • ${comment.timeAgoLong}${showCommunityName ? ' • ${comment.communityName}' : ''}'),
+                  if (isCollapsed)
+                    const TextSpan(text: ' [+]'),
+                ],
               ),
-              if (authorTag != null)
-                TextSpan(
-                  text: ' [$authorTag]',
-                  style: TextStyle(color: authorColor)
-                ),
-              TextSpan(text: ' • ${comment.score?.toPluralString('point') ?? '[~]'} • ${comment.timeAgoLong}${showCommunityName ? ' • ${comment.communityName}' : ''}'),
-              if (isCollapsed)
-                const TextSpan(text: ' [+]'),
-            ],
-          ),
+            );
+          }
         ),
         if (!isCollapsed && htmlText != null)
           Html(
@@ -101,7 +126,7 @@ class CommentTile extends StatelessWidget {
       onTap: onTap,
       onLongPress: () {
         HapticFeedback.mediumImpact();
-        showSimpleOptionsBottomSheet(
+        showSimpleTextOptionsBottomSheet(
           context: context,
           title: '${comment.author == null ? 'Deleted' : comment.author!.toPosessive()} comment',
           options: {

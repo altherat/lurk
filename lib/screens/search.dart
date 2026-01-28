@@ -57,13 +57,12 @@ class SearchScreen extends StatelessWidget {
             ),
           );
         }
-        if (item is User) {
+        if (item is LookedUpUser) {
           final Widget subtitle;
           if (item.isSuspended) {
             subtitle = Text('Suspended');
           }
           else {
-            debugPrint(Theme.of(context).colorScheme.onSurfaceVariant.toString());
             subtitle = UserStats(
               stats: item.stats!,
               valueColor: Theme.of(context).colorScheme.onSurfaceVariant,

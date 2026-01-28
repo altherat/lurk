@@ -140,6 +140,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
   @override
   Widget build(BuildContext context) {
     return MediaScaffold(
+      platform: widget.platform,
       url: widget.url,
       type: 'video',
       post: widget.post,

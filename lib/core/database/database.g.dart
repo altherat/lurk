@@ -199,15 +199,17 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       ).withConverter<SearchType?>($SettingsTable.$convertersearchTypen);
+  static const VerificationMeta _activeUserIdMeta = const VerificationMeta(
+    'activeUserId',
+  );
   @override
-  late final GeneratedColumnWithTypeConverter<Platform?, String>
-  searchPlatform = GeneratedColumn<String>(
-    'search_platform',
+  late final GeneratedColumn<String> activeUserId = GeneratedColumn<String>(
+    'active_user_id',
     aliasedName,
     true,
     type: DriftSqlType.string,
     requiredDuringInsert: false,
-  ).withConverter<Platform?>($SettingsTable.$convertersearchPlatformn);
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -225,7 +227,7 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     diggPostsFetchDepth,
     userAgent,
     searchType,
-    searchPlatform,
+    activeUserId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -347,6 +349,15 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         userAgent.isAcceptableOrUnknown(data['user_agent']!, _userAgentMeta),
       );
     }
+    if (data.containsKey('active_user_id')) {
+      context.handle(
+        _activeUserIdMeta,
+        activeUserId.isAcceptableOrUnknown(
+          data['active_user_id']!,
+          _activeUserIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -421,11 +432,9 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
           data['${effectivePrefix}search_type'],
         ),
       ),
-      searchPlatform: $SettingsTable.$convertersearchPlatformn.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}search_platform'],
-        ),
+      activeUserId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}active_user_id'],
       ),
     );
   }
@@ -447,12 +456,6 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
       const EnumNameConverter<SearchType>(SearchType.values);
   static JsonTypeConverter2<SearchType?, String?, String?>
   $convertersearchTypen = JsonTypeConverter2.asNullable($convertersearchType);
-  static JsonTypeConverter2<Platform, String, String> $convertersearchPlatform =
-      const EnumNameConverter<Platform>(Platform.values);
-  static JsonTypeConverter2<Platform?, String?, String?>
-  $convertersearchPlatformn = JsonTypeConverter2.asNullable(
-    $convertersearchPlatform,
-  );
 }
 
 class Setting extends DataClass implements Insertable<Setting> {
@@ -471,7 +474,7 @@ class Setting extends DataClass implements Insertable<Setting> {
   final int diggPostsFetchDepth;
   final String? userAgent;
   final SearchType? searchType;
-  final Platform? searchPlatform;
+  final String? activeUserId;
   const Setting({
     required this.id,
     this.homeCommunityPlatform,
@@ -488,7 +491,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     required this.diggPostsFetchDepth,
     this.userAgent,
     this.searchType,
-    this.searchPlatform,
+    this.activeUserId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -534,10 +537,8 @@ class Setting extends DataClass implements Insertable<Setting> {
         $SettingsTable.$convertersearchTypen.toSql(searchType),
       );
     }
-    if (!nullToAbsent || searchPlatform != null) {
-      map['search_platform'] = Variable<String>(
-        $SettingsTable.$convertersearchPlatformn.toSql(searchPlatform),
-      );
+    if (!nullToAbsent || activeUserId != null) {
+      map['active_user_id'] = Variable<String>(activeUserId);
     }
     return map;
   }
@@ -573,9 +574,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       searchType: searchType == null && nullToAbsent
           ? const Value.absent()
           : Value(searchType),
-      searchPlatform: searchPlatform == null && nullToAbsent
+      activeUserId: activeUserId == null && nullToAbsent
           ? const Value.absent()
-          : Value(searchPlatform),
+          : Value(activeUserId),
     );
   }
 
@@ -617,9 +618,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       searchType: $SettingsTable.$convertersearchTypen.fromJson(
         serializer.fromJson<String?>(json['searchType']),
       ),
-      searchPlatform: $SettingsTable.$convertersearchPlatformn.fromJson(
-        serializer.fromJson<String?>(json['searchPlatform']),
-      ),
+      activeUserId: serializer.fromJson<String?>(json['activeUserId']),
     );
   }
   @override
@@ -653,9 +652,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       'searchType': serializer.toJson<String?>(
         $SettingsTable.$convertersearchTypen.toJson(searchType),
       ),
-      'searchPlatform': serializer.toJson<String?>(
-        $SettingsTable.$convertersearchPlatformn.toJson(searchPlatform),
-      ),
+      'activeUserId': serializer.toJson<String?>(activeUserId),
     };
   }
 
@@ -675,7 +672,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     int? diggPostsFetchDepth,
     Value<String?> userAgent = const Value.absent(),
     Value<SearchType?> searchType = const Value.absent(),
-    Value<Platform?> searchPlatform = const Value.absent(),
+    Value<String?> activeUserId = const Value.absent(),
   }) => Setting(
     id: id ?? this.id,
     homeCommunityPlatform: homeCommunityPlatform.present
@@ -703,9 +700,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     diggPostsFetchDepth: diggPostsFetchDepth ?? this.diggPostsFetchDepth,
     userAgent: userAgent.present ? userAgent.value : this.userAgent,
     searchType: searchType.present ? searchType.value : this.searchType,
-    searchPlatform: searchPlatform.present
-        ? searchPlatform.value
-        : this.searchPlatform,
+    activeUserId: activeUserId.present ? activeUserId.value : this.activeUserId,
   );
   Setting copyWithCompanion(SettingsCompanion data) {
     return Setting(
@@ -750,9 +745,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       searchType: data.searchType.present
           ? data.searchType.value
           : this.searchType,
-      searchPlatform: data.searchPlatform.present
-          ? data.searchPlatform.value
-          : this.searchPlatform,
+      activeUserId: data.activeUserId.present
+          ? data.activeUserId.value
+          : this.activeUserId,
     );
   }
 
@@ -776,7 +771,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('diggPostsFetchDepth: $diggPostsFetchDepth, ')
           ..write('userAgent: $userAgent, ')
           ..write('searchType: $searchType, ')
-          ..write('searchPlatform: $searchPlatform')
+          ..write('activeUserId: $activeUserId')
           ..write(')'))
         .toString();
   }
@@ -798,7 +793,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     diggPostsFetchDepth,
     userAgent,
     searchType,
-    searchPlatform,
+    activeUserId,
   );
   @override
   bool operator ==(Object other) =>
@@ -820,7 +815,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.diggPostsFetchDepth == this.diggPostsFetchDepth &&
           other.userAgent == this.userAgent &&
           other.searchType == this.searchType &&
-          other.searchPlatform == this.searchPlatform);
+          other.activeUserId == this.activeUserId);
 }
 
 class SettingsCompanion extends UpdateCompanion<Setting> {
@@ -839,7 +834,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<int> diggPostsFetchDepth;
   final Value<String?> userAgent;
   final Value<SearchType?> searchType;
-  final Value<Platform?> searchPlatform;
+  final Value<String?> activeUserId;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.homeCommunityPlatform = const Value.absent(),
@@ -856,7 +851,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.diggPostsFetchDepth = const Value.absent(),
     this.userAgent = const Value.absent(),
     this.searchType = const Value.absent(),
-    this.searchPlatform = const Value.absent(),
+    this.activeUserId = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -874,7 +869,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.diggPostsFetchDepth = const Value.absent(),
     this.userAgent = const Value.absent(),
     this.searchType = const Value.absent(),
-    this.searchPlatform = const Value.absent(),
+    this.activeUserId = const Value.absent(),
   });
   static Insertable<Setting> custom({
     Expression<int>? id,
@@ -892,7 +887,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<int>? diggPostsFetchDepth,
     Expression<String>? userAgent,
     Expression<String>? searchType,
-    Expression<String>? searchPlatform,
+    Expression<String>? activeUserId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -915,7 +910,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
         'digg_posts_fetch_depth': diggPostsFetchDepth,
       if (userAgent != null) 'user_agent': userAgent,
       if (searchType != null) 'search_type': searchType,
-      if (searchPlatform != null) 'search_platform': searchPlatform,
+      if (activeUserId != null) 'active_user_id': activeUserId,
     });
   }
 
@@ -935,7 +930,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<int>? diggPostsFetchDepth,
     Value<String?>? userAgent,
     Value<SearchType?>? searchType,
-    Value<Platform?>? searchPlatform,
+    Value<String?>? activeUserId,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -957,7 +952,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       diggPostsFetchDepth: diggPostsFetchDepth ?? this.diggPostsFetchDepth,
       userAgent: userAgent ?? this.userAgent,
       searchType: searchType ?? this.searchType,
-      searchPlatform: searchPlatform ?? this.searchPlatform,
+      activeUserId: activeUserId ?? this.activeUserId,
     );
   }
 
@@ -1021,10 +1016,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
         $SettingsTable.$convertersearchTypen.toSql(searchType.value),
       );
     }
-    if (searchPlatform.present) {
-      map['search_platform'] = Variable<String>(
-        $SettingsTable.$convertersearchPlatformn.toSql(searchPlatform.value),
-      );
+    if (activeUserId.present) {
+      map['active_user_id'] = Variable<String>(activeUserId.value);
     }
     return map;
   }
@@ -1049,7 +1042,251 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('diggPostsFetchDepth: $diggPostsFetchDepth, ')
           ..write('userAgent: $userAgent, ')
           ..write('searchType: $searchType, ')
-          ..write('searchPlatform: $searchPlatform')
+          ..write('activeUserId: $activeUserId')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $UsersTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _nameMeta = const VerificationMeta('name');
+  @override
+  late final GeneratedColumn<String> name = GeneratedColumn<String>(
+    'name',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _iconUrlMeta = const VerificationMeta(
+    'iconUrl',
+  );
+  @override
+  late final GeneratedColumn<String> iconUrl = GeneratedColumn<String>(
+    'icon_url',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _inboxCountMeta = const VerificationMeta(
+    'inboxCount',
+  );
+  @override
+  late final GeneratedColumn<int> inboxCount = GeneratedColumn<int>(
+    'inbox_count',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _scoreMeta = const VerificationMeta('score');
+  @override
+  late final GeneratedColumn<int> score = GeneratedColumn<int>(
+    'score',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [id, name, iconUrl, inboxCount, score];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'users';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<LoggedInUser> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    } else if (isInserting) {
+      context.missing(_idMeta);
+    }
+    if (data.containsKey('name')) {
+      context.handle(
+        _nameMeta,
+        name.isAcceptableOrUnknown(data['name']!, _nameMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_nameMeta);
+    }
+    if (data.containsKey('icon_url')) {
+      context.handle(
+        _iconUrlMeta,
+        iconUrl.isAcceptableOrUnknown(data['icon_url']!, _iconUrlMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_iconUrlMeta);
+    }
+    if (data.containsKey('inbox_count')) {
+      context.handle(
+        _inboxCountMeta,
+        inboxCount.isAcceptableOrUnknown(data['inbox_count']!, _inboxCountMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_inboxCountMeta);
+    }
+    if (data.containsKey('score')) {
+      context.handle(
+        _scoreMeta,
+        score.isAcceptableOrUnknown(data['score']!, _scoreMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_scoreMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  LoggedInUser map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return LoggedInUser(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
+      name: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}name'],
+      )!,
+      iconUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}icon_url'],
+      )!,
+      inboxCount: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}inbox_count'],
+      )!,
+      score: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}score'],
+      )!,
+    );
+  }
+
+  @override
+  $UsersTable createAlias(String alias) {
+    return $UsersTable(attachedDatabase, alias);
+  }
+}
+
+class UsersCompanion extends UpdateCompanion<LoggedInUser> {
+  final Value<String> id;
+  final Value<String> name;
+  final Value<String> iconUrl;
+  final Value<int> inboxCount;
+  final Value<int> score;
+  final Value<int> rowid;
+  const UsersCompanion({
+    this.id = const Value.absent(),
+    this.name = const Value.absent(),
+    this.iconUrl = const Value.absent(),
+    this.inboxCount = const Value.absent(),
+    this.score = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  UsersCompanion.insert({
+    required String id,
+    required String name,
+    required String iconUrl,
+    required int inboxCount,
+    required int score,
+    this.rowid = const Value.absent(),
+  }) : id = Value(id),
+       name = Value(name),
+       iconUrl = Value(iconUrl),
+       inboxCount = Value(inboxCount),
+       score = Value(score);
+  static Insertable<LoggedInUser> custom({
+    Expression<String>? id,
+    Expression<String>? name,
+    Expression<String>? iconUrl,
+    Expression<int>? inboxCount,
+    Expression<int>? score,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (name != null) 'name': name,
+      if (iconUrl != null) 'icon_url': iconUrl,
+      if (inboxCount != null) 'inbox_count': inboxCount,
+      if (score != null) 'score': score,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  UsersCompanion copyWith({
+    Value<String>? id,
+    Value<String>? name,
+    Value<String>? iconUrl,
+    Value<int>? inboxCount,
+    Value<int>? score,
+    Value<int>? rowid,
+  }) {
+    return UsersCompanion(
+      id: id ?? this.id,
+      name: name ?? this.name,
+      iconUrl: iconUrl ?? this.iconUrl,
+      inboxCount: inboxCount ?? this.inboxCount,
+      score: score ?? this.score,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(name.value);
+    }
+    if (iconUrl.present) {
+      map['icon_url'] = Variable<String>(iconUrl.value);
+    }
+    if (inboxCount.present) {
+      map['inbox_count'] = Variable<int>(inboxCount.value);
+    }
+    if (score.present) {
+      map['score'] = Variable<int>(score.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('UsersCompanion(')
+          ..write('id: $id, ')
+          ..write('name: $name, ')
+          ..write('iconUrl: $iconUrl, ')
+          ..write('inboxCount: $inboxCount, ')
+          ..write('score: $score, ')
+          ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
@@ -1447,6 +1684,7 @@ abstract class _$Database extends GeneratedDatabase {
   _$Database(QueryExecutor e) : super(e);
   $DatabaseManager get managers => $DatabaseManager(this);
   late final $SettingsTable settings = $SettingsTable(this);
+  late final $UsersTable users = $UsersTable(this);
   late final $CommunitiesTable communities = $CommunitiesTable(this);
   late final $HistoryTable history = $HistoryTable(this);
   @override
@@ -1455,6 +1693,7 @@ abstract class _$Database extends GeneratedDatabase {
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
     settings,
+    users,
     communities,
     history,
   ];
@@ -1477,7 +1716,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int> diggPostsFetchDepth,
       Value<String?> userAgent,
       Value<SearchType?> searchType,
-      Value<Platform?> searchPlatform,
+      Value<String?> activeUserId,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -1496,7 +1735,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int> diggPostsFetchDepth,
       Value<String?> userAgent,
       Value<SearchType?> searchType,
-      Value<Platform?> searchPlatform,
+      Value<String?> activeUserId,
     });
 
 class $$SettingsTableFilterComposer
@@ -1585,10 +1824,9 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
 
-  ColumnWithTypeConverterFilters<Platform?, Platform, String>
-  get searchPlatform => $composableBuilder(
-    column: $table.searchPlatform,
-    builder: (column) => ColumnWithTypeConverterFilters(column),
+  ColumnFilters<String> get activeUserId => $composableBuilder(
+    column: $table.activeUserId,
+    builder: (column) => ColumnFilters(column),
   );
 }
 
@@ -1676,8 +1914,8 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get searchPlatform => $composableBuilder(
-    column: $table.searchPlatform,
+  ColumnOrderings<String> get activeUserId => $composableBuilder(
+    column: $table.activeUserId,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -1764,11 +2002,10 @@ class $$SettingsTableAnnotationComposer
         builder: (column) => column,
       );
 
-  GeneratedColumnWithTypeConverter<Platform?, String> get searchPlatform =>
-      $composableBuilder(
-        column: $table.searchPlatform,
-        builder: (column) => column,
-      );
+  GeneratedColumn<String> get activeUserId => $composableBuilder(
+    column: $table.activeUserId,
+    builder: (column) => column,
+  );
 }
 
 class $$SettingsTableTableManager
@@ -1814,7 +2051,7 @@ class $$SettingsTableTableManager
                 Value<int> diggPostsFetchDepth = const Value.absent(),
                 Value<String?> userAgent = const Value.absent(),
                 Value<SearchType?> searchType = const Value.absent(),
-                Value<Platform?> searchPlatform = const Value.absent(),
+                Value<String?> activeUserId = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 homeCommunityPlatform: homeCommunityPlatform,
@@ -1831,7 +2068,7 @@ class $$SettingsTableTableManager
                 diggPostsFetchDepth: diggPostsFetchDepth,
                 userAgent: userAgent,
                 searchType: searchType,
-                searchPlatform: searchPlatform,
+                activeUserId: activeUserId,
               ),
           createCompanionCallback:
               ({
@@ -1850,7 +2087,7 @@ class $$SettingsTableTableManager
                 Value<int> diggPostsFetchDepth = const Value.absent(),
                 Value<String?> userAgent = const Value.absent(),
                 Value<SearchType?> searchType = const Value.absent(),
-                Value<Platform?> searchPlatform = const Value.absent(),
+                Value<String?> activeUserId = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 homeCommunityPlatform: homeCommunityPlatform,
@@ -1867,7 +2104,7 @@ class $$SettingsTableTableManager
                 diggPostsFetchDepth: diggPostsFetchDepth,
                 userAgent: userAgent,
                 searchType: searchType,
-                searchPlatform: searchPlatform,
+                activeUserId: activeUserId,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -1889,6 +2126,199 @@ typedef $$SettingsTableProcessedTableManager =
       $$SettingsTableUpdateCompanionBuilder,
       (Setting, BaseReferences<_$Database, $SettingsTable, Setting>),
       Setting,
+      PrefetchHooks Function()
+    >;
+typedef $$UsersTableCreateCompanionBuilder =
+    UsersCompanion Function({
+      required String id,
+      required String name,
+      required String iconUrl,
+      required int inboxCount,
+      required int score,
+      Value<int> rowid,
+    });
+typedef $$UsersTableUpdateCompanionBuilder =
+    UsersCompanion Function({
+      Value<String> id,
+      Value<String> name,
+      Value<String> iconUrl,
+      Value<int> inboxCount,
+      Value<int> score,
+      Value<int> rowid,
+    });
+
+class $$UsersTableFilterComposer extends Composer<_$Database, $UsersTable> {
+  $$UsersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get iconUrl => $composableBuilder(
+    column: $table.iconUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get inboxCount => $composableBuilder(
+    column: $table.inboxCount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get score => $composableBuilder(
+    column: $table.score,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$UsersTableOrderingComposer extends Composer<_$Database, $UsersTable> {
+  $$UsersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get iconUrl => $composableBuilder(
+    column: $table.iconUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get inboxCount => $composableBuilder(
+    column: $table.inboxCount,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get score => $composableBuilder(
+    column: $table.score,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$UsersTableAnnotationComposer extends Composer<_$Database, $UsersTable> {
+  $$UsersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get iconUrl =>
+      $composableBuilder(column: $table.iconUrl, builder: (column) => column);
+
+  GeneratedColumn<int> get inboxCount => $composableBuilder(
+    column: $table.inboxCount,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get score =>
+      $composableBuilder(column: $table.score, builder: (column) => column);
+}
+
+class $$UsersTableTableManager
+    extends
+        RootTableManager<
+          _$Database,
+          $UsersTable,
+          LoggedInUser,
+          $$UsersTableFilterComposer,
+          $$UsersTableOrderingComposer,
+          $$UsersTableAnnotationComposer,
+          $$UsersTableCreateCompanionBuilder,
+          $$UsersTableUpdateCompanionBuilder,
+          (LoggedInUser, BaseReferences<_$Database, $UsersTable, LoggedInUser>),
+          LoggedInUser,
+          PrefetchHooks Function()
+        > {
+  $$UsersTableTableManager(_$Database db, $UsersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$UsersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$UsersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$UsersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> id = const Value.absent(),
+                Value<String> name = const Value.absent(),
+                Value<String> iconUrl = const Value.absent(),
+                Value<int> inboxCount = const Value.absent(),
+                Value<int> score = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => UsersCompanion(
+                id: id,
+                name: name,
+                iconUrl: iconUrl,
+                inboxCount: inboxCount,
+                score: score,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String id,
+                required String name,
+                required String iconUrl,
+                required int inboxCount,
+                required int score,
+                Value<int> rowid = const Value.absent(),
+              }) => UsersCompanion.insert(
+                id: id,
+                name: name,
+                iconUrl: iconUrl,
+                inboxCount: inboxCount,
+                score: score,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$UsersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$Database,
+      $UsersTable,
+      LoggedInUser,
+      $$UsersTableFilterComposer,
+      $$UsersTableOrderingComposer,
+      $$UsersTableAnnotationComposer,
+      $$UsersTableCreateCompanionBuilder,
+      $$UsersTableUpdateCompanionBuilder,
+      (LoggedInUser, BaseReferences<_$Database, $UsersTable, LoggedInUser>),
+      LoggedInUser,
       PrefetchHooks Function()
     >;
 typedef $$CommunitiesTableCreateCompanionBuilder =
@@ -2190,6 +2620,8 @@ class $DatabaseManager {
   $DatabaseManager(this._db);
   $$SettingsTableTableManager get settings =>
       $$SettingsTableTableManager(_db, _db.settings);
+  $$UsersTableTableManager get users =>
+      $$UsersTableTableManager(_db, _db.users);
   $$CommunitiesTableTableManager get communities =>
       $$CommunitiesTableTableManager(_db, _db.communities);
   $$HistoryTableTableManager get history =>

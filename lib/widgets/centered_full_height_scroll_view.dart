@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 
-class FeedScreenCenteredErrorMessage extends StatelessWidget {
+class CenteredFullHeightScrollView extends StatelessWidget {
 
   final List<Widget>? headers;
   final Widget child;
   
-  const FeedScreenCenteredErrorMessage({
+  const CenteredFullHeightScrollView({
     super.key,
     this.headers,
     required this.child

@@ -57,6 +57,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
   @override
   Widget build(BuildContext context) {
     return MediaScaffold(
+      platform: widget.platform,
       url: widget.url,
       type: 'images',
       post: widget.post,

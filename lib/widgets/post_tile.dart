@@ -8,8 +8,8 @@ import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/models/post.dart';
-import 'package:lurk/services/settings.dart';
-import 'package:lurk/widgets/history_builder.dart';
+import 'package:lurk/services/votes.dart';
+import 'package:lurk/widgets/collection_listenable_builder.dart';
 
 final thumbnailSize = 70;
 
@@ -33,7 +33,7 @@ class PostTile extends StatelessWidget {
   });
 
   void _showOptions(BuildContext context) {
-    showSimpleOptionsBottomSheet(
+    showSimpleTextOptionsBottomSheet(
       context: context,
       title: post.title,
       options: {
@@ -56,13 +56,18 @@ class PostTile extends StatelessWidget {
     );
   }
 
+  void _updateVote(bool? vote) {
+    Votes.posts.setVote(post.id, vote);
+    post.community.platform.api.vote(post.id, vote);
+  }
+
   @override
   Widget build(BuildContext context) {
     return InkWell(
       onTap: onTapNavigate
         ? () {
             if (post.isSelf) {
-              History.posts.setVisited(post.id);
+              History.posts.add(post.id);
             }
             context.push(() => PostDetailsScreen.fromPost(post: post));
           }
@@ -74,15 +79,33 @@ class PostTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Padding(
-            padding: const EdgeInsets.all(4),
-            child: SizedBox(
-              width: 40,
-              child: _Score(
-                score: post.compactScore,
-                upvoted: null
-              )
-            ),
+          CollectionListenableBuilder(
+            id: post.id,
+            collectionListenable: Votes.posts,
+            builder: (context, vote) {
+              return Column(
+                children: [
+                  _VoteArrow(
+                    assetName: 'assets/arrow_drop_up_rounded.png',
+                    color: vote == true ? Constants.upvoteColor : Constants.secondaryTextColor,
+                    onPressed: () => _updateVote(vote == true ? null : true)
+                  ),
+                  Text(
+                    post.compactScore,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.bold,
+                      color: vote == true ? Constants.upvoteColor : vote == false ? Constants.downvoteColor : Constants.secondaryTextColor,
+                    ),
+                  ),
+                  _VoteArrow(
+                    assetName: 'assets/arrow_drop_down_rounded.png',
+                    color: vote == false ? Constants.downvoteColor : Constants.secondaryTextColor,
+                    onPressed: () => _updateVote(vote == false ? null : false)
+                  ),
+                ],
+              );
+            }
           ),
           Expanded(
             child: Padding(
@@ -90,9 +113,9 @@ class PostTile extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  HistoryBuilder(
+                  CollectionListenableBuilder(
                     id: post.id,
-                    history: History.posts,
+                    collectionListenable: History.posts,
                     builder: (context, isVisited) {
                       return Text.rich(
                         TextSpan(
@@ -155,7 +178,7 @@ class PostTile extends StatelessWidget {
                       color: Colors.transparent,
                       child: InkWell(
                         onTap: () {
-                          History.posts.setVisited(post.id);
+                          History.posts.add(post.id);
                           navigate(context, post.community.platform, post.url, post: post);
                         }
                       ),
@@ -184,9 +207,9 @@ class PostTileCommentHistorySubtitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return HistoryBuilder(
+    return CollectionListenableBuilder(
       id: post.id,
-      history: History.postDetails,
+      collectionListenable: History.postDetails,
       builder: (context, isVisited) {
         return Text.rich(
           TextSpan(
@@ -210,81 +233,49 @@ class PostTileCommentHistorySubtitle extends StatelessWidget {
 
 }
 
-class _Score extends StatefulWidget {
+class _VoteArrow extends StatelessWidget {
 
-  final String score;
-  final bool? upvoted;
+  final String assetName;
+  final Color color;
+  final VoidCallback onPressed;
 
-  const _Score({
+  const _VoteArrow({
     super.key,
-    required this.score,
-    required this.upvoted
+    required this.assetName,
+    required this.color,
+    required this.onPressed,
   });
 
   @override
-  State<_Score> createState() => _ScoreState();
-}
-
-class _ScoreState extends State<_Score> {
-
-  bool? _upvoted;
-
-  @override
-  void initState() {
-    super.initState();
-    _upvoted = widget.upvoted;
-  }
-
-  @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        IconButton(
-          visualDensity: VisualDensity.compact,
-          style: IconButton.styleFrom(
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            minimumSize: Size.zero
-          ),
+    return SizedBox(
+      width: 40,
+      height: 20,
+      child: Container(
+        // color: Colors.red,
+        child: IconButton(
+          padding: const EdgeInsets.all(4.5),
           icon: Image.asset(
-            'assets/arrow_drop_up_rounded.png',
-            width: 18,
-            height: 18,
-            color: _upvoted == true ? Constants.upvoteColor : Constants.secondaryTextColor,
+            assetName,
+            color: color,
           ),
-          onPressed: () {
-            // setState(() {
-            //   _upvoted = _upvoted == true ? null : true;
-            // });
-          },
+          onPressed: onPressed
         ),
-        Text(
-          widget.score,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.bold,
-            color: _upvoted == true ? Constants.upvoteColor : _upvoted == false ? Constants.downvoteColor : Constants.secondaryTextColor,
-          ),
-        ),
-        IconButton(
-          visualDensity: VisualDensity.compact,
-          style: IconButton.styleFrom(
-            tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-            minimumSize: Size.zero
-          ),
-          icon: Image.asset(
-            'assets/arrow_drop_down_rounded.png',
-            width: 18,
-            height: 18,
-            color: _upvoted == false ? Constants.downvoteColor : Constants.secondaryTextColor
-          ),
-          onPressed: () {
-            // setState(()  {
-            //   _upvoted = _upvoted == false ? null : false;
-            // });
-          },
-        )
-      ],
+      ),
     );
+    // return IconButton(
+    //   visualDensity: VisualDensity.compact,
+    //   style: IconButton.styleFrom(
+    //     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+    //     minimumSize: Size.zero
+    //   ),
+    //   icon: Image.asset(
+    //     'assets/arrow_drop_up_rounded.png',
+    //     width: 18,
+    //     height: 18,
+    //     color: _upvote == true ? Constants.upvoteColor : Constants.secondaryTextColor,
+    //   ),
+    //   onPressed: () => _updateVote(_upvote == true ? null : true)
+    // );
   }
-
 }

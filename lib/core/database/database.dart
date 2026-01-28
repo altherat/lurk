@@ -7,16 +7,18 @@ import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/database/tables/communities.dart';
 import 'package:lurk/core/database/tables/history.dart';
 import 'package:lurk/core/database/tables/settings.dart';
+import 'package:lurk/core/database/tables/users.dart';
 import 'package:lurk/core/flavors.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/core/enums.dart';
+import 'package:lurk/models/user.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:drift/drift.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [Settings, Communities, History])
+@DriftDatabase(tables: [Settings, Users, Communities, History])
 class Database extends _$Database {
 
   static Database instance = Database._();
@@ -63,12 +65,42 @@ class Database extends _$Database {
 
   Future<int> updateSettings(SettingsCompanion companion) => (update(settings)..where((t) => t.id.equals(1))).write(companion);
   
+  Future<List<LoggedInUser>> getAllLoggedInUsers() {
+    return (
+      select(users)
+        ..orderBy([
+          (u) => OrderingTerm(expression: u.name, mode: OrderingMode.asc),
+        ])
+    ).get();
+  }
+
+  Future<void> saveLoggedInUser(LoggedInUser user) {
+    return into(users).insertOnConflictUpdate(
+      UsersCompanion.insert(
+        id: user.id,
+        name: user.name,
+        iconUrl: user.iconUrl,
+        score: user.score,
+        inboxCount: user.inboxCount,
+      ),
+    );
+  }
+
+  Future<void> deleteLoggedInUser(LoggedInUser user) {
+    return (
+      delete(users)
+        ..where((u) => u.id.equals(user.id))
+    )
+    .go();
+  }
+
   Future<List<Community>> getAllCommunities() {
-    return (select(communities)
-      ..orderBy([
-        (c) => OrderingTerm(expression: c.isFavorite, mode: OrderingMode.desc),
-        (c) => OrderingTerm(expression: c.name, mode: OrderingMode.asc),
-      ])
+    return (
+      select(communities)
+        ..orderBy([
+          (c) => OrderingTerm(expression: c.isFavorite, mode: OrderingMode.desc),
+          (c) => OrderingTerm(expression: c.name, mode: OrderingMode.asc),
+        ])
     ).get();
   }
 
@@ -84,18 +116,20 @@ class Database extends _$Database {
   }
 
   Future<void> deleteCommunity(Community community) {
-    return (delete(communities)
-      ..where((c) => 
-        c.platform.equals(community.platform.name) & 
-        c.name.equals(community.name ?? '')
-      )
+    return (
+      delete(communities)
+        ..where((c) => 
+          c.platform.equals(community.platform.name) & 
+          c.name.equals(community.name ?? '')
+        )
     )
     .go();
   }
 
   Future<List<String>> getHistoryIds(HistoryType type) {
-    return (select(history)
-      ..where((t) => t.type.equalsValue(type))
+    return (
+      select(history)
+        ..where((t) => t.type.equalsValue(type))
     )
     .map((row) => row.itemId)
     .get();

@@ -96,7 +96,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const _Divider(),
               const _Header(text: 'Reddit'),
               const _RedditLinksFromOldRedditSetting(),
-              const _RedditOAuthSettings(),
+              const _RedditClientIdSetting(),
+              const _RedditRedirectUriSetting(),
               const _Divider(),
               const _Header(text: 'Digg'),
               const _DiggPostsFetchDepthSetting()
@@ -107,7 +108,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
             ),
             if (F.appFlavor == Flavor.reddit) ...[
               const _RedditLinksFromOldRedditSetting(),
-              const _RedditOAuthSettings(),
+              const _RedditClientIdSetting(),
+              const _RedditRedirectUriSetting(),
             ]
             else if (F.appFlavor == Flavor.digg) ...[
               const _DiggPostsFetchDepthSetting()
@@ -158,44 +160,36 @@ class _RedditLinksFromOldRedditSetting extends StatelessWidget {
 
 }
 
-class _RedditOAuthSettings extends StatefulWidget {
+class _RedditClientIdSetting extends StatelessWidget {
 
-  const _RedditOAuthSettings({
+  const _RedditClientIdSetting({
     super.key
   });
 
   @override
-  State<_RedditOAuthSettings> createState() => _RedditOAuthSettingsState();
+  Widget build(BuildContext context) {
+    return _TextSettingListTile(
+      setting: Settings.redditClientId,
+      label: 'Client ID',
+      infoText: 'Without a client ID, Reddit limits you to 100 requests per 10 minutes.\n\nSpecifying a client ID increases this limit to 1000 requests per 10 minutes (per client ID) and enables login.',
+      inputFormatters: [LengthLimitingTextInputFormatter(22)],
+    );
+  }
 
 }
 
-class _RedditOAuthSettingsState extends State<_RedditOAuthSettings> {
+class _RedditRedirectUriSetting extends StatelessWidget {
 
-  String? _clientId = Settings.redditClientId.value;
+  const _RedditRedirectUriSetting({
+    super.key
+  });
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      children: [
-        _TextSettingListTile(
-          setting: Settings.redditClientId,
-          label: 'Client ID',
-          infoText: 'Without a client ID, Reddit limits you to 100 requests per 10 minutes.\n\nSpecifying a client ID increases this limit to 100 requests per 1 minute (per client ID) and enables login (not yet implemented).',
-          inputFormatters: [LengthLimitingTextInputFormatter(8)],
-          onChanged: (value) {
-            debugPrint('value: $value');
-            setState(() {
-              _clientId = value;
-            });
-          }
-        ),
-        if (_clientId != null && _clientId!.isNotEmpty)
-          _TextSettingListTile(
-            setting: Settings.redditRedirectUri,
-            label: 'Redirect URI',
-            infoText: "Possibly used to spoof another app's authorization flow. No one knows.",
-          )
-      ],
+    return _TextSettingListTile(
+      setting: Settings.redditRedirectUri,
+      label: 'Redirect URI',
+      infoText: "Possibly used to spoof another app's login flow? No one knows.",
     );
   }
 
@@ -351,7 +345,7 @@ class _InfoIconButton extends StatelessWidget {
       icon: const Icon(Icons.info_outline_rounded),
       color: Theme.of(context).inputDecorationTheme.suffixIconColor,
       onPressed: () {
-        showSimpleBottomSheet(
+        showSimpleTextBottomSheet(
           context: context,
           title: title,
           content: text

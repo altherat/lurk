@@ -12,8 +12,8 @@ import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/comment_tile.dart';
-import 'package:lurk/widgets/history_builder.dart';
 import 'package:lurk/widgets/large_message.dart';
+import 'package:lurk/widgets/collection_listenable_builder.dart';
 import 'package:lurk/widgets/post_tile.dart';
 import 'package:lurk/widgets/user_stats.dart';
 
@@ -75,9 +75,9 @@ class UserDetailsScreen extends StatelessWidget {
           return PostTile(
             post: item,
             showViewUserOption: false,
-            subtitle: HistoryBuilder(
+            subtitle: CollectionListenableBuilder(
               id: item.id,
-              history: History.postDetails,
+              collectionListenable: History.posts,
               builder: (context, isVisited) {
                 return Text.rich(
                   TextSpan(
