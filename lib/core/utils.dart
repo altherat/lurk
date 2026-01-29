@@ -306,6 +306,7 @@ Future<void> showSimpleTextOptionsBottomSheet({
 }) {
   return showOptionsBottomSheet(
     context: context,
+    title: title,
     options: options.entries.map((entry) {
       return ListTile(
         title: Text(entry.key),

@@ -262,6 +262,11 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                     comment: item,
                     depth: item.depth,
                     isCollapsed: isCollapsed,
+                    options: {
+                      'Reply': () {
+                        
+                      }
+                    },
                     onTap: () {
                       setState(() {
                         if (isCollapsed) {

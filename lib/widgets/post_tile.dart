@@ -8,6 +8,7 @@ import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/models/post.dart';
+import 'package:lurk/services/settings.dart';
 import 'package:lurk/services/votes.dart';
 import 'package:lurk/widgets/collection_listenable_builder.dart';
 
@@ -79,31 +80,37 @@ class PostTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          CollectionListenableBuilder(
-            id: post.id,
-            collectionListenable: Votes.posts,
-            builder: (context, vote) {
-              return Column(
-                children: [
-                  _VoteArrow(
-                    assetName: 'assets/arrow_drop_up_rounded.png',
-                    color: vote == true ? Constants.upvoteColor : Constants.secondaryTextColor,
-                    onPressed: () => _updateVote(vote == true ? null : true)
-                  ),
-                  Text(
-                    post.compactScore,
-                    style: TextStyle(
-                      fontSize: 13,
-                      fontWeight: FontWeight.bold,
-                      color: vote == true ? Constants.upvoteColor : vote == false ? Constants.downvoteColor : Constants.secondaryTextColor,
-                    ),
-                  ),
-                  _VoteArrow(
-                    assetName: 'assets/arrow_drop_down_rounded.png',
-                    color: vote == false ? Constants.downvoteColor : Constants.secondaryTextColor,
-                    onPressed: () => _updateVote(vote == false ? null : false)
-                  ),
-                ],
+          ValueListenableBuilder(
+            valueListenable: Settings.activeUser,
+            builder: (context, activeUser, child) {
+              final canVote = activeUser != null;
+              return CollectionListenableBuilder(
+                id: post.id,
+                collectionListenable: Votes.posts,
+                builder: (context, vote) {
+                  return Column(
+                    children: [
+                      _VoteArrow(
+                        assetName: 'assets/arrow_drop_up_rounded.png',
+                        color: vote == true ? Constants.upvoteColor : Constants.secondaryTextColor,
+                        onPressed: canVote ? () => _updateVote(vote == true ? null : true) : null
+                      ),
+                      Text(
+                        post.compactScore,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.bold,
+                          color: vote == true ? Constants.upvoteColor : vote == false ? Constants.downvoteColor : Constants.secondaryTextColor,
+                        ),
+                      ),
+                      _VoteArrow(
+                        assetName: 'assets/arrow_drop_down_rounded.png',
+                        color: vote == false ? Constants.downvoteColor : Constants.secondaryTextColor,
+                        onPressed: canVote ? () => _updateVote(vote == false ? null : false) : null
+                      ),
+                    ],
+                  );
+                }
               );
             }
           ),
@@ -242,7 +249,7 @@ class _VoteArrow extends StatelessWidget {
 
   final String assetName;
   final Color color;
-  final VoidCallback onPressed;
+  final VoidCallback? onPressed;
 
   const _VoteArrow({
     super.key,
@@ -256,17 +263,14 @@ class _VoteArrow extends StatelessWidget {
     return SizedBox(
       width: 40,
       height: 20,
-      child: Container(
-        // color: Colors.red,
-        child: IconButton(
-          padding: const EdgeInsets.all(4.5),
-          icon: Image.asset(
-            assetName,
-            color: color,
-          ),
-          onPressed: onPressed
+      child: IconButton(
+        padding: const EdgeInsets.all(4.5),
+        icon: Image.asset(
+          assetName,
+          color: color,
         ),
-      ),
+        onPressed: onPressed
+      )
     );
     // return IconButton(
     //   visualDensity: VisualDensity.compact,
