@@ -1,5 +1,6 @@
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
+import 'package:gal/gal.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
@@ -56,97 +57,116 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final VoidCallback? onSave;
+    final Widget body;
+    if (_isLoading) {
+      onSave = null;
+      body = CenteredLargeCircularProgressIndicator(platform: widget.platform);
+    }
+    else {
+      onSave = () {
+        final count = _post.galleryImageUrls.length;
+        saveMedia(
+          context: context,
+          platform: widget.platform,
+          snackbarMediaTypeMessage: '$count images',
+          save: () async {
+            for (final url in _post.galleryImageUrls) {
+              final filePath = await downloadMediaToTemp(url, widget.platform.api.userAgent);
+              await Gal.putImage(filePath);
+            }
+          },
+        );
+      };
+      body = ListView.separated(
+        padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+        cacheExtent: MediaQuery.of(context).size.height,
+        itemCount: 1 + _post.galleryImageUrls.length,
+        separatorBuilder: (context, index) => const SizedBox(height: 16),
+        itemBuilder: (context, index) {
+          if (index == 0) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(_post.title),
+                  Text(
+                    'by ${_post.author ?? '[deleted]'} • ${_post.timeAgoLong}',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      color: Constants.secondaryTextColor
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(_post.galleryImageUrls.length.toPluralString('image'))
+                ],
+              ),
+            );
+          }
+          final url = _post.galleryImageUrls[index - 1];
+          return Stack(
+            children: [
+              ExtendedImage.network(
+                url,
+                headers: {'User-Agent': widget.platform.api.userAgent},
+                fit: BoxFit.fitWidth,
+                mode: ExtendedImageMode.gesture,
+                cacheWidth: (MediaQuery.of(context).size.width * MediaQuery.of(context).devicePixelRatio).toInt(),
+                loadStateChanged: (state) {
+                  switch (state.extendedImageLoadState) {
+                    case LoadState.loading:
+                      return Padding(
+                        padding: EdgeInsets.all(16),
+                        child: CenteredLargeCircularProgressIndicator(platform: widget.platform)
+                      );
+                    case LoadState.completed:
+                      return state.completedWidget;
+                    case LoadState.failed:
+                      final color = Theme.of(context).disabledColor;
+                      return Center(
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.broken_image_rounded,
+                              size: 80,
+                              color: color
+                            )
+                          ],
+                        ),
+                    );
+                  }
+                },
+              ),
+              Positioned.fill(
+                child: Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () {
+                      context.push(
+                        () => ImageViewerScreen(
+                          platform: widget.platform,
+                          url: url,
+                          post: widget.post,
+                        )
+                      );
+                    }
+                  ),
+                ),
+              )
+            ],
+          );
+        },
+      );
+    }
     return MediaScaffold(
       platform: widget.platform,
       url: widget.url,
       type: 'images',
       post: widget.post,
-      onSave: () {
-        
-      },
-      body: _isLoading
-        ? CenteredLargeCircularProgressIndicator(platform: widget.platform)
-        : ListView.separated(
-            padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
-            cacheExtent: MediaQuery.of(context).size.height,
-            itemCount: 1 + _post.galleryImageUrls.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 16),
-            itemBuilder: (context, index) {
-              if (index == 0) {
-                return Padding(
-                  padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(_post.title),
-                      Text(
-                        'by ${_post.author ?? '[deleted]'} • ${_post.timeAgoLong}',
-                        style: const TextStyle(
-                          fontSize: 12,
-                          color: Constants.secondaryTextColor
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      Text(_post.galleryImageUrls.length.toPluralString('image'))
-                    ],
-                  ),
-                );
-              }
-              final url = _post.galleryImageUrls[index - 1];
-              return Stack(
-                children: [
-                  ExtendedImage.network(
-                    url,
-                    headers: {'User-Agent': widget.platform.api.userAgent},
-                    fit: BoxFit.fitWidth,
-                    mode: ExtendedImageMode.gesture,
-                    cacheWidth: (MediaQuery.of(context).size.width * MediaQuery.of(context).devicePixelRatio).toInt(),
-                    loadStateChanged: (state) {
-                      switch (state.extendedImageLoadState) {
-                        case LoadState.loading:
-                          return Padding(
-                            padding: EdgeInsets.all(16),
-                            child: CenteredLargeCircularProgressIndicator(platform: widget.platform)
-                          );
-                        case LoadState.completed:
-                          return state.completedWidget;
-                        case LoadState.failed:
-                          final color = Theme.of(context).disabledColor;
-                          return Center(
-                            child: Column(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(
-                                  Icons.broken_image_rounded,
-                                  size: 80,
-                                  color: color
-                                )
-                              ],
-                            ),
-                        );
-                      }
-                    },
-                  ),
-                  Positioned.fill(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          context.push(
-                            () => ImageViewerScreen(
-                              platform: widget.platform,
-                              url: url,
-                              post: widget.post,
-                            )
-                          );
-                        }
-                      ),
-                    ),
-                  )
-                ],
-              );
-            },
-          )
+      onSave: onSave,
+      body: body
     );
   }
 

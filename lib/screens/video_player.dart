@@ -149,7 +149,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
           saveMedia(
             context: context,
             platform: widget.platform,
-            mediaType: 'video',
+            snackbarMediaTypeMessage: 'video',
             save: () async {
 
               String getBestUrl(String setContent) {

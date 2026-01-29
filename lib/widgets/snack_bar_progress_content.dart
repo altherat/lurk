@@ -62,7 +62,6 @@ class _SnackBarProgressContentState extends State<SnackBarProgressContent> {
     final String message;
     if (_isErrored) {
       prefix = Icon(
-        key: ValueKey('error'),
         Icons.close_rounded,
         color: Colors.redAccent,
         size: _indicatorSize,
@@ -71,7 +70,6 @@ class _SnackBarProgressContentState extends State<SnackBarProgressContent> {
     }
     else if (_isComplete) {
       prefix = Icon(
-        key: ValueKey('complete'),
         Icons.check_rounded,
         color: Colors.greenAccent,
         size: _indicatorSize,
@@ -80,14 +78,13 @@ class _SnackBarProgressContentState extends State<SnackBarProgressContent> {
     }
     else {
       prefix = Center(
-        key: ValueKey('loading'),
         child: SizedBox(
           width: 24,
           height: 24,
           child: CustomCircularProgressIndicator(
-              // platform: widget.platform,
-              strokeWidth: 3,
-            ),
+            platform: widget.platform,
+            strokeWidth: 3,
+          ),
         ),
       );
       message = widget.progressMessage;
@@ -115,9 +112,11 @@ class _SnackBarProgressContentState extends State<SnackBarProgressContent> {
             ),
           ),
           const SizedBox(width: 6),
-          Text(
-            message,
-            style: const TextStyle(fontWeight: FontWeight.normal)
+          Expanded(
+            child: Text(
+              message,
+              style: const TextStyle(fontWeight: FontWeight.normal),
+            ),
           ),
         ],
       ),

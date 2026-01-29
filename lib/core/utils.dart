@@ -385,7 +385,7 @@ Future<void> saveImage({
 }) => saveMedia(
   context: context,
   platform: platform,
-  mediaType: 'image',
+  snackbarMediaTypeMessage: 'image',
   save: () async {
     final filePath = await downloadMediaToTemp(url, platform.api.userAgent);
     await Gal.putImage(filePath);
@@ -399,18 +399,23 @@ Future<void> saveVideo({
 }) => saveMedia(
   context: context,
   platform: platform,
-  mediaType: 'video',
+  snackbarMediaTypeMessage: 'video',
   save: () async {
     final filePath = await downloadMediaToTemp(url, platform.api.userAgent);
     await Gal.putVideo(filePath);
   }
 );
 
-Future<void> saveMedia({required BuildContext context, required Platform platform, required String mediaType, required Future<void> Function() save}) async {
+Future<void> saveMedia({
+  required BuildContext context,
+  required Platform platform,
+  required String snackbarMediaTypeMessage,
+  required Future<void> Function() save
+}) async {
   if (!await Gal.hasAccess()) {
     if (!await Gal.requestAccess()) {
       if (context.mounted) {
-        context.showSnackBarMessage('Permission denied — could not save $mediaType');
+        context.showSnackBarMessage('Permission denied — could not save $snackbarMediaTypeMessage');
       }
       return;
     }
@@ -424,8 +429,8 @@ Future<void> saveMedia({required BuildContext context, required Platform platfor
     duration: const Duration(days: 1),
     content: SnackBarProgressContent(
       platform: platform,
-      progressMessage: 'Saving $mediaType...',
-      completeMessage: 'Successfully saved $mediaType',
+      progressMessage: 'Saving $snackbarMediaTypeMessage...',
+      completeMessage: 'Successfully saved',
       errorMessage: 'Something went wrong',
       future: future,
       onComplete: () async {
