@@ -45,7 +45,7 @@ class Settings {
     final [dbSettings as tbl.Setting, dbLoggedInUseres as List<LoggedInUser>, dbCommunities as List<Community>] = await Future.wait([db.getAllSettings(), db.getAllLoggedInUsers(), db.getAllCommunities()]);
 
     homeCommunityPlatform = SettingNotifier(dbSettings.homeCommunityPlatform, (value) => SettingsCompanion(homeCommunityPlatform: Value(value)), F.appFlavor.defaultCommunities.first.platform);
-    homeCommunityName = SettingNotifier(dbSettings.homeCommunityName, (value) => SettingsCompanion(homeCommunityName: Value(value)), homeCommunityPlatform.value.communityHome);
+    homeCommunityName = SettingNotifier(dbSettings.homeCommunityName, (value) => SettingsCompanion(homeCommunityName: Value(value)), homeCommunityPlatform.value.homeCommunity);
     showCommentImages = SettingNotifier(dbSettings.showCommentImages, (value) => SettingsCompanion(showCommentImages: Value(value)), Constants.defaultShowCommentImages);
     autoplayVideos = SettingNotifier(dbSettings.autoplayVideos, (value) => SettingsCompanion(autoplayVideos: Value(value)), Constants.defaultAutoplayVideos);
     appBarColor = SettingNotifier(dbSettings.appBarColor != null ? Color(dbSettings.appBarColor!) : null, (value) => SettingsCompanion(appBarColor: Value(value.toARGB32())), Constants.defaultAppBarColor);
@@ -66,6 +66,7 @@ class Settings {
       delete: db.deleteCommunity,
     );
     final activeUserId = dbSettings.activeUserId;
+    debugPrint('test: $activeUserId');
     activeUser = SettingNotifier(activeUserId != null ? loggedInUsers.value.firstWhere((user) => user.id == activeUserId) : null, (user) => SettingsCompanion(activeUserId: Value(user?.id)));
     loggedInUsers = RelationalListSettingNotifier(
       dbLoggedInUseres,

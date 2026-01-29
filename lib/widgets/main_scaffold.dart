@@ -14,7 +14,7 @@ import 'package:lurk/screens/search.dart';
 import 'package:lurk/screens/settings.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
-import 'package:lurk/widgets/community_name.dart';
+import 'package:lurk/widgets/prefixed_community_name.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/feed_option_selector.dart';
 import 'package:lurk/widgets/custom_search_bar.dart';
@@ -207,7 +207,7 @@ class _MainScaffoldState extends State<MainScaffold> {
                               children: [
                                 IconButton(
                                   icon: const Icon(Icons.sort_rounded),
-                                  tooltip: 'Sort',
+                                  tooltip: 'Filter',
                                   iconSize: 26,
                                   onPressed: _showFeedOptionsBottomSheet
                                 ),
@@ -292,7 +292,29 @@ class _MainScaffoldState extends State<MainScaffold> {
                         )
                       ),
                       _UserList(
-                        platform: widget.platform
+                        platform: widget.platform,
+                        onLogin: (userName) {
+                          debugPrint('logged in: $userName, $mounted');
+                          if (!mounted || userName == null) return;
+                          context.showSnackBar(
+                            content: Text.rich(
+                              TextSpan(
+                                children: [
+                                  TextSpan(
+                                    text: 'Logged in to ${widget.platform.name.toTitleCase()} as '
+                                  ),
+                                  TextSpan(
+                                    text: userName,
+                                    style: TextStyle(
+                                      color: widget.platform.color,
+                                      fontWeight: FontWeight.bold
+                                    )
+                                  )
+                                ]
+                              )
+                            )
+                          );
+                        },
                       )
                     ]),
                     _Scrim(color: (theme.drawerTheme.backgroundColor ?? theme.canvasColor).withAlpha(Constants.scrimAlpha)),
@@ -312,6 +334,7 @@ class _MainScaffoldState extends State<MainScaffold> {
               0, 
               IconButton(
                 icon: const Icon(Icons.sort_rounded),
+                tooltip: 'Filter',
                 onPressed: _showFeedOptionsBottomSheet
               )
             );
@@ -416,10 +439,12 @@ class _Scrim extends StatelessWidget {
 class _UserList extends StatefulWidget {
 
   final Platform platform;
+  final void Function(String? userName) onLogin;
 
   const _UserList({
     super.key,
     required this.platform,
+    required this.onLogin
   });
 
   @override
@@ -433,26 +458,7 @@ class _UserListState extends State<_UserList> {
 
   void _onLoginPressed() async {
     context.pop();
-    final userName = await widget.platform.api.login();
-    if (!mounted || userName == null) return;
-    context.showSnackBar(
-      content: Text.rich(
-        TextSpan(
-          children: [
-            TextSpan(
-              text: 'Logged in to ${widget.platform.name.toTitleCase()} as '
-            ),
-            TextSpan(
-              text: userName,
-              style: TextStyle(
-                color: widget.platform.color,
-                fontWeight: FontWeight.bold
-              )
-            )
-          ]
-        )
-      )
-    );
+    widget.onLogin(await widget.platform.api.login());
   }
 
   void _onTileLongPress(String userName) {
@@ -478,20 +484,12 @@ class _UserListState extends State<_UserList> {
                 return ValueListenableBuilder(
                   valueListenable: Settings.redditRedirectUri,
                   builder: (context, redditRedirectUri, child) {
-                    debugPrint("here: $redditClientId, $redditRedirectUri");
-                    final Widget? title;
-                    final VoidCallback? onTap;
-                    if (redditClientId != null && redditRedirectUri != null) {
-                      title = Text('Login');
-                      onTap = _onLoginPressed;
-                    }
-                    else {
-                      title = null;
-                      onTap = null;
+                    if (redditClientId == null || redditRedirectUri == null) {
+                      return const ListTile(leading: _SettingsIconButton());
                     }
                     return ListTile(
-                      title: title,
-                      onTap: onTap,
+                      title: Text('Login'),
+                      onTap: _onLoginPressed,
                       trailing: const _SettingsIconButton(),
                     );
                   }
@@ -499,7 +497,7 @@ class _UserListState extends State<_UserList> {
               }
             );
           }
-          return const ListTile(trailing: _SettingsIconButton());
+          return const ListTile(leading: _SettingsIconButton());
         }
         return ValueListenableBuilder(
           valueListenable: Settings.activeUser,
@@ -601,7 +599,7 @@ class _UserListTile extends StatelessWidget {
         margin: const EdgeInsets.all(6), 
         decoration: BoxDecoration(
           shape: BoxShape.circle,
-          border: Border.all(color: platform.color, width: 1), 
+          border: Border.all(color: user.platform.color, width: 1), 
         ),
         child: ListTileIcon(
           platform: platform,
@@ -684,15 +682,15 @@ class _CommunityListState extends State<_CommunityList> {
   }
 
   void _onCommunitiesSettingChanged() {
+    if (!mounted) return;
     setState(() {
-      _visibleCommunities = Settings.communities.value.toList();
-      _filterVisibleCommunities();
+      _updateVisibleCommunities();
       _sortVisibleCommunities();
     });
   }
 
-  void _filterVisibleCommunities() {
-    _visibleCommunities = _visibleCommunities.where((community) => community.name?.contains(_searchQuery) ?? false).toList();
+  void _updateVisibleCommunities() {
+    _visibleCommunities = _searchQuery.isEmpty ? Settings.communities.value : Settings.communities.value.where((community) => community.name?.contains(_searchQuery) ?? false).toList();
   }
 
   void _sortVisibleCommunities() {
@@ -717,7 +715,7 @@ class _CommunityListState extends State<_CommunityList> {
   }
 
   void _onCommunityTap(Community community) {
-    if (community.platform == widget.platform && community.name == (widget.activeCommunityName ?? widget.platform?.communityHome)) {
+    if (community.platform == widget.platform && community.name == (widget.activeCommunityName ?? widget.platform.homeCommunity)) {
       context.pop();
       widget.onActiveCommunitySelected?.call();
       return;
@@ -928,10 +926,11 @@ class _CommunityListState extends State<_CommunityList> {
                         _searchController.selection = TextSelection.fromPosition(TextPosition(offset: cleanValue.length));
                       }
                       
+                      debugPrint('$handledPrefix, $cleanValue, $_searchQuery');
                       if (handledPrefix || cleanValue != _searchQuery) {
                         setState(() {
                           _searchQuery = cleanValue;
-                          _filterVisibleCommunities();
+                          _updateVisibleCommunities();
                           _updateIsSearchValid();
                         });
                       }
@@ -944,7 +943,7 @@ class _CommunityListState extends State<_CommunityList> {
                           }
                           String? query = value;
                           if (query.isEmpty) {
-                            if (_searchPlatform.communityHome != null) {
+                            if (_searchPlatform.homeCommunity != null) {
                               return;
                             }
                             query = null;
@@ -1005,8 +1004,24 @@ class _CommunityListState extends State<_CommunityList> {
         
                 if (index == 1 && activeUser != null) {
                   return ListTile(
-                    leading: const SizedBox(width: 40),
+                    horizontalTitleGap: 8,
+                    leading: IconButton(
+                      onPressed: () {},
+                      icon: Icon(
+                        Icons.reddit_rounded,
+                        size: 32,
+                        color: Platform.reddit.color,
+                      )
+                    ),
                     title: Text('Reddit home'),
+                    onTap: () {
+                      _navigateToCommunity(
+                        Community(
+                          platform: widget.platform,
+                          name: null
+                        )
+                      );
+                    }
                   );
                 }
             
@@ -1015,7 +1030,7 @@ class _CommunityListState extends State<_CommunityList> {
                   children: [
                     ListTile(
                       horizontalTitleGap: 8,
-                      title: F.appFlavor == Flavor.combined || community.platform.communityHome == null ? CommunityName(community: community) : Text(community.name!),
+                      title: F.appFlavor == Flavor.combined || community.platform.homeCommunity == null ? PrefixedCommunityName(community: community) : Text(community.name!),
                       leading: IconButton(
                         icon: ValueListenableBuilder(
                           valueListenable: Settings.showPlatformColorAccents,
@@ -1024,7 +1039,7 @@ class _CommunityListState extends State<_CommunityList> {
                             final Color? color;
                             if (community.isFavorite) {
                               icon = Icons.star_rounded;
-                              color = showPlatformColorAccents ? Theme.of(context).iconTheme.color : Theme.of(context).colorScheme.primary;
+                              color = showPlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary;
                             }
                             else {
                               icon = Icons.star_border_rounded;
@@ -1046,14 +1061,14 @@ class _CommunityListState extends State<_CommunityList> {
                         HapticFeedback.mediumImpact();
                         showSimpleOptionsDialog(
                           context: context,
-                          title: community.fullDisplayName,
+                          title: community.prefixedName,
                           options: {
                             'Remove': () => Settings.communities.remove(community)
                           },
                         );
                       }
                     ),
-                    if (community.platform == widget.platform && community.name == (widget.activeCommunityName ?? widget.platform.communityHome))
+                    if (community.platform == widget.platform && community.name == (widget.activeCommunityName ?? widget.platform.homeCommunity))
                       Positioned(
                         left: 0,
                         top: 8,

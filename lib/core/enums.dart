@@ -11,7 +11,8 @@ enum Platform {
     color: Color(0xFFFF4500),
     communityLabel: 'subreddit',
     communityPrefix: 'r/',
-    communityHome: 'popular',
+    homeCommunity: 'popular',
+    rootCommunityName: 'Home',
     userPrefix: 'u/',
     communityPath: r'^\/r\/([^\/]+)\/?$',
     userPath: r'^\/(?:u|user)\/([^\/]+)\/?$',
@@ -22,15 +23,16 @@ enum Platform {
     userNameAllowedChars: '_-',
     communityNameValidation: r'^(?=.{3,21}$)[a-zA-Z0-9]([a-zA-Z0-9_]*[a-zA-Z0-9])?$',
     userNameValidation: r'^(?=.{3,20}$)[a-zA-Z0-9][a-zA-Z0-9_-]*$',
-    postsFeedOptions: FeedOptionsGroup(
+    rootPostsFeedOptions: FeedOptionsGroup(
       FeedOptionType.sort,
       [
-        FeedOption('Hot', id: 'hot'),
-        FeedOption('New', id: 'new'),
-        FeedOption('Top', id: 'top', subGroup: _redditPostsFeedTimeOptions),
-        FeedOption('Rising', id: 'rising'),
-        FeedOption('Controversial', id: 'controversial', subGroup: _redditPostsFeedTimeOptions)
+        FeedOption('Best', id: 'best'),
+        ..._redditPostFeedOptions
       ]
+    ),
+    postsFeedOptions: FeedOptionsGroup(
+      FeedOptionType.sort,
+      _redditPostFeedOptions
     ),
     postCommentsFeedOptions: FeedOptionsGroup(
       FeedOptionType.sort,
@@ -79,13 +81,14 @@ enum Platform {
     color: Color(0xFF1F65DB),
     communityLabel: 'community',
     communityPrefix: '/',
+    rootCommunityName: '',
     userPrefix: '@',
     communityPath: r'^\/(?!d\/)([^\/]+)\/?$',
     userPath: r'^\/@([^\/]+)\/?$',
     postPath: r'^\/(?!d\/)([^\/]+)\/([^\/]+)',
     communityNameAllowedChars: '-',
     userNameAllowedChars: '_-',
-    communityNameValidation: r'^(?=.{3,24}$)[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$',
+    communityNameValidation: r'^$|^(?=.{3,24}$)[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$',
     userNameValidation: r'^[a-zA-Z0-9_-]{2,24}$',
     postsFeedOptions: FeedOptionsGroup(
       FeedOptionType.sort,
@@ -151,7 +154,8 @@ enum Platform {
   final Color color;
   final String communityLabel;
   final String communityPrefix;
-  final String? communityHome;
+  final String? homeCommunity;
+  final String rootCommunityName;
   final String userPrefix;
   final String communityPath;
   final String userPath;
@@ -162,6 +166,7 @@ enum Platform {
   final String userNameAllowedChars;
   final String communityNameValidation;
   final String userNameValidation;
+  final FeedOptionsGroup? rootPostsFeedOptions;
   final FeedOptionsGroup postsFeedOptions;
   final FeedOptionsGroup postCommentsFeedOptions;
   final FeedOptionsGroup userFeedOptions;
@@ -172,7 +177,8 @@ enum Platform {
     required this.domains,
     required this.color,
     required this.communityPrefix,
-    this.communityHome,
+    this.homeCommunity,
+    required this.rootCommunityName,
     required this.userPrefix,
     required this.communityPath,
     required this.userPath,
@@ -184,6 +190,7 @@ enum Platform {
     required this.communityNameValidation,
     required this.userNameValidation,
     required this.communityLabel,
+    this.rootPostsFeedOptions,
     required this.postsFeedOptions,
     required this.postCommentsFeedOptions,
     required this.userFeedOptions,
@@ -228,6 +235,14 @@ enum SearchFeedType {
   communities,
   users,
 }
+
+const _redditPostFeedOptions = [
+  FeedOption('Hot', id: 'hot'),
+  FeedOption('New', id: 'new'),
+  FeedOption('Top', id: 'top', subGroup: _redditPostsFeedTimeOptions),
+  FeedOption('Rising', id: 'rising'),
+  FeedOption('Controversial', id: 'controversial', subGroup: _redditPostsFeedTimeOptions)
+];
 
 const _redditPostsFeedTimeOptions = FeedOptionsGroup(
   FeedOptionType.time,

@@ -214,7 +214,7 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
         )
       );
     }
-    else if (_isLoadingItems) {
+    else if (_isLoadingItems || _items.isEmpty) {
       child = CenteredFullHeightScrollView(
         headers: headers,
         child: widget.noItemsBuilder(context)

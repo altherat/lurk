@@ -38,7 +38,7 @@ class PostTile extends StatelessWidget {
       title: post.title,
       options: {
         if (showViewCommunityOption)
-          'View ${post.community.fullDisplayName}': () => context.push(() => PostsScreen(community: post.community)),
+          'View ${post.community.prefixedName}': () => context.push(() => PostsScreen(community: post.community)),
         if (showViewUserOption && post.author != null)
           'View ${post.community.platform.userPrefix}${post.author}': () {
             context.push(
@@ -179,7 +179,12 @@ class PostTile extends StatelessWidget {
                       child: InkWell(
                         onTap: () {
                           History.posts.add(post.id);
-                          navigate(context, post.community.platform, post.url, post: post);
+                          if (post.isSelf) {
+                            context.push(() => PostDetailsScreen.fromPost(post: post));
+                          }
+                          else {
+                            navigate(context, post.community.platform, post.url, post: post);
+                          }
                         }
                       ),
                     ),

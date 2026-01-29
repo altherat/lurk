@@ -5,12 +5,12 @@ import 'package:lurk/core/constants.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/services/settings.dart';
 
-class CommunityName extends StatelessWidget {
+class PrefixedCommunityName extends StatelessWidget {
 
   final Community community;
   final int? alpha;
 
-  const CommunityName({
+  const PrefixedCommunityName({
     super.key,
     required this.community,
     this.alpha
@@ -23,18 +23,27 @@ class CommunityName extends StatelessWidget {
     return ValueListenableBuilder(
       valueListenable: Settings.showPlatformColorTextAccents,
       builder: (context, showPlatformColorTextAccents, child) {
-        final displayName = community.displayName;
+        final prefixColor = showPlatformColorTextAccents ? community.platform.color.withAlpha(alpha != null ? min(alpha!, parentAlpha) : parentAlpha) : parentColor.withAlpha(min(parentAlpha, Constants.namePrefixAlpha));
+        if (community.name == null) {
+          return Text(
+            community.platform.communityPrefix,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(color: prefixColor),
+          );
+        }
         return Text.rich(
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           TextSpan(
             children: [
               TextSpan(
                 text: community.platform.communityPrefix,
-                style: TextStyle(color: showPlatformColorTextAccents ? community.platform.color.withAlpha(alpha != null ? min(alpha!, parentAlpha) : parentAlpha) : parentColor.withAlpha(min(parentAlpha, Constants.namePrefixAlpha))),
+                style: TextStyle(color: prefixColor),
               ),
-              if (displayName.isNotEmpty)
-                TextSpan(
-                  text: displayName,
-                ),
+              TextSpan(
+                text: community.name!,
+              ),
             ],
           ),
         );

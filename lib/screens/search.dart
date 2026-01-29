@@ -43,7 +43,7 @@ class SearchScreen extends StatelessWidget {
               url: item.iconUrl,
               placeholderIcon: Icons.groups_rounded,
             ),
-            title: Text(item.fullDisplayName.toLowerCase()),
+            title: Text(item.prefixedName),
             onTap: () {
               context.push(() {
                 return PostsScreen(

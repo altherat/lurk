@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/simple_feed.dart';
-import 'package:lurk/widgets/community_name.dart';
+import 'package:lurk/widgets/prefixed_community_name.dart';
 import 'package:lurk/widgets/large_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
 
@@ -38,9 +38,9 @@ class _PostsScreenState extends State<PostsScreen> {
         }
         return result;
       },
-      title: CommunityName(community: widget.community),
+      title: widget.community.name == null && widget.community.platform.rootCommunityName.isNotEmpty ? Text(widget.community.platform.rootCommunityName) : PrefixedCommunityName(community: widget.community),
       activeCommunityName: widget.community.name,
-      feedOptions: widget.community.platform.postsFeedOptions,
+      feedOptions: (widget.community.name == null ? widget.community.platform.rootPostsFeedOptions : null) ?? widget.community.platform.postsFeedOptions,
       itemBuilder: (context, post) {
         return PostTile(
           post: post,

@@ -36,7 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 choiceLabel: (platform) => platform.name.toTitleCase(),
                 selectedColor: (platform) => platform.color,
                 onSelected: (platform) {
-                  Settings.homeCommunityName.defaultValue = platform.communityHome;
+                  Settings.homeCommunityName.defaultValue = platform.homeCommunity;
                 }
               ),
             ],
@@ -50,7 +50,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       return _TextField(
                         defaultValue: Settings.homeCommunityName.hasSavedValue ? homeCommunityName : null,
                         label: homeCommunityPlatform.communityLabel.toTitleCase(),
-                        hintText: homeCommunityPlatform.communityHome,
+                        hintText: homeCommunityPlatform.homeCommunity,
                         prefixText: homeCommunityPlatform.communityPrefix,
                         floatingLabelBehavior: FloatingLabelBehavior.always,
                         onSubmitted: (value) {

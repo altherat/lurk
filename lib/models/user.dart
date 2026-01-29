@@ -1,3 +1,5 @@
+import 'package:lurk/core/enums.dart';
+
 class LookedUpUser {
 
   final String? id;
@@ -18,6 +20,7 @@ class LookedUpUser {
 
 class LoggedInUser {
 
+  final Platform platform;
   final String id;
   final String name;
   final String iconUrl;
@@ -25,6 +28,7 @@ class LoggedInUser {
   final int score;
 
   LoggedInUser({
+    required this.platform,
     required this.id,
     required this.name,
     required this.iconUrl,

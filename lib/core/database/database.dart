@@ -74,12 +74,14 @@ class Database extends _$Database {
   Future<void> saveCookies(Iterable<Cookie> cookieList) async {
     await batch((batch) {
       batch.insertAllOnConflictUpdate(
-        cookies, // This is your table getter
-        cookieList.map((c) => CookiesCompanion.insert(
-              key: c.key,
-              value: c.value,
-              expirationTime: Value(c.expirationTime),
-            )),
+        cookies,
+        cookieList.map((c) {
+          return CookiesCompanion.insert(
+            key: c.key,
+            value: c.value,
+            expirationTime: Value(c.expirationTime),
+          );
+        })
       );
     });
   }
@@ -100,6 +102,7 @@ class Database extends _$Database {
   Future<void> saveLoggedInUser(LoggedInUser user) {
     return into(users).insertOnConflictUpdate(
       UsersCompanion.insert(
+        platform: user.platform,
         id: user.id,
         name: user.name,
         iconUrl: user.iconUrl,

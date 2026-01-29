@@ -328,7 +328,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     return MainScaffold(
       platform: widget.platform,
       title: title != null ? Text(title) : null,
-      subtitle: _post != null ? Text(_post!.community.fullDisplayName) : null,
+      subtitle: _post != null ? Text(_post!.community.prefixedName) : null,
       popupMenuActions: popupMenuActions,
       feedOptions: widget.platform.postCommentsFeedOptions,
       selectedFeedOptions: _feedOptions,

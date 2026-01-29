@@ -1378,6 +1378,15 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
   final GeneratedDatabase attachedDatabase;
   final String? _alias;
   $UsersTable(this.attachedDatabase, [this._alias]);
+  @override
+  late final GeneratedColumnWithTypeConverter<Platform, String> platform =
+      GeneratedColumn<String>(
+        'platform',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<Platform>($UsersTable.$converterplatform);
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -1428,7 +1437,14 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
     requiredDuringInsert: true,
   );
   @override
-  List<GeneratedColumn> get $columns => [id, name, iconUrl, inboxCount, score];
+  List<GeneratedColumn> get $columns => [
+    platform,
+    id,
+    name,
+    iconUrl,
+    inboxCount,
+    score,
+  ];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -1482,11 +1498,17 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {id};
+  Set<GeneratedColumn> get $primaryKey => {platform, id};
   @override
   LoggedInUser map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return LoggedInUser(
+      platform: $UsersTable.$converterplatform.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}platform'],
+        )!,
+      ),
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -1514,9 +1536,13 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
   $UsersTable createAlias(String alias) {
     return $UsersTable(attachedDatabase, alias);
   }
+
+  static JsonTypeConverter2<Platform, String, String> $converterplatform =
+      const EnumNameConverter<Platform>(Platform.values);
 }
 
 class UsersCompanion extends UpdateCompanion<LoggedInUser> {
+  final Value<Platform> platform;
   final Value<String> id;
   final Value<String> name;
   final Value<String> iconUrl;
@@ -1524,6 +1550,7 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
   final Value<int> score;
   final Value<int> rowid;
   const UsersCompanion({
+    this.platform = const Value.absent(),
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.iconUrl = const Value.absent(),
@@ -1532,18 +1559,21 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
     this.rowid = const Value.absent(),
   });
   UsersCompanion.insert({
+    required Platform platform,
     required String id,
     required String name,
     required String iconUrl,
     required int inboxCount,
     required int score,
     this.rowid = const Value.absent(),
-  }) : id = Value(id),
+  }) : platform = Value(platform),
+       id = Value(id),
        name = Value(name),
        iconUrl = Value(iconUrl),
        inboxCount = Value(inboxCount),
        score = Value(score);
   static Insertable<LoggedInUser> custom({
+    Expression<String>? platform,
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? iconUrl,
@@ -1552,6 +1582,7 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
+      if (platform != null) 'platform': platform,
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (iconUrl != null) 'icon_url': iconUrl,
@@ -1562,6 +1593,7 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
   }
 
   UsersCompanion copyWith({
+    Value<Platform>? platform,
     Value<String>? id,
     Value<String>? name,
     Value<String>? iconUrl,
@@ -1570,6 +1602,7 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
     Value<int>? rowid,
   }) {
     return UsersCompanion(
+      platform: platform ?? this.platform,
       id: id ?? this.id,
       name: name ?? this.name,
       iconUrl: iconUrl ?? this.iconUrl,
@@ -1582,6 +1615,11 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
     final map = <String, Expression>{};
+    if (platform.present) {
+      map['platform'] = Variable<String>(
+        $UsersTable.$converterplatform.toSql(platform.value),
+      );
+    }
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
@@ -1606,6 +1644,7 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
   @override
   String toString() {
     return (StringBuffer('UsersCompanion(')
+          ..write('platform: $platform, ')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('iconUrl: $iconUrl, ')
@@ -2635,6 +2674,7 @@ typedef $$SettingsTableProcessedTableManager =
     >;
 typedef $$UsersTableCreateCompanionBuilder =
     UsersCompanion Function({
+      required Platform platform,
       required String id,
       required String name,
       required String iconUrl,
@@ -2644,6 +2684,7 @@ typedef $$UsersTableCreateCompanionBuilder =
     });
 typedef $$UsersTableUpdateCompanionBuilder =
     UsersCompanion Function({
+      Value<Platform> platform,
       Value<String> id,
       Value<String> name,
       Value<String> iconUrl,
@@ -2660,6 +2701,12 @@ class $$UsersTableFilterComposer extends Composer<_$Database, $UsersTable> {
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnWithTypeConverterFilters<Platform, Platform, String> get platform =>
+      $composableBuilder(
+        column: $table.platform,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
@@ -2694,6 +2741,11 @@ class $$UsersTableOrderingComposer extends Composer<_$Database, $UsersTable> {
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  ColumnOrderings<String> get platform => $composableBuilder(
+    column: $table.platform,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
@@ -2728,6 +2780,9 @@ class $$UsersTableAnnotationComposer extends Composer<_$Database, $UsersTable> {
     super.$addJoinBuilderToRootComposer,
     super.$removeJoinBuilderFromRootComposer,
   });
+  GeneratedColumnWithTypeConverter<Platform, String> get platform =>
+      $composableBuilder(column: $table.platform, builder: (column) => column);
+
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
@@ -2774,6 +2829,7 @@ class $$UsersTableTableManager
               $$UsersTableAnnotationComposer($db: db, $table: table),
           updateCompanionCallback:
               ({
+                Value<Platform> platform = const Value.absent(),
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> iconUrl = const Value.absent(),
@@ -2781,6 +2837,7 @@ class $$UsersTableTableManager
                 Value<int> score = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => UsersCompanion(
+                platform: platform,
                 id: id,
                 name: name,
                 iconUrl: iconUrl,
@@ -2790,6 +2847,7 @@ class $$UsersTableTableManager
               ),
           createCompanionCallback:
               ({
+                required Platform platform,
                 required String id,
                 required String name,
                 required String iconUrl,
@@ -2797,6 +2855,7 @@ class $$UsersTableTableManager
                 required int score,
                 Value<int> rowid = const Value.absent(),
               }) => UsersCompanion.insert(
+                platform: platform,
                 id: id,
                 name: name,
                 iconUrl: iconUrl,

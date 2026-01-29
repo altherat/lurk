@@ -40,7 +40,7 @@ class RedditApi extends Api {
 
   @override
   String get defaultUserAgent => 'Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36';
-  // String get defaultUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by u/altherat)';
+  // String get defaultUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by /u/altherat)';
 
   Map<String, String> get authenticatedHeaders => {
     'Accept': 'application/json',
@@ -116,16 +116,15 @@ class RedditApi extends Api {
     return true;
   }
 
-  Future<void> _checkIfSettingsChanged() async {
+  Future<void> _checkIfClientIdChanged() async {
     final clientId = Settings.redditClientId.value;
-    final redirectUri = Settings.redditRedirectUri.value;
-    if (clientId == null || redirectUri == null) {
+    if (clientId == null) {
       if (_oauth2Helper != null) {
         await _oauth2Helper!.removeAllTokens();
         _initClientFuture = null;
       }
     }
-    else if (_oauth2Helper == null || _oauth2Helper!.clientId != clientId || _oauth2Helper!.client.redirectUri != redirectUri) {
+    else if (_oauth2Helper == null || _oauth2Helper!.clientId != clientId) {
       await _oauth2Helper?.removeAllTokens();
       if (_clientInstance != null) {
         _clientInstance!.close();
@@ -137,7 +136,7 @@ class RedditApi extends Api {
   }
 
   Future<Response> _request(Future<Response> Function() request, Future<Response> Function() oAuthRequest) async {
-    await _checkIfSettingsChanged();
+    await _checkIfClientIdChanged();
     if (await _ensureClientInitialized()) {
       final accessToken = await _oauth2Helper!.getTokenFromStorage();
       if (accessToken == null || (!accessToken.hasRefreshToken() && accessToken.isExpired())) {
@@ -166,11 +165,13 @@ class RedditApi extends Api {
           })
         );
       }
+      // dev.log('[Reddit/OAuth] Request headers: $authenticatedHeaders');
       final response = await oAuthRequest();
       dev.log('[Reddit/OAuth] Response code: ${response.statusCode}');
       return _handleResponse(response);
     }
 
+    // dev.log('[Reddit/HTTP] Request headers: $unauthenticatedHeaders');
     var response = await request();
     dev.log('[Reddit/HTTP] Response code: ${response.statusCode}');
     if (response.headers.containsKey('set-cookie')) {
@@ -241,7 +242,7 @@ class RedditApi extends Api {
 
   Future<Response> _post(String path, Map<String, String> body) async {
     dev.log('[Reddit] _post: path=$path, params=$body]');
-    await _checkIfSettingsChanged();
+    await _checkIfClientIdChanged();
     await _ensureClientInitialized();
     return _request(
       () => _clientInstance!.post(
@@ -270,7 +271,7 @@ class RedditApi extends Api {
     // dev.log('[Reddit] getPosts: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
     final sort = options?[FeedOptionType.sort];
     final timeRange = options?[FeedOptionType.time];
-    String path = id == null || id.isNotEmpty ? '/r/${id ?? Platform.reddit.communityHome}/' : '/';
+    String path = id != null && id.isNotEmpty ? '/r/$id/' : '/';
     if (sort != null) {
       path += '${sort.id}/';
     }
@@ -664,8 +665,11 @@ class RedditApi extends Api {
 
   @override
   Future<String?> login() async {
-    await _checkIfSettingsChanged();
+    await _checkIfClientIdChanged();
     if (await _ensureClientInitialized()) {
+      final (redirectUri, customUriScheme) = _redirectUriAndCustomUriScheme;
+      _oauth2Helper!.client.redirectUri = redirectUri;
+      _oauth2Helper!.client.customUriScheme = customUriScheme;
       final tokenResponse = await _oauth2Helper!.fetchToken();
       if (tokenResponse.isValid()) {
         _clientInstance?.close();
@@ -706,7 +710,8 @@ class RedditApi extends Api {
     final data = jsonDecode((await _get('/api/v1/me')).body);
     final iconUri = Uri.parse(data['icon_img']);
     return LoggedInUser(
-      id: data['name'],
+      platform: Platform.reddit,
+      id: data['id'],
       name: data['name'],
       iconUrl: Uri(scheme: iconUri.scheme,host: iconUri.host,path: iconUri.path).toString(),
       inboxCount: data['inbox_count'],
