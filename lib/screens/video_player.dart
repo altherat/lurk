@@ -69,7 +69,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       final client = HttpClient();
 
       final request = await client.getUrl(Uri.parse('${widget.url}/DASHPlaylist.mpd'));
-      request.headers.set('User-Agent', widget.platform.api.userAgent);
+      request.headers.set('User-Agent', widget.platform.api.savedOrDefaultUserAgent);
 
       final response = await request.close();
       _dashManifest = await response.transform(utf8.decoder).join();
@@ -87,7 +87,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
       _videoController = VideoPlayerController.networkUrl(
         _uri,
         httpHeaders: {
-          'User-Agent': widget.platform.api.userAgent,
+          'User-Agent': widget.platform.api.savedOrDefaultUserAgent,
         },
         videoPlayerOptions: VideoPlayerOptions(allowBackgroundPlayback: false),
       );
@@ -170,7 +170,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               final audioSet = RegExp(r'<AdaptationSet [^>]*contentType="audio".*?<\/AdaptationSet>', dotAll: true).firstMatch(_dashManifest!)!.group(0)!;
               final bestVideoUrl = getBestUrl(videoSet);
               final bestAudioUrl = getBestUrl(audioSet);
-              final userAgent = widget.platform.api.userAgent;
+              final userAgent = widget.platform.api.savedOrDefaultUserAgent;
               final videoPath = await downloadMediaToTemp(bestVideoUrl, userAgent);
               final audioPath = await downloadMediaToTemp(bestAudioUrl, userAgent);
               final tempDir = await getTemporaryDirectory();

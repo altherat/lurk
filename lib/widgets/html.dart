@@ -222,7 +222,7 @@ class _Image extends StatelessWidget {
       alignment: Alignment.topLeft,
       child: ExtendedImage.network(
         url,
-        headers: {'User-Agent': platform.api.userAgent},
+        headers: {'User-Agent': platform.api.savedOrDefaultUserAgent},
         cacheHeight: (maxHeight * MediaQuery.devicePixelRatioOf(context)).round(),
         fit: BoxFit.contain,
         loadStateChanged: (state) {

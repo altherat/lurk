@@ -1,10 +1,12 @@
-import 'dart:io';
+
+import 'dart:io' as io;
 
 import 'package:drift/native.dart';
 import 'package:drift_flutter/drift_flutter.dart';
 import 'package:flutter/foundation.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/database/tables/communities.dart';
+import 'package:lurk/core/database/tables/cookies.dart';
 import 'package:lurk/core/database/tables/history.dart';
 import 'package:lurk/core/database/tables/settings.dart';
 import 'package:lurk/core/database/tables/users.dart';
@@ -18,7 +20,7 @@ import 'package:drift/drift.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [Settings, Users, Communities, History])
+@DriftDatabase(tables: [Cookies, Settings, Users, Communities, History])
 class Database extends _$Database {
 
   static Database instance = Database._();
@@ -51,7 +53,7 @@ class Database extends _$Database {
     if (kDebugMode) {
       return LazyDatabase(() async {
         final dbFolder = await getApplicationSupportDirectory();
-        final file = File(p.join(dbFolder.path, '${Constants.databaseName}.sqlite'));
+        final file = io.File(p.join(dbFolder.path, '${Constants.databaseName}.sqlite'));
         return NativeDatabase(file);
       });
     }
@@ -59,6 +61,27 @@ class Database extends _$Database {
       name: Constants.databaseName,
       native: const DriftNativeOptions(databaseDirectory: getApplicationSupportDirectory),
     );
+  }
+
+  Future<List<Cookie>> getAllValidCookies() {
+    final now = DateTime.now();
+    return (
+      select(cookies)
+        ..where((cookie) => cookie.expirationTime.isNull() | cookie.expirationTime.isBiggerThanValue(now))
+    ).get();
+  }
+
+  Future<void> saveCookies(Iterable<Cookie> cookieList) async {
+    await batch((batch) {
+      batch.insertAllOnConflictUpdate(
+        cookies, // This is your table getter
+        cookieList.map((c) => CookiesCompanion.insert(
+              key: c.key,
+              value: c.value,
+              expirationTime: Value(c.expirationTime),
+            )),
+      );
+    });
   }
 
   Future<Setting> getAllSettings() => select(settings).getSingle();
@@ -113,6 +136,20 @@ class Database extends _$Database {
       ),
       mode: InsertMode.insertOrReplace
     );
+  }
+
+  Future<void> saveAllCommunities(Iterable<Community> communities) {
+    return batch((batch) {
+      batch.insertAll(
+        this.communities, 
+        communities.map((community) => CommunitiesCompanion.insert(
+          platform: community.platform,
+          name: community.name,
+          isFavorite: Value(community.isFavorite),
+        )).toList(),
+        mode: InsertMode.insertOrReplace,
+      );
+    });
   }
 
   Future<void> deleteCommunity(Community community) {

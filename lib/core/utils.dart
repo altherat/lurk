@@ -387,7 +387,7 @@ Future<void> saveImage({
   platform: platform,
   snackbarMediaTypeMessage: 'image',
   save: () async {
-    final filePath = await downloadMediaToTemp(url, platform.api.userAgent);
+    final filePath = await downloadMediaToTemp(url, platform.api.savedOrDefaultUserAgent);
     await Gal.putImage(filePath);
   }
 );
@@ -401,7 +401,7 @@ Future<void> saveVideo({
   platform: platform,
   snackbarMediaTypeMessage: 'video',
   save: () async {
-    final filePath = await downloadMediaToTemp(url, platform.api.userAgent);
+    final filePath = await downloadMediaToTemp(url, platform.api.savedOrDefaultUserAgent);
     await Gal.putVideo(filePath);
   }
 );

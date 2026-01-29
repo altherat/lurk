@@ -12,13 +12,10 @@ abstract class Api {
 
   const Api();
 
-  String get userAgent => Settings.customUserAgent.value ?? defaultUserAgent;
+  String get savedOrDefaultUserAgent => Settings.customUserAgent.value ?? defaultUserAgent;
 
   @protected
   String get defaultUserAgent;
-
-  @protected
-  Map<String, String> get defaultHeaders;
 
   @protected
   String get baseUrl;
@@ -34,11 +31,7 @@ abstract class Api {
     try {
       final request = await client.getUrl(Uri.parse(url));
       request.followRedirects = false; 
-      request.headers.set('User-Agent', userAgent);
-      headers.forEach((key, value) {
-        request.headers.set(key, value);
-      });
-
+      request.headers.set('User-Agent', savedOrDefaultUserAgent);
       final response = await request.close();
       if (response.statusCode == 301) {
         return response.headers.value('location');
@@ -53,14 +46,6 @@ abstract class Api {
     return null;
   }
 
-  @protected
-  Map<String, String> get headers {
-    return {
-      'User-Agent': userAgent,
-      ...defaultHeaders
-    };
-  }
-
   Future<PagedResult<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
   Future<PostDetails> getPostDetailsFromUrl(String url, {Map<FeedOptionType, FeedOption>? options});
   Future<PostDetails> getPostDetailsFromId(String id, {String? commentId, Map<FeedOptionType, FeedOption>? options});
@@ -69,6 +54,10 @@ abstract class Api {
   Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
   Future<PagedResult<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
 
+  Future<String?> login();
+  Future<String> logout();
+  Future<LoggedInUser> getLoggedInUser();
+  Future<List<String>> getSubscribedCommunityNames();
   Future<void> vote(String id, bool? up);
 
 }

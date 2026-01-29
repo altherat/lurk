@@ -37,7 +37,7 @@ class ImageViewerScreen extends StatelessWidget {
       body: SizedBox.expand(
         child: ExtendedImage.network(
           url,
-          headers: {'User-Agent': platform.api.userAgent},
+          headers: {'User-Agent': platform.api.savedOrDefaultUserAgent},
           fit: BoxFit.fitWidth,
           alignment: Alignment.topCenter,
           mode: ExtendedImageMode.gesture,

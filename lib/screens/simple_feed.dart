@@ -6,6 +6,7 @@ import 'package:lurk/widgets/centered_full_height_scroll_view.dart';
 import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
+import 'package:lurk/widgets/large_message.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 
 class SimpleFeedScreen<R extends FeedResponse<T>, T> extends StatefulWidget {
@@ -117,6 +118,7 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
   String? _pageToken;
   bool _isLoadingItems = true;
   bool _isLoadingMoreItems = false;
+  bool _isError = false;
 
   @override
   void initState() {
@@ -161,10 +163,13 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
     }
     catch (e) {
       debugPrint('Error fetching feed: $e');
-      rethrow;
       if (mounted) {
-        setState(() => _isLoadingItems = false);
+        setState(() {
+          _isLoadingItems = false;
+          _isError = true;
+        });
       }
+      rethrow;
     }
   }
 
@@ -200,51 +205,64 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
       return CenteredLargeCircularProgressIndicator(platform: widget.platform);
     }
     final headers = widget.headersBuilder?.call(context, _response) ?? [];
+    final Widget child;
+    if (_isError) {
+      child = CenteredFullHeightScrollView(
+        child: const LargeMessage(
+          icon: Icons.feed_outlined,
+          message: 'Something went wrong'
+        )
+      );
+    }
+    else if (_isLoadingItems) {
+      child = CenteredFullHeightScrollView(
+        headers: headers,
+        child: widget.noItemsBuilder(context)
+      );
+    }
+    else {
+      child = NotificationListener<ScrollNotification>(
+        onNotification: (ScrollNotification scrollInfo) {
+          if (!_isLoadingMoreItems && _pageToken != null && scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+            _getMore();
+          }
+          return false;
+        },
+        child: Scrollbar(
+          child: ListView.builder(
+            padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
+            itemCount: headers.length + (_pageToken != null ? _items.length + 1 : _items.length),
+            itemBuilder: (context, index) {
+              if (index < headers.length) {
+                return headers[index];
+              }
+              final itemIndex = index - headers.length;
+              if (_pageToken != null && itemIndex == _items.length) {
+                return Padding(
+                  padding: EdgeInsets.all(16),
+                  child: Center(
+                    child: SizedBox(
+                      width: 24,
+                      height: 24,
+                      child: CustomCircularProgressIndicator(
+                        platform: widget.platform,
+                        strokeWidth: 3
+                      )
+                    )
+                  ),
+                );
+              }
+              return widget.itemBuilder(context, _items[itemIndex]) ?? const SizedBox.shrink();
+            }
+          )
+        ),
+    );
+    }
     return CustomRefreshIndicator(
       platform: widget.platform,
       flutterRefreshIndicatorKey: _refreshIndicatorKey,
       onRefresh: _get,
-      child: _items.isEmpty
-        ? CenteredFullHeightScrollView(
-            headers: headers,
-            child: widget.noItemsBuilder(context)
-          )
-        : NotificationListener<ScrollNotification>(
-            onNotification: (ScrollNotification scrollInfo) {
-              if (!_isLoadingMoreItems && _pageToken != null && scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
-                _getMore();
-              }
-              return false;
-            },
-            child: Scrollbar(
-              child: ListView.builder(
-                padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
-                itemCount: headers.length + (_pageToken != null ? _items.length + 1 : _items.length),
-                itemBuilder: (context, index) {
-                  if (index < headers.length) {
-                    return headers[index];
-                  }
-                  final itemIndex = index - headers.length;
-                  if (_pageToken != null && itemIndex == _items.length) {
-                    return Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Center(
-                        child: SizedBox(
-                          width: 24,
-                          height: 24,
-                          child: CustomCircularProgressIndicator(
-                            platform: widget.platform,
-                            strokeWidth: 3
-                          )
-                        )
-                      ),
-                    );
-                  }
-                  return widget.itemBuilder(context, _items[itemIndex]) ?? const SizedBox.shrink();
-                }
-              )
-            ),
-        )
+      child: child
     );
   }
 

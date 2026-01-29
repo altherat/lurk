@@ -158,7 +158,7 @@ class PostTile extends StatelessWidget {
                     child: post.thumbnailUrl != null
                         ? ExtendedImage.network(
                             post.thumbnailUrl!,
-                            headers: {'User-Agent': post.community.platform.api.userAgent},
+                            headers: {'User-Agent': post.community.platform.api.savedOrDefaultUserAgent},
                             cacheWidth: thumbnailSize * MediaQuery.devicePixelRatioOf(context).round(),
                             fit: BoxFit.cover,
                             loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed ? const Icon(Icons.broken_image_rounded) : null

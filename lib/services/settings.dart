@@ -24,6 +24,7 @@ class Settings {
   static late final SettingNotifier<bool> redditCopyOldRedditLinks;
   static late final SettingNotifier<String?> redditClientId;
   static late final SettingNotifier<String?> redditRedirectUri;
+  static late final Setting<String?> redditDeviceId;
   
   static late final SettingNotifier<int> diggPostsFetchDepth;
 
@@ -31,11 +32,10 @@ class Settings {
 
   static late final Setting<SearchType?> searchType;
 
-  static late final RelationalListSettingNotifier<LoggedInUser> loggedInUsers;
-
   static late final RelationalListSettingNotifier<Community> communities;
 
   static late final SettingNotifier<LoggedInUser?> activeUser;
+  static late final RelationalListSettingNotifier<LoggedInUser> loggedInUsers;
 
   static bool isInitialized = false;
 
@@ -55,21 +55,23 @@ class Settings {
     redditCopyOldRedditLinks = SettingNotifier(dbSettings.redditCopyOldRedditLinks, (value) => SettingsCompanion(redditCopyOldRedditLinks: Value(value)), Constants.defaultRedditCopyOldRedditLinks);
     redditClientId = SettingNotifier(dbSettings.redditClientId, (value) => SettingsCompanion(redditClientId: Value(value)));
     redditRedirectUri = SettingNotifier(dbSettings.redditRedirectUri, (value) => SettingsCompanion(redditRedirectUri: Value(value)));
+    redditDeviceId = Setting(dbSettings.redditDeviceId, (value) => SettingsCompanion(redditDeviceId: Value(value)));
     diggPostsFetchDepth = SettingNotifier(dbSettings.diggPostsFetchDepth, (value) => SettingsCompanion(diggPostsFetchDepth: Value(value)), Constants.defaultDiggPostsFetchDepth);
     customUserAgent = SettingNotifier(dbSettings.userAgent, (value) => SettingsCompanion(userAgent: Value(value)));
     searchType = Setting(dbSettings.searchType, (value) => SettingsCompanion(searchType: Value(value)));
+    communities = RelationalListSettingNotifier<Community>(
+      dbCommunities,
+      save: db.saveCommunity,
+      saveAll: db.saveAllCommunities,
+      delete: db.deleteCommunity,
+    );
+    final activeUserId = dbSettings.activeUserId;
+    activeUser = SettingNotifier(activeUserId != null ? loggedInUsers.value.firstWhere((user) => user.id == activeUserId) : null, (user) => SettingsCompanion(activeUserId: Value(user?.id)));
     loggedInUsers = RelationalListSettingNotifier(
       dbLoggedInUseres,
       save: db.saveLoggedInUser,
       delete: db.deleteLoggedInUser
     );
-    communities = RelationalListSettingNotifier<Community>(
-      dbCommunities,
-      save: db.saveCommunity,
-      delete: db.deleteCommunity,
-    );
-    final activeUserId = dbSettings.activeUserId;
-    activeUser = SettingNotifier(activeUserId != null ? loggedInUsers.value.firstWhere((user) => user.id == activeUserId) : null, (user) => SettingsCompanion(activeUserId: Value(user?.id)));
     isInitialized = true;
   }
 
@@ -133,61 +135,22 @@ class SettingNotifier<T> extends ValueNotifier<T> {
   
 }
 
-class RelationalListSetting<T> {
-
-  List<T> _value;
-  final Future<void> Function(T) save;
-  final Future<void> Function(T) delete;
-
-  RelationalListSetting(
-    List<T> initialValue, {
-    required this.save,
-    required this.delete,
-  }) : _value = List.unmodifiable(initialValue);
-
-  List<T> get value => _value;
-
-  Future<void> add(T item) async {
-    if (_value.contains(item)) return;
-    _value = List.unmodifiable([..._value, item]);
-    await save(item);
-  }
-
-  Future<void> remove(T item) async {
-    if (!_value.contains(item)) return;
-    _value = List.unmodifiable(_value.where((x) => x != item));
-    await delete(item);
-  }
-
-  Future<void> update(T item) async {
-    final index = _value.indexOf(item);
-    if (index != -1) {
-      final newList = List<T>.from(_value);
-      newList[index] = item;
-      _value = List.unmodifiable(newList);
-      await save(item);
-    }
-  }
-
-  void sort(int Function(T a, T b) compare) {
-    final newList = List<T>.from(_value);
-    newList.sort(compare);
-    _value = List.unmodifiable(newList);
-  }
-
-}
-
 class RelationalListSettingNotifier<T> extends ChangeNotifier implements ValueListenable<List<T>> {
 
   List<T> _value;
-  final Future<void> Function(T) save;
-  final Future<void> Function(T) delete;
+  final Future<void> Function(T item) _save;
+  final Future<void> Function(Iterable<T> items)? _saveAll;
+  final Future<void> Function(T item) _delete;
 
   RelationalListSettingNotifier(
     List<T> initialValue, {
-    required this.save,
-    required this.delete,
-  }) : _value = List.unmodifiable(initialValue);
+    required Future<void> Function(T) save,
+    Future<void> Function(Iterable<T> items)? saveAll,
+    required Future<void> Function(T) delete,
+  }) :  _value = List.unmodifiable(initialValue),
+        _save = save,
+        _saveAll = saveAll,
+        _delete = delete;
 
   @override
   List<T> get value => _value;
@@ -196,14 +159,22 @@ class RelationalListSettingNotifier<T> extends ChangeNotifier implements ValueLi
     if (_value.contains(item)) return;
     _value = List.unmodifiable([..._value, item]);
     notifyListeners();
-    await save(item);
+    await _save(item);
+  }
+
+  Future<void> addAll(Iterable<T> items) async {
+    final newItems = items.where((item) => !_value.contains(item)).toList();
+    if (newItems.isEmpty) return;
+    _value = List.unmodifiable([..._value, ...newItems]);
+    notifyListeners();
+    await _saveAll?.call(newItems);
   }
 
   Future<void> remove(T item) async {
     if (!_value.contains(item)) return;
     _value = List.unmodifiable(_value.where((x) => x != item));
     notifyListeners();
-    await delete(item);
+    await _delete(item);
   }
 
   Future<void> update(T item) async {
@@ -213,7 +184,7 @@ class RelationalListSettingNotifier<T> extends ChangeNotifier implements ValueLi
       newList[index] = item;
       _value = List.unmodifiable(newList);
       notifyListeners();
-      await save(item);
+      await _save(item);
     }
   }
 

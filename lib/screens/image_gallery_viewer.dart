@@ -72,7 +72,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
           snackbarMediaTypeMessage: '$count images',
           save: () async {
             for (final url in _post.galleryImageUrls) {
-              final filePath = await downloadMediaToTemp(url, widget.platform.api.userAgent);
+              final filePath = await downloadMediaToTemp(url, widget.platform.api.savedOrDefaultUserAgent);
               await Gal.putImage(filePath);
             }
           },
@@ -109,7 +109,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
             children: [
               ExtendedImage.network(
                 url,
-                headers: {'User-Agent': widget.platform.api.userAgent},
+                headers: {'User-Agent': widget.platform.api.savedOrDefaultUserAgent},
                 fit: BoxFit.fitWidth,
                 mode: ExtendedImageMode.gesture,
                 cacheWidth: (MediaQuery.of(context).size.width * MediaQuery.of(context).devicePixelRatio).toInt(),
