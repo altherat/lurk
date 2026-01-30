@@ -19,7 +19,8 @@ class Comment extends CommentItem {
   final String id;
   final String permalink;
   final bool isDeleted;
-  final String? author;
+  final String? authorId;
+  final String? authorName;
   final bool isModerator;
   final bool isSubmitter;
   final int? score;
@@ -36,7 +37,8 @@ class Comment extends CommentItem {
     required this.id,
     required this.permalink,
     required this.isDeleted,
-    required this.author,
+    required this.authorId,
+    required this.authorName,
     required this.isModerator,
     required this.isSubmitter,
     required this.score,

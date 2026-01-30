@@ -12,7 +12,7 @@ import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
-import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
+import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
@@ -192,8 +192,8 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 final stackTrace = await session.getFailStackTrace();
                 // final logs = await session.getLogs();
                 // final errorLog = logs.isNotEmpty ? logs.map((l) => l.getMessage()).join('\n') : "Unknown FFmpeg error";
-                // debugPrint('FFmpeg error Log:\n$errorLog');
-                // debugPrint(stackTrace.toString());
+                // dev.log('FFmpeg error Log:\n$errorLog');
+                // dev.log(stackTrace.toString());
                 throw Exception(stackTrace);
               }
             }
@@ -221,7 +221,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 ),
               ),
             if (!_isInitialized)
-              CenteredLargeCircularProgressIndicator(platform: widget.platform)
+              LargeCenteredCircularProgressIndicator(platform: widget.platform)
             else ...[
               Positioned(
                 bottom: 0,
@@ -373,7 +373,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
                 valueListenable: _videoController,
                 builder: (context, VideoPlayerValue value, child) {
                   return value.isBuffering
-                      ? const CenteredLargeCircularProgressIndicator()
+                      ? LargeCenteredCircularProgressIndicator(platform: widget.platform)
                       : const SizedBox.shrink();
                 },
               )

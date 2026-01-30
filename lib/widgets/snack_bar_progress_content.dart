@@ -81,7 +81,7 @@ class _SnackBarProgressContentState extends State<SnackBarProgressContent> {
         child: SizedBox(
           width: 24,
           height: 24,
-          child: CustomCircularProgressIndicator(
+          child: PlatformCircularProgressIndicator(
             platform: widget.platform,
             strokeWidth: 3,
           ),

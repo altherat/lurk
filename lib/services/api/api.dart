@@ -1,3 +1,4 @@
+import 'dart:developer' as dev;
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
@@ -38,7 +39,7 @@ abstract class Api {
       }
     }
     catch (e) {
-      debugPrint('Error resolving url: $url');
+      dev.log('Error resolving url: $url');
     }
     finally {
       client.close();
@@ -50,7 +51,7 @@ abstract class Api {
   Future<PostDetails> getPostDetailsFromUrl(String url, {Map<FeedOptionType, FeedOption>? options});
   Future<PostDetails> getPostDetailsFromId(String id, {String? commentId, Map<FeedOptionType, FeedOption>? options});
   Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? depth, Map<FeedOptionType, FeedOption>? options});
-  UserDetailsResponse getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options});
+  FeedResponse<dynamic, List<UserStat>> getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options});
   Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
   Future<PagedResult<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
 
@@ -59,6 +60,8 @@ abstract class Api {
   Future<LoggedInUser> getLoggedInUser();
   Future<List<String>> getSubscribedCommunityNames();
   Future<void> vote(String id, bool? up);
+  Future<void> postComment(String id, String text);
+  Future<void> deleteComment(String id);
 
 }
 
@@ -74,11 +77,15 @@ class PagedResult<T> {
   
 }
 
-abstract class FeedResponse<T> {
+class FeedResponse<T, U> {
 
   final Future<PagedResult<T>> items;
+  final Future<U>? other;
 
-  const FeedResponse({required this.items});
+  const FeedResponse({
+    required this.items,
+    this.other
+  });
 
 }
 

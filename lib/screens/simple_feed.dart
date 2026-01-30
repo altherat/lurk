@@ -1,26 +1,28 @@
+import 'dart:developer' as dev;
+
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/utils.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/widgets/centered_full_height_scroll_view.dart';
-import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
-import 'package:lurk/widgets/large_message.dart';
+import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 
-class SimpleFeedScreen<R extends FeedResponse<T>, T> extends StatefulWidget {
+class SimpleFeedScreen<T, U> extends StatefulWidget {
 
   final GlobalKey<ScaffoldState>? scaffoldKey;
   final Platform platform;
   final String? activeCommunityName;
   final FeedOptionsGroup? feedOptions;
   final bool showDefaultFeedOptionsInSubtitle;
-  final R Function(Map<FeedOptionType, FeedOption>? feedOptions)? getAll;
+  final FeedResponse<T, U> Function(Map<FeedOptionType, FeedOption>? feedOptions)? getAll;
   final Future<PagedResult<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) getItems;
   final Widget title;
   final Widget? subtitle;
-  final List<Widget> Function(BuildContext context, R? response)? headersBuilder;
+  final List<Widget> Function(BuildContext context, LoadingState loadingState, U? otherData)? headersBuilder;
   final Widget? Function(BuildContext context, T item) itemBuilder;
   final Widget Function(BuildContext context) noItemsBuilder;
 
@@ -41,11 +43,11 @@ class SimpleFeedScreen<R extends FeedResponse<T>, T> extends StatefulWidget {
   });
 
   @override
-  State<SimpleFeedScreen<R, T>> createState() => _SimpleFeedScreenState<R, T>();
+  State<SimpleFeedScreen<T, U>> createState() => _SimpleFeedScreenState<T, U>();
 
 }
 
-class _SimpleFeedScreenState<R extends FeedResponse<T>, T> extends State<SimpleFeedScreen<R, T>> {
+class _SimpleFeedScreenState<T, U> extends State<SimpleFeedScreen<T, U>> {
 
   final _contentKey = GlobalKey<_ContentState>();
   Map<FeedOptionType, FeedOption>? _feedOptions;
@@ -67,7 +69,7 @@ class _SimpleFeedScreenState<R extends FeedResponse<T>, T> extends State<SimpleF
           _feedOptions = mapEquals(options, widget.feedOptions!.defaults) ? null : options;
         });
       },
-      body: _Content<R, T>(
+      body: _Content<T, U>(
         key: _contentKey,
         platform: widget.platform,
         feedOptions: _feedOptions,
@@ -83,13 +85,13 @@ class _SimpleFeedScreenState<R extends FeedResponse<T>, T> extends State<SimpleF
 
 }
 
-class _Content<R extends FeedResponse<T>, T> extends StatefulWidget {
+class _Content<T, U> extends StatefulWidget {
 
   final Platform platform;
   final Map<FeedOptionType, FeedOption>? feedOptions;
-  final R Function(Map<FeedOptionType, FeedOption>? feedOptions)? getAll;
+  final FeedResponse<T, U> Function(Map<FeedOptionType, FeedOption>? feedOptions)? getAll;
   final Future<PagedResult<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) getItems;
-  final List<Widget> Function(BuildContext context, R? response)? headersBuilder;
+  final List<Widget> Function(BuildContext context, LoadingState loadingState, U? otherData)? headersBuilder;
   final Widget? Function(BuildContext context, T item) itemBuilder;
   final Widget Function(BuildContext context) noItemsBuilder;
 
@@ -105,20 +107,19 @@ class _Content<R extends FeedResponse<T>, T> extends StatefulWidget {
   });
 
   @override
-  State<_Content<R, T>> createState() => _ContentState<R, T>();
+  State<_Content<T, U>> createState() => _ContentState<T, U>();
 
 }
 
-class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> {
+class _ContentState<T, U> extends State<_Content<T, U>> {
 
   final GlobalKey<RefreshIndicatorState> _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
-  R? _response;
 
   List<T> _items = [];
+  U? _otherData;
   String? _pageToken;
-  bool _isLoadingItems = true;
-  bool _isLoadingMoreItems = false;
-  bool _isError = false;
+  LoadingState _loadingState = LoadingState.loading;
+  LoadingState _otherDataLoadingState = LoadingState.loading;
 
   @override
   void initState() {
@@ -127,67 +128,105 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
   }
 
   @override
-  void didUpdateWidget(covariant _Content<R, T> oldWidget) {
+  void didUpdateWidget(covariant _Content<T, U> oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (!mapEquals(widget.feedOptions, oldWidget.feedOptions)) {
-      setState(() {
-        _items.clear();
-        _isLoadingItems = true;
-      });
+      _items.clear();
+      _setLoading();
       _get();
     }
   }
 
-  Future<void> _get() async {
-    if (_items.isEmpty) {
-      setState(() {
-        _isLoadingItems = true;
-      });
-    }
-    try {
-      final PagedResult<T> itemsResult;
-      if (widget.getAll != null) {
-        _response = widget.getAll!(widget.feedOptions);
-        itemsResult = await _response!.items;
-      }
-      else {
-        itemsResult = await widget.getItems(widget.feedOptions, null);
-      }
-      if (mounted) {
-        setState(() {
-          _items = itemsResult.items;
-          _pageToken = itemsResult.pageToken;
-          _isLoadingItems = false;
-        });
-      }
-    }
-    catch (e) {
-      debugPrint('Error fetching feed: $e');
-      if (mounted) {
-        setState(() {
-          _isLoadingItems = false;
-          _isError = true;
-        });
-      }
-      rethrow;
-    }
+  void _setLoading() {
+    setState(() {
+      _loadingState = LoadingState.loading;
+      _otherDataLoadingState = LoadingState.loading;
+    });
   }
 
-  Future<void> _getMore() async {
-    _isLoadingMoreItems = true;
-    try {
-      final response = await widget.getItems(widget.feedOptions, _pageToken);
-      if (mounted) {
+  Future<void> _get() {
+    final List<Future> futures = [];
+    if (widget.getAll != null) {
+      final response = widget.getAll!(widget.feedOptions);
+      futures.add(
+        response.items
+          .then((result) {
+            if (!mounted) return;
+            setState(() {
+              _items = result.items;
+              _pageToken = result.pageToken;
+              _loadingState = LoadingState.success;
+            });
+          })
+          .onError(_onItemsError)
+      );
+      if (response.other != null) {
+        futures.add(
+          response.other!
+            .then((other) {
+              if (!mounted) return;
+              setState(() {
+                _otherData = other;
+                _otherDataLoadingState = LoadingState.success;
+              });
+            })
+            .onError((exception, stackTrace) {
+              if (_onError(exception, stackTrace)) {
+                setState(() {
+                  _otherDataLoadingState = LoadingState.error;
+                });
+              }
+            })
+        );
+      }
+    }
+    else {
+      futures.add(
+        widget.getItems(widget.feedOptions, null)
+          .then((result) {
+            if (!mounted) return;
+            setState(() {
+              _items = result.items;
+              _pageToken = result.pageToken;
+              _loadingState = LoadingState.success;
+            });
+          })
+          .onError(_onItemsError)
+      );
+    }
+    return Future.wait(futures);
+  }
+
+  void _getMore() {
+    _loadingState = LoadingState.loading;
+    widget.getItems(widget.feedOptions, _pageToken)
+      .then((response) {
+        if (!mounted) return;
         setState(() {
           _items.addAll(response.items);
           _pageToken = response.pageToken;
+          _loadingState = LoadingState.success;
         });
+      })
+      .onError(_onItemsError);
+  }
+
+  Future<Null> _onItemsError(dynamic exception, dynamic stackTrace) {
+    if (_onError(exception, stackTrace)) {
+      setState(() {
+        _loadingState = LoadingState.error;
+      });
+      if (_items.isNotEmpty) {
+        context.showSnackBarMessage('Something went wrong');
       }
     }
-    catch (e) {
-      debugPrint('Error fetching more feed: $e');
-    }
-    _isLoadingMoreItems = false;
+    throw exception;
+  }
+
+  bool _onError(dynamic exception, dynamic stackTrace) {
+    dev.log('Error fetching feed: $exception');
+    dev.log(stackTrace.toString());
+    return mounted;
   }
 
   Future<void> _refresh() async {
@@ -201,29 +240,28 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
 
   @override
   Widget build(BuildContext context) {
-    if (_isLoadingItems) {
-      return CenteredLargeCircularProgressIndicator(platform: widget.platform);
-    }
-    final headers = widget.headersBuilder?.call(context, _response) ?? [];
-    final Widget child;
-    if (_isError) {
+    Widget child;
+    if (_items.isEmpty) {
+      if (_otherData == null) {
+        return LargeCenteredCircularProgressIndicator(platform: widget.platform);
+      }
       child = CenteredFullHeightScrollView(
-        child: const LargeMessage(
-          icon: Icons.feed_outlined,
-          message: 'Something went wrong'
-        )
-      );
-    }
-    else if (_isLoadingItems || _items.isEmpty) {
-      child = CenteredFullHeightScrollView(
-        headers: headers,
-        child: widget.noItemsBuilder(context)
+        headers: widget.headersBuilder?.call(context, _otherDataLoadingState, _otherData),
+        child: _loadingState == LoadingState.error
+          ? const LargeVerticalIconMessage(
+              icon: Icons.feed_outlined,
+              message: 'Something went wrong'
+            )
+          : _loadingState == LoadingState.loading
+            ? LargeCenteredCircularProgressIndicator(platform: widget.platform)
+            : widget.noItemsBuilder(context)
       );
     }
     else {
+      final headers = widget.headersBuilder?.call(context, _otherDataLoadingState, _otherData) ?? [];
       child = NotificationListener<ScrollNotification>(
         onNotification: (ScrollNotification scrollInfo) {
-          if (!_isLoadingMoreItems && _pageToken != null && scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+          if (_loadingState != LoadingState.loading && _pageToken != null && scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
             _getMore();
           }
           return false;
@@ -244,7 +282,7 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
                     child: SizedBox(
                       width: 24,
                       height: 24,
-                      child: CustomCircularProgressIndicator(
+                      child: PlatformCircularProgressIndicator(
                         platform: widget.platform,
                         strokeWidth: 3
                       )
@@ -256,14 +294,23 @@ class _ContentState<R extends FeedResponse<T>, T> extends State<_Content<R, T>> 
             }
           )
         ),
-    );
+      );
     }
     return CustomRefreshIndicator(
       platform: widget.platform,
       flutterRefreshIndicatorKey: _refreshIndicatorKey,
-      onRefresh: _get,
+      onRefresh: () {
+        _setLoading();
+        return _get();
+      },
       child: child
     );
   }
 
+}
+
+enum LoadingState {
+  loading,
+  error,
+  success
 }

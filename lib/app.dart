@@ -5,7 +5,7 @@ import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/home.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/services/settings.dart';
-import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
+import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
 
@@ -128,7 +128,7 @@ class _HomeState extends State<_Home> {
             )
           );
         }
-        return const CenteredLargeCircularProgressIndicator();
+        return const LargeCenteredCircularProgressIndicator();
       },
     );
   }

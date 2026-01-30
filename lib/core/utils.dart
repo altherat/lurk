@@ -1,4 +1,5 @@
 import 'dart:io';
+import 'dart:developer' as dev;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -114,7 +115,7 @@ extension BuildContextExtension on BuildContext {
     );
   }
 
-    ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showSnackBar({Duration duration = const Duration(seconds: 4), required Widget content, SnackBarAction? action}) {
+  ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showSnackBar({Duration duration = const Duration(seconds: 4), required Widget content, SnackBarAction? action}) {
     return ScaffoldMessenger.of(this).showSnackBar(
       SnackBar(
         duration: duration,
@@ -144,7 +145,7 @@ class _PageRoute<T> extends MaterialPageRoute<T> {
 Future<void> openInBrowser(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
 Future navigate(BuildContext context, Platform platform, String url, {Post? post}) async {
-  // debugPrint('navigate: $url');
+  dev.log('navigate: $url');
   final uri = Uri.tryParse(url);
   if (uri == null) return;
 

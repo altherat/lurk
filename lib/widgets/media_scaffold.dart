@@ -42,7 +42,6 @@ class MediaScaffold extends StatelessWidget {
       popupMenuActions: options,
       body: GestureDetector(
         onLongPress: () {
-          HapticFeedback.mediumImpact();
           showSimpleTextOptionsBottomSheet(
             context: context,
             options: options

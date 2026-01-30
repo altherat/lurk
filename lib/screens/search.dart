@@ -8,7 +8,7 @@ import 'package:lurk/models/user.dart';
 import 'package:lurk/screens/posts.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/screens/user_details.dart';
-import 'package:lurk/widgets/large_message.dart';
+import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/list_tile_icon.dart';
 import 'package:lurk/widgets/post_tile.dart';
 import 'package:lurk/widgets/user_stats.dart';
@@ -96,7 +96,7 @@ class SearchScreen extends StatelessWidget {
         }
       },
       noItemsBuilder: (context) {
-        return const LargeMessage(
+        return const LargeVerticalIconMessage(
           icon: Icons.feed_outlined,
           message: 'No results'
         );

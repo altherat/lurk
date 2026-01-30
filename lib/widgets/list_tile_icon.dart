@@ -34,7 +34,7 @@ class ListTileIcon extends StatelessWidget {
                 child: SizedBox(
                   width: 24,
                   height: 24,
-                  child: CustomCircularProgressIndicator(
+                  child: PlatformCircularProgressIndicator(
                     platform: platform,
                     strokeWidth: 2.5
                   ),

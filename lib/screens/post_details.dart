@@ -1,3 +1,5 @@
+import 'dart:developer' as dev;
+
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
@@ -6,13 +8,13 @@ import 'package:lurk/models/post.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/centered_full_height_scroll_view.dart';
 import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
-import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/html.dart';
-import 'package:lurk/widgets/large_message.dart';
+import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 import 'package:lurk/widgets/post_tile.dart';
 
@@ -107,7 +109,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
       }
     }
     catch (e) {
-      debugPrint('Error fetching post details: $e');
+      dev.log('Error fetching post details: $e');
       if (mounted) {
         setState(() => _isLoading = false);
       }
@@ -136,15 +138,52 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     setState(() {});
   }
 
+  void _showAddCommentDialog(String id, Widget replyingToWidget) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      useSafeArea: true,
+      builder: (context) {
+        return _AddCommentBottomSheetContent(
+          platform: widget.platform,
+          replyingToId: id,
+          replyingToWidget: replyingToWidget,
+        );
+      }
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final String? title;
+    final List<Widget> iconActions = [];
     final Map<String, VoidCallback> popupMenuActions;
     final RefreshCallback? onRefresh;
     final Widget body;
     if (_post != null) {
       final url = widget.url ?? _post!.url;
       title = _post!.title;
+      iconActions.add(
+        ValueListenableBuilder(
+          valueListenable: Settings.loggedInUsers,
+          builder: (context, loggedInUsers, child) {
+            return IconButton(
+              icon: const Icon(Icons.add_comment_rounded),
+              tooltip: 'Add comment',
+              onPressed: () {
+                _showAddCommentDialog(
+                  _post!.id,
+                  PostTile(
+                    post: _post!,
+                    isInteractable: false,
+                  ),
+                );
+              }
+            );
+          }
+        )
+      );
       popupMenuActions = {
         'View in browser': () => openInBrowser(url),
         'View comments in browser': () => openInBrowser(_post!.community.platform.api.getPostDetailsUrl(_post!)),
@@ -231,14 +270,14 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
         body = Column(
           children: [
             ...headers,
-            Expanded(child: CenteredLargeCircularProgressIndicator(platform: widget.platform))
+            Expanded(child: LargeCenteredCircularProgressIndicator(platform: widget.platform))
           ],
         );
       }
       else if (_visibleComments == null || _visibleComments!.isEmpty) {
         body = CenteredFullHeightScrollView(
           headers: headers,
-          child: LargeMessage(
+          child: const LargeVerticalIconMessage(
             icon: Icons.feed_outlined,
             message: 'No comments'
           )
@@ -264,7 +303,13 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                     isCollapsed: isCollapsed,
                     options: {
                       'Reply': () {
-                        
+                        _showAddCommentDialog(
+                          item.id,
+                          CommentTile(
+                            comment: item,
+                            isInteractable: false,
+                          )
+                        );
                       }
                     },
                     onTap: () {
@@ -276,6 +321,11 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                           _collapsedCommentIds.add(item.id);
                         }
                         _onCommentCollapseChanged();
+                      });
+                    },
+                    onDelete: () {
+                      setState(() {
+                        _visibleComments!.removeAt(index);
                       });
                     }
                   );
@@ -318,12 +368,12 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
       popupMenuActions = const {};
       if (_isLoading) {
         onRefresh = null;
-        body = CenteredLargeCircularProgressIndicator(platform: widget.platform);
+        body = LargeCenteredCircularProgressIndicator(platform: widget.platform);
       }
       else {
         onRefresh = _getPostDetails;
         body = const CenteredFullHeightScrollView(
-          child: LargeMessage(
+          child: LargeVerticalIconMessage(
             icon: Icons.error_outline_rounded,
             message: 'Something went wrong',
           )
@@ -335,6 +385,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
       title: title != null ? Text(title) : null,
       subtitle: _post != null ? Text(_post!.community.prefixedName) : null,
       popupMenuActions: popupMenuActions,
+      iconActions: iconActions,
       feedOptions: widget.platform.postCommentsFeedOptions,
       selectedFeedOptions: _feedOptions,
       useSlivers: true,
@@ -395,7 +446,7 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
           child: SizedBox(
             height: 20,
             width: 20,
-            child: CustomCircularProgressIndicator(
+            child: PlatformCircularProgressIndicator(
               platform: widget.platform,
               strokeWidth: 2.5
             ),
@@ -426,6 +477,110 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
       child: CommentIndent(
         depth: widget.comment.depth,
         child: child
+      ),
+    );
+  }
+
+}
+
+class _AddCommentBottomSheetContent extends StatefulWidget {
+  
+  final Platform platform;
+  final String replyingToId;
+  final Widget replyingToWidget;
+
+  const _AddCommentBottomSheetContent({
+    super.key,
+    required this.platform,
+    required this.replyingToId,
+    required this.replyingToWidget
+  });
+
+  @override
+  State<_AddCommentBottomSheetContent> createState() => _AddCommentBottomSheetContentState();
+
+}
+
+class _AddCommentBottomSheetContentState extends State<_AddCommentBottomSheetContent> {
+
+  final _controller = TextEditingController();
+
+  @override void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
+      child: SingleChildScrollView(
+        child: Column(
+          spacing: 16,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ConstrainedBox(
+              constraints: BoxConstraints(
+                maxHeight: 300,
+              ),
+              child: SingleChildScrollView(
+                child: widget.replyingToWidget,
+              )
+              // child: ShaderMask(
+              //   shaderCallback: (Rect bounds) {
+              //     return const LinearGradient(
+              //       begin: Alignment.topCenter,
+              //       end: Alignment.bottomCenter,
+              //       colors: [Colors.black, Colors.transparent],
+              //       stops: [0.75, 1.0],
+              //     ).createShader(bounds);
+              //   },
+              //   blendMode: BlendMode.dstIn,
+              //   child: SingleChildScrollView(
+              //     padding: const EdgeInsets.only(bottom: 24),
+              //     child: CommentTile(comment: item),
+              //   ),
+              // ),
+            ),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Expanded(
+                  child: TextFormField(
+                    controller: _controller,
+                    autofocus: true,
+                    minLines: 1,
+                    maxLines: 5,
+                    decoration: const InputDecoration(
+                      hintText: 'Type a reply',
+                      border: InputBorder.none,
+                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
+                    ),
+                  ),
+                ),
+                ValueListenableBuilder<TextEditingValue>(
+                  valueListenable: _controller,
+                  builder: (context, value, child) {
+                    final isNotEmpty = value.text.trim().isNotEmpty;
+                    return IconButton(
+                      padding: EdgeInsets.only(right: 16),
+                      onPressed: isNotEmpty
+                        ? () {
+                            context.pop();
+                            widget.platform.api.postComment(widget.replyingToId, _controller.text);
+                          }
+                        : null,
+                      icon: Icon(
+                        Icons.send_rounded,
+                        color: isNotEmpty ? widget.platform.color : Theme.of(context).disabledColor
+                      ),
+                    );
+                  }
+                ),
+              ],
+            )
+          ],
+        ),
       ),
     );
   }

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/widgets/prefixed_community_name.dart';
-import 'package:lurk/widgets/large_message.dart';
+import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
 
 class PostsScreen extends StatefulWidget {
@@ -52,7 +52,7 @@ class _PostsScreenState extends State<PostsScreen> {
         );
       },
       noItemsBuilder: (context) { 
-        return const LargeMessage(
+        return const LargeVerticalIconMessage(
           icon: Icons.feed_outlined,
           message: 'Nothing to show'
         );

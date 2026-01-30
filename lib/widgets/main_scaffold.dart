@@ -97,11 +97,11 @@ class _MainScaffoldState extends State<MainScaffold> {
       showDragHandle: true,
       isScrollControlled: true,
       builder: (context) {
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: SafeArea(
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.only(bottom: 16),
             child: _FeedOptionsSelector(
-              platform: widget.platform!,
+              platform: widget.platform,
               optionsGroup: widget.feedOptions!,
               selected: widget.selectedFeedOptions,
               onSelected: (options) {
@@ -120,22 +120,7 @@ class _MainScaffoldState extends State<MainScaffold> {
     return ValueListenableBuilder(
       valueListenable: Settings.useBottomBar,
       builder: (context, useBottomBar, child) {
-        final List<Widget> actions = [
-          ...widget.iconActions,
-          if (widget.popupMenuActions != null)
-            PopupMenuButton(
-              onSelected: (callback) => callback(),
-              itemBuilder: (context) => [
-                ...widget.popupMenuActions!.entries.map((entry) {
-                  return PopupMenuItem<VoidCallback>(
-                    value: entry.value,
-                    child: Text(entry.key),
-                  );
-                }),
-              ]
-            ),
-        ];
-
+        final List<Widget> actions = widget.iconActions.toList();
         final titleWidget = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -278,48 +263,57 @@ class _MainScaffoldState extends State<MainScaffold> {
                 statusBarIconBrightness: Brightness.light, 
                 statusBarBrightness: Brightness.dark,      
               ),
-              child: SafeArea(
-                top: false,
-                child: Stack(
-                  children: [
-                    Column(children: [
-                      Expanded(
-                        child: _CommunityList(
-                          platform: widget.platform,
-                          activeCommunityName: widget.activeCommunityName,
-                          scaffoldKey: _scaffoldKey,
-                          onActiveCommunitySelected: _scrollToTopAndRefresh
-                        )
-                      ),
-                      _UserList(
+              child: Stack(
+                children: [
+                  Column(children: [
+                    Expanded(
+                      child: _CommunityList(
                         platform: widget.platform,
-                        onLogin: (userName) {
-                          debugPrint('logged in: $userName, $mounted');
-                          if (!mounted || userName == null) return;
-                          context.showSnackBar(
-                            content: Text.rich(
-                              TextSpan(
-                                children: [
-                                  TextSpan(
-                                    text: 'Logged in to ${widget.platform.name.toTitleCase()} as '
-                                  ),
-                                  TextSpan(
-                                    text: userName,
-                                    style: TextStyle(
-                                      color: widget.platform.color,
-                                      fontWeight: FontWeight.bold
-                                    )
-                                  )
-                                ]
-                              )
-                            )
-                          );
-                        },
+                        activeCommunityName: widget.activeCommunityName,
+                        scaffoldKey: _scaffoldKey,
+                        onActiveCommunitySelected: _scrollToTopAndRefresh
                       )
-                    ]),
-                    _Scrim(color: (theme.drawerTheme.backgroundColor ?? theme.canvasColor).withAlpha(Constants.scrimAlpha)),
-                  ],
-                ),
+                    ),
+                    DecoratedBox(
+                      decoration: const BoxDecoration(
+                        border: Border(
+                          top: BorderSide(
+                            color: Constants.lighterBackgroundColor,
+                            width: 1,
+                          ),
+                        ),
+                      ),
+                      child: SafeArea(
+                        top: false,
+                        child: _UserList(
+                          platform: widget.platform,
+                          onLogin: (userName) {
+                            if (!mounted || userName == null) return;
+                            context.showSnackBar(
+                              content: Text.rich(
+                                TextSpan(
+                                  children: [
+                                    TextSpan(
+                                      text: 'Logged in to ${widget.platform.name.toTitleCase()} as '
+                                    ),
+                                    TextSpan(
+                                      text: userName,
+                                      style: TextStyle(
+                                        color: widget.platform.color,
+                                        fontWeight: FontWeight.bold
+                                      )
+                                    )
+                                  ]
+                                )
+                              )
+                            );
+                          },
+                        ),
+                      ),
+                    )
+                  ]),
+                  _Scrim(color: (theme.drawerTheme.backgroundColor ?? theme.canvasColor).withAlpha(Constants.scrimAlpha)),
+                ],
               ),
             )
           );
@@ -330,8 +324,7 @@ class _MainScaffoldState extends State<MainScaffold> {
           );
           bottomBar = null;
           if (widget.feedOptions != null) {
-            actions.insert(
-              0, 
+            actions.add(
               IconButton(
                 icon: const Icon(Icons.sort_rounded),
                 tooltip: 'Filter',
@@ -339,6 +332,21 @@ class _MainScaffoldState extends State<MainScaffold> {
               )
             );
           }
+        }
+        if (widget.popupMenuActions != null) {
+            actions.add(
+              PopupMenuButton(
+                onSelected: (callback) => callback(),
+                itemBuilder: (context) => [
+                  ...widget.popupMenuActions!.entries.map((entry) {
+                    return PopupMenuItem<VoidCallback>(
+                      value: entry.value,
+                      child: Text(entry.key),
+                    );
+                  }),
+                ]
+              )
+            );
         }
 
         PreferredSizeWidget? appBar;
@@ -466,6 +474,12 @@ class _UserListState extends State<_UserList> {
       context: context,
       title: widget.platform.getPrefixedUsername(userName),
       options: {
+        'View profile': () => context.push(() {
+          return UserDetailsScreen(
+            platform: widget.platform,
+            username: userName
+          );
+        }),
         'Logout': widget.platform.api.logout
       }
     );
@@ -690,7 +704,7 @@ class _CommunityListState extends State<_CommunityList> {
   }
 
   void _updateVisibleCommunities() {
-    _visibleCommunities = _searchQuery.isEmpty ? Settings.communities.value : Settings.communities.value.where((community) => community.name?.contains(_searchQuery) ?? false).toList();
+    _visibleCommunities = (_searchQuery.isEmpty ? Settings.communities.value : Settings.communities.value.where((community) => community.name?.contains(_searchQuery) ?? false)).toList();
   }
 
   void _sortVisibleCommunities() {
@@ -849,9 +863,7 @@ class _CommunityListState extends State<_CommunityList> {
                     hintStyle: WidgetStatePropertyAll(TextStyle(color: Colors.white60)),
                     inputFormatters: _searchType != SearchType.all ? [FilteringTextInputFormatter.allow(_searchNameAllowedRegex)] : null,
                     backgroundColor: WidgetStateProperty.all(Constants.lighterBackgroundColor),
-                    side: _isSearchValid ? WidgetStatePropertyAll(
-                      BorderSide(color: accentColor),
-                    ) : null,
+                    side: _isSearchValid && _isSearchBarFocused ? WidgetStatePropertyAll(BorderSide(color: accentColor),) : null,
                     leading: Container(
                       width: 48,
                       height: 48,
@@ -926,7 +938,6 @@ class _CommunityListState extends State<_CommunityList> {
                         _searchController.selection = TextSelection.fromPosition(TextPosition(offset: cleanValue.length));
                       }
                       
-                      debugPrint('$handledPrefix, $cleanValue, $_searchQuery');
                       if (handledPrefix || cleanValue != _searchQuery) {
                         setState(() {
                           _searchQuery = cleanValue;
@@ -1058,7 +1069,6 @@ class _CommunityListState extends State<_CommunityList> {
                       ),
                       onTap: () => _onCommunityTap(community),
                       onLongPress: () {
-                        HapticFeedback.mediumImpact();
                         showSimpleOptionsDialog(
                           context: context,
                           title: community.prefixedName,
@@ -1096,7 +1106,21 @@ class _CommunityListState extends State<_CommunityList> {
             return CustomRefreshIndicator(
               platform: widget.platform,
               edgeOffset: MediaQuery.of(context).padding.top + 56,
-              onRefresh: widget.platform.api.getSubscribedCommunityNames,
+              onRefresh: () async {
+                final List<Community> subcscribedCommunities = [];
+                for (var platform in F.appFlavor.platforms) {
+                  if (platform.api.hasLogin) {
+                    final subscribedCommunityNames = await widget.platform.api.getSubscribedCommunityNames();
+                    subscribedCommunityNames.map((name) {
+                      return Community(
+                        platform: Platform.reddit,
+                        name: name
+                      );
+                    });
+                  }
+                }
+                Settings.communities.addAll(subcscribedCommunities);
+              },
               child: listView
             );
           }

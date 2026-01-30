@@ -6,13 +6,12 @@ import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/post.dart';
-import 'package:lurk/models/user.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/services/history.dart';
-import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 import 'package:lurk/widgets/comment_tile.dart';
-import 'package:lurk/widgets/large_message.dart';
+import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/collection_listenable_builder.dart';
 import 'package:lurk/widgets/post_tile.dart';
 import 'package:lurk/widgets/user_stats.dart';
@@ -53,20 +52,31 @@ class UserDetailsScreen extends StatelessWidget {
           );
         }
       ),
-      headersBuilder: (context, response) {
-        if (response == null) return const [SizedBox.shrink()];
+      headersBuilder: (context, loadingState, stats) {
+        if (loadingState == LoadingState.error) {
+          return [
+            Container(
+              alignment: Alignment.center,
+              padding: const EdgeInsets.all(16),
+              child: HorizontalIconMessage(
+                icon: Icons.warning_amber_rounded,
+                message: 'Failed to load user profile',
+              ),
+            )
+          ];
+        }
+        if (stats == null) {
+          return [
+            CustomCircularProgressIndicator(
+              platform: platform,
+              padding: const EdgeInsets.all(16),
+            )
+          ];
+        }
         return [
-          FutureBuilder(
-            future: response.stats,
-            builder: (BuildContext context, AsyncSnapshot<List<UserStat>> snapshot) { 
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return CenteredLargeCircularProgressIndicator(platform: platform);
-              }
-              return UserStats(
-                stats: snapshot.data!,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-              );
-            },
+          UserStats(
+            stats: stats,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
           )
         ];
       },
@@ -124,7 +134,7 @@ class UserDetailsScreen extends StatelessWidget {
         }
       },
       noItemsBuilder: (context) {
-        return const LargeMessage(
+        return const LargeVerticalIconMessage(
           icon: Icons.feed_outlined,
           message: 'Nothing to show'
         );

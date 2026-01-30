@@ -32,7 +32,7 @@ class CustomRefreshIndicator extends StatelessWidget {
           color: showPlatformColorAccents ? platform.color : null,
           notificationPredicate: onRefresh != null ? defaultScrollNotificationPredicate : (notification) => false,
           onRefresh: () async {
-            onRefresh?.call();
+            await onRefresh?.call();
           },
           child: this.child,
         );

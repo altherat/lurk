@@ -297,7 +297,7 @@ class DiggApi extends Api {
   }
 
   @override
-  UserDetailsResponse getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
+  FeedResponse<dynamic, List<UserStat>> getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
     // dev.log('[Digg] getUserDetails: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}]');
     final UserFeedType type = options?[FeedOptionType.type]?.id ?? Platform.digg.userFeedOptions.options.first.id;
     final FeedOption? sort = options?[FeedOptionType.sort];
@@ -375,9 +375,9 @@ class DiggApi extends Api {
         );
         
         final responseFuture = _client.query(queryOptions);
-        return UserDetailsResponse(
-          stats: responseFuture.then((response) => _parseUserStats(response.data!['accounts']['edges'].first['node'])),
-          items: responseFuture.then((response) => _parsePostsResult(response.data!))
+        return FeedResponse(
+          items: responseFuture.then((response) => _parsePostsResult(response.data!)),
+          other: responseFuture.then((response) => _parseUserStats(response.data!['accounts']['edges'].first['node'])),
         );
       case UserFeedType.comments:
         final gql.QueryOptions queryOptions = gql.QueryOptions(
@@ -407,6 +407,9 @@ class DiggApi extends Api {
                     createdDate
                     deletedDate
                     commentCount
+                    author {
+                      username
+                    }
                     post {
                       title
                       community {
@@ -446,8 +449,7 @@ class DiggApi extends Api {
         );
         
         final responseFuture = _client.query(queryOptions);
-        return UserDetailsResponse(
-          stats: responseFuture.then((response) => _parseUserStats(response.data!['accounts']['edges'].first['node'])),
+        return FeedResponse(
           items: responseFuture.then((response) {
             final comments = response.data!['comments'];
             final pageInfo = comments['pageInfo'];
@@ -455,7 +457,8 @@ class DiggApi extends Api {
               items: (comments['edges'] as List).map((edge) => _parseComment(edge['node'])).toList(),
               pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
             );
-          })
+          }),
+          other: responseFuture.then((response) => _parseUserStats(response.data!['accounts']['edges'].first['node'])),
         );
       case _:
         throw UnimplementedError();
@@ -544,6 +547,9 @@ class DiggApi extends Api {
                     createdDate
                     deletedDate
                     commentCount
+                    author {
+                      username
+                    }
                     post {
                       title
                       community {
@@ -776,6 +782,15 @@ class DiggApi extends Api {
   Future<void> vote(String id, bool? up) {
     throw UnimplementedError();
   }
+  @override
+  Future<void> postComment(String id, String text) {
+    throw UnimplementedError();
+  }
+  
+  @override
+  Future<void> deleteComment(String id) {
+    throw UnimplementedError();
+  }
 
   Future<PagedResult<Post>> _getPostsRecursive(Map<String, dynamic> variables, {List<Post>? accumulatedPosts, int depth = 0}) async {
     // dev.log('[Digg] _getPostsRecursive: variables=[${variables.entries.map((entry) => '${entry.key}=${entry.value}').join(', ')}], posts=${accumulatedPosts?.length}, depth=$depth');
@@ -992,17 +1007,20 @@ class DiggApi extends Api {
     final idSecondLastDash = id.lastIndexOf('-', idLastDashIndex - 1);
     final commentId = id.substring(idLastDashIndex + 1);
 
+    final String? authorId;
+    final String? authorName;
     final bool isSubmitter;
-    final String? authorUsername;
     final String? postTitle;
     final String? communityName;
     if (author != null) {
-      isSubmitter = author['_id'] == postAuthorId;
-      authorUsername = author['username'];
+      authorId = author['_id'];
+      authorName = author['username'];
+      isSubmitter = authorId == postAuthorId;
     }
     else {
+      authorId = null;
+      authorName = null;
       isSubmitter = false;
-      authorUsername = null;
     }
 
     if (postData != null) {
@@ -1031,7 +1049,8 @@ class DiggApi extends Api {
       id: id,
       permalink: '/${id.substring(0, idSecondLastDash)}/${id.substring(idSecondLastDash + 1, idLastDashIndex)}/comment/$commentId',
       isDeleted: data['deletedDate'] != null,
-      author: authorUsername,
+      authorId: null,
+      authorName: authorName,
       isModerator: false,
       isSubmitter: isSubmitter,
       score: data['score'],

@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
-import 'package:lurk/widgets/large_message.dart';
+import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
-import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 
 class ImageViewerScreen extends StatelessWidget {
 
@@ -55,12 +55,12 @@ class ImageViewerScreen extends StatelessWidget {
           loadStateChanged: (state) {
             switch (state.extendedImageLoadState) {
               case LoadState.loading:
-                return CenteredLargeCircularProgressIndicator(platform: platform);
+                return LargeCenteredCircularProgressIndicator(platform: platform);
               case LoadState.completed:
                 return state.completedWidget;
               case LoadState.failed:
                 return const Center(
-                  child: LargeMessage(
+                  child: LargeVerticalIconMessage(
                     icon: Icons.broken_image_rounded,
                     message: 'Something went wrong'
                   )

@@ -4,6 +4,7 @@ import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/screens/user_details.dart';
+import 'package:lurk/services/settings.dart';
 import 'package:lurk/services/votes.dart';
 import 'package:lurk/widgets/collection_listenable_builder.dart';
 import 'package:lurk/widgets/html.dart';
@@ -14,11 +15,13 @@ class CommentTile extends StatelessWidget {
   final Comment comment;
   final int depth;
   final bool isCollapsed;
+  final bool isInteractable;
   final bool showCommunityName;
   final bool showViewUserOption;
   final Map<String, Function()>? options;
   final Widget? header;
   final VoidCallback? onTap;
+  final VoidCallback? onDelete;
   
   const CommentTile({
     super.key,
@@ -26,15 +29,58 @@ class CommentTile extends StatelessWidget {
     required this.comment,
     this.depth = 0,
     this.isCollapsed = false,
+    this.isInteractable = true,
     this.showCommunityName = false,
     this.showViewUserOption = true,
     this.options,
     this.header,
-    this.onTap
+    this.onTap,
+    this.onDelete
   });
 
   @override
   Widget build(BuildContext context) {
+    final interactionCallback = isInteractable
+      ? () {
+          final activeUser = Settings.activeUser.value;
+          debugPrint('test: ${activeUser?.id}, ${comment.authorId}');
+          showSimpleTextOptionsBottomSheet(
+            context: context,
+            title: '${comment.authorName == null ? 'Deleted' : comment.authorName!.toPosessive()} comment',
+            options: {
+              if (activeUser != null && activeUser.id == comment.authorId)
+                'Delete comment': () {
+                  onDelete?.call();
+                  comment.platform.api.deleteComment(comment.id);
+                },
+              ...?options,
+              if (showViewUserOption && comment.authorName != null)
+                'View ${comment.platform.userPrefix}${comment.authorName}': () {
+                  context.push(
+                    () => UserDetailsScreen(
+                      platform: comment.platform,
+                      username: comment.authorName!
+                    )
+                  );
+                },
+              if (comment.text != null)
+                'Copy text': () => copyToClipboard(comment.text!),
+              'Copy link': () => copyToClipboard(comment.platform.api.getCommentUrl(comment)),
+            }
+          );
+        }
+      : null;
+    final VoidCallback? onTap;
+    final VoidCallback? onLongPress;
+    if (this.onTap == null) {
+      onTap = interactionCallback;
+      onLongPress = null;
+    }
+    else {
+      onTap = this.onTap;
+      onLongPress = interactionCallback;
+    }
+
     final String? authorTag;
     final Color authorColor;
     if (comment.isModerator) {
@@ -84,7 +130,7 @@ class CommentTile extends StatelessWidget {
                       ),
                     ),
                   TextSpan(
-                    text: !comment.isDeleted && comment.author != null ? comment.author : '[deleted]',
+                    text: !comment.isDeleted && comment.authorName != null ? comment.authorName : '[deleted]',
                     style: TextStyle(
                       fontWeight: FontWeight.bold,
                       color: authorColor
@@ -124,28 +170,7 @@ class CommentTile extends StatelessWidget {
     }
     return InkWell(
       onTap: onTap,
-      onLongPress: () {
-        HapticFeedback.mediumImpact();
-        showSimpleTextOptionsBottomSheet(
-          context: context,
-          title: '${comment.author == null ? 'Deleted' : comment.author!.toPosessive()} comment',
-          options: {
-            ...?options,
-            if (showViewUserOption && comment.author != null)
-              'View ${comment.platform.userPrefix}${comment.author}': () {
-                context.push(
-                  () => UserDetailsScreen(
-                    platform: comment.platform,
-                    username: comment.author!
-                  )
-                );
-              },
-            if (comment.text != null)
-              'Copy text': () => copyToClipboard(comment.text!),
-            'Copy link': () => copyToClipboard(comment.platform.api.getCommentUrl(comment)),
-          }
-        );
-      },
+      onLongPress: onLongPress,
       child: child,
     );
   }

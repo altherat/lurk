@@ -26,7 +26,7 @@ class RedditApi extends Api {
   static const _oauthDomain = 'oauth.reddit.com';
   static const _baseUrl = 'https://www.reddit.com';
   static const _baseUrlOld = 'https://old.reddit.com';
-  static const _oauthScopes = ['history', 'identity', 'mysubreddits', 'read', 'submit', 'vote'];
+  static const _oauthScopes = ['edit', 'history', 'identity', 'mysubreddits', 'read', 'submit', 'vote'];
   static Map<String, Cookie>? _cookies;
   
   static http.Client? _clientInstance;
@@ -197,6 +197,7 @@ class RedditApi extends Api {
   }
 
   Response _handleResponse(Response response) {
+    // dev.log('Response body: ${response.body}');
     dev.log('[Reddit] Rate limit headers:');
     for (var headerEntry in response.headers.entries) {
       // dev.log('[Reddit] ${headerEntry.key}: ${headerEntry.value}');
@@ -414,10 +415,9 @@ class RedditApi extends Api {
         for (var thing in things) {
           final kind = thing['kind'];
           final data = thing['data'];
-          final id = data['id'];
           final parentId = data['parent'];
           final currentDepth = batchDepthCache.containsKey(parentId) ? batchDepthCache[parentId]! + 1 : depth!;
-          batchDepthCache[id] = currentDepth;
+          batchDepthCache[data['id']] = currentDepth;
           if (kind == 't1') {
             final content = data['content'];
             final element = parse(parse(content).body?.text).querySelector('.thing')!;
@@ -436,7 +436,8 @@ class RedditApi extends Api {
                 id: element.attributes['data-fullname']!,
                 permalink: element.attributes['data-permalink']!,
                 isDeleted: author == '[deleted]',
-                author: author,
+                authorId: element.attributes['data-author-fullname'],
+                authorName: author,
                 isModerator: authorElement?.classes.contains('moderator') ?? false,
                 isSubmitter: authorElement?.classes.contains('submitter') ?? false,
                 score: scoreTitle == null ? null : int.tryParse(scoreTitle),
@@ -468,10 +469,11 @@ class RedditApi extends Api {
   }
 
   @override
-  UserDetailsResponse getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
+  FeedResponse<dynamic, List<UserStat>> getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
     // dev.log('[Reddit] getUserDetails: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}]');
-    return UserDetailsResponse(
-      stats: _get('/u/$id/about.json').then((response) {
+    return FeedResponse(
+      items: getUserItems(id, options: options),
+      other: _get('/u/$id/about.json').then((response) {
         final data = jsonDecode(response.body)['data'];
         return [
           UserStat(
@@ -492,7 +494,6 @@ class RedditApi extends Api {
           )
         ];
       }),
-      items: getUserItems(id, options: options)
     );
   }
 
@@ -598,16 +599,16 @@ class RedditApi extends Api {
             final children = data['children'] as List;
             return PagedResult(
               items: children
-                  .where((child) => child['kind'] == 't5')
                   .map((child) {
                     final childData = child['data'];
                     final String description = childData['public_description'];
-                    final String iconUrl = childData['icon_img'];
+                    final String iconUrl = childData['community_icon'];
+                    debugPrint(iconUrl);
                     return Community(
                       platform: Platform.reddit,
                       name: childData['display_name'],
                       description: description.isNotEmpty ? description : null,
-                      iconUrl: iconUrl.isNotEmpty ? iconUrl : null,
+                      iconUrl: iconUrl.isNotEmpty ? Uri.parse(iconUrl).replace(queryParameters: {}).toString() : null,
                       subscriberCount: childData['subscribers'],
                     );
                   })
@@ -711,7 +712,7 @@ class RedditApi extends Api {
     final iconUri = Uri.parse(data['icon_img']);
     return LoggedInUser(
       platform: Platform.reddit,
-      id: data['id'],
+      id: 't2_${data['id']}',
       name: data['name'],
       iconUrl: Uri(scheme: iconUri.scheme,host: iconUri.host,path: iconUri.path).toString(),
       inboxCount: data['inbox_count'],
@@ -735,7 +736,7 @@ class RedditApi extends Api {
         );
         final data = jsonDecode(response.body)['data'];
         for (var child in data['children']) {
-          communityNames.add(child['data']['display_name'].toString().toLowerCase());
+          communityNames.add((child['data']['display_name'] as String).toLowerCase());
         }
         after = data['after'];
       }
@@ -744,7 +745,6 @@ class RedditApi extends Api {
     catch (e) {
       dev.log('Error fetching subscriptions: $e');
     }
-    
     return communityNames;
   }
 
@@ -761,6 +761,30 @@ class RedditApi extends Api {
           false => '-1',
           null => '0',
         }
+      }
+    );
+  }
+
+  @override
+  Future<void> postComment(String id, String text) {
+    dev.log('[Reddit] postcomment: id=$id, text=$text');
+    return _post(
+      '/api/comment',
+      {
+        'api_type': 'json',
+        'thing_id': id,
+        'text': text
+      }
+    );
+  }
+
+  @override
+  Future<void> deleteComment(String id) {
+    dev.log('[Reddit] deleteComment: id=$id');
+    return _post(
+      '/api/del',
+      {
+        'id': id,
       }
     );
   }
@@ -912,7 +936,8 @@ class RedditApi extends Api {
         id: data['name'],
         permalink: data['permalink'],
         isDeleted: author == '[deleted]',
-        author: author,
+        authorId: data['author_fullname'],
+        authorName: author,
         isModerator: data['distinguished'] == 'moderator',
         isSubmitter: data['is_submitter'] ?? false,
         score: data['score_hidden'] ? null : data['score'],

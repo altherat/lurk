@@ -6,8 +6,8 @@ import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/image_viewer.dart';
+import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
-import 'package:lurk/widgets/centered_large_circular_progress_indicator.dart';
 
 class ImageGalleryViewerScreen extends StatefulWidget {
 
@@ -61,7 +61,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
     final Widget body;
     if (_isLoading) {
       onSave = null;
-      body = CenteredLargeCircularProgressIndicator(platform: widget.platform);
+      body = LargeCenteredCircularProgressIndicator(platform: widget.platform);
     }
     else {
       onSave = () {
@@ -118,7 +118,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                     case LoadState.loading:
                       return Padding(
                         padding: EdgeInsets.all(16),
-                        child: CenteredLargeCircularProgressIndicator(platform: widget.platform)
+                        child: LargeCenteredCircularProgressIndicator(platform: widget.platform)
                       );
                     case LoadState.completed:
                       return state.completedWidget;

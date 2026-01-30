@@ -18,6 +18,7 @@ class PostTile extends StatelessWidget {
 
   final Post post;
   final Widget? subtitle;
+  final bool isInteractable;
   final bool onTapNavigate;
   final bool showThumbnail;
   final bool showViewCommunityOption;
@@ -27,6 +28,7 @@ class PostTile extends StatelessWidget {
     super.key,
     required this.post,
     this.subtitle,
+    this.isInteractable = true,
     this.onTapNavigate = true,
     this.showThumbnail = true,
     this.showViewCommunityOption = true,
@@ -64,19 +66,26 @@ class PostTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTapNavigate
+    final VoidCallback? onTap;
+    final VoidCallback? onLongPress;
+    if (isInteractable) {
+      onTap = onTapNavigate
         ? () {
             if (post.isSelf) {
               History.posts.add(post.id);
             }
             context.push(() => PostDetailsScreen.fromPost(post: post));
           }
-        : () => _showOptions(context),
-      onLongPress: () { 
-        HapticFeedback.mediumImpact();
-        _showOptions(context);
-      },
+        : null;
+      onLongPress = () => _showOptions(context);
+    }
+    else {
+      onTap = null;
+      onLongPress = null;
+    }
+    return InkWell(
+      onTap: onTap,
+      onLongPress: onLongPress,
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -163,39 +172,40 @@ class PostTile extends StatelessWidget {
                 children: [
                   Positioned.fill(
                     child: post.thumbnailUrl != null
-                        ? ExtendedImage.network(
-                            post.thumbnailUrl!,
-                            headers: {'User-Agent': post.community.platform.api.savedOrDefaultUserAgent},
-                            cacheWidth: thumbnailSize * MediaQuery.devicePixelRatioOf(context).round(),
-                            fit: BoxFit.cover,
-                            loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed ? const Icon(Icons.broken_image_rounded) : null
-                        )
-                        : DecoratedBox(
-                            decoration: BoxDecoration(
-                              border: BoxBorder.all(color: Constants.lighterBackgroundColor)
-                            ),
-                            child: Icon(
-                              post.isSelf ? Icons.subject_rounded : Icons.link_rounded,
-                              color: Colors.white38,
-                            ),
+                      ? ExtendedImage.network(
+                          post.thumbnailUrl!,
+                          headers: {'User-Agent': post.community.platform.api.savedOrDefaultUserAgent},
+                          cacheWidth: thumbnailSize * MediaQuery.devicePixelRatioOf(context).round(),
+                          fit: BoxFit.cover,
+                          loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed ? const Icon(Icons.broken_image_rounded) : null
+                      )
+                      : DecoratedBox(
+                          decoration: BoxDecoration(
+                            border: BoxBorder.all(color: Constants.lighterBackgroundColor)
                           ),
+                          child: Icon(
+                            post.isSelf ? Icons.subject_rounded : Icons.link_rounded,
+                            color: Colors.white38,
+                          ),
+                        ),
                   ),
-                  Positioned.fill(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onTap: () {
-                          History.posts.add(post.id);
-                          if (post.isSelf) {
-                            context.push(() => PostDetailsScreen.fromPost(post: post));
+                  if (isInteractable)
+                    Positioned.fill(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onTap: () {
+                            History.posts.add(post.id);
+                            if (post.isSelf) {
+                              context.push(() => PostDetailsScreen.fromPost(post: post));
+                            }
+                            else {
+                              navigate(context, post.community.platform, post.url, post: post);
+                            }
                           }
-                          else {
-                            navigate(context, post.community.platform, post.url, post: post);
-                          }
-                        }
+                        ),
                       ),
                     ),
-                  ),
                 ],
               ),
             )

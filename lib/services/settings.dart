@@ -34,8 +34,8 @@ class Settings {
 
   static late final RelationalListSettingNotifier<Community> communities;
 
-  static late final SettingNotifier<LoggedInUser?> activeUser;
   static late final RelationalListSettingNotifier<LoggedInUser> loggedInUsers;
+  static late final SettingNotifier<LoggedInUser?> activeUser;
 
   static bool isInitialized = false;
 
@@ -65,14 +65,13 @@ class Settings {
       saveAll: db.saveAllCommunities,
       delete: db.deleteCommunity,
     );
-    final activeUserId = dbSettings.activeUserId;
-    debugPrint('test: $activeUserId');
-    activeUser = SettingNotifier(activeUserId != null ? loggedInUsers.value.firstWhere((user) => user.id == activeUserId) : null, (user) => SettingsCompanion(activeUserId: Value(user?.id)));
     loggedInUsers = RelationalListSettingNotifier(
       dbLoggedInUseres,
       save: db.saveLoggedInUser,
       delete: db.deleteLoggedInUser
     );
+    final activeUserId = dbSettings.activeUserId;
+    activeUser = SettingNotifier(activeUserId != null ? loggedInUsers.value.firstWhere((user) => user.id == activeUserId) : null, (user) => SettingsCompanion(activeUserId: Value(user?.id)));
     isInitialized = true;
   }
 

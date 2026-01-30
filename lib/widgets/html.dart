@@ -230,7 +230,7 @@ class _Image extends StatelessWidget {
             case LoadState.loading:
               return Padding(
                 padding: EdgeInsets.symmetric(vertical: 8),
-                child: CustomCircularProgressIndicator(platform: platform),
+                child: PlatformCircularProgressIndicator(platform: platform),
               );
             case LoadState.completed:
               return Stack(
