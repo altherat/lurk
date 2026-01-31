@@ -2,16 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:lurk/app.dart' as App;
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/posts.dart';
+import 'package:lurk/services/settings.dart';
 
 class HomeScreen extends StatefulWidget {
 
   final GlobalKey<ScaffoldState> scaffoldKey;
-  final Community community;
 
   const HomeScreen({
     super.key,
     required this.scaffoldKey,
-    required this.community
   });
 
   @override
@@ -20,12 +19,23 @@ class HomeScreen extends StatefulWidget {
 
 class _HomeScreenState extends State<HomeScreen> with RouteAware {
 
+  bool _isActive = true;
   late Community _homeCommunity;
 
   @override
   void initState() {
     super.initState();
-    _homeCommunity = widget.community;
+    _updateHomeCommunity();
+    Settings.homeCommunityPlatform.addListener(_updateHomeCommunity);
+    Settings.homeCommunityName.addListener(_updateHomeCommunity);
+  }
+
+  @override
+  void dispose() { 
+    Settings.homeCommunityPlatform.removeListener(_updateHomeCommunity);
+    Settings.homeCommunityName.removeListener(_updateHomeCommunity);
+    App.routeObserver.unsubscribe(this);
+    super.dispose();
   }
 
   @override
@@ -35,18 +45,32 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   }
 
   @override
-  void dispose() {
-    App.routeObserver.unsubscribe(this);
-    super.dispose();
+  void didPushNext() {
+    _isActive = false;
   }
 
   @override
   void didPopNext() {
-    if (widget.community != _homeCommunity) {
+    _isActive = true;
+    if (Settings.homeCommunityPlatform.value != _homeCommunity.platform || Settings.homeCommunityName.value != _homeCommunity.name) {
       setState(() {
-        _homeCommunity = widget.community;
+        _homeCommunity = _getHomeCommunity();
       });
     }
+  }
+
+  Community _getHomeCommunity() {
+    return Community(
+      platform: Settings.homeCommunityPlatform.value,
+      name: Settings.homeCommunityName.value
+    );
+  }
+
+  void _updateHomeCommunity() {
+    if (!_isActive) return;
+    setState(() {
+      _homeCommunity = _getHomeCommunity();
+    });
   }
 
   @override

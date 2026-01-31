@@ -109,23 +109,7 @@ class _HomeState extends State<_Home> {
                 _scaffoldKey.currentState?.openDrawer();
               }
             },
-            child: ValueListenableBuilder(
-              valueListenable: Settings.homeCommunityPlatform,
-              builder: (context, homeCommunityPlatform, child) {
-                return ValueListenableBuilder(
-                  valueListenable: Settings.homeCommunityName,
-                  builder: (context, homeCommunityName, child) {
-                    return HomeScreen(
-                      community: Community(
-                        platform: homeCommunityPlatform,
-                        name: homeCommunityName
-                      ),
-                      scaffoldKey: _scaffoldKey
-                    );
-                  }
-                );
-              }
-            )
+            child: HomeScreen(scaffoldKey: _scaffoldKey)
           );
         }
         return const LargeCenteredCircularProgressIndicator();

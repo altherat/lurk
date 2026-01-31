@@ -119,9 +119,15 @@ class SettingNotifier<T> extends ValueNotifier<T> {
   @override
   set value(T newValue) {
     if (super.value == newValue) return;
-    super.value = newValue ?? _defaultValue as T;
+    if (newValue == null) {
+      super.value = _defaultValue as T;
+      hasSavedValue = false;
+    }
+    else {
+      super.value = newValue;
+      hasSavedValue = true;
+    }
     Database.instance.updateSettings(companionBuilder(newValue));
-    hasSavedValue = true;
   }
   
   T? get defaultValue => _defaultValue;

@@ -23,7 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final String platformLabel = F.appFlavor == Flavor.combined ? 'Platform' : F.appFlavor.platforms.first.name;
     return Scaffold(
-      appBar: const CustomAppBar(title: const Text('Settings')),
+      appBar: const CustomAppBar(title: Text('Settings')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(8),
@@ -54,7 +54,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         prefixText: homeCommunityPlatform.communityPrefix,
                         floatingLabelBehavior: FloatingLabelBehavior.always,
                         onSubmitted: (value) {
+                          debugPrint('saving: $value');
                           Settings.homeCommunityName.value = value.isEmpty ? null : value;
+                          debugPrint('saved');
                         },
                       );
                     }

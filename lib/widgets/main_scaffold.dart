@@ -91,6 +91,31 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
     widget.onRefresh!.call();
   }
 
+  void _showUsersBottomSheet() {
+    final loggedInUsers = Settings.loggedInUsers.value;
+    final activeUser = Settings.activeUser.value;
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) {
+        return SafeArea(
+          child: loggedInUsers.isEmpty
+            ? ListTile(
+                title: Text('Login to Reddit'),
+                onTap: _onLoginPressed
+              )
+            : _UserList(
+                platform: widget.platform,
+                loggedInUsers: loggedInUsers,
+                activeUser: activeUser!,
+                onLoginPressed: _onLoginPressed,
+              )
+        );
+      }
+    );
+  }
+
   void _showFeedOptionsBottomSheet() {
     showModalBottomSheet(
       context: context,
@@ -113,6 +138,31 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
         );
       }
     );
+  }
+
+  Future<void> _onLoginPressed() async {
+    context.pop();
+    final username = await widget.platform.api.login();
+    if (mounted && username != null) {
+      context.showSnackBar(
+        content: Text.rich(
+          TextSpan(
+            children: [
+              TextSpan(
+                text: 'Logged in to ${widget.platform.name.toTitleCase()} as '
+              ),
+              TextSpan(
+                text: username,
+                style: TextStyle(
+                  color: widget.platform.color,
+                  fontWeight: FontWeight.bold
+                )
+              )
+            ]
+          )
+        )
+      );
+    }
   }
 
   @override
@@ -194,61 +244,83 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
                           padding: EdgeInsets.only(bottom: paddingBottom),
                           child: SizedBox(
                             height: kBottomNavigationBarHeight,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.spaceAround,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.sort_rounded),
-                                  tooltip: 'Filter',
-                                  iconSize: 26,
-                                  onPressed: _showFeedOptionsBottomSheet
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.groups_rounded),
-                                  tooltip: 'Communities',
-                                  iconSize: 26,
-                                  onPressed: () {
-                                    showModalBottomSheet(
-                                      context: context,
-                                      isScrollControlled: true,
-                                      backgroundColor: Colors.transparent,
-                                      builder: (context) {
-                                        final screenHeight = MediaQuery.of(context).size.height;
-                                        final viewInsetsBottom = MediaQuery.of(context).viewInsets.bottom;
-                                        return Padding(
-                                          padding: EdgeInsets.only(bottom: viewInsetsBottom),
-                                          child: GestureDetector(
-                                            behavior: HitTestBehavior.opaque,
-                                            onTap: () => Navigator.of(context).pop(),
-                                            child: SizedBox(
-                                              height: (screenHeight - viewInsetsBottom) * 0.4,
-                                              child: Material(
-                                                borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                                                child: _CommunityList(
-                                                  platform: widget.platform,
-                                                  activeCommunityName: widget.activeCommunityName,
-                                                  scaffoldKey: _scaffoldKey,
-                                                  padding: EdgeInsets.only(
-                                                    top: 16,
-                                                    bottom: MediaQuery.of(context).padding.bottom
-                                                  ),
-                                                  onActiveCommunitySelected: _scrollToTopAndRefresh
-                                                ),
-                                              )
-                                            )
-                                          ),
+                            child: ValueListenableBuilder(
+                              valueListenable: Settings.activeUser,
+                              builder: (context, activeUser, child) {
+                                return ValueListenableBuilder(
+                                  valueListenable: Settings.redditClientId,
+                                  builder: (context, redditClientId, child) {
+                                    return ValueListenableBuilder(
+                                      valueListenable: Settings.redditRedirectUri,
+                                      builder: (context, redditRedirectUri, child) {
+                                        return Row(
+                                          mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                          children: [
+                                            if (activeUser != null)
+                                                IconButton(
+                                                  icon: _UserIcon(user: activeUser),
+                                                  tooltip: activeUser.name,
+                                                  iconSize: 26,
+                                                  onPressed: _showUsersBottomSheet
+                                                )
+                                            else if (redditClientId != null && redditRedirectUri != null)
+                                              IconButton(
+                                                icon: const Icon(Icons.reddit_rounded),
+                                                tooltip: 'Login',
+                                                iconSize: 26,
+                                                onPressed: _showUsersBottomSheet
+                                              ),
+                                            IconButton(
+                                              icon: const Icon(Icons.sort_rounded),
+                                              tooltip: 'Filter',
+                                              iconSize: 26,
+                                              onPressed: _showFeedOptionsBottomSheet
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.groups_rounded),
+                                              tooltip: 'Communities',
+                                              iconSize: 26,
+                                              onPressed: () {
+                                                showModalBottomSheet(
+                                                  context: context,
+                                                  showDragHandle: true,
+                                                  isScrollControlled: true,
+                                                  builder: (context) {
+                                                    final screenHeight = MediaQuery.of(context).size.height;
+                                                    final viewInsetsBottom = MediaQuery.of(context).viewInsets.bottom;
+                                                    return Padding(
+                                                      padding: EdgeInsets.only(bottom: viewInsetsBottom),
+                                                      child: GestureDetector(
+                                                        behavior: HitTestBehavior.opaque,
+                                                        onTap: () => Navigator.of(context).pop(),
+                                                        child: SizedBox(
+                                                          height: (screenHeight - viewInsetsBottom) * 0.4,
+                                                          child: _CommunityList(
+                                                            platform: widget.platform,
+                                                            activeCommunityName: widget.activeCommunityName,
+                                                            scaffoldKey: _scaffoldKey,
+                                                            onActiveCommunitySelected: _scrollToTopAndRefresh
+                                                          )
+                                                        )
+                                                      ),
+                                                    );
+                                                  },
+                                                );
+                                              }
+                                            ),
+                                            IconButton(
+                                              icon: const Icon(Icons.refresh_rounded),
+                                              tooltip: 'Refresh',
+                                              iconSize: 26,
+                                              onPressed: _scrollToTopAndRefresh
+                                            ),
+                                          ]
                                         );
-                                      },
+                                      }
                                     );
                                   }
-                                ),
-                                IconButton(
-                                  icon: const Icon(Icons.refresh_rounded),
-                                  tooltip: 'Refresh',
-                                  iconSize: 26,
-                                  onPressed: _scrollToTopAndRefresh
-                                ),
-                              ]
+                                );
+                              }
                             ),
                           ),
                         )
@@ -292,29 +364,45 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
                       ),
                       child: SafeArea(
                         top: false,
-                        child: _UserList(
-                          platform: widget.platform,
-                          onLogin: (userName) {
-                            if (!mounted || userName == null) return;
-                            context.showSnackBar(
-                              content: Text.rich(
-                                TextSpan(
-                                  children: [
-                                    TextSpan(
-                                      text: 'Logged in to ${widget.platform.name.toTitleCase()} as '
-                                    ),
-                                    TextSpan(
-                                      text: userName,
-                                      style: TextStyle(
-                                        color: widget.platform.color,
-                                        fontWeight: FontWeight.bold
-                                      )
-                                    )
-                                  ]
-                                )
-                              )
+                        child: ValueListenableBuilder(
+                          valueListenable: Settings.loggedInUsers,
+                          builder: (context, loggedInUsers, child) {
+                            if (loggedInUsers.isEmpty) {
+                              if (widget.platform.api.hasLogin) {
+                                return ValueListenableBuilder(
+                                  valueListenable: Settings.redditClientId,
+                                  builder: (context, redditClientId, child) {
+                                    return ValueListenableBuilder(
+                                      valueListenable: Settings.redditRedirectUri,
+                                      builder: (context, redditRedirectUri, child) {
+                                        if (redditClientId == null || redditRedirectUri == null) {
+                                          return const ListTile(leading: _SettingsIconButton());
+                                        }
+                                        return ListTile(
+                                          title: Text('Login to Reddit'),
+                                          onTap: _onLoginPressed,
+                                          trailing: const _SettingsIconButton(),
+                                        );
+                                      }
+                                    );
+                                  }
+                                );
+                              }
+                              return const ListTile(leading: _SettingsIconButton());
+                            }
+                            return ValueListenableBuilder(
+                              valueListenable: Settings.activeUser,
+                              builder: (context, activeUser, child) {
+                                return _UserList(
+                                  platform: widget.platform,
+                                  loggedInUsers: loggedInUsers,
+                                  activeUser: activeUser!,
+                                  addUserTileTrailing: const _SettingsIconButton(),
+                                  onLoginPressed: _onLoginPressed,
+                                );
+                              }
                             );
-                          },
+                          }
                         ),
                       ),
                     )
@@ -444,12 +532,18 @@ class _Scrim extends StatelessWidget {
 class _UserList extends StatefulWidget {
 
   final Platform platform;
-  final void Function(String? userName) onLogin;
+  final List<LoggedInUser> loggedInUsers;
+  final LoggedInUser activeUser;
+  final Widget? addUserTileTrailing;
+  final VoidCallback onLoginPressed;
 
   const _UserList({
     super.key,
     required this.platform,
-    required this.onLogin
+    required this.loggedInUsers,
+    required this.activeUser,
+    this.addUserTileTrailing,
+    required this.onLoginPressed,
   });
 
   @override
@@ -461,22 +555,20 @@ class _UserListState extends State<_UserList> {
 
   bool _isExpanded = false;
 
-  void _onLoginPressed() async {
-    context.pop();
-    widget.onLogin(await widget.platform.api.login());
-  }
-
   void _onTileLongPress(String userName) {
     showSimpleOptionsDialog(
       context: context,
       title: widget.platform.getPrefixedUsername(userName),
       options: {
-        'View profile': () => context.push(() {
-          return UserDetailsScreen(
-            platform: widget.platform,
-            username: userName
-          );
-        }),
+        'View profile': (){
+          context.pop();
+          context.push(() {
+            return UserDetailsScreen(
+              platform: widget.platform,
+              username: userName
+            );
+          });
+        },
         'Logout': widget.platform.api.logout
       }
     );
@@ -484,84 +576,51 @@ class _UserListState extends State<_UserList> {
 
   @override
   Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: Settings.loggedInUsers,
-      builder: (context, loggedInUsers, child) {
-        if (loggedInUsers.isEmpty) {
-          if (widget.platform.api.hasLogin) {
-            return ValueListenableBuilder(
-              valueListenable: Settings.redditClientId,
-              builder: (context, redditClientId, child) {
-                return ValueListenableBuilder(
-                  valueListenable: Settings.redditRedirectUri,
-                  builder: (context, redditRedirectUri, child) {
-                    if (redditClientId == null || redditRedirectUri == null) {
-                      return const ListTile(leading: _SettingsIconButton());
-                    }
-                    return ListTile(
-                      title: Text('Login'),
-                      onTap: _onLoginPressed,
-                      trailing: const _SettingsIconButton(),
-                    );
-                  }
-                );
-              }
-            );
-          }
-          return const ListTile(leading: _SettingsIconButton());
-        }
-        return ValueListenableBuilder(
-          valueListenable: Settings.activeUser,
-          builder: (context, activeUser, child) {
-            final inactiveUsers = loggedInUsers.where((user) => user != activeUser);
-            return Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                AnimatedCrossFade(
-                  firstChild: const SizedBox(width: double.infinity, height: 0),
-                  secondChild: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      ListTile(
-                        horizontalTitleGap: 8,
-                        leading: IconButton(
-                          icon: Icon(Icons.add_rounded),
-                          onPressed: _onLoginPressed
-                        ),
-                        title: Text('Add user'),
-                        trailing: const _SettingsIconButton(),
-                        onTap: _onLoginPressed,
-                      ),
-                      ...inactiveUsers.map((user) => _UserListTile(
-                        platform: widget.platform,
-                        user: user,
-                        onTap: () {
-                          Settings.activeUser.value = user;
-                          setState(() => _isExpanded = false);
-                        },
-                        onLongPress: () => _onTileLongPress(user.name)
-                      ))
-                    ],
-                  ),
-                  crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-                  duration: const Duration(milliseconds: 300),
-                  sizeCurve: Curves.fastOutSlowIn, 
+    final inactiveUsers = widget.loggedInUsers.where((user) => user != widget.activeUser);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        AnimatedCrossFade(
+          firstChild: const SizedBox(width: double.infinity, height: 0),
+          secondChild: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                horizontalTitleGap: 8,
+                leading: IconButton(
+                  icon: Icon(Icons.add_rounded),
+                  onPressed: widget.onLoginPressed
                 ),
-                _UserListTile(
-                  platform: widget.platform,
-                  user: activeUser!,
-                  trailing: IconButton(
-                    icon: Icon(_isExpanded ? Icons.expand_more_rounded : Icons.expand_less_rounded),
-                    onPressed: () => setState(() => _isExpanded = !_isExpanded)
-                  ),
-                  onTap: () => setState(() => _isExpanded = !_isExpanded),
-                  onLongPress: () => _onTileLongPress(activeUser.name)
-                )
-              ],
-            );
-          }
-        );
-      }
+                title: Text('Add user'),
+                trailing: widget.addUserTileTrailing,
+                onTap: widget.onLoginPressed,
+              ),
+              ...inactiveUsers.map((user) => _UserListTile(
+                platform: widget.platform,
+                user: user,
+                onTap: () {
+                  Settings.activeUser.value = user;
+                  setState(() => _isExpanded = false);
+                },
+                onLongPress: () => _onTileLongPress(user.name)
+              ))
+            ],
+          ),
+          crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 300),
+          sizeCurve: Curves.fastOutSlowIn, 
+        ),
+        _UserListTile(
+          platform: widget.platform,
+          user: widget.activeUser,
+          trailing: IconButton(
+            icon: Icon(_isExpanded ? Icons.expand_more_rounded : Icons.expand_less_rounded),
+            onPressed: () => setState(() => _isExpanded = !_isExpanded)
+          ),
+          onTap: () => setState(() => _isExpanded = !_isExpanded),
+          onLongPress: () => _onTileLongPress(widget.activeUser.name)
+        )
+      ],
     );
   }
 
@@ -606,19 +665,7 @@ class _UserListTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       horizontalTitleGap: 8,
-      leading: Container(
-        margin: const EdgeInsets.all(6), 
-        decoration: BoxDecoration(
-          shape: BoxShape.circle,
-          border: Border.all(color: user.platform.color, width: 1), 
-        ),
-        child: ListTileIcon(
-          platform: platform,
-          url: user.iconUrl,
-          size: 34,
-          placeholderIcon: Icons.no_accounts_rounded,
-        ),
-      ),
+      leading: _UserIcon(user: user),
       title: Text(user.name),
       trailing: trailing,
       onTap: onTap,
@@ -626,6 +673,33 @@ class _UserListTile extends StatelessWidget {
     );
   }
 
+}
+
+class _UserIcon extends StatelessWidget {
+
+  final LoggedInUser user;
+
+  const _UserIcon({
+    super.key,
+    required this.user,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(6), 
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: user.platform.color, width: 1), 
+      ),
+      child: ListTileIcon(
+        platform: user.platform,
+        url: user.iconUrl,
+        size: 34,
+        placeholderIcon: Icons.no_accounts_rounded,
+      ),
+    );
+  }
 }
 
 class _CommunityList extends StatefulWidget {
