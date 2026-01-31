@@ -598,8 +598,9 @@ class _UserListState extends State<_UserList> {
               ...inactiveUsers.map((user) => _UserListTile(
                 platform: widget.platform,
                 user: user,
-                onTap: () {
+                onTap: () async {
                   Settings.activeUser.value = user;
+                  await Future.delayed(const Duration(milliseconds: 300));
                   setState(() => _isExpanded = false);
                 },
                 onLongPress: () => _onTileLongPress(user.name)
@@ -607,7 +608,7 @@ class _UserListState extends State<_UserList> {
             ],
           ),
           crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-          duration: const Duration(milliseconds: 300),
+          duration: const Duration(milliseconds: 500),
           sizeCurve: Curves.fastOutSlowIn, 
         ),
         _UserListTile(
@@ -1092,13 +1093,26 @@ class _CommunityListState extends State<_CommunityList> {
                     horizontalTitleGap: 8,
                     leading: IconButton(
                       onPressed: () {},
-                      icon: Icon(
-                        Icons.reddit_rounded,
-                        size: 32,
-                        color: Platform.reddit.color,
+                      icon: Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          Container(
+                            width: 24,
+                            height: 24,
+                            decoration: const BoxDecoration(
+                              color: Colors.white,
+                              shape: BoxShape.circle,
+                            )
+                          ),
+                          Icon(
+                            Icons.reddit_rounded,
+                            size: 32,
+                            color: Platform.reddit.color,
+                          ),
+                        ],
                       )
                     ),
-                    title: Text('Reddit home'),
+                    title: Text(Platform.reddit.rootCommunityName),
                     onTap: () {
                       _navigateToCommunity(
                         Community(
@@ -1144,10 +1158,13 @@ class _CommunityListState extends State<_CommunityList> {
                       ),
                       onTap: () => _onCommunityTap(community),
                       onLongPress: () {
+                        final activeUser = Settings.activeUser.value;
                         showSimpleOptionsDialog(
                           context: context,
                           title: community.prefixedName,
                           options: {
+                            if (community.name != null && activeUser != null)
+                              'Unsubscribe': () => activeUser.platform.api.unsubscribe(community.name!),
                             'Remove': () => Settings.communities.remove(community)
                           },
                         );

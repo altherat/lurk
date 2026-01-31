@@ -17,6 +17,7 @@ import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/services/votes.dart';
 import 'package:oauth2_client/access_token_response.dart';
+import 'package:oauth2_client/interfaces.dart';
 import 'package:oauth2_client/oauth2_client.dart';
 import 'package:oauth2_client/oauth2_helper.dart';
 
@@ -26,12 +27,26 @@ class RedditApi extends Api {
   static const _oauthDomain = 'oauth.reddit.com';
   static const _baseUrl = 'https://www.reddit.com';
   static const _baseUrlOld = 'https://old.reddit.com';
-  static const _oauthScopes = ['edit', 'history', 'identity', 'mysubreddits', 'read', 'submit', 'vote'];
-  static Map<String, Cookie>? _cookies;
+  static const _oauthScopes = ['edit', 'history', 'identity', 'mysubreddits', 'read', 'subscribe', 'submit', 'vote'];
+  static const _defaultUnauthenticatedUserAgent = 'Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36';
+  static const _defaultUnauthenticatedHeaders = {
+    'User-Agent': _defaultUnauthenticatedUserAgent,
+    'Referer': 'https://www.reddit.com/',
+    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
+    'Accept-Language': 'en-US,en;q=0.9',
+    'Sec-Ch-Ua': '"Chromium";v="144", "Not/A)Brand";v="24", "Google Chrome";v="144"',
+    'Sec-Ch-Ua-Mobile': '?1',
+    'Sec-Ch-Ua-Platform': '"Android"',
+    'Sec-Fetch-Dest': 'document',
+    'Sec-Fetch-Mode': 'navigate',
+    'Sec-Fetch-Site': 'none',
+    'Sec-Fetch-User': '?1'
+  };
+  static const _defaultAuthenticatedHeaders = {
+    'Accept': 'application/json'
+  };
   
-  static http.Client? _clientInstance;
-  static OAuth2Helper? _oauth2Helper;
-  static Future<bool>? _initClientFuture;
+  static final Map<String?, _AuthClientHelper> _authClientHelpers = {};
 
   const RedditApi();
 
@@ -39,229 +54,56 @@ class RedditApi extends Api {
   bool get hasLogin => true;
 
   @override
-  String get defaultUserAgent => 'Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36';
+  String get defaultUnauthenticatedUserAgent => _defaultUnauthenticatedUserAgent;
   // String get defaultUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by /u/altherat)';
 
   Map<String, String> get authenticatedHeaders => {
-    'Accept': 'application/json',
+    ..._defaultAuthenticatedHeaders,
     'User-Agent': savedOrDefaultUserAgent
   };
 
-  Map<String, String> get unauthenticatedHeaders {
-    final headers = {
-      'User-Agent': 'Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36',
-      'Referer': 'https://www.reddit.com/',
-      'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7',
-      'Accept-Language': 'en-US,en;q=0.9',
-      'Sec-Ch-Ua': '"Chromium";v="144", "Not/A)Brand";v="24", "Google Chrome";v="144"',
-      'Sec-Ch-Ua-Mobile': '?1',
-      'Sec-Ch-Ua-Platform': '"Android"',
-      'Sec-Fetch-Dest': 'document',
-      'Sec-Fetch-Mode': 'navigate',
-      'Sec-Fetch-Site': 'none',
-      'Sec-Fetch-User': '?1'
-    };
-    if (_cookies != null) {
-      final DateTime now = DateTime.now();
-      final validCookies = _cookies!.values.where((c) => c.expirationTime == null || c.expirationTime!.isAfter(now)).map((c) => '${c.key}=${c.value}').join('; ');
-      if (validCookies.isNotEmpty) {
-        headers['Cookie'] = validCookies;
-      }
-    }
-    return headers;
+  Future<Response> _get(String path, {Map<String, dynamic>? params}) async {
+    dev.log('[Reddit] _get: path=$path, params=$params]');
+    return _handleResponse(_getClientHelper().get(path, params));
   }
 
-  Future<bool> _ensureClientInitialized() => _initClientFuture ??= _initClient();
-
-  Future<bool> _initClient() async {
-    final clientId = Settings.redditClientId.value;
-    if (clientId == null) {
-      if (_oauth2Helper != null) {
-        await _oauth2Helper!.removeAllTokens();
-        _oauth2Helper = null;
-      }
-      _clientInstance ??= http.Client();
-      if (_cookies == null) {
-        final storedCookies = await Database.instance.getAllValidCookies();
-        if (storedCookies.isNotEmpty) {
-          _cookies = {
-            for (var cookie in storedCookies)
-              cookie.key: cookie
-          };
-        }
-      }
-      dev.log('[Reddit] Initialized http.Client with ${_cookies == null || _cookies!.isEmpty ? 'no cookies' : '${_cookies!.length} cookies: ${_cookies?.keys.join(", ")}'}');
-      Settings.activeUser.value = null;
-      return false;
-    }
-
-    final (redirectUri, customUriScheme) = _redirectUriAndCustomUriScheme;
-    _oauth2Helper = OAuth2Helper(
-      OAuth2Client(
-        authorizeUrl: 'https://www.reddit.com/api/v1/authorize',
-        tokenUrl: 'https://www.reddit.com/api/v1/access_token',
-        redirectUri: redirectUri,
-        customUriScheme: customUriScheme
-      ),
-      grantType: OAuth2Helper.authorizationCode,
-      clientId: clientId,
-      clientSecret: '',
-      scopes: _oauthScopes,
-      authCodeParams: {
-        'duration': 'permanent',
-        'prompt': 'select_account'
-      },
-    );
-    dev.log('[Reddit] Initialized OAuth2Helper');
-    return true;
+  Future<Response> _post(String path, dynamic body) async {
+    dev.log('[Reddit] _post: path=$path, params=$body]');
+    return _handleResponse(_getClientHelper().post(path, body));
   }
 
-  Future<void> _checkIfClientIdChanged() async {
-    final clientId = Settings.redditClientId.value;
-    if (clientId == null) {
-      if (_oauth2Helper != null) {
-        await _oauth2Helper!.removeAllTokens();
-        _initClientFuture = null;
-      }
-    }
-    else if (_oauth2Helper == null || _oauth2Helper!.clientId != clientId) {
-      await _oauth2Helper?.removeAllTokens();
-      if (_clientInstance != null) {
-        _clientInstance!.close();
-        _clientInstance = null;
-        _cookies = null;
-      }
-      _initClientFuture = null;
-    }
-  }
-
-  Future<Response> _request(Future<Response> Function() request, Future<Response> Function() oAuthRequest) async {
-    await _checkIfClientIdChanged();
-    if (await _ensureClientInitialized()) {
-      final accessToken = await _oauth2Helper!.getTokenFromStorage();
-      if (accessToken == null || (!accessToken.hasRefreshToken() && accessToken.isExpired())) {
-        dev.log('[Reddit] Getting new access token (${accessToken == null ? 'new' : 'expired'})');
-        if (Settings.redditDeviceId.value == null) {
-          Settings.redditDeviceId.value = List<int>.generate(16, (i) => Random.secure().nextInt(256)).map((e) => e.toRadixString(16).padLeft(2, '0')).join();
-        }
-        final response = await http.post(
-          Uri.parse('https://www.reddit.com/api/v1/access_token'),
-          headers: {
-            'Authorization': 'Basic ${base64Encode(utf8.encode('${Settings.redditClientId.value}:'))}',
-            'User-Agent': defaultUserAgent,
-          },
-          body: {
-            'grant_type': 'https://oauth.reddit.com/grants/installed_client',
-            'device_id': Settings.redditDeviceId.value!,
-          }
-        );
-        final data = jsonDecode(response.body);
-        await _oauth2Helper!.tokenStorage.addToken(
-          AccessTokenResponse.fromMap({
-            'access_token': data['access_token'],
-            'token_type': 'bearer',
-            'expires_in': data['expires_in'],
-            'scope': _oauthScopes.join(' '),
-          })
-        );
-      }
-      // dev.log('[Reddit/OAuth] Request headers: $authenticatedHeaders');
-      final response = await oAuthRequest();
-      dev.log('[Reddit/OAuth] Response code: ${response.statusCode}');
-      return _handleResponse(response);
-    }
-
-    // dev.log('[Reddit/HTTP] Request headers: $unauthenticatedHeaders');
-    var response = await request();
-    dev.log('[Reddit/HTTP] Response code: ${response.statusCode}');
-    if (response.headers.containsKey('set-cookie')) {
-      await _updateCookiesFromHeaders(response.headers['set-cookie']!);
-      if (response.statusCode == 403) {
-        dev.log('[Reddit] Status code 403 detected. Attempting HTML warm-up...');
-        final warmUp = await _clientInstance!.get(
-          Uri.parse(baseUrl), 
-          headers: {
-            'Upgrade-Insecure-Requests': '1',
-            'User-Agent': 'Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36'
-          },
-        );
-        if (warmUp.headers.containsKey('set-cookie')) {
-          await _updateCookiesFromHeaders(warmUp.headers['set-cookie']!);
-          dev.log('[Reddit] Warm-up complete. Retrying original request...');
-          response = await request();
-        }
-      }
-    }
-
-    return _handleResponse(response);
-  }
-
-  Response _handleResponse(Response response) {
-    // dev.log('Response body: ${response.body}');
+  Future<Response> _handleResponse(Future<Response> response) async {
+    final awaited = await response;
     dev.log('[Reddit] Rate limit headers:');
-    for (var headerEntry in response.headers.entries) {
+    for (var headerEntry in awaited.headers.entries) {
       // dev.log('[Reddit] ${headerEntry.key}: ${headerEntry.value}');
       if (headerEntry.key.startsWith('x-ratelimit-')) {
         dev.log('[Reddit]\t${headerEntry.key}: ${headerEntry.value}');
       }
     }
-    return response;
+    return awaited;
   }
 
-  Future<void> _updateCookiesFromHeaders(String headerValue) async {
-    final cookieStrings = headerValue.split(RegExp(r'(,)(?=[^;]+?=)'));
-    final List<Cookie> cookies = [];
-    for (var str in cookieStrings) {
-      final ioCookie = io.Cookie.fromSetCookieValue(str);
-      final cookie = Cookie(
-        key: ioCookie.name,
-        value: ioCookie.value,
-        expirationTime: ioCookie.expires,
-      );
-      (_cookies ??= {})[ioCookie.name] = cookie;
-      cookies.add(cookie);
-      dev.log('[Reddit] Added cookie: key=${cookie.key}, value=${cookie.value}, expirationTime=${cookie.expirationTime}');
+  _ClientHelper _getClientHelper() {
+    final clientId = Settings.redditClientId.value;
+    if (clientId == null) {
+      for (var helper in _authClientHelpers.values) {
+        helper.dispose();
+      }
+      _authClientHelpers.clear();
+      return _HttpClientHelper();
     }
-    if (cookies.isNotEmpty) {
-      await Database.instance.saveCookies(cookies);
+    for (var helper in _authClientHelpers.values) {
+      if (helper._oAuthHelper.clientId != clientId) {
+        helper._oAuthHelper.clientId = clientId;
+      }
     }
+    return _getOrCreateAuthClientHelper(clientId);
   }
 
-  Future<Response> _get(String path, {Map<String, dynamic>? params}) async {
-    dev.log('[Reddit] _get: path=$path, params=$params]');
-    return _request(
-      () => _clientInstance!.get(
-        Uri.https(_domain, path, (params != null && params.isNotEmpty) ? params : null),
-        headers: unauthenticatedHeaders
-      ),
-      () => _oauth2Helper!.get(
-        Uri.https(_oauthDomain, path, (params != null && params.isNotEmpty) ? params : null).toString(),
-        headers: authenticatedHeaders
-      )
-    );
-  }
-
-  Future<Response> _post(String path, Map<String, String> body) async {
-    dev.log('[Reddit] _post: path=$path, params=$body]');
-    await _checkIfClientIdChanged();
-    await _ensureClientInitialized();
-    return _request(
-      () => _clientInstance!.post(
-        Uri.https(_domain, path),
-        headers: unauthenticatedHeaders,
-        body: body
-      ),
-      () => _oauth2Helper!.post(
-        Uri.https(_oauthDomain, path).toString(),
-        headers: authenticatedHeaders,
-        body: body
-      )
-    );
-  }
-
-  (String, String) get _redirectUriAndCustomUriScheme {
-    final redirectUri = Settings.redditRedirectUri.value;
-    return redirectUri != null ? (redirectUri, redirectUri.split('://')[0]) : ('', 'com.altherat.lurk');
+  _AuthClientHelper _getOrCreateAuthClientHelper(String clientId) {
+    final activeUserId = Settings.activeUser.value?.id;
+    return _authClientHelpers[activeUserId] ??= _AuthClientHelper(clientId, activeUserId, () => savedOrDefaultUserAgent);
   }
 
   @override
@@ -360,52 +202,9 @@ class RedditApi extends Api {
     };
     final Future<Response> response;
     final (Map<String, bool?>, List<CommentItem>) Function(String) parseFn;
-    if (_oauth2Helper != null) {
-      response = _oauth2Helper!.post(
-        Uri.https(_oauthDomain, '/api/morechildren').toString(),
-        headers: authenticatedHeaders,
-        body: body
-      );
-      parseFn = (String body) {
-        final Map<String, dynamic> jsonResponse = jsonDecode(body);
-        final List<dynamic> things = jsonResponse['json']?['data']?['things'] ?? [];
-        
-        final Map<String, bool?> votes = {};
-        final List<CommentItem> items = [];
-        final Map<String, int> batchDepthCache = {};
-
-        for (var thing in things) {
-          final String kind = thing['kind'];
-          final Map<String, dynamic> data = thing['data'];
-          final String id = data['name'];
-          final String parentId = data['parent_id'];
-          final currentDepth = batchDepthCache.containsKey(parentId) ? batchDepthCache[parentId]! + 1 : (data['depth'] ?? depth ?? 0);
-          batchDepthCache[id] = currentDepth;
-          if (kind == 't1') {
-            final (vote, comment) = _parseCommentFromJson(data, currentDepth);
-            votes[comment.id] = vote;
-            items.add(comment);
-          } 
-          else if (kind == 'more') {
-            items.add(
-              LoadMoreComment(
-                depth: currentDepth,
-                count: data['count'] ?? 0,
-                pageToken: (data['children'] as List).join(','),
-              ),
-            );
-          }
-        }
-        return (votes, items);
-      };
-    }
-    else {
-      _clientInstance ??= http.Client();
-      response = _clientInstance!.post(
-        Uri.parse('$_baseUrlOld/api/morechildren'),
-        headers: unauthenticatedHeaders,
-        body: body
-      );
+    final clientHelper = _getClientHelper();
+    if (clientHelper is _HttpClientHelper) {
+      response = clientHelper.post('/api/morechildren', body);
       parseFn = (String body) {
         final Map<String, dynamic> jsonResponse = jsonDecode(body);
         final List<dynamic> things = jsonResponse['json']['data']['things'];
@@ -459,6 +258,39 @@ class RedditApi extends Api {
                 count: int.tryParse(countMatch!.group(1)!)!,
                 pageToken: idMatch!.group(1)!
               )
+            );
+          }
+        }
+        return (votes, items);
+      };
+    }
+    else {
+      response = clientHelper.post('/api/morechildren', body);
+      parseFn = (String body) {
+        final Map<String, dynamic> jsonResponse = jsonDecode(body);
+        final List<dynamic> things = jsonResponse['json']['data']['things'];
+        final Map<String, bool?> votes = {};
+        final List<CommentItem> items = [];
+        final Map<String, int> batchDepthCache = {};
+        for (var thing in things) {
+          final String kind = thing['kind'];
+          final Map<String, dynamic> data = thing['data'];
+          final String id = data['name'];
+          final String parentId = data['parent_id'];
+          final currentDepth = batchDepthCache.containsKey(parentId) ? batchDepthCache[parentId]! + 1 : (data['depth'] ?? depth ?? 0);
+          batchDepthCache[id] = currentDepth;
+          if (kind == 't1') {
+            final (vote, comment) = _parseCommentFromJson(data, currentDepth);
+            votes[comment.id] = vote;
+            items.add(comment);
+          } 
+          else if (kind == 'more') {
+            items.add(
+              LoadMoreComment(
+                depth: currentDepth,
+                count: data['count'] ?? 0,
+                pageToken: (data['children'] as List).join(','),
+              ),
             );
           }
         }
@@ -674,43 +506,37 @@ class RedditApi extends Api {
 
   @override
   Future<String?> login() async {
-    await _checkIfClientIdChanged();
-    if (await _ensureClientInitialized()) {
-      final (redirectUri, customUriScheme) = _redirectUriAndCustomUriScheme;
-      _oauth2Helper!.client.redirectUri = redirectUri;
-      _oauth2Helper!.client.customUriScheme = customUriScheme;
-      final tokenResponse = await _oauth2Helper!.fetchToken();
-      if (tokenResponse.isValid()) {
-        _clientInstance?.close();
-        _clientInstance = null;
-        _cookies = null;
-        final user = await getLoggedInUser();
-        Settings.loggedInUsers.add(user);
-        Settings.activeUser.value = user;
-        final subscribedCommunityNames = await getSubscribedCommunityNames();
-        Settings.communities.addAll(
-          subscribedCommunityNames.map((name) {
-            return Community(
-              platform: Platform.reddit,
-              name: name
-            );
-          })
-        );
-        return user.name;
+    final clientId = Settings.redditClientId.value!;
+    final helper = _getOrCreateAuthClientHelper(clientId);
+    final tokenResponse = await helper.fetchToken();
+    if (tokenResponse.isValid()) {
+      final user = await getLoggedInUser();
+      if (Settings.loggedInUsers.value.any((u) => u.id == user.id)) {
+        return null;
       }
+      await helper.updateTokenStorageKey(clientId, user.id, tokenResponse);
+      Settings.loggedInUsers.add(user);
+      Settings.activeUser.value = user;
+      final subscribedCommunityNames = await getSubscribedCommunityNames();
+      Settings.communities.addAll(
+        subscribedCommunityNames.map((name) {
+          return Community(
+            platform: Platform.reddit,
+            name: name
+          );
+        })
+      );
+      return user.name;
     }
     return null;
   }
 
   @override
   Future<String> logout() async {
-    await _ensureClientInitialized();
-    await _oauth2Helper!.removeAllTokens();
     final user = Settings.activeUser.value!;
+    _authClientHelpers[user.id]!.dispose();
     Settings.loggedInUsers.remove(user);
-    Settings.activeUser.value = null;
-    _oauth2Helper = null;
-    _initClientFuture = null;
+    Settings.activeUser.value = Settings.loggedInUsers.value.firstOrNull;
     return user.name;
   }
 
@@ -791,6 +617,17 @@ class RedditApi extends Api {
     dev.log('[Reddit] deleteComment: id=$id');
     return _post(
       '/api/del',
+      {
+        'id': id,
+      }
+    );
+  }
+
+  @override
+  Future<void> unsubscribe(String id) {
+    dev.log('[Reddit] unsubscribe: id=$id');
+    return _post(
+      '/api/subscribe?action=unsub',
       {
         'id': id,
       }
@@ -958,6 +795,258 @@ class RedditApi extends Api {
       )
     );
   
+  }
+
+}
+
+abstract class _ClientHelper {
+
+  Future<Response> get(String path, Map<String, dynamic>? params);
+
+  Future<Response> post(String path, dynamic body);
+
+  void dispose() {
+
+  }
+  
+}
+
+class _HttpClientHelper extends _ClientHelper {
+
+  static http.Client? _clientInstance;
+  static Map<String, Cookie>? _cookies;
+  static Future<void>? _initCookiesFuture;
+
+  @override
+  Future<Response> get(String path, Map<String, dynamic>? params) async {
+    return _request((client) async {
+      return client.get(
+        Uri.https(RedditApi._domain, path, params),
+        headers: await _headers
+      );
+    });
+  }
+
+  @override
+  Future<Response> post(String path, dynamic body) async {
+    return _request((client) async {
+      return client.post(
+        Uri.https(RedditApi._domain, path),
+        headers: await _headers,
+        body: body
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    if (_clientInstance != null) {
+      _clientInstance!.close();
+      _clientInstance = null;
+    }
+    _cookies = null;
+    _initCookiesFuture = null;
+  }
+
+  Future<Response> _request(Future<Response> Function(http.Client client) request) async {
+    final client = _clientInstance ??= http.Client();
+    Response response = await request(client);
+    dev.log('[Reddit][HttpClientHelper] response code: ${response.statusCode}');
+    if (response.headers.containsKey('set-cookie')) {
+      await _updateCookiesFromHeaders(response.headers['set-cookie']!);
+      if (response.statusCode == 403) {
+        dev.log('[Reddit][HttpClientHelper] Status code 403 detected. Attempting HTML warm-up...');
+        final warmUp = await client.get(
+          Uri.parse(RedditApi._baseUrl), 
+          headers: {
+            'Upgrade-Insecure-Requests': '1',
+            'User-Agent': RedditApi._defaultUnauthenticatedUserAgent
+          },
+        );
+        if (warmUp.headers.containsKey('set-cookie')) {
+          await _updateCookiesFromHeaders(warmUp.headers['set-cookie']!);
+          dev.log('[Reddit][HttpClientHelper] Warm-up complete. Retrying original request...');
+          response = await request(client);
+        }
+      }
+    }
+    return response;
+  }
+
+  Future<Map<String, String>> get _headers async {
+    final headers = Map.of(RedditApi._defaultUnauthenticatedHeaders);
+    await (_initCookiesFuture ??= _initCookies());
+    if (_cookies!.isNotEmpty) {
+      final DateTime now = DateTime.now();
+      final List<String> expiredKeys = [];
+      _cookies!.removeWhere((key, cookie) {
+        final isExpired = cookie.expirationTime?.isBefore(now) ?? false;
+        if (isExpired) {
+          expiredKeys.add(key);
+        }
+        return isExpired;
+      });
+      if (expiredKeys.isNotEmpty) {
+        Database.instance.deleteCookies(expiredKeys);
+      }
+      if (_cookies!.isNotEmpty) {
+        headers['Cookie'] = _cookies!.values.map((c) => '${c.key}=${c.value}').join('; ');
+      }
+    }
+    dev.log('[Reddit][HttpClientHelper] Cookie headers: ${_cookies!.length}');
+    return headers;
+  }
+
+  Future<void> _initCookies() async {
+    _cookies = {
+      for (var cookie in await Database.instance.getAllValidCookies())
+        cookie.key: cookie
+    };
+  }
+
+  Future<void> _updateCookiesFromHeaders(String headerValue) async {
+    final cookieStrings = headerValue.split(RegExp(r'(,)(?=[^;]+?=)'));
+    final List<Cookie> cookies = [];
+    for (var str in cookieStrings) {
+      final ioCookie = io.Cookie.fromSetCookieValue(str);
+      final cookie = Cookie(
+        key: ioCookie.name,
+        value: ioCookie.value,
+        expirationTime: ioCookie.expires,
+      );
+      _cookies![ioCookie.name] = cookie;
+      cookies.add(cookie);
+      dev.log('[Reddit][HttpClientHelper] Added cookie: key=${cookie.key}, value=${cookie.value}, expirationTime=${cookie.expirationTime}');
+    }
+    if (cookies.isNotEmpty) {
+      await Database.instance.saveCookies(cookies);
+    }
+  }
+
+}
+
+class _AuthClientHelper extends _ClientHelper {
+
+  OAuth2Helper _oAuthHelper;
+  final String Function() _userAgentProvider;
+  AccessTokenResponse? _cachedToken;
+
+  _AuthClientHelper(String clientId, String? activeUserId, this._userAgentProvider) : _oAuthHelper = _createOAuth2Helper(clientId, activeUserId == null ? null : TokenStorage(activeUserId), ['read']);
+
+  @override
+  Future<Response> get(String path, Map<String, dynamic>? params) {
+    return _request(() {
+      return _oAuthHelper.get(
+        Uri.https(RedditApi._oauthDomain, path, params).toString(),
+        headers: {
+          ...RedditApi._defaultAuthenticatedHeaders,
+          'User-Agent': _userAgentProvider()
+        }
+      );
+    });
+  }
+
+  @override
+  Future<Response> post(String path, dynamic body) {
+    return _request(() {
+      return _oAuthHelper.post(
+        Uri.https(RedditApi._oauthDomain, path).toString(),
+        headers: {
+          ...RedditApi._defaultAuthenticatedHeaders,
+          'User-Agent': _userAgentProvider()
+        },
+        body: body
+      );
+    });
+  }
+  
+  static OAuth2Helper _createOAuth2Helper(String clientId, TokenStorage? tokenStorage, List<String> scopes) {
+    final (redirectUri, customUriScheme) = _redirectUriAndCustomUriScheme;
+    dev.log('[Redddit] _createOAuth2Helper: clientId=$clientId, tokenStorage key=${tokenStorage?.key}, scopes=$scopes, redirectUri=$redirectUri, customUriScheme=$customUriScheme');
+    return OAuth2Helper(
+      OAuth2Client(
+        authorizeUrl: 'https://www.reddit.com/api/v1/authorize',
+        tokenUrl: 'https://www.reddit.com/api/v1/access_token',
+        redirectUri: redirectUri,
+        customUriScheme: customUriScheme,
+      ),
+      grantType: OAuth2Helper.authorizationCode,
+      clientId: clientId,
+      clientSecret: '',
+      scopes: scopes,
+      authCodeParams: {
+        'duration': 'permanent',
+        'prompt': 'select_account'
+      },
+      tokenStorage: tokenStorage
+    );
+  }
+
+  Future<Response> _request(Future<Response> Function() request) async {
+    final tokenResponse = _cachedToken ??= await _oAuthHelper.getTokenFromStorage();
+    dev.log('[Reddit][OAuthHelper] Got access token from storage: accessToken=${tokenResponse?.accessToken?.substring(0, 20)}..., refreshToken=${tokenResponse?.refreshToken?.substring(0, 20)}...');
+    if (tokenResponse == null || (!tokenResponse.hasRefreshToken() && tokenResponse.isExpired())) {
+      dev.log('[Reddit][OAuthHelper] Fetching access token (${tokenResponse == null ? 'new' : 'expired'})');
+      if (Settings.redditDeviceId.value == null) {
+        Settings.redditDeviceId.value = List<int>.generate(16, (i) => Random.secure().nextInt(256)).map((e) => e.toRadixString(16).padLeft(2, '0')).join();
+      }
+      final response = await http.post(
+        Uri.parse('https://www.reddit.com/api/v1/access_token'),
+        headers: {
+          'Authorization': 'Basic ${base64Encode(utf8.encode('${Settings.redditClientId.value}:'))}',
+          'User-Agent': _userAgentProvider(),
+        },
+        body: {
+          'grant_type': 'https://oauth.reddit.com/grants/installed_client',
+          'device_id': Settings.redditDeviceId.value!,
+        }
+      );
+      final data = jsonDecode(response.body);
+      await _oAuthHelper.tokenStorage.addToken(
+        AccessTokenResponse.fromMap({
+          'access_token': data['access_token'],
+          'token_type': 'bearer',
+          'expires_in': data['expires_in'],
+          'scope': RedditApi._oauthScopes.join(' '),
+        })
+      );
+      dev.log('[Reddit][OAuthHelper] Fetched access token: ${(data['access_token'] as String).substring(0, 10)}...');
+    }
+    final response = await request();
+    dev.log('[Reddit][OAuthHelper] Response code: ${response.statusCode}');
+    // dev.log('[Reddit][OAuthHelper] response: ${response.body}');
+    return response;
+  }
+
+  @override
+  Future<void> dispose() async {
+    dev.log('[Reddit][OAuthHelper] Disposing OAuth2Helper');
+    await _oAuthHelper.removeAllTokens();
+    _cachedToken = null;
+  }
+
+  Future<AccessTokenResponse> fetchToken() {
+    final clientId = Settings.redditClientId.value!;
+    final (redirectUri, customUriScheme) = _redirectUriAndCustomUriScheme;
+    _oAuthHelper.clientId = clientId;
+    _oAuthHelper.client.redirectUri = redirectUri;
+    _oAuthHelper.client.customUriScheme = customUriScheme;
+    _oAuthHelper.scopes = RedditApi._oauthScopes;
+    return _oAuthHelper.fetchToken();
+  }
+
+  Future<void> updateTokenStorageKey(String clientId, String tokenStorageKey, AccessTokenResponse tokenResponse) async {
+    dev.log('[Reddit][OAuthHelper] updateTokenStorageKey: clientId=$clientId, tokenStorageKey=$tokenStorageKey, token=${tokenResponse.accessToken}');
+    _oAuthHelper.tokenStorage.deleteAllTokens();
+    final tokenStorage = TokenStorage(tokenStorageKey);
+    await tokenStorage.addToken(tokenResponse);
+    _oAuthHelper = _createOAuth2Helper(clientId, tokenStorage, RedditApi._oauthScopes);
+    _cachedToken = tokenResponse;
+  }
+
+  static (String, String) get _redirectUriAndCustomUriScheme {
+    final redirectUri = Settings.redditRedirectUri.value;
+    return redirectUri != null ? (redirectUri, redirectUri.split('://')[0]) : ('', 'com.altherat.lurk');
   }
 
 }

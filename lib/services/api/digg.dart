@@ -31,7 +31,7 @@ class DiggApi extends Api {
   bool get hasLogin => false;
 
   @override
-  String get defaultUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by @altherat)';
+  String get defaultUnauthenticatedUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by @altherat)';
 
   @override
   String get baseUrl => _baseUrl;
@@ -794,6 +794,11 @@ class DiggApi extends Api {
   
   @override
   Future<void> deleteComment(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> unsubscribe(String id) {
     throw UnimplementedError();
   }
 

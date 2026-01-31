@@ -12,7 +12,7 @@ enum Platform {
     communityLabel: 'subreddit',
     communityPrefix: 'r/',
     homeCommunity: 'popular',
-    rootCommunityName: 'Home',
+    rootCommunityName: 'Front page',
     userPrefix: 'u/',
     communityPath: r'^\/r\/([^\/]+)\/?$',
     userPath: r'^\/(?:u|user)\/([^\/]+)\/?$',

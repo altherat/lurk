@@ -13,10 +13,10 @@ abstract class Api {
 
   const Api();
 
-  String get savedOrDefaultUserAgent => Settings.customUserAgent.value ?? defaultUserAgent;
+  String get savedOrDefaultUserAgent => Settings.customUserAgent.value ?? defaultUnauthenticatedUserAgent;
 
   @protected
-  String get defaultUserAgent;
+  String get defaultUnauthenticatedUserAgent;
 
   @protected
   String get baseUrl;
@@ -62,6 +62,7 @@ abstract class Api {
   Future<void> vote(String id, bool? up);
   Future<void> postComment(String id, String text);
   Future<void> deleteComment(String id);
+  Future<void> unsubscribe(String communityName);
 
 }
 

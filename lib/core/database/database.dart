@@ -86,6 +86,8 @@ class Database extends _$Database {
     });
   }
 
+  Future<void> deleteCookies(Iterable<String> keys) => (delete(cookies)..where((c) => c.key.isIn(keys))).go();
+
   Future<Setting> getAllSettings() => select(settings).getSingle();
 
   Future<int> updateSettings(SettingsCompanion companion) => (update(settings)..where((t) => t.id.equals(1))).write(companion);
