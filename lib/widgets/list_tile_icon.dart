@@ -20,40 +20,41 @@ class ListTileIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (url != null) {
-      return ExtendedImage.network(
-        url!,
-        width: size,
-        height: size,
-        cache: true,
-        shape: BoxShape.circle,
-        loadStateChanged: (state) {
-          switch (state.extendedImageLoadState) {
-            case LoadState.loading:
-              return Center(
-                child: SizedBox(
-                  width: 24,
-                  height: 24,
-                  child: PlatformCircularProgressIndicator(
-                    platform: platform,
-                    strokeWidth: 2.5
-                  ),
-                ),
-              );
-            case LoadState.completed:
-              return null;
-            case LoadState.failed:
-              return _Placeholder(
-                icon: placeholderIcon,
-                size: size
-              );
-          }
-        }
+    if (url == null) {
+      return _Placeholder(
+        icon: placeholderIcon,
+        size: size
       );
     }
-    return _Placeholder(
-      icon: placeholderIcon,
-      size: size
+    return ExtendedImage.network(
+      url!,
+      width: size,
+      height: size,
+      cache: true,
+      fit: BoxFit.cover,
+      shape: BoxShape.circle,
+      loadStateChanged: (state) {
+        switch (state.extendedImageLoadState) {
+          case LoadState.loading:
+            return Center(
+              child: SizedBox(
+                width: 24,
+                height: 24,
+                child: PlatformCircularProgressIndicator(
+                  platform: platform,
+                  strokeWidth: 2.5
+                ),
+              ),
+            );
+          case LoadState.completed:
+            return null;
+          case LoadState.failed:
+            return _Placeholder(
+              icon: placeholderIcon,
+              size: size
+            );
+        }
+      }
     );
   }
 

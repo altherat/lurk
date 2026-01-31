@@ -292,7 +292,7 @@ class RedditApi extends Api {
 
   @override
   Future<PostDetails> getPostDetailsFromUrl(String url, {Map<FeedOptionType, FeedOption>? options}) async {
-    // dev.log('[Reddit] getPostDetailsFromUrl: url=$url, options=[${options?.values.map((option) => option.id).join(', ')}]');
+    dev.log('[Reddit] getPostDetailsFromUrl: url=$url, options=[${options?.values.map((option) => option.id).join(', ')}]');
     final uri = Uri.parse(url);
     final pathSegments = uri.pathSegments;
     final sort = uri.queryParameters['sort'];
@@ -308,20 +308,20 @@ class RedditApi extends Api {
     else {
       commentId = null;
     }
-    return getPostDetailsFromId(pathSegments[3], commentId: commentId, options: options);
+    return getPostDetailsFromId(pathSegments[3], shortCommentId: commentId, options: options);
   }
 
   @override
-  Future<PostDetails> getPostDetailsFromId(String id, {String? commentId, Map<FeedOptionType, FeedOption>? options}) async {
-    // dev.log('[Reddit] getPostDetailsFromId: id=$id, commentId=$commentId, options=[${options?.values.map((option) => option.id).join(', ')}]');
+  Future<PostDetails> getPostDetailsFromId(String id, {String? shortCommentId, Map<FeedOptionType, FeedOption>? options}) async {
+    dev.log('[Reddit] getPostDetailsFromId: id=$id, commentId=$shortCommentId, options=[${options?.values.map((option) => option.id).join(', ')}]');
     final sort = options?[FeedOptionType.sort];
     final segments = ['comments', id];
     final params = {
       if (sort != null)
         'sort': sort.id,
     };
-    if (commentId != null) {
-      segments.addAll(['comment', commentId]);
+    if (shortCommentId != null) {
+      segments.addAll(['comment', shortCommentId]);
       params['context'] = '3';
     }
     final (postVote, commentVotes, postDetails) = await compute(
@@ -336,11 +336,11 @@ class RedditApi extends Api {
           PostDetails(
             post: post,
             comments: comments,
-            contextCommentId: contextCommentId
+            contextCommentShortId: contextCommentId
           )
         );
       },
-      ((await _get('/${segments.join('/')}.json', params: params)).body, commentId)
+      ((await _get('/${segments.join('/')}.json', params: params)).body, shortCommentId)
     );
     Votes.posts.setVote(postDetails.post.id, postVote);
     commentVotes.forEach((commentId, vote) => Votes.comments.setVote(commentId, vote));
@@ -415,9 +415,10 @@ class RedditApi extends Api {
         for (var thing in things) {
           final kind = thing['kind'];
           final data = thing['data'];
+          final String id = data['id'];
           final parentId = data['parent'];
           final currentDepth = batchDepthCache.containsKey(parentId) ? batchDepthCache[parentId]! + 1 : depth!;
-          batchDepthCache[data['id']] = currentDepth;
+          batchDepthCache[id] = currentDepth;
           if (kind == 't1') {
             final content = data['content'];
             final element = parse(parse(content).body?.text).querySelector('.thing')!;
@@ -433,7 +434,8 @@ class RedditApi extends Api {
               Comment(
                 depth: currentDepth,
                 platform: Platform.reddit,
-                id: element.attributes['data-fullname']!,
+                id: id,
+                shortId: id.split('_').last,
                 permalink: element.attributes['data-permalink']!,
                 isDeleted: author == '[deleted]',
                 authorId: element.attributes['data-author-fullname'],
@@ -595,18 +597,20 @@ class RedditApi extends Api {
         return compute(
           (String body) {
             final json = jsonDecode(body);
+            if (json is String) {
+              return PagedResult(items: [], pageToken: null);
+            }
             final data = json['data'];
             final children = data['children'] as List;
             return PagedResult(
               items: children
                   .map((child) {
-                    final childData = child['data'];
+                    final Map<String, dynamic> childData = child['data'];
                     final String description = childData['public_description'];
                     final String iconUrl = childData['community_icon'];
-                    debugPrint(iconUrl);
                     return Community(
                       platform: Platform.reddit,
-                      name: childData['display_name'],
+                      name: (childData['display_name'] as String).toLowerCase(),
                       description: description.isNotEmpty ? description : null,
                       iconUrl: iconUrl.isNotEmpty ? Uri.parse(iconUrl).replace(queryParameters: {}).toString() : null,
                       subscriberCount: childData['subscribers'],
@@ -642,13 +646,17 @@ class RedditApi extends Api {
                             value: DateTime.fromMillisecondsSinceEpoch((childData['created_utc'] as num).toInt() * 1000, isUtc: true)
                           ),
                           UserStat(
-                            label: 'Link karma',
-                            value: childData['link_karma']
+                            label: 'Karma',
+                            value: childData['link_karma'] + childData['comment_karma']
                           ),
-                          UserStat(
-                            label: 'Comment karma',
-                            value: childData['comment_karma']
-                          )
+                          // UserStat(
+                          //   label: 'Link karma',
+                          //   value: childData['link_karma']
+                          // ),
+                          // UserStat(
+                          //   label: 'Comment karma',
+                          //   value: childData['comment_karma']
+                          // )
                         ]
                       : null
                   );
@@ -934,6 +942,7 @@ class RedditApi extends Api {
         depth: depth,
         platform: Platform.reddit,
         id: data['name'],
+        shortId: data['id'],
         permalink: data['permalink'],
         isDeleted: author == '[deleted]',
         authorId: data['author_fullname'],

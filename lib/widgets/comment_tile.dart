@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
+import 'package:lurk/models/user.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/services/votes.dart';
@@ -18,7 +18,7 @@ class CommentTile extends StatelessWidget {
   final bool isInteractable;
   final bool showCommunityName;
   final bool showViewUserOption;
-  final Map<String, Function()>? options;
+  final Map<String, Function()> Function(BuildContext context, LoggedInUser? activeUser)? optionsBuilder;
   final Widget? header;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
@@ -32,7 +32,7 @@ class CommentTile extends StatelessWidget {
     this.isInteractable = true,
     this.showCommunityName = false,
     this.showViewUserOption = true,
-    this.options,
+    this.optionsBuilder,
     this.header,
     this.onTap,
     this.onDelete
@@ -43,7 +43,6 @@ class CommentTile extends StatelessWidget {
     final interactionCallback = isInteractable
       ? () {
           final activeUser = Settings.activeUser.value;
-          debugPrint('test: ${activeUser?.id}, ${comment.authorId}');
           showSimpleTextOptionsBottomSheet(
             context: context,
             title: '${comment.authorName == null ? 'Deleted' : comment.authorName!.toPosessive()} comment',
@@ -53,7 +52,7 @@ class CommentTile extends StatelessWidget {
                   onDelete?.call();
                   comment.platform.api.deleteComment(comment.id);
                 },
-              ...?options,
+              ...?optionsBuilder?.call(context, activeUser),
               if (showViewUserOption && comment.authorName != null)
                 'View ${comment.platform.userPrefix}${comment.authorName}': () {
                   context.push(
@@ -74,7 +73,7 @@ class CommentTile extends StatelessWidget {
     final VoidCallback? onLongPress;
     if (this.onTap == null) {
       onTap = interactionCallback;
-      onLongPress = null;
+      onLongPress = interactionCallback;
     }
     else {
       onTap = this.onTap;

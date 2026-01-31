@@ -7,13 +7,17 @@ class UserStats extends StatelessWidget {
 
   final List<UserStat> stats;
   final EdgeInsetsGeometry? padding;
+  final double valueFontSize;
   final Color? valueColor;
+  final double labelFontSize;
 
   const UserStats({
     super.key,
     required this.stats,
     this.padding,
+    this.valueFontSize = 18,
     this.valueColor,
+    this.labelFontSize = 11,
   });
 
   @override
@@ -22,7 +26,7 @@ class UserStats extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       padding: padding,
       child: Row(
-        spacing: 16,
+        spacing: 24,
         children: stats.map((stat) {
           final value = stat.value;
           final String displayValue;
@@ -43,14 +47,15 @@ class UserStats extends StatelessWidget {
                 Text(
                   displayValue,
                   style: TextStyle(
-                    fontSize: 16,
-                    color: valueColor
+                    fontSize: valueFontSize,
+                    color: valueColor,
+                    fontWeight: FontWeight.bold
                   ),
                 ),
                 Text(
                   stat.label,
                   style: TextStyle(
-                    fontSize: 11,
+                    fontSize: labelFontSize,
                     color: Constants.secondaryTextColor,
                   ),
                 ),

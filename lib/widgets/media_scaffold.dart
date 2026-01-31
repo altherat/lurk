@@ -38,7 +38,7 @@ class MediaScaffold extends StatelessWidget {
     return MainScaffold(
       platform: platform,
       title: post != null ? Text(post!.title) : null,
-      subtitle: Text(url),
+      subtitle: Text(post != null ? post!.community.prefixedName : url),
       popupMenuActions: options,
       body: GestureDetector(
         onLongPress: () {

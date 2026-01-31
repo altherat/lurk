@@ -17,6 +17,7 @@ class Comment extends CommentItem {
   
   final Platform platform;
   final String id;
+  final String shortId;
   final String permalink;
   final bool isDeleted;
   final String? authorId;
@@ -35,6 +36,7 @@ class Comment extends CommentItem {
     required super.depth,
     required this.platform,
     required this.id,
+    required this.shortId,
     required this.permalink,
     required this.isDeleted,
     required this.authorId,

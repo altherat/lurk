@@ -74,9 +74,14 @@ class UserDetailsScreen extends StatelessWidget {
           ];
         }
         return [
-          UserStats(
-            stats: stats,
-            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+          Center(
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: UserStats(
+                stats: stats,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+              ),
+            ),
           )
         ];
       },
@@ -116,13 +121,15 @@ class UserDetailsScreen extends StatelessWidget {
             comment: item,
             showCommunityName: true,
             showViewUserOption: false,
-            options: {
-              'View context': () => context.push(() {
-                return PostDetailsScreen.fromUrl(
-                  platform: platform,
-                  url: platform.api.getCommentUrl(item)
-                );
-              })
+            optionsBuilder: (context, activeUser) => {
+              'View context': () {
+                context.push(() {
+                  return PostDetailsScreen.fromUrl(
+                    platform: platform,
+                    url: platform.api.getCommentUrl(item)
+                  );
+                });
+              }
             },
             header: Text(
               item.postTitle!,

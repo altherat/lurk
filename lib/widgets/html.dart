@@ -229,8 +229,14 @@ class _Image extends StatelessWidget {
           switch (state.extendedImageLoadState) {
             case LoadState.loading:
               return Padding(
-                padding: EdgeInsets.symmetric(vertical: 8),
-                child: PlatformCircularProgressIndicator(platform: platform),
+                padding: EdgeInsets.symmetric(
+                  horizontal: 2,
+                  vertical: 8
+                ),
+                child: PlatformCircularProgressIndicator(
+                  platform: platform,
+                  strokeWidth: 4
+                ),
               );
             case LoadState.completed:
               return Stack(

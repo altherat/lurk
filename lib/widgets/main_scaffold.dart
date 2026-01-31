@@ -18,7 +18,6 @@ import 'package:lurk/widgets/prefixed_community_name.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/feed_option_selector.dart';
 import 'package:lurk/widgets/custom_search_bar.dart';
-import 'package:lurk/widgets/custom_app_bar.dart';
 import 'package:lurk/widgets/list_tile_icon.dart';
 
 class MainScaffold extends StatefulWidget {
@@ -32,8 +31,6 @@ class MainScaffold extends StatefulWidget {
   final Map<String, VoidCallback>? popupMenuActions;
   final FeedOptionsGroup? feedOptions;
   final Map<FeedOptionType, FeedOption>? selectedFeedOptions;
-  final bool useSlivers;
-  final List<Widget> slivers;
   final Widget body;
   final VoidCallback? onRefresh;
   final Function(Map<FeedOptionType, FeedOption>)? onFeedOptionsSelected;
@@ -49,8 +46,6 @@ class MainScaffold extends StatefulWidget {
     this.popupMenuActions,
     this.feedOptions,
     this.selectedFeedOptions,
-    this.useSlivers = false,
-    this.slivers = const [],
     required this.body,
     this.onRefresh,
     this.onFeedOptionsSelected
@@ -61,21 +56,26 @@ class MainScaffold extends StatefulWidget {
 
 }
 
-class _MainScaffoldState extends State<MainScaffold> {
+class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderStateMixin {
 
   final ValueNotifier<bool> _isBottomBarVisible = ValueNotifier<bool>(true);
   final ScrollController _scrollController = ScrollController();
+  TabController? _tabController;
   late GlobalKey<ScaffoldState> _scaffoldKey;
 
   @override
   void initState() {
     super.initState();
     _scaffoldKey = widget.scaffoldKey ?? GlobalKey<ScaffoldState>();
+    if (widget.feedOptions != null && widget.feedOptions!.type.label == null) {
+      _tabController = TabController(length: widget.feedOptions!.options.length, vsync: this);
+    }
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
+    _tabController?.dispose();
     super.dispose();
   }
 
@@ -121,6 +121,7 @@ class _MainScaffoldState extends State<MainScaffold> {
       valueListenable: Settings.useBottomBar,
       builder: (context, useBottomBar, child) {
         final List<Widget> actions = widget.iconActions.toList();
+        final List<PopupMenuItem> popupMenuItems = [];
         final titleWidget = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -169,6 +170,12 @@ class _MainScaffoldState extends State<MainScaffold> {
           drawer = null;
           drawerEdgeDragWidth = 20;
           appBarDrawerIcon = null;
+          popupMenuItems.add(
+            PopupMenuItem<VoidCallback>(
+              value: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen())),
+              child: const Text('Settings'),
+            )
+          );
           bottomBar = ValueListenableBuilder(
             valueListenable: _isBottomBarVisible,
             builder: (context, isBottomBarVisible, child) {
@@ -334,62 +341,53 @@ class _MainScaffoldState extends State<MainScaffold> {
           }
         }
         if (widget.popupMenuActions != null) {
-            actions.add(
-              PopupMenuButton(
-                onSelected: (callback) => callback(),
-                itemBuilder: (context) => [
-                  ...widget.popupMenuActions!.entries.map((entry) {
-                    return PopupMenuItem<VoidCallback>(
-                      value: entry.value,
-                      child: Text(entry.key),
-                    );
-                  }),
-                ]
-              )
-            );
+          popupMenuItems.insertAll(
+            0,
+            widget.popupMenuActions!.entries.map((entry) {
+              return PopupMenuItem<VoidCallback>(
+                value: entry.value,
+                child: Text(entry.key),
+              );
+            })
+          );
+        }
+        if (popupMenuItems.isNotEmpty) {
+          actions.add(
+            PopupMenuButton(
+              onSelected: (callback) => callback(),
+              itemBuilder: (context) => popupMenuItems
+            )
+          );
         }
 
-        PreferredSizeWidget? appBar;
-        Widget body;
-        if (widget.useSlivers) {
-          body = ValueListenableBuilder(
-            valueListenable: Settings.appBarColor,
-            builder: (context, appBarColor, child) {
-              return Stack(
-                children: [
-                  NestedScrollView(
-                    controller: _scrollController,
-                    headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-                      return <Widget>[
-                        SliverAppBar(
-                          floating: true,
-                          snap: true,
-                          title: titleWidget,
-                          actions: actions,
-                          backgroundColor: appBarColor,
-                          surfaceTintColor: appBarColor,
-                          foregroundColor: appBarColor.contrast,
-                          leading: appBarDrawerIcon
-                        ),
-                        ...widget.slivers
-                      ];
-                    },
-                    body: widget.body
-                  ),
-                  _Scrim(color: appBarColor!.withAlpha(Constants.scrimAlpha))
-                ],
-              );
-            }
-          );
-        }
-        else {
-          appBar = ThemedAppBar(
-            title: titleWidget,
-            actions: actions,
-            leading: appBarDrawerIcon,
-          );
-          body = widget.body;
-        }
+        Widget body = ValueListenableBuilder(
+          valueListenable: Settings.appBarColor,
+          builder: (context, appBarColor, child) {
+            return Stack(
+              children: [
+                NestedScrollView(
+                  controller: _scrollController,
+                  headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+                    return <Widget>[
+                      SliverAppBar(
+                        floating: true,
+                        snap: true,
+                        title: titleWidget,
+                        actions: actions,
+                        backgroundColor: appBarColor,
+                        surfaceTintColor: appBarColor,
+                        foregroundColor: appBarColor.contrast,
+                        leading: appBarDrawerIcon,
+                      ),
+                    ];
+                  },
+                  body: widget.body
+                ),
+                _Scrim(color: appBarColor!.withAlpha(Constants.scrimAlpha))
+              ],
+            );
+          }
+        );
 
         if (useBottomBar) {
           body = NotificationListener<UserScrollNotification>(
@@ -413,7 +411,6 @@ class _MainScaffoldState extends State<MainScaffold> {
           drawer: drawer,
           drawerEdgeDragWidth: drawerEdgeDragWidth,
           bottomNavigationBar: bottomBar,
-          appBar: appBar,
           body: body
         );
       }
@@ -656,7 +653,7 @@ class _CommunityList extends StatefulWidget {
 class _CommunityListState extends State<_CommunityList> {
 
   static final RegExp _searchNameAllowedRegex = RegExp(
-    '[a-zA-Z0-9${
+    '[a-z0-9${
       F.appFlavor.platforms
       .expand((platform) => hexEscape('${platform.communityPrefix}${platform.userPrefix}${platform.communityNameAllowedChars}${platform.userNameAllowedChars}'))
       .toSet()
@@ -671,7 +668,7 @@ class _CommunityListState extends State<_CommunityList> {
   late SearchType _searchType;
   String _searchQuery = '';
   String? _searchBarPrefixText;
-  String? _searchBarHint;
+  late String _searchBarHint;
   bool _isSearchBarFocused = false;
   bool _isSearchValid = false;
 
@@ -680,7 +677,7 @@ class _CommunityListState extends State<_CommunityList> {
     super.initState();
     _visibleCommunities = Settings.communities.value.toList();
     _searchPlatform = widget.platform;
-    _searchType = Settings.searchType.value ?? SearchType.all;
+    _searchType = Settings.searchType.value ?? SearchType.community;
     _updateSearchBarTexts();
     _searchBarFocusNode.addListener(_onSearchBarFocusChanged);
     Settings.communities.addListener(_onCommunitiesSettingChanged);
@@ -717,6 +714,9 @@ class _CommunityListState extends State<_CommunityList> {
   void _onSearchBarFocusChanged() {
     setState(() {
       _isSearchBarFocused = _searchBarFocusNode.hasFocus;
+      if (_searchType != SearchType.all) {
+        _searchBarHint = _searchBarFocusNode.hasFocus ? _searchBarHint.toLowerCase() : _searchBarHint.toTitleCase();
+      }
     });
   }
 
@@ -766,10 +766,10 @@ class _CommunityListState extends State<_CommunityList> {
     switch (_searchType) {
       case SearchType.community:
         _searchBarPrefixText = _searchPlatform.communityPrefix;
-        _searchBarHint = _searchPlatform.communityLabel;
+        _searchBarHint = _searchBarFocusNode.hasFocus ? _searchPlatform.communityLabel : _searchPlatform.communityLabel.toTitleCase();
       case SearchType.user:
         _searchBarPrefixText = _searchPlatform.userPrefix;
-        _searchBarHint = 'username';
+        _searchBarHint = _searchBarFocusNode.hasFocus ? 'username' : 'Username';
       case SearchType.all:
         _searchBarPrefixText = null;
         _searchBarHint = 'Search ${_searchPlatform.name.toTitleCase()}';
@@ -813,7 +813,7 @@ class _CommunityListState extends State<_CommunityList> {
                   final double rightCornerRadius;
                   final Alignment? alignment;
                   final Widget child;
-                  if (_searchBarPrefixText != null) {
+                  if (_searchBarPrefixText != null && _isSearchBarFocused) {
                     width = 48;
                     rightCornerRadius = 6;
                     alignment = Alignment.centerRight;
@@ -1050,7 +1050,8 @@ class _CommunityListState extends State<_CommunityList> {
                             final Color? color;
                             if (community.isFavorite) {
                               icon = Icons.star_rounded;
-                              color = showPlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary;
+                              color = showPlatformColorAccents ? null : Theme.of(context).colorScheme.primary;
+                              // color = showPlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary;
                             }
                             else {
                               icon = Icons.star_border_rounded;

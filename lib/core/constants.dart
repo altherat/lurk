@@ -23,7 +23,7 @@ class Constants {
   static const secondaryTextColor = Color(0xFFB3B3B3);
   static const visitedTextColor = Color(0xFFAAAAFF);
   static const linkTextColor = Color(0xFF2676AF);
-  static const contextCommentBackgroundColor = Color(0xFF0C1A2B);
+  static const contextCommentBackgroundColor = Color(0xFF1F1F1F); //Color(0xFF0C1A2B);
   static const postStickiedTitleColor = Color(0xFF99CC00);
   static const postVisitedTitleColor = Color(0xFFAAAAFF);
   static const postTextHtmlBorderColor = Color(0xFFCCCCCC);

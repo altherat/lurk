@@ -372,7 +372,7 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
               ValueListenableBuilder(
                 valueListenable: _videoController,
                 builder: (context, VideoPlayerValue value, child) {
-                  return value.isBuffering
+                  return value.isBuffering && !value.isCompleted
                       ? LargeCenteredCircularProgressIndicator(platform: widget.platform)
                       : const SizedBox.shrink();
                 },

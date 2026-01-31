@@ -37,41 +37,53 @@ class SearchScreen extends StatelessWidget {
           return PostTile(post: item);
         }
         if (item is Community) {
+          final theme = Theme.of(context);
           return ListTile(
-            leading: ListTileIcon(
-              platform: platform,
-              url: item.iconUrl,
-              placeholderIcon: Icons.groups_rounded,
-            ),
-            title: Text(item.prefixedName),
-            onTap: () {
-              context.push(() {
-                return PostsScreen(
-                  community: item,
-                );
-              });
-            },
-            subtitle: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            title: Row(
               children: [
-                Text(item.subscriberCount!.toPluralString('subscriber')),
-                if (item.description != null)
-                  Text(
-                    item.description!
-                  ),
+                ListTileIcon(
+                  platform: platform,
+                  url: item.iconUrl,
+                  placeholderIcon: Icons.groups_rounded,
+                ),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(item.prefixedName),
+                    Text(
+                      item.subscriberCount!.toPluralString('subscriber'),
+                      style: theme.textTheme.bodyMedium!.copyWith(color: theme.colorScheme.onSurfaceVariant)
+                    )
+                  ],
+                ),
               ],
+            ),
+            onTap: () => context.push(() => PostsScreen(community: item)),
+            subtitle: Padding(
+              padding: const EdgeInsets.only(top: 8),
+              child: Text(
+                item.description!,
+                maxLines: 4,
+                overflow: TextOverflow.ellipsis,
+              ),
             ),
           );
         }
         if (item is LookedUpUser) {
           final Widget subtitle;
           if (item.isSuspended) {
-            subtitle = Text('Suspended');
+            subtitle = Text(
+              'Suspended',
+              style: TextStyle(fontSize: 13),
+            );
           }
           else {
             subtitle = UserStats(
               stats: item.stats!,
+              valueFontSize: 13,
               valueColor: Theme.of(context).colorScheme.onSurfaceVariant,
+              labelFontSize: 10,
             );
           }
           return ListTile(

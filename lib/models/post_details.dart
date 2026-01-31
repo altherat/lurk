@@ -5,12 +5,12 @@ class PostDetails {
   
   final Post post;
   final List<CommentItem> comments;
-  final String? contextCommentId;
+  final String? contextCommentShortId;
 
   PostDetails({
     required this.post,
     required this.comments,
-    required this.contextCommentId
+    required this.contextCommentShortId
   });
 
 }

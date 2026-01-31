@@ -62,7 +62,7 @@ class DiggApi extends Api {
 
   @override
   Future<PagedResult<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    // dev.log('[Digg] getPosts: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
+    dev.log('[Digg] getPosts: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
     final sort = options?[FeedOptionType.sort];
     return _getPostsRecursive({
       'first': resultsLimit,
@@ -84,11 +84,11 @@ class DiggApi extends Api {
     // dev.log('[Digg] getPostDetailsFromUrl: url=$url, options=[${options?.values.map((option) => option.id).join(', ')}]');
     final pathSegments = Uri.parse(url).pathSegments;
     final String postId = '${pathSegments[0]}-${pathSegments[1]}';
-    return getPostDetailsFromId(postId, commentId: pathSegments.length > 3 ? '$postId-${pathSegments[3]}' : null, options: options);
+    return getPostDetailsFromId(postId, shortCommentId: pathSegments.length > 3 ? pathSegments[3] : null, options: options);
   }
 
   @override
-  Future<PostDetails> getPostDetailsFromId(String id, {String? commentId, Map<FeedOptionType, FeedOption>? options}) async {
+  Future<PostDetails> getPostDetailsFromId(String id, {String? shortCommentId, Map<FeedOptionType, FeedOption>? options}) async {
     // dev.log('[Digg] getPostDetailsFromId: id=$id, commentId=$commentId, options=[${options?.values.map((option) => option.id).join(', ')}]');
     final sort = options?[FeedOptionType.sort];
     final gql.QueryOptions queryOptions = gql.QueryOptions(
@@ -184,8 +184,8 @@ class DiggApi extends Api {
           '_id_EQ': id, 
         },
         'commentWhere': {
-          if (commentId != null)
-            '_id_EQ': commentId
+          if (shortCommentId != null)
+            '_id_EQ': '$id-$shortCommentId'
           else
             'postId_EQ': id
         },
@@ -193,7 +193,7 @@ class DiggApi extends Api {
       }
     );
     final response = await _client.query(queryOptions);
-    return compute(_parsePostDetails, (response.data!, commentId));
+    return compute(_parsePostDetails, (response.data!, shortCommentId));
   }
 
   @override
@@ -377,7 +377,7 @@ class DiggApi extends Api {
         final responseFuture = _client.query(queryOptions);
         return FeedResponse(
           items: responseFuture.then((response) => _parsePostsResult(response.data!)),
-          other: responseFuture.then((response) => _parseUserStats(response.data!['accounts']['edges'].first['node'])),
+          other: responseFuture.then((response) => _parseAllUserStats(response.data!['accounts']['edges'].first['node'])),
         );
       case UserFeedType.comments:
         final gql.QueryOptions queryOptions = gql.QueryOptions(
@@ -458,7 +458,7 @@ class DiggApi extends Api {
               pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
             );
           }),
-          other: responseFuture.then((response) => _parseUserStats(response.data!['accounts']['edges'].first['node'])),
+          other: responseFuture.then((response) => _parseAllUserStats(response.data!['accounts']['edges'].first['node'])),
         );
       case _:
         throw UnimplementedError();
@@ -604,24 +604,6 @@ class DiggApi extends Api {
     final gql.QueryOptions queryOptions;
     final PagedResult<dynamic> Function(Map<String, dynamic>) parseFn;
     if (type == SearchFeedType.communities) {
-      parseFn = (data) {
-        final communitiesData = data['communities'];
-        final List edges = communitiesData['edges'];
-        final pageInfo = communitiesData['pageInfo'];
-        return PagedResult(
-          items: edges.map((edge) {
-            final node = edge['node'];
-            return Community(
-              platform: Platform.digg,
-              name: node['name'],
-              description: node['description'],
-              iconUrl: node['iconUrl'],
-              subscriberCount: node['memberCount'],
-            );
-          }).toList(),
-          pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
-        );
-      };
       queryOptions = gql.QueryOptions(
         document: gql.gql(r'''
           query CommunitiesQuery($first: Int, $where: CommunitiesWhere, $sort: CommunitiesSort, $after: String) {
@@ -629,7 +611,7 @@ class DiggApi extends Api {
               edges {
                 node {
                   _id
-                  name
+                  slug
                   description
                   iconUrl
                   memberCount
@@ -649,26 +631,26 @@ class DiggApi extends Api {
             'after': pageToken,
         },
       );
-    }
-    else if (type == SearchFeedType.users) {
       parseFn = (data) {
-        final accountsData = data['accounts'];
-        final List edges = accountsData['edges'];
-        final pageInfo = accountsData['pageInfo'];
+        final Map<String, dynamic> communitiesData = data['communities'];
+        final List edges = communitiesData['edges'];
+        final pageInfo = communitiesData['pageInfo'];
         return PagedResult(
           items: edges.map((edge) {
             final node = edge['node'];
-            return LookedUpUser(
-              id: node['_id'],
-              name: node['username'],
-              iconUrl: node['avatarUrl'],
-              isSuspended: false,
-              stats: _parseUserStats(node)
+            return Community(
+              platform: Platform.digg,
+              name: node['slug'],
+              description: node['description'],
+              iconUrl: node['iconUrl'],
+              subscriberCount: node['memberCount'],
             );
           }).toList(),
           pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
         );
       };
+    }
+    else if (type == SearchFeedType.users) {
       queryOptions = gql.QueryOptions(
         document: gql.gql(r'''
           query AccountsQuery($after: String, $first: Int, $sort: AccountSort, $where: AccountWhere) {
@@ -680,10 +662,6 @@ class DiggApi extends Api {
                   avatarUrl
                   createdDate
                   score
-                  diggsGiven
-                  gemsCount
-                  postCount
-                  commentCount
                 }
               }
               pageInfo {
@@ -700,9 +678,35 @@ class DiggApi extends Api {
             'after': pageToken,
         },
       );
+      parseFn = (data) {
+        final accountsData = data['accounts'];
+        final List edges = accountsData['edges'];
+        final pageInfo = accountsData['pageInfo'];
+        return PagedResult(
+          items: edges.map((edge) {
+            final Map<String, dynamic> node = edge['node'];
+            return LookedUpUser(
+              id: node['_id'],
+              name: node['username'],
+              iconUrl: node['avatarUrl'],
+              isSuspended: false,
+              stats: [
+                UserStat(
+                  label: 'Digg age',
+                  value: DateTime.parse(node['createdDate'])
+                ),
+                UserStat(
+                  label: 'Score',
+                  value: node['score']
+                )
+              ]
+            );
+          }).toList(),
+          pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
+        );
+      };
     }
     else {
-      parseFn = _parsePostsResult;
       queryOptions = gql.QueryOptions(
         document: gql.gql(r'''
           query PostsQuery($first: Int, $after: String, $where: PostWhere, $sort: PostSort) {
@@ -753,6 +757,7 @@ class DiggApi extends Api {
             'after': pageToken,
         },
       );
+      parseFn = _parsePostsResult;
     }
     final response = await _client.query(queryOptions);
     return compute(parseFn, response.data!);
@@ -793,7 +798,7 @@ class DiggApi extends Api {
   }
 
   Future<PagedResult<Post>> _getPostsRecursive(Map<String, dynamic> variables, {List<Post>? accumulatedPosts, int depth = 0}) async {
-    // dev.log('[Digg] _getPostsRecursive: variables=[${variables.entries.map((entry) => '${entry.key}=${entry.value}').join(', ')}], posts=${accumulatedPosts?.length}, depth=$depth');
+    dev.log('[Digg] _getPostsRecursive: variables=[${variables.entries.map((entry) => '${entry.key}=${entry.value}').join(', ')}], posts=${accumulatedPosts?.length}, depth=$depth');
     final gql.QueryOptions queryOptions = gql.QueryOptions(
       document: gql.gql(r'''
         query PostsQuery($first: Int, $where: PostWhere, $sort: PostSort, $after: String) {
@@ -854,7 +859,6 @@ class DiggApi extends Api {
         depth: depth + 1,
       );
     }
-
     return PagedResult(
       items: allPosts,
       pageToken: allPosts.length < resultsLimit ? null : pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
@@ -960,7 +964,7 @@ class DiggApi extends Api {
     return PostDetails(
       post: post,
       comments: comments,
-      contextCommentId: contextCommentId
+      contextCommentShortId: contextCommentId
     );
   }
 
@@ -1047,6 +1051,7 @@ class DiggApi extends Api {
       depth: depth,
       platform: Platform.digg,
       id: id,
+      shortId: commentId,
       permalink: '/${id.substring(0, idSecondLastDash)}/${id.substring(idSecondLastDash + 1, idLastDashIndex)}/comment/$commentId',
       isDeleted: data['deletedDate'] != null,
       authorId: null,
@@ -1090,7 +1095,7 @@ class DiggApi extends Api {
     return html.toString();
   }
 
-  static List<UserStat> _parseUserStats(Map<String, dynamic> data) {
+  static List<UserStat> _parseAllUserStats(Map<String, dynamic> data) {
     return [
       UserStat(
         label: 'Digg age',

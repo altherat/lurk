@@ -63,7 +63,6 @@ class _SimpleFeedScreenState<T, U> extends State<SimpleFeedScreen<T, U>> {
       title: widget.title,
       subtitle: subtitleFeedOptions != null ? Text(subtitleFeedOptions.values.map((o) => o.description.toLowerCase()).join(' / ')) : widget.subtitle,
       selectedFeedOptions: _feedOptions,
-      useSlivers: true,
       onFeedOptionsSelected: (options) {
         setState(() {
           _feedOptions = mapEquals(options, widget.feedOptions!.defaults) ? null : options;
@@ -200,11 +199,11 @@ class _ContentState<T, U> extends State<_Content<T, U>> {
   void _getMore() {
     _loadingState = LoadingState.loading;
     widget.getItems(widget.feedOptions, _pageToken)
-      .then((response) {
+      .then((reuslt) {
         if (!mounted) return;
         setState(() {
-          _items.addAll(response.items);
-          _pageToken = response.pageToken;
+          _items.addAll(reuslt.items);
+          _pageToken = reuslt.pageToken;
           _loadingState = LoadingState.success;
         });
       })
@@ -242,8 +241,17 @@ class _ContentState<T, U> extends State<_Content<T, U>> {
   Widget build(BuildContext context) {
     Widget child;
     if (_items.isEmpty) {
-      if (_otherData == null) {
-        return LargeCenteredCircularProgressIndicator(platform: widget.platform);
+      if (_loadingState == LoadingState.loading) {
+        if (_otherData == null || widget.headersBuilder == null) {
+          return LargeCenteredCircularProgressIndicator(platform: widget.platform);
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            ...widget.headersBuilder!(context, _otherDataLoadingState, _otherData),
+            Expanded(child: LargeCenteredCircularProgressIndicator(platform: widget.platform))
+          ]
+        );
       }
       child = CenteredFullHeightScrollView(
         headers: widget.headersBuilder?.call(context, _otherDataLoadingState, _otherData),
@@ -252,9 +260,7 @@ class _ContentState<T, U> extends State<_Content<T, U>> {
               icon: Icons.feed_outlined,
               message: 'Something went wrong'
             )
-          : _loadingState == LoadingState.loading
-            ? LargeCenteredCircularProgressIndicator(platform: widget.platform)
-            : widget.noItemsBuilder(context)
+          : widget.noItemsBuilder(context)
       );
     }
     else {

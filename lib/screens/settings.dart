@@ -23,7 +23,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
   Widget build(BuildContext context) {
     final String platformLabel = F.appFlavor == Flavor.combined ? 'Platform' : F.appFlavor.platforms.first.name;
     return Scaffold(
-      appBar: ThemedAppBar(title: const Text('Settings')),
+      appBar: const CustomAppBar(title: const Text('Settings')),
       body: SafeArea(
         child: ListView(
           padding: const EdgeInsets.all(8),

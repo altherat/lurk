@@ -2,13 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/services/settings.dart';
 
-class ThemedAppBar extends StatelessWidget implements PreferredSizeWidget {
+class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   final Widget title;
   final Widget? leading;
   final List<Widget>? actions;
 
-  const ThemedAppBar({
+  const CustomAppBar({
     super.key,
     required this.title,
     this.leading,

@@ -68,7 +68,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
   Map<FeedOptionType, FeedOption>? _feedOptions;
   List<CommentItem>? _comments;
   List<CommentItem>? _visibleComments;
-  String? _contextCommentId;
+  String? _contextCommentShortId;
   bool _isLoading = true;
   final Set<String> _collapsedCommentIds = {};
 
@@ -102,7 +102,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
           _isLoading = false;
           _post = postDetails.post;
           _comments = postDetails.comments;
-          _contextCommentId = postDetails.contextCommentId;
+          _contextCommentShortId = postDetails.contextCommentShortId;
           _visibleComments = List.of(_comments!);
         });
         History.postDetails.add(_post!.id);
@@ -234,15 +234,9 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
             ],
           )
         ),
-        if (_contextCommentId != null)
+        if (_contextCommentShortId != null)
           InkWell(
-            onTap: () {
-              context.push(() {
-                return PostDetailsScreen.fromPost(
-                  post: _post!
-                );
-              });
-            },
+            onTap: () => context.push(() => PostDetailsScreen.fromPost(post: _post!)),
             child: Container(
               padding: const EdgeInsets.symmetric(vertical: 8),
               child: Row(
@@ -301,16 +295,17 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                     comment: item,
                     depth: item.depth,
                     isCollapsed: isCollapsed,
-                    options: {
-                      'Reply': () {
-                        _showAddCommentDialog(
-                          item.id,
-                          CommentTile(
-                            comment: item,
-                            isInteractable: false,
-                          )
-                        );
-                      }
+                    optionsBuilder: (context, activeUser) => {
+                      if (activeUser != null)
+                        'Reply': () {
+                          _showAddCommentDialog(
+                            item.id,
+                            CommentTile(
+                              comment: item,
+                              isInteractable: false,
+                            )
+                          );
+                        }
                     },
                     onTap: () {
                       setState(() {
@@ -329,7 +324,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
                       });
                     }
                   );
-                  return item.id == _contextCommentId
+                  return item.shortId == _contextCommentShortId
                     ? DecoratedBox(
                         decoration: BoxDecoration(
                           color: Constants.contextCommentBackgroundColor
@@ -388,7 +383,6 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
       iconActions: iconActions,
       feedOptions: widget.platform.postCommentsFeedOptions,
       selectedFeedOptions: _feedOptions,
-      useSlivers: true,
       body: CustomRefreshIndicator(
         platform: widget.platform,
         key: _refreshIndicatorKey,
