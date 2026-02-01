@@ -110,11 +110,11 @@ class DiggApi extends Api {
                 nsfw
                 text
                 author {
-                  _id,
+                  _id
                   username
                 }
                 community {
-                  name
+                  slug
                 }
                 attachments {
                   __typename
@@ -340,10 +340,10 @@ class DiggApi extends Api {
                       username
                     }
                     community {
-                      name
+                      slug
                     }
                     externalContent {
-                      url,
+                      url
                       imageUrl
                     }
                     attachments {
@@ -414,7 +414,7 @@ class DiggApi extends Api {
                     post {
                       title
                       community {
-                        name
+                        slug
                       }
                     }
                     pm
@@ -495,10 +495,10 @@ class DiggApi extends Api {
                       username
                     }
                     community {
-                      name
+                      slug
                     }
                     externalContent {
-                      url,
+                      url
                       imageUrl
                     }
                     attachments {
@@ -554,7 +554,7 @@ class DiggApi extends Api {
                     post {
                       title
                       community {
-                        name
+                        slug
                       }
                     }
                     pm
@@ -729,7 +729,7 @@ class DiggApi extends Api {
                     username
                   }
                   community {
-                    name
+                    slug
                   }
                   externalContent {
                     url
@@ -827,7 +827,7 @@ class DiggApi extends Api {
                   username
                 }
                 community {
-                  name
+                  slug
                 }
                 externalContent {
                   url
@@ -897,7 +897,7 @@ class DiggApi extends Api {
     final authorUsername = json['author']['username'];
     final List attachments = json['attachments'];
     final externalContent = json['externalContent'];
-    final communityName = (json['community']['name'] as String).toLowerCase();
+    final communityName = json['community']['slug'];
 
     final idLastDashIndex = id.lastIndexOf('-');
     final permalink = '/${id.substring(0, idLastDashIndex)}/${id.substring(idLastDashIndex + 1)}/${json['slug']}';
@@ -1061,7 +1061,7 @@ class DiggApi extends Api {
 
     if (postData != null) {
       postTitle = postData?['title'];
-      communityName = postData['community']['name'];
+      communityName = postData['community']['slug'];
     }
     else {
       postTitle = null;
