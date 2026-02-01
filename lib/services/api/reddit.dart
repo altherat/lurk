@@ -98,10 +98,6 @@ class RedditApi extends Api {
         helper._oAuthHelper.clientId = clientId;
       }
     }
-    return _getOrCreateAuthClientHelper(clientId);
-  }
-
-  _AuthClientHelper _getOrCreateAuthClientHelper(String clientId) {
     final activeUserId = Settings.activeUser.value?.id;
     return _authClientHelpers[activeUserId] ??= _AuthClientHelper(clientId, activeUserId, () => savedOrDefaultUserAgent);
   }
@@ -507,14 +503,15 @@ class RedditApi extends Api {
   @override
   Future<String?> login() async {
     final clientId = Settings.redditClientId.value!;
-    final helper = _getOrCreateAuthClientHelper(clientId);
-    final tokenResponse = await helper.fetchToken();
-    if (tokenResponse.isValid()) {
-      final user = await getLoggedInUser();
+    final helper = _authClientHelpers[null] ??= _AuthClientHelper(clientId, null, () => savedOrDefaultUserAgent);
+    if (await helper.fetchToken()) {
+      final user = _parseLoggedInUser((await helper.get('/api/v1/me', null)).body);
       if (Settings.loggedInUsers.value.any((u) => u.id == user.id)) {
         return null;
       }
-      await helper.updateTokenStorageKey(clientId, user.id, tokenResponse);
+      await helper.updateTokenStorageKey(clientId, user.id);
+      _authClientHelpers[user.id] = helper;
+      _authClientHelpers.remove(null);
       Settings.loggedInUsers.add(user);
       Settings.activeUser.value = user;
       final subscribedCommunityNames = await getSubscribedCommunityNames();
@@ -541,18 +538,7 @@ class RedditApi extends Api {
   }
 
   @override
-  Future<LoggedInUser> getLoggedInUser() async {
-    final data = jsonDecode((await _get('/api/v1/me')).body);
-    final iconUri = Uri.parse(data['icon_img']);
-    return LoggedInUser(
-      platform: Platform.reddit,
-      id: 't2_${data['id']}',
-      name: data['name'],
-      iconUrl: Uri(scheme: iconUri.scheme,host: iconUri.host,path: iconUri.path).toString(),
-      inboxCount: data['inbox_count'],
-      score: data['link_karma'] + data['comment_karma']
-    );
-  }
+  Future<LoggedInUser> getLoggedInUser() async => compute(_parseLoggedInUser, (await _get('/api/v1/me')).body);
   
   @override
   Future<List<String>> getSubscribedCommunityNames() async {
@@ -796,6 +782,19 @@ class RedditApi extends Api {
     );
   
   }
+  
+  LoggedInUser _parseLoggedInUser(String body) {
+    final data = jsonDecode(body);
+    final iconUri = Uri.parse(data['icon_img']);
+    return LoggedInUser(
+      platform: Platform.reddit,
+      id: 't2_${data['id']}',
+      name: data['name'],
+      iconUrl: Uri(scheme: iconUri.scheme,host: iconUri.host,path: iconUri.path).toString(),
+      inboxCount: data['inbox_count'],
+      score: data['link_karma'] + data['comment_karma']
+    );
+  }
 
 }
 
@@ -931,7 +930,7 @@ class _AuthClientHelper extends _ClientHelper {
   final String Function() _userAgentProvider;
   AccessTokenResponse? _cachedToken;
 
-  _AuthClientHelper(String clientId, String? activeUserId, this._userAgentProvider) : _oAuthHelper = _createOAuth2Helper(clientId, activeUserId == null ? null : TokenStorage(activeUserId), ['read']);
+  _AuthClientHelper(String clientId, String? activeUserId, this._userAgentProvider) : _oAuthHelper = _createOAuth2Helper(clientId, activeUserId == null ? null : TokenStorage(activeUserId));
 
   @override
   Future<Response> get(String path, Map<String, dynamic>? params) {
@@ -960,9 +959,9 @@ class _AuthClientHelper extends _ClientHelper {
     });
   }
   
-  static OAuth2Helper _createOAuth2Helper(String clientId, TokenStorage? tokenStorage, List<String> scopes) {
+  static OAuth2Helper _createOAuth2Helper(String clientId, TokenStorage? tokenStorage) {
     final (redirectUri, customUriScheme) = _redirectUriAndCustomUriScheme;
-    dev.log('[Redddit] _createOAuth2Helper: clientId=$clientId, tokenStorage key=${tokenStorage?.key}, scopes=$scopes, redirectUri=$redirectUri, customUriScheme=$customUriScheme');
+    dev.log('[Redddit] _createOAuth2Helper: clientId=$clientId, tokenStorage key=${tokenStorage?.key}, redirectUri=$redirectUri, customUriScheme=$customUriScheme');
     return OAuth2Helper(
       OAuth2Client(
         authorizeUrl: 'https://www.reddit.com/api/v1/authorize',
@@ -973,7 +972,7 @@ class _AuthClientHelper extends _ClientHelper {
       grantType: OAuth2Helper.authorizationCode,
       clientId: clientId,
       clientSecret: '',
-      scopes: scopes,
+      scopes: RedditApi._oauthScopes,
       authCodeParams: {
         'duration': 'permanent',
         'prompt': 'select_account'
@@ -983,8 +982,9 @@ class _AuthClientHelper extends _ClientHelper {
   }
 
   Future<Response> _request(Future<Response> Function() request) async {
+    final bool cached = _cachedToken != null;
     final tokenResponse = _cachedToken ??= await _oAuthHelper.getTokenFromStorage();
-    dev.log('[Reddit][OAuthHelper] Got access token from storage: accessToken=${tokenResponse?.accessToken?.substring(0, 20)}..., refreshToken=${tokenResponse?.refreshToken?.substring(0, 20)}...');
+    dev.log('[Reddit][OAuthHelper] Loaded token: cached=$cached, accessToken=${_debugTokenToString(tokenResponse?.accessToken)}, refreshToken=${_debugTokenToString(tokenResponse?.refreshToken)}');
     if (tokenResponse == null || (!tokenResponse.hasRefreshToken() && tokenResponse.isExpired())) {
       dev.log('[Reddit][OAuthHelper] Fetching access token (${tokenResponse == null ? 'new' : 'expired'})');
       if (Settings.redditDeviceId.value == null) {
@@ -1010,7 +1010,7 @@ class _AuthClientHelper extends _ClientHelper {
           'scope': RedditApi._oauthScopes.join(' '),
         })
       );
-      dev.log('[Reddit][OAuthHelper] Fetched access token: ${(data['access_token'] as String).substring(0, 10)}...');
+      dev.log('[Reddit][OAuthHelper] Fetched: access token=${_debugTokenToString(data['access_token'])}');
     }
     final response = await request();
     dev.log('[Reddit][OAuthHelper] Response code: ${response.statusCode}');
@@ -1025,28 +1025,29 @@ class _AuthClientHelper extends _ClientHelper {
     _cachedToken = null;
   }
 
-  Future<AccessTokenResponse> fetchToken() {
-    final clientId = Settings.redditClientId.value!;
-    final (redirectUri, customUriScheme) = _redirectUriAndCustomUriScheme;
-    _oAuthHelper.clientId = clientId;
-    _oAuthHelper.client.redirectUri = redirectUri;
-    _oAuthHelper.client.customUriScheme = customUriScheme;
-    _oAuthHelper.scopes = RedditApi._oauthScopes;
-    return _oAuthHelper.fetchToken();
+  Future<bool> fetchToken() async {
+    dev.log('[Reddit][OAuthHelper] fetchToken');
+    final tokenResponse = await _oAuthHelper.fetchToken();
+    _cachedToken = tokenResponse;
+    return tokenResponse.isValid();
   }
 
-  Future<void> updateTokenStorageKey(String clientId, String tokenStorageKey, AccessTokenResponse tokenResponse) async {
-    dev.log('[Reddit][OAuthHelper] updateTokenStorageKey: clientId=$clientId, tokenStorageKey=$tokenStorageKey, token=${tokenResponse.accessToken}');
-    _oAuthHelper.tokenStorage.deleteAllTokens();
+  Future<void> updateTokenStorageKey(String clientId, String tokenStorageKey) async {
+    dev.log('[Reddit][OAuthHelper] updateTokenStorageKey: clientId=$clientId, tokenStorageKey=$tokenStorageKey, access token=${_debugTokenToString(_cachedToken!.accessToken)}');
+    await _oAuthHelper.tokenStorage.deleteAllTokens();
     final tokenStorage = TokenStorage(tokenStorageKey);
-    await tokenStorage.addToken(tokenResponse);
-    _oAuthHelper = _createOAuth2Helper(clientId, tokenStorage, RedditApi._oauthScopes);
-    _cachedToken = tokenResponse;
+    await tokenStorage.addToken(_cachedToken!);
+    _oAuthHelper = _createOAuth2Helper(clientId, tokenStorage);
   }
 
   static (String, String) get _redirectUriAndCustomUriScheme {
     final redirectUri = Settings.redditRedirectUri.value;
     return redirectUri != null ? (redirectUri, redirectUri.split('://')[0]) : ('', 'com.altherat.lurk');
+  }
+
+  String _debugTokenToString(String? token) {
+    if (token == null) return 'null';
+    return '${token.substring(0, 10)}...${token.substring(token.length - 10)}';
   }
 
 }
