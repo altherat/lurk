@@ -34,6 +34,7 @@ class MainScaffold extends StatefulWidget {
   final Widget body;
   final VoidCallback? onRefresh;
   final Function(Map<FeedOptionType, FeedOption>)? onFeedOptionsSelected;
+  final Function(LoggedInUser user)? onUserSelected;
 
   const MainScaffold({
     super.key,
@@ -48,7 +49,8 @@ class MainScaffold extends StatefulWidget {
     this.selectedFeedOptions,
     required this.body,
     this.onRefresh,
-    this.onFeedOptionsSelected
+    this.onFeedOptionsSelected,
+    this.onUserSelected
   });
 
   @override
@@ -110,6 +112,7 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
                 loggedInUsers: loggedInUsers,
                 activeUser: activeUser!,
                 onLoginPressed: _onLoginPressed,
+                onUserSelected: widget.onUserSelected
               )
         );
       }
@@ -399,6 +402,7 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
                                   activeUser: activeUser!,
                                   addUserTileTrailing: const _SettingsIconButton(),
                                   onLoginPressed: _onLoginPressed,
+                                  onUserSelected: widget.onUserSelected,
                                 );
                               }
                             );
@@ -536,6 +540,7 @@ class _UserList extends StatefulWidget {
   final LoggedInUser activeUser;
   final Widget? addUserTileTrailing;
   final VoidCallback onLoginPressed;
+  final Function(LoggedInUser user)? onUserSelected;
 
   const _UserList({
     super.key,
@@ -544,6 +549,7 @@ class _UserList extends StatefulWidget {
     required this.activeUser,
     this.addUserTileTrailing,
     required this.onLoginPressed,
+    required this.onUserSelected
   });
 
   @override
@@ -599,6 +605,7 @@ class _UserListState extends State<_UserList> {
                 platform: widget.platform,
                 user: user,
                 onTap: () async {
+                  widget.onUserSelected?.call(user);
                   Settings.activeUser.value = user;
                   await Future.delayed(const Duration(milliseconds: 300));
                   setState(() => _isExpanded = false);

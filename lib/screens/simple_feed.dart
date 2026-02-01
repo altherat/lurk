@@ -4,6 +4,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/models/user.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/widgets/centered_full_height_scroll_view.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
@@ -25,6 +26,7 @@ class SimpleFeedScreen<T, U> extends StatefulWidget {
   final List<Widget> Function(BuildContext context, LoadingState loadingState, U? otherData)? headersBuilder;
   final Widget? Function(BuildContext context, T item) itemBuilder;
   final Widget Function(BuildContext context) noItemsBuilder;
+  final Function(LoggedInUser user)? onUserSelected;
 
   const SimpleFeedScreen({
     super.key,
@@ -40,17 +42,20 @@ class SimpleFeedScreen<T, U> extends StatefulWidget {
     this.headersBuilder,
     required this.itemBuilder,
     required this.noItemsBuilder,
+    this.onUserSelected,
   });
 
   @override
-  State<SimpleFeedScreen<T, U>> createState() => _SimpleFeedScreenState<T, U>();
+  State<SimpleFeedScreen<T, U>> createState() => SimpleFeedScreenState<T, U>();
 
 }
 
-class _SimpleFeedScreenState<T, U> extends State<SimpleFeedScreen<T, U>> {
+class SimpleFeedScreenState<T, U> extends State<SimpleFeedScreen<T, U>> {
 
   final _contentKey = GlobalKey<_ContentState>();
   Map<FeedOptionType, FeedOption>? _feedOptions;
+
+  void reload() => _contentKey.currentState?.reload();
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +84,7 @@ class _SimpleFeedScreenState<T, U> extends State<SimpleFeedScreen<T, U>> {
         noItemsBuilder: widget.noItemsBuilder,
       ),
       onRefresh: () => _contentKey.currentState?._refresh(),
+      onUserSelected: widget.onUserSelected
     );
   }
 
@@ -134,6 +140,12 @@ class _ContentState<T, U> extends State<_Content<T, U>> {
       _setLoading();
       _get();
     }
+  }
+
+  void reload() {
+    _items.clear();
+    _setLoading();
+    _get();
   }
 
   void _setLoading() {

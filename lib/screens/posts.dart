@@ -23,11 +23,13 @@ class PostsScreen extends StatefulWidget {
 
 class _PostsScreenState extends State<PostsScreen> {
 
+  final _feedKey = GlobalKey<SimpleFeedScreenState>();
   bool _isSingleCommunity = false;
 
   @override
   Widget build(BuildContext context) {
     return SimpleFeedScreen(
+      key: _feedKey,
       platform: widget.community.platform,
       getItems: (options, pageToken) async {
         final result = await widget.community.platform.api.getPosts(widget.community.name, options: options, pageToken: pageToken);
@@ -56,6 +58,11 @@ class _PostsScreenState extends State<PostsScreen> {
           icon: Icons.feed_outlined,
           message: 'Nothing to show'
         );
+      },
+      onUserSelected: (user) {
+        if (widget.community.name == null) {
+          _feedKey.currentState?.reload();
+        }
       },
     );
   }

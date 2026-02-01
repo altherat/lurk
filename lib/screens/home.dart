@@ -25,15 +25,15 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   @override
   void initState() {
     super.initState();
-    _updateHomeCommunity();
-    Settings.homeCommunityPlatform.addListener(_updateHomeCommunity);
-    Settings.homeCommunityName.addListener(_updateHomeCommunity);
+    _onCommunityChanged();
+    Settings.homeCommunityPlatform.addListener(_onCommunityChanged);
+    Settings.homeCommunityName.addListener(_onCommunityChanged);
   }
 
   @override
   void dispose() { 
-    Settings.homeCommunityPlatform.removeListener(_updateHomeCommunity);
-    Settings.homeCommunityName.removeListener(_updateHomeCommunity);
+    Settings.homeCommunityPlatform.removeListener(_onCommunityChanged);
+    Settings.homeCommunityName.removeListener(_onCommunityChanged);
     App.routeObserver.unsubscribe(this);
     super.dispose();
   }
@@ -66,7 +66,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     );
   }
 
-  void _updateHomeCommunity() {
+  void _onCommunityChanged() {
     if (!_isActive) return;
     setState(() {
       _homeCommunity = _getHomeCommunity();
