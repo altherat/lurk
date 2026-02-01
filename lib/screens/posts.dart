@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/simple_feed.dart';
+import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/prefixed_community_name.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
@@ -25,6 +26,21 @@ class _PostsScreenState extends State<PostsScreen> {
 
   final _feedKey = GlobalKey<SimpleFeedScreenState>();
   bool _isSingleCommunity = false;
+
+  @override initState() {
+    super.initState();
+    Settings.activeUser.addListener(_onActiveUserChanged);
+  }
+
+  @override
+  void dispose() {
+    Settings.activeUser.removeListener(_onActiveUserChanged);
+    super.dispose();
+  }
+
+  void _onActiveUserChanged() {
+    _feedKey.currentState?.reload();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -58,11 +74,6 @@ class _PostsScreenState extends State<PostsScreen> {
           icon: Icons.feed_outlined,
           message: 'Nothing to show'
         );
-      },
-      onUserSelected: (user) {
-        if (widget.community.name == null) {
-          _feedKey.currentState?.reload();
-        }
       },
     );
   }

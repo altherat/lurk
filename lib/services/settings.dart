@@ -12,6 +12,9 @@ import '../core/database/database.dart' as tbl;
 
 class Settings {
 
+  static late final RelationalListSettingNotifier<LoggedInUser> loggedInUsers;
+  static late final SettingNotifier<LoggedInUser?> activeUser;
+
   static late final SettingNotifier<Platform> homeCommunityPlatform;
   static late final SettingNotifier<String?> homeCommunityName;
   static late final SettingNotifier<bool> showCommentImages;
@@ -34,18 +37,23 @@ class Settings {
 
   static late final RelationalListSettingNotifier<Community> communities;
 
-  static late final RelationalListSettingNotifier<LoggedInUser> loggedInUsers;
-  static late final SettingNotifier<LoggedInUser?> activeUser;
-
   static bool isInitialized = false;
 
   static Future<void> init() async {
 
     final db = Database.instance;
     final [dbSettings as tbl.Setting, dbLoggedInUseres as List<LoggedInUser>, dbCommunities as List<Community>] = await Future.wait([db.getAllSettings(), db.getAllLoggedInUsers(), db.getAllCommunities()]);
+    
+    loggedInUsers = RelationalListSettingNotifier(
+      dbLoggedInUseres,
+      save: db.saveLoggedInUser,
+      delete: db.deleteLoggedInUser
+    );
+    final activeUserId = dbSettings.activeUserId;
+    activeUser = SettingNotifier(activeUserId != null ? loggedInUsers.value.firstWhere((user) => user.id == activeUserId) : null, (user) => SettingsCompanion(activeUserId: Value(user?.id)));
 
     homeCommunityPlatform = SettingNotifier(dbSettings.homeCommunityPlatform, (value) => SettingsCompanion(homeCommunityPlatform: Value(value)), F.appFlavor.defaultCommunities.first.platform);
-    homeCommunityName = SettingNotifier(dbSettings.homeCommunityName, (value) => SettingsCompanion(homeCommunityName: Value(value)), homeCommunityPlatform.value.homeCommunity);
+    homeCommunityName = SettingNotifier(dbSettings.homeCommunityName, (value) => SettingsCompanion(homeCommunityName: Value(value)), activeUserId == null ? homeCommunityPlatform.value.homeCommunity : null);
     showCommentImages = SettingNotifier(dbSettings.showCommentImages, (value) => SettingsCompanion(showCommentImages: Value(value)), Constants.defaultShowCommentImages);
     autoplayVideos = SettingNotifier(dbSettings.autoplayVideos, (value) => SettingsCompanion(autoplayVideos: Value(value)), Constants.defaultAutoplayVideos);
     appBarColor = SettingNotifier(dbSettings.appBarColor != null ? Color(dbSettings.appBarColor!) : null, (value) => SettingsCompanion(appBarColor: Value(value.toARGB32())), Constants.defaultAppBarColor);
@@ -65,13 +73,6 @@ class Settings {
       saveAll: db.saveAllCommunities,
       delete: db.deleteCommunity,
     );
-    loggedInUsers = RelationalListSettingNotifier(
-      dbLoggedInUseres,
-      save: db.saveLoggedInUser,
-      delete: db.deleteLoggedInUser
-    );
-    final activeUserId = dbSettings.activeUserId;
-    activeUser = SettingNotifier(activeUserId != null ? loggedInUsers.value.firstWhere((user) => user.id == activeUserId) : null, (user) => SettingsCompanion(activeUserId: Value(user?.id)));
     isInitialized = true;
   }
 

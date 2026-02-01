@@ -50,13 +50,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       return _TextField(
                         defaultValue: Settings.homeCommunityName.hasSavedValue ? homeCommunityName : null,
                         label: homeCommunityPlatform.communityLabel.toTitleCase(),
-                        hintText: homeCommunityPlatform.homeCommunity,
+                        hintText: Settings.homeCommunityName.defaultValue,
                         prefixText: homeCommunityPlatform.communityPrefix,
                         floatingLabelBehavior: FloatingLabelBehavior.always,
+                        inputFormatters: homeCommunityPlatform.communityNameInputFormatters,
+                        showPrefix: (isFocused, value) => isFocused || value.isNotEmpty,
                         onSubmitted: (value) {
-                          debugPrint('saving: $value');
                           Settings.homeCommunityName.value = value.isEmpty ? null : value;
-                          debugPrint('saved');
                         },
                       );
                     }
@@ -253,7 +253,7 @@ class _TextField extends StatefulWidget {
   final TextCapitalization textCapitalization;
   final FloatingLabelBehavior? floatingLabelBehavior;
   final TextInputType? keyboardType;
-  final Widget? suffixIcon;
+  final bool Function(bool isFocused, String value)? showPrefix;
   final Function(String value)? onChanged;
   final Function(String value) onSubmitted;
 
@@ -268,7 +268,7 @@ class _TextField extends StatefulWidget {
     this.textCapitalization = TextCapitalization.none,
     this.floatingLabelBehavior,
     this.keyboardType,
-    this.suffixIcon,
+    this.showPrefix,
     this.onChanged,
     required this.onSubmitted,
   });
@@ -280,12 +280,14 @@ class _TextField extends StatefulWidget {
 
 class _TextFieldState extends State<_TextField> {
 
-  late final TextEditingController _controller = TextEditingController(text: widget.defaultValue ?? '');
-  final FocusNode _focusNode = FocusNode();
+  late final _controller = TextEditingController(text: widget.defaultValue ?? '');
+  final _focusNode = FocusNode();
+  late bool _showPrefix;
 
   @override void initState() {
     super.initState();
     _focusNode.addListener(_onFocusChange);
+    _showPrefix = widget.showPrefix?.call(false, _controller.text) ?? false;
   }
 
   @override
@@ -300,6 +302,18 @@ class _TextFieldState extends State<_TextField> {
     if (!_focusNode.hasFocus) {
       widget.onSubmitted(_controller.text);
     }
+    _updateShowPrefix();
+  }
+
+  void _updateShowPrefix() {
+    if (widget.showPrefix != null) {
+      final showPrefix = widget.showPrefix!(_focusNode.hasFocus, _controller.text);
+      if (showPrefix != _showPrefix) {
+        setState(() {
+          _showPrefix = showPrefix;
+        });
+      }
+    }
   }
 
   @override
@@ -313,7 +327,7 @@ class _TextFieldState extends State<_TextField> {
       decoration: InputDecoration(
         labelText: widget.label,
         hintText: widget.hintText,
-        prefixText: widget.prefixText,
+        prefixText: _showPrefix ? widget.prefixText : null,
         floatingLabelBehavior: widget.floatingLabelBehavior,
         helperMaxLines: 2,
         suffixIcon: widget.infoText != null
@@ -323,11 +337,46 @@ class _TextFieldState extends State<_TextField> {
             )
           : null,
       ),
-      onChanged: widget.onChanged,
+      onChanged: (value) {
+        _updateShowPrefix();
+        widget.onChanged?.call(value);
+      },
       onSubmitted: widget.onSubmitted,
     );
   }
 
+}
+
+class CommunityInputFormatter extends TextInputFormatter {
+
+  final Platform platform;
+
+  CommunityInputFormatter(this.platform);
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final text = newValue.text;
+    final allowedChars = platform.communityNameAllowedChars;
+
+    // 1. Prevent consecutive special characters (e.g., __ or --)
+    if (allowedChars.isNotEmpty) {
+      final escapedChars = RegExp.escape(allowedChars);
+      // This regex looks for any allowed special char followed by another special char
+      if (RegExp('[$escapedChars]{2,}').hasMatch(text)) {
+        return oldValue;
+      }
+    }
+
+    // 2. Prevent starting with a special character (Reddit/Digg usually require Alphanumeric start)
+    if (text.isNotEmpty && RegExp('[${RegExp.escape(allowedChars)}]').hasMatch(text[0])) {
+       return oldValue;
+    }
+
+    return newValue;
+  }
 }
 
 class _InfoIconButton extends StatelessWidget {
@@ -421,15 +470,11 @@ class _IntSettingListTile extends StatelessWidget {
 
   final SettingNotifier<int> setting;
   final String label;
-  final String? hintText;
-  final String? infoText;
 
   const _IntSettingListTile({
     super.key,
     required this.setting,
     required this.label,
-    this.hintText,
-    this.infoText
   });
 
   @override
@@ -437,8 +482,7 @@ class _IntSettingListTile extends StatelessWidget {
     return _TextSettingListTile(
       setting: setting,
       label: label,
-      hintText: hintText ?? setting.defaultValue?.toString(),
-      infoText: infoText,
+      hintText: setting.defaultValue?.toString(),
       keyboardType: TextInputType.number,
       inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9]'))],
       textCapitalization: TextCapitalization.characters,
@@ -453,15 +497,11 @@ class _ColorSettingListTile extends StatelessWidget {
 
   final SettingNotifier<Color?> setting;
   final String label;
-  final String? hintText;
-  final String? infoText;
 
   const _ColorSettingListTile({
     super.key,
     required this.setting,
     required this.label,
-    this.hintText,
-    this.infoText
   });
 
   @override
@@ -469,8 +509,7 @@ class _ColorSettingListTile extends StatelessWidget {
     return _TextSettingListTile(
       setting: setting,
       label: label,
-      hintText: hintText ?? setting.defaultValue?.toHex(),
-      infoText: infoText,
+      hintText: setting.defaultValue?.toHex(),
       prefixText: '#',
       inputFormatters: [
         LengthLimitingTextInputFormatter(8),

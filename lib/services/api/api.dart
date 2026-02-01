@@ -56,7 +56,7 @@ abstract class Api {
   Future<PagedResult<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
 
   Future<String?> login();
-  Future<String> logout();
+  Future<void> logout(String id);
   Future<LoggedInUser> getLoggedInUser();
   Future<List<String>> getSubscribedCommunityNames();
   Future<void> vote(String id, bool? up);

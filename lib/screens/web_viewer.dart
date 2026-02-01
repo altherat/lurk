@@ -135,6 +135,7 @@ class _WebViewState extends State<_WebView> {
 
   @override
   Widget build(BuildContext context) {
+    // return WebViewWidget(controller: widget.controller);
     final PlatformWebViewWidgetCreationParams params;
     if (WebViewPlatform.instance is AndroidWebViewPlatform) {
       params = AndroidWebViewWidgetCreationParams(

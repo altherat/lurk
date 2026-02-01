@@ -3,6 +3,7 @@ import 'dart:io' as io;
 
 import 'package:flutter/foundation.dart';
 import 'package:graphql_flutter/graphql_flutter.dart' as gql;
+import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/community.dart';
@@ -769,7 +770,7 @@ class DiggApi extends Api {
   }
 
   @override
-  Future<String> logout() async {
+  Future<void> logout(String id) async {
     throw UnimplementedError();
   }
 
@@ -829,7 +830,7 @@ class DiggApi extends Api {
                   name
                 }
                 externalContent {
-                  url,
+                  url
                   imageUrl
                 }
                 attachments {
@@ -907,17 +908,30 @@ class DiggApi extends Api {
     final List<String> galleryImageUrls;
     if (attachments.isNotEmpty) {
       url = attachments.first['url'];
-      domain = 'image';
-      thumbnailUrl = url;
-      galleryImageUrls = attachments.map((item) => item['url'] as String).toList();
+      thumbnailUrl = _getThumbnailUrl(Uri.parse(url));
+      if (attachments.length > 1) {
+        domain = 'image/gallery';
+        galleryImageUrls = attachments.map((item) => item['url'] as String).toList();
+      }
+      else {
+        domain = 'image';
+        galleryImageUrls = [];
+      }
     }
     else {
       if (externalContent != null) {
         url = externalContent['url'];
-        final String host = Uri.parse(url).host;
-        final List<String> parts = host.split('.');
+        final host = Uri.parse(url).host;
+        final List parts = host.split('.');
+        final imageUrl = externalContent['imageUrl'];
         domain = parts.length >= 2 ? parts.sublist(parts.length - 2).join('.') : host;
-        thumbnailUrl = externalContent['imageUrl'];
+        if (imageUrl != null) {
+          final uri = Uri.parse(imageUrl);
+          thumbnailUrl = uri.host.endsWith('.imgix.net') ? _getThumbnailUrl(uri) : imageUrl;
+        }
+        else {
+          thumbnailUrl = null;
+        }
       }
       else {
         url = '$_baseUrl$permalink';
@@ -948,6 +962,19 @@ class DiggApi extends Api {
       isDeleted: json['deletedDate'] != null,
       galleryImageUrls: galleryImageUrls,
     );
+  }
+
+  static String _getThumbnailUrl(Uri uri) {
+    // dev.log('[Digg] _getThumbnailUrl: uri=$uri');
+    final width = Constants.thumbnailSize * 3;
+    final params = Map<String, dynamic>.from(uri.queryParameters);
+    params['w'] = width.toString();
+    params['h'] = width.toString();
+    params['fit'] = 'crop';
+    params['crop'] = 'faces,center';
+    params['auto'] = 'format,compress';
+    params['q'] = '75';
+    return uri.replace(queryParameters: params).toString();
   }
 
   static PostDetails _parsePostDetails((Map<String, dynamic>, String?) args) {

@@ -22,6 +22,30 @@ class ImageGalleryViewerScreen extends StatefulWidget {
     this.post
   });
 
+  factory ImageGalleryViewerScreen.fromPost({
+    Key? key,
+    required Post post
+  }) {
+    return ImageGalleryViewerScreen(
+      key: key,
+      platform: post.community.platform,
+      url: post.url,
+      post: post,
+    );
+  }
+
+  factory ImageGalleryViewerScreen.fromUrl({
+    Key? key,
+    required Platform platform,
+    required String url
+  }) {
+    return ImageGalleryViewerScreen(
+      key: key,
+      platform: platform,
+      url: url,
+    );
+  }
+
   @override
   State<ImageGalleryViewerScreen> createState() => _ImageGalleryViewerScreenState();
 
@@ -37,7 +61,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
     super.initState();
     if (widget.post == null) {
       _isLoading = true;
-      _getGallery();
+      _getGalleryFromUrl();
     }
     else {
       _isLoading = false;
@@ -45,8 +69,8 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
     }
   }
 
-  Future<void> _getGallery() async {
-    final postDetails = await widget.platform.api.getPostDetailsFromUrl(widget.url);
+  Future<void> _getGalleryFromUrl() async {
+    final postDetails = await widget.platform.api.getPostDetailsFromUrl(widget.url!);
     if (mounted) {
       setState(() {
         _post = postDetails.post;

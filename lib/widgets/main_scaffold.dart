@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide SearchBar;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -14,13 +15,14 @@ import 'package:lurk/screens/search.dart';
 import 'package:lurk/screens/settings.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
+import 'package:lurk/widgets/custom_app_bar.dart';
 import 'package:lurk/widgets/prefixed_community_name.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/feed_option_selector.dart';
 import 'package:lurk/widgets/custom_search_bar.dart';
 import 'package:lurk/widgets/list_tile_icon.dart';
 
-class MainScaffold extends StatefulWidget {
+class MainScaffold<T> extends StatefulWidget {
 
   final Platform platform;
   final String? activeCommunityName;
@@ -34,7 +36,7 @@ class MainScaffold extends StatefulWidget {
   final Widget body;
   final VoidCallback? onRefresh;
   final Function(Map<FeedOptionType, FeedOption>)? onFeedOptionsSelected;
-  final Function(LoggedInUser user)? onUserSelected;
+  final (ValueListenable<T>, List<Widget> Function(BuildContext context, T value))? iconActionsBuilder;
 
   const MainScaffold({
     super.key,
@@ -50,34 +52,29 @@ class MainScaffold extends StatefulWidget {
     required this.body,
     this.onRefresh,
     this.onFeedOptionsSelected,
-    this.onUserSelected
+    this.iconActionsBuilder
   });
 
   @override
-  State<MainScaffold> createState() => _MainScaffoldState();
+  State<MainScaffold<T>> createState() => _MainScaffoldState<T>();
 
 }
 
-class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderStateMixin {
+class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProviderStateMixin {
 
-  final ValueNotifier<bool> _isBottomBarVisible = ValueNotifier<bool>(true);
-  final ScrollController _scrollController = ScrollController();
-  TabController? _tabController;
+  final _isBottomBarVisible = ValueNotifier<bool>(true);
+  final _scrollController = ScrollController();
   late GlobalKey<ScaffoldState> _scaffoldKey;
 
   @override
   void initState() {
     super.initState();
     _scaffoldKey = widget.scaffoldKey ?? GlobalKey<ScaffoldState>();
-    if (widget.feedOptions != null && widget.feedOptions!.type.label == null) {
-      _tabController = TabController(length: widget.feedOptions!.options.length, vsync: this);
-    }
   }
 
   @override
   void dispose() {
     _scrollController.dispose();
-    _tabController?.dispose();
     super.dispose();
   }
 
@@ -87,7 +84,7 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
       _scrollController.animateTo(
         0, 
         duration: const Duration(milliseconds: 300), 
-        curve: Curves.easeInOut
+        curve: Curves.easeInOutCubicEmphasized
       );
     }
     widget.onRefresh!.call();
@@ -108,11 +105,9 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
                 onTap: _onLoginPressed
               )
             : _UserList(
-                platform: widget.platform,
                 loggedInUsers: loggedInUsers,
                 activeUser: activeUser!,
                 onLoginPressed: _onLoginPressed,
-                onUserSelected: widget.onUserSelected
               )
         );
       }
@@ -173,7 +168,7 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
     return ValueListenableBuilder(
       valueListenable: Settings.useBottomBar,
       builder: (context, useBottomBar, child) {
-        final List<Widget> actions = widget.iconActions.toList();
+        final List<Widget> iconActions = widget.iconActions.toList();
         final List<PopupMenuItem> popupMenuItems = [];
         final titleWidget = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,7 +230,7 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
               return AnimatedSlide(
                 offset: isBottomBarVisible ? Offset.zero : const Offset(0, 1),
                 duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOut,
+                curve: Curves.easeInOutCubicEmphasized,
                 child: SingleChildScrollView(
                   physics: const NeverScrollableScrollPhysics(),
                   child: ValueListenableBuilder(
@@ -345,74 +340,75 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
                 statusBarIconBrightness: Brightness.light, 
                 statusBarBrightness: Brightness.dark,      
               ),
-              child: Stack(
-                children: [
-                  Column(children: [
-                    Expanded(
-                      child: _CommunityList(
-                        platform: widget.platform,
-                        activeCommunityName: widget.activeCommunityName,
-                        scaffoldKey: _scaffoldKey,
-                        onActiveCommunitySelected: _scrollToTopAndRefresh
-                      )
-                    ),
-                    DecoratedBox(
-                      decoration: const BoxDecoration(
-                        border: Border(
-                          top: BorderSide(
-                            color: Constants.lighterBackgroundColor,
-                            width: 1,
+              child: SafeArea(
+                top: false,
+                child: Stack(
+                  children: [
+                    Column(children: [
+                      Expanded(
+                        child: _CommunityList(
+                          platform: widget.platform,
+                          activeCommunityName: widget.activeCommunityName,
+                          scaffoldKey: _scaffoldKey,
+                          onActiveCommunitySelected: _scrollToTopAndRefresh
+                        )
+                      ),
+                      DecoratedBox(
+                        decoration: const BoxDecoration(
+                          border: Border(
+                            top: BorderSide(
+                              color: Constants.lighterBackgroundColor,
+                              width: 1,
+                            ),
                           ),
                         ),
-                      ),
-                      child: SafeArea(
-                        top: false,
-                        child: ValueListenableBuilder(
-                          valueListenable: Settings.loggedInUsers,
-                          builder: (context, loggedInUsers, child) {
-                            if (loggedInUsers.isEmpty) {
-                              if (widget.platform.api.hasLogin) {
-                                return ValueListenableBuilder(
-                                  valueListenable: Settings.redditClientId,
-                                  builder: (context, redditClientId, child) {
-                                    return ValueListenableBuilder(
-                                      valueListenable: Settings.redditRedirectUri,
-                                      builder: (context, redditRedirectUri, child) {
-                                        if (redditClientId == null || redditRedirectUri == null) {
-                                          return const ListTile(leading: _SettingsIconButton());
+                        child: SafeArea(
+                          top: false,
+                          child: ValueListenableBuilder(
+                            valueListenable: Settings.loggedInUsers,
+                            builder: (context, loggedInUsers, child) {
+                              if (loggedInUsers.isEmpty) {
+                                if (widget.platform.api.hasLogin) {
+                                  return ValueListenableBuilder(
+                                    valueListenable: Settings.redditClientId,
+                                    builder: (context, redditClientId, child) {
+                                      return ValueListenableBuilder(
+                                        valueListenable: Settings.redditRedirectUri,
+                                        builder: (context, redditRedirectUri, child) {
+                                          if (redditClientId == null || redditRedirectUri == null) {
+                                            return const ListTile(leading: _SettingsIconButton());
+                                          }
+                                          return ListTile(
+                                            title: Text('Login to Reddit'),
+                                            onTap: _onLoginPressed,
+                                            trailing: const _SettingsIconButton(),
+                                          );
                                         }
-                                        return ListTile(
-                                          title: Text('Login to Reddit'),
-                                          onTap: _onLoginPressed,
-                                          trailing: const _SettingsIconButton(),
-                                        );
-                                      }
-                                    );
-                                  }
-                                );
+                                      );
+                                    }
+                                  );
+                                }
+                                return const ListTile(leading: _SettingsIconButton());
                               }
-                              return const ListTile(leading: _SettingsIconButton());
+                              return ValueListenableBuilder(
+                                valueListenable: Settings.activeUser,
+                                builder: (context, activeUser, child) {
+                                  return _UserList(
+                                    loggedInUsers: loggedInUsers,
+                                    activeUser: activeUser!,
+                                    addUserTileTrailing: const _SettingsIconButton(),
+                                    onLoginPressed: _onLoginPressed,
+                                  );
+                                }
+                              );
                             }
-                            return ValueListenableBuilder(
-                              valueListenable: Settings.activeUser,
-                              builder: (context, activeUser, child) {
-                                return _UserList(
-                                  platform: widget.platform,
-                                  loggedInUsers: loggedInUsers,
-                                  activeUser: activeUser!,
-                                  addUserTileTrailing: const _SettingsIconButton(),
-                                  onLoginPressed: _onLoginPressed,
-                                  onUserSelected: widget.onUserSelected,
-                                );
-                              }
-                            );
-                          }
+                          ),
                         ),
-                      ),
-                    )
-                  ]),
-                  _Scrim(color: (theme.drawerTheme.backgroundColor ?? theme.canvasColor).withAlpha(Constants.scrimAlpha)),
-                ],
+                      )
+                    ]),
+                    _Scrim(color: (theme.drawerTheme.backgroundColor ?? theme.canvasColor).withAlpha(Constants.scrimAlpha)),
+                  ],
+                ),
               ),
             )
           );
@@ -423,7 +419,7 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
           );
           bottomBar = null;
           if (widget.feedOptions != null) {
-            actions.add(
+            iconActions.add(
               IconButton(
                 icon: const Icon(Icons.sort_rounded),
                 tooltip: 'Filter',
@@ -444,7 +440,7 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
           );
         }
         if (popupMenuItems.isNotEmpty) {
-          actions.add(
+          iconActions.add(
             PopupMenuButton(
               onSelected: (callback) => callback(),
               itemBuilder: (context) => popupMenuItems
@@ -452,34 +448,48 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
           );
         }
 
-        Widget body = ValueListenableBuilder(
-          valueListenable: Settings.appBarColor,
-          builder: (context, appBarColor, child) {
-            return Stack(
-              children: [
-                NestedScrollView(
-                  controller: _scrollController,
-                  headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-                    return <Widget>[
-                      SliverAppBar(
-                        floating: true,
-                        snap: true,
-                        title: titleWidget,
-                        actions: actions,
-                        backgroundColor: appBarColor,
-                        surfaceTintColor: appBarColor,
-                        foregroundColor: appBarColor.contrast,
-                        leading: appBarDrawerIcon,
-                      ),
-                    ];
-                  },
-                  body: widget.body
-                ),
-                _Scrim(color: appBarColor!.withAlpha(Constants.scrimAlpha))
-              ],
-            );
-          }
-        );
+        PreferredSizeWidget? appBar;
+        Widget body;
+        if (widget.feedOptions != null) {
+          appBar = null;
+          body = ListenableBuilder(
+            listenable: Listenable.merge([Settings.appBarColor, widget.iconActionsBuilder?.$1]),
+            builder: (context, child) {
+              final appBarColor = Settings.appBarColor.value;
+              return Stack(
+                children: [
+                  NestedScrollView(
+                    controller: _scrollController,
+                    headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+                      return [
+                        SliverAppBar(
+                          floating: true,
+                          snap: true,
+                          title: titleWidget,
+                          actions: widget.iconActionsBuilder != null ? [...widget.iconActionsBuilder!.$2(context, widget.iconActionsBuilder!.$1.value), ...iconActions] : iconActions,
+                          backgroundColor: appBarColor,
+                          surfaceTintColor: appBarColor,
+                          foregroundColor: appBarColor.contrast,
+                          leading: appBarDrawerIcon,
+                        ),
+                      ];
+                    },
+                    body: widget.body
+                  ),
+                  _Scrim(color: appBarColor!.withAlpha(Constants.scrimAlpha))
+                ],
+              );
+            }
+          );
+        }
+        else {
+          appBar = CustomAppBar(
+            title: titleWidget,
+            leading: appBarDrawerIcon,
+            actions: iconActions,
+          );
+          body = widget.body;
+        }
 
         if (useBottomBar) {
           body = NotificationListener<UserScrollNotification>(
@@ -503,6 +513,7 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
           drawer: drawer,
           drawerEdgeDragWidth: drawerEdgeDragWidth,
           bottomNavigationBar: bottomBar,
+          appBar: appBar,
           body: body
         );
       }
@@ -535,21 +546,17 @@ class _Scrim extends StatelessWidget {
 
 class _UserList extends StatefulWidget {
 
-  final Platform platform;
   final List<LoggedInUser> loggedInUsers;
   final LoggedInUser activeUser;
   final Widget? addUserTileTrailing;
   final VoidCallback onLoginPressed;
-  final Function(LoggedInUser user)? onUserSelected;
 
   const _UserList({
     super.key,
-    required this.platform,
     required this.loggedInUsers,
     required this.activeUser,
     this.addUserTileTrailing,
     required this.onLoginPressed,
-    required this.onUserSelected
   });
 
   @override
@@ -561,21 +568,27 @@ class _UserListState extends State<_UserList> {
 
   bool _isExpanded = false;
 
-  void _onTileLongPress(String userName) {
+  void _onTileLongPress(LoggedInUser user, bool isActiveUser) {
     showSimpleOptionsDialog(
       context: context,
-      title: widget.platform.getPrefixedUsername(userName),
+      title: user.platform.getPrefixedUsername(user.name),
       options: {
         'View profile': (){
           context.pop();
           context.push(() {
             return UserDetailsScreen(
-              platform: widget.platform,
-              username: userName
+              platform: user.platform,
+              username: user.name
             );
           });
         },
-        'Logout': widget.platform.api.logout
+        'Logout': () {
+          Settings.loggedInUsers.remove(user);
+          if (isActiveUser) {
+            Settings.activeUser.value = Settings.loggedInUsers.value.firstOrNull;
+          }
+         user.platform.api.logout(user.id);
+        }
       }
     );
   }
@@ -602,31 +615,30 @@ class _UserListState extends State<_UserList> {
                 onTap: widget.onLoginPressed,
               ),
               ...inactiveUsers.map((user) => _UserListTile(
-                platform: widget.platform,
+                platform: user.platform,
                 user: user,
                 onTap: () async {
-                  widget.onUserSelected?.call(user);
                   Settings.activeUser.value = user;
                   await Future.delayed(const Duration(milliseconds: 300));
                   setState(() => _isExpanded = false);
                 },
-                onLongPress: () => _onTileLongPress(user.name)
+                onLongPress: () => _onTileLongPress(user, false)
               ))
             ],
           ),
           crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
           duration: const Duration(milliseconds: 500),
-          sizeCurve: Curves.fastOutSlowIn, 
+          sizeCurve: Curves.easeInOutCubicEmphasized, 
         ),
         _UserListTile(
-          platform: widget.platform,
+          platform: widget.activeUser.platform,
           user: widget.activeUser,
           trailing: IconButton(
             icon: Icon(_isExpanded ? Icons.expand_more_rounded : Icons.expand_less_rounded),
             onPressed: () => setState(() => _isExpanded = !_isExpanded)
           ),
           onTap: () => setState(() => _isExpanded = !_isExpanded),
-          onLongPress: () => _onTileLongPress(widget.activeUser.name)
+          onLongPress: () => _onTileLongPress(widget.activeUser, true)
         )
       ],
     );
@@ -871,7 +883,8 @@ class _CommunityListState extends State<_CommunityList> {
     return ValueListenableBuilder(
       valueListenable: Settings.activeUser,
       builder: (context, activeUser, child) {
-        final int headerCount = activeUser == null ? 1 : 2;
+        final showRootPage = activeUser?.platform.api.hasLogin ?? false;
+        final headerCount = showRootPage ? 2 : 1;
         return ValueListenableBuilder(
           valueListenable: Settings.showPlatformColorAccents,
           builder: (context, showPlatformColorAccents, child) {
@@ -890,7 +903,7 @@ class _CommunityListState extends State<_CommunityList> {
               itemCount: headerCount + _visibleCommunities.length,
               itemBuilder: (context, index) {
                 if (index == 0) {
-                  final bool isCombinedFlavor = F.appFlavor == Flavor.combined;
+                  final isCombinedFlavor = F.appFlavor == Flavor.combined;
                   final double width;
                   final double rightCornerRadius;
                   final Alignment? alignment;
@@ -1094,10 +1107,12 @@ class _CommunityListState extends State<_CommunityList> {
                     ),
                   );
                 }
-        
-                if (index == 1 && activeUser != null) {
-                  return ListTile(
-                    horizontalTitleGap: 8,
+                
+                if (index == 1 && showRootPage) {
+                  return _CommunityNameListTile(
+                    platform: widget.platform,
+                    community: Community(platform: activeUser!.platform),
+                    activeCommunityName: widget.activeCommunityName,
                     leading: IconButton(
                       onPressed: () {},
                       icon: Stack(
@@ -1112,90 +1127,51 @@ class _CommunityListState extends State<_CommunityList> {
                             )
                           ),
                           Icon(
-                            Icons.reddit_rounded,
+                            Icons.reddit_rounded, //TODO
                             size: 32,
-                            color: Platform.reddit.color,
+                            color: activeUser.platform.color
                           ),
                         ],
                       )
                     ),
-                    title: Text(Platform.reddit.rootCommunityName),
-                    onTap: () {
-                      _navigateToCommunity(
-                        Community(
-                          platform: widget.platform,
-                          name: null
-                        )
-                      );
-                    }
+                    title: Text(activeUser.platform.rootCommunityName),
+                    onTap: (community) => _onCommunityTap(community),
                   );
                 }
             
                 final community = _visibleCommunities[index - headerCount];
-                return Stack(
-                  children: [
-                    ListTile(
-                      horizontalTitleGap: 8,
-                      title: F.appFlavor == Flavor.combined || community.platform.homeCommunity == null ? PrefixedCommunityName(community: community) : Text(community.name!),
-                      leading: IconButton(
-                        icon: ValueListenableBuilder(
-                          valueListenable: Settings.showPlatformColorAccents,
-                          builder: (context, showPlatformColorAccents, child) {
-                            final IconData icon;
-                            final Color? color;
-                            if (community.isFavorite) {
-                              icon = Icons.star_rounded;
-                              color = showPlatformColorAccents ? null : Theme.of(context).colorScheme.primary;
-                              // color = showPlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary;
-                            }
-                            else {
-                              icon = Icons.star_border_rounded;
-                              color = null;
-                            }
-                            return Icon(
-                              icon,
-                              color: color,
-                              size: 24
-                            );
-                          }
-                        ),
-                        onPressed: () {
-                          Settings.communities.update(community.copyWith(isFavorite: !community.isFavorite));
+                return _CommunityNameListTile(
+                  platform: widget.platform,
+                  community: community,
+                  activeCommunityName: widget.activeCommunityName,
+                  leading: IconButton(
+                    icon: ValueListenableBuilder(
+                      valueListenable: Settings.showPlatformColorAccents,
+                      builder: (context, showPlatformColorAccents, child) {
+                        final IconData icon;
+                        final Color? color;
+                        if (community.isFavorite) {
+                          icon = Icons.star_rounded;
+                          color = showPlatformColorAccents ? null : Theme.of(context).colorScheme.primary;
+                          // color = showPlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary;
                         }
-                      ),
-                      onTap: () => _onCommunityTap(community),
-                      onLongPress: () {
-                        final activeUser = Settings.activeUser.value;
-                        showSimpleOptionsDialog(
-                          context: context,
-                          title: community.prefixedName,
-                          options: {
-                            if (community.name != null && activeUser != null)
-                              'Unsubscribe': () => activeUser.platform.api.unsubscribe(community.name!),
-                            'Remove': () => Settings.communities.remove(community)
-                          },
+                        else {
+                          icon = Icons.star_border_rounded;
+                          color = null;
+                        }
+                        return Icon(
+                          icon,
+                          color: color,
+                          size: 24
                         );
                       }
                     ),
-                    if (community.platform == widget.platform && community.name == (widget.activeCommunityName ?? widget.platform.homeCommunity))
-                      Positioned(
-                        left: 0,
-                        top: 8,
-                        bottom: 8,
-                        child: ValueListenableBuilder(
-                          valueListenable: Settings.showPlatformColorAccents,
-                          builder: (context, showPlatformColorAccents, child) {
-                            return Container(
-                              width: 4,
-                              decoration: BoxDecoration(
-                                color: showPlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary,
-                                borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
-                              ),
-                            );
-                          }
-                        ),
-                      ),
-                  ],
+                    onPressed: () {
+                      Settings.communities.update(community.copyWith(isFavorite: !community.isFavorite));
+                    }
+                  ),
+                  title: F.appFlavor == Flavor.combined || community.platform.homeCommunity == null ? PrefixedCommunityName(community: community) : Text(community.name!),
+                  onTap: (community) => _onCommunityTap(community),
                 );
               }
             );
@@ -1212,7 +1188,7 @@ class _CommunityListState extends State<_CommunityList> {
                     final subscribedCommunityNames = await widget.platform.api.getSubscribedCommunityNames();
                     subscribedCommunityNames.map((name) {
                       return Community(
-                        platform: Platform.reddit,
+                        platform: platform,
                         name: name
                       );
                     });
@@ -1228,6 +1204,70 @@ class _CommunityListState extends State<_CommunityList> {
     );
   }
 
+}
+
+class _CommunityNameListTile extends StatelessWidget {
+  
+  final Platform platform;
+  final Community community;
+  final String? activeCommunityName;
+  final Widget? leading;
+  final Widget title;
+  final void Function(Community community) onTap;
+
+  const _CommunityNameListTile({
+    super.key,
+    required this.platform,
+    required this.community,
+    required this.activeCommunityName,
+    required this.leading,
+    required this.title,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Stack(
+      children: [
+        ListTile(
+          horizontalTitleGap: 8,
+          leading: leading,
+          title: title,
+          onTap: () => onTap(community),
+          onLongPress: () {
+            final activeUser = Settings.activeUser.value;
+            showSimpleOptionsDialog(
+              context: context,
+              title: community.prefixedName,
+              options: {
+                if (community.name != null && activeUser != null)
+                  'Unsubscribe': () => activeUser.platform.api.unsubscribe(community.name!),
+                'Remove': () => Settings.communities.remove(community)
+              },
+            );
+          }
+        ),
+        if (community.platform == platform && community.name == activeCommunityName)
+          Positioned(
+            left: 0,
+            top: 8,
+            bottom: 8,
+            child: ValueListenableBuilder(
+              valueListenable: Settings.showPlatformColorAccents,
+              builder: (context, showPlatformColorAccents, child) {
+                return Container(
+                  width: 4,
+                  decoration: BoxDecoration(
+                    color: showPlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary,
+                    borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
+                  ),
+                );
+              }
+            ),
+          )
+      ]
+    );
+  }
 }
 
 class _FeedOptionsSelector extends StatefulWidget {
@@ -1342,12 +1382,12 @@ class _AnimatedRowState extends State<_AnimatedRow> with SingleTickerProviderSta
   void initState() {
     super.initState();
     _controller = AnimationController(
-      duration: const Duration(milliseconds: 400),
+      duration: const Duration(milliseconds: 500),
       vsync: this,
     );
     _animation = CurvedAnimation(
       parent: _controller,
-      curve: Curves.fastOutSlowIn,
+      curve: Curves.easeInOutCubicEmphasized,
     );
     _controller.forward();
   }

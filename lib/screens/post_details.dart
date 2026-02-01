@@ -6,6 +6,7 @@ import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/post_details.dart';
+import 'package:lurk/models/user.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/services/settings.dart';
@@ -21,15 +22,15 @@ import 'package:lurk/widgets/post_tile.dart';
 class PostDetailsScreen extends StatefulWidget {
 
   final Platform platform;
-  final String? url;
+  final String url;
   final Post? post;
 
   const PostDetailsScreen._({
     super.key,
     required this.platform,
-    this.url,
+    required this.url,
     this.post,
-  })  : assert(post != null || url != null, 'Must provide either a post or a url');
+  });
 
   factory PostDetailsScreen.fromPost({
     Key? key,
@@ -164,26 +165,6 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
     if (_post != null) {
       final url = widget.url ?? _post!.url;
       title = _post!.title;
-      iconActions.add(
-        ValueListenableBuilder(
-          valueListenable: Settings.loggedInUsers,
-          builder: (context, loggedInUsers, child) {
-            return IconButton(
-              icon: const Icon(Icons.add_comment_rounded),
-              tooltip: 'Add comment',
-              onPressed: () {
-                _showAddCommentDialog(
-                  _post!.id,
-                  PostTile(
-                    post: _post!,
-                    isInteractable: false,
-                  ),
-                );
-              }
-            );
-          }
-        )
-      );
       popupMenuActions = {
         'View in browser': () => openInBrowser(url),
         'View comments in browser': () => openInBrowser(_post!.community.platform.api.getPostDetailsUrl(_post!)),
@@ -383,6 +364,24 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
       iconActions: iconActions,
       feedOptions: widget.platform.postCommentsFeedOptions,
       selectedFeedOptions: _feedOptions,
+      iconActionsBuilder: (Settings.activeUser, (context, LoggedInUser? activeUser) {
+        if (activeUser == null) return [];
+        return [
+          IconButton(
+            icon: const Icon(Icons.add_comment_rounded),
+            tooltip: 'Add comment',
+            onPressed: () {
+              _showAddCommentDialog(
+                _post!.id,
+                PostTile(
+                  post: _post!,
+                  isInteractable: false,
+                ),
+              );
+            }
+          )
+        ];
+      }),
       body: CustomRefreshIndicator(
         platform: widget.platform,
         key: _refreshIndicatorKey,

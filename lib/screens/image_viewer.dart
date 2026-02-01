@@ -4,6 +4,7 @@ import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+import 'package:lurk/widgets/custom_interactive_viewer.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
 
@@ -35,41 +36,30 @@ class ImageViewerScreen extends StatelessWidget {
         );
       },
       body: SizedBox.expand(
-        child: ExtendedImage.network(
-          url,
-          headers: {'User-Agent': platform.api.savedOrDefaultUserAgent},
-          fit: BoxFit.fitWidth,
-          alignment: Alignment.topCenter,
-          mode: ExtendedImageMode.gesture,
-          initGestureConfigHandler: (state) {
-            return GestureConfig(
-              minScale: 1,
-            );
-          },
-          onDoubleTap: (ExtendedImageGestureState state) {
-            state.handleDoubleTap(
-              scale: state.gestureDetails?.totalScale == 1 ? 3 : 1,
-              doubleTapPosition: state.pointerDownPosition,
-            );
-          },
-          loadStateChanged: (state) {
-            switch (state.extendedImageLoadState) {
-              case LoadState.loading:
-                return LargeCenteredCircularProgressIndicator(platform: platform);
-              case LoadState.completed:
-                return state.completedWidget;
-              case LoadState.failed:
-                return const Center(
-                  child: LargeVerticalIconMessage(
-                    icon: Icons.broken_image_rounded,
-                    message: 'Something went wrong'
-                  )
-                );
-            }
-          },
+        child: CustomInteractiveViewer(
+          child: ExtendedImage.network(
+            url,
+            headers: {'User-Agent': platform.api.savedOrDefaultUserAgent},
+            fit: BoxFit.fitWidth, 
+            alignment: Alignment.topCenter,
+            loadStateChanged: (state) {
+              switch (state.extendedImageLoadState) {
+                case LoadState.loading:
+                  return LargeCenteredCircularProgressIndicator(platform: platform);
+                case LoadState.completed:
+                  return state.completedWidget;
+                case LoadState.failed:
+                  return const Center(
+                    child: LargeVerticalIconMessage(
+                      icon: Icons.broken_image_rounded,
+                      message: 'Something went wrong'
+                    )
+                  );
+              }
+            },
+          ),
         ),
       ),
     );
   }
-  
 }

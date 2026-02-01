@@ -1,11 +1,10 @@
-import 'dart:io' as io;
-
 import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
 
 class Constants {
 
   static const pageTransitionDuration = Duration(milliseconds: 100);
+  static const thumbnailSize = 70;
   static const scrimAlpha = 125;
   static const appBarSubtitleAlpha = 175;
   static const namePrefixAlpha = 125;

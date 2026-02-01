@@ -12,7 +12,7 @@ class Community {
 
   const Community({
     required this.platform,
-    required this.name,
+    this.name,
     this.isFavorite = false,
     this.iconUrl,
     this.description,

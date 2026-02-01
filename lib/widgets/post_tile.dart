@@ -1,7 +1,7 @@
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/screens/image_gallery_viewer.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/screens/posts.dart';
 import 'package:lurk/screens/user_details.dart';
@@ -11,8 +11,6 @@ import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/services/votes.dart';
 import 'package:lurk/widgets/collection_listenable_builder.dart';
-
-final thumbnailSize = 70;
 
 class PostTile extends StatelessWidget {
 
@@ -166,8 +164,8 @@ class PostTile extends StatelessWidget {
           ),
           if (showThumbnail)
             SizedBox(
-              width: 70,
-              height: 70,
+              width: Constants.thumbnailSize.toDouble(),
+              height: Constants.thumbnailSize.toDouble(),
               child: Stack(
                 children: [
                   Positioned.fill(
@@ -175,7 +173,7 @@ class PostTile extends StatelessWidget {
                       ? ExtendedImage.network(
                           post.thumbnailUrl!,
                           headers: {'User-Agent': post.community.platform.api.savedOrDefaultUserAgent},
-                          cacheWidth: thumbnailSize * MediaQuery.devicePixelRatioOf(context).round(),
+                          cacheWidth: (Constants.thumbnailSize * MediaQuery.devicePixelRatioOf(context)).round(),
                           fit: BoxFit.cover,
                           loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed ? const Icon(Icons.broken_image_rounded) : null
                       )
@@ -198,6 +196,9 @@ class PostTile extends StatelessWidget {
                             History.posts.add(post.id);
                             if (post.isSelf) {
                               context.push(() => PostDetailsScreen.fromPost(post: post));
+                            }
+                            else if (post.isGallery) {
+                              context.push(() => ImageGalleryViewerScreen.fromPost(post: post));
                             }
                             else {
                               navigate(context, post.community.platform, post.url, post: post);

@@ -14,7 +14,7 @@ import 'package:lurk/screens/image_viewer.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/screens/posts.dart';
 import 'package:lurk/screens/user_details.dart';
-import 'package:lurk/screens/video_player.dart';
+import 'package:lurk/screens/video_viewer.dart';
 import 'package:lurk/screens/web_viewer.dart';
 import 'package:lurk/widgets/snack_bar_progress_content.dart';
 import 'package:path_provider/path_provider.dart';
@@ -145,7 +145,7 @@ class _PageRoute<T> extends MaterialPageRoute<T> {
 Future<void> openInBrowser(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
 Future navigate(BuildContext context, Platform platform, String url, {Post? post}) async {
-  dev.log('navigate: $url');
+  // dev.log('navigate: $url');
   final uri = Uri.tryParse(url);
   if (uri == null) return;
 
@@ -166,7 +166,7 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
 
   if (uri.host == 'v.redd.it' || path.endsWith('.mp4') || path.endsWith('.mov')) {
     return context.push(
-      () => VideoPlayerScreen(
+      () => VideoViewerScreen(
         platform: platform,
         url: url,
         post: post

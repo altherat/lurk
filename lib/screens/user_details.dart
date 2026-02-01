@@ -90,28 +90,9 @@ class UserDetailsScreen extends StatelessWidget {
           return PostTile(
             post: item,
             showViewUserOption: false,
-            subtitle: CollectionListenableBuilder(
-              id: item.id,
-              collectionListenable: History.posts,
-              builder: (context, isVisited) {
-                return Text.rich(
-                  TextSpan(
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Constants.secondaryTextColor,
-                    ),
-                    children: [
-                      TextSpan(
-                        text: item.commentsLabel,
-                        style: TextStyle(color: isVisited ? Constants.visitedTextColor : null)
-                      ),
-                      TextSpan(
-                        text: ' • ${item.timeAgoCompact} • ${item.community.name}'
-                      )
-                    ]
-                  )
-                );
-              }
+            subtitle: PostTileCommentHistorySubtitle(
+              post: item,
+              extraTexts: [item.timeAgoCompact, ?item.community.name],
             )
           );
         }

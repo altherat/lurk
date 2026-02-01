@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/api/digg.dart';
 import 'package:lurk/services/api/reddit.dart';
@@ -222,6 +223,15 @@ enum Platform {
 
   bool isUnresolved(String urlPath) => unresolvedPath != null && RegExp(unresolvedPath!).hasMatch(urlPath);
 
+  List<TextInputFormatter> get communityNameInputFormatters => _getNameInputFormatters(communityNameAllowedChars);
+
+  List<TextInputFormatter> get userNameInputFormatters => _getNameInputFormatters(userNameAllowedChars);
+
+  List<TextInputFormatter> _getNameInputFormatters(String allowedChars) => [
+    FilteringTextInputFormatter.allow(RegExp('[a-zA-Z0-9${RegExp.escape(allowedChars)}]')),
+    _NameInputFormatter(allowedChars)
+  ];
+
 }
 
 enum UserFeedType {
@@ -343,5 +353,25 @@ enum SearchType {
   final IconData icon;
 
   const SearchType(this.icon);
+
+}
+
+class _NameInputFormatter extends TextInputFormatter {
+
+  final String allowedChars;
+
+  _NameInputFormatter(this.allowedChars);
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    final text = newValue.text;
+    if (allowedChars.isNotEmpty) {
+      final escapedChars = RegExp.escape(allowedChars);
+      if (RegExp('[$escapedChars]{2,}').hasMatch(text)) {
+        return oldValue;
+      }
+    }
+    return text.isNotEmpty && RegExp('[${RegExp.escape(allowedChars)}]').hasMatch(text[0]) ? oldValue : newValue;
+  }
 
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
@@ -10,8 +9,8 @@ class MediaScaffold extends StatelessWidget {
 
   final Platform platform;
   final String url;
-  final String type;
   final Post? post;
+  final String type;
   final Widget body;
   final VoidCallback? onSave;
 
@@ -19,8 +18,8 @@ class MediaScaffold extends StatelessWidget {
     super.key,
     required this.platform,
     required this.url,
-    required this.type,
     this.post,
+    required this.type,
     required this.body,
     required this.onSave
   });

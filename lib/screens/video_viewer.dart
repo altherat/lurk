@@ -13,6 +13,7 @@ import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+import 'package:lurk/widgets/custom_interactive_viewer.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:video_player/video_player.dart';
@@ -20,13 +21,13 @@ import 'package:video_player/video_player.dart';
 const hideControlsAfterDuration = Duration(seconds: 2);
 const List<double> playbackSpeeds = [0.5, 1, 1.25, 1.5, 2];
 
-class VideoPlayerScreen extends StatefulWidget {
+class VideoViewerScreen extends StatefulWidget {
 
   final Platform platform;
   final String url;
   final Post? post;
 
-  const VideoPlayerScreen({
+  const VideoViewerScreen({
     super.key,
     required this.platform,
     required this.url,
@@ -34,11 +35,11 @@ class VideoPlayerScreen extends StatefulWidget {
   });
 
   @override
-  State<VideoPlayerScreen> createState() => _VideoPlayerScreenState();
+  State<VideoViewerScreen> createState() => _VideoViewerScreenState();
 
 }
 
-class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
+class _VideoViewerScreenState extends State<VideoViewerScreen> {
 
   late VideoPlayerController _videoController;
   final ValueNotifier<double> _sliderNotifier = ValueNotifier(0);
@@ -213,11 +214,13 @@ class _VideoPlayerScreenState extends State<VideoPlayerScreen> {
         child: Stack(
           children: [
             if (_isInitialized)
-              Align(
-                alignment: Alignment.topCenter,
-                child: AspectRatio(
-                  aspectRatio: _videoController.value.aspectRatio,
-                  child: VideoPlayer(_videoController)
+              CustomInteractiveViewer(
+                child: Align(
+                  alignment: Alignment.topCenter,
+                  child: AspectRatio(
+                    aspectRatio: _videoController.value.aspectRatio,
+                    child: VideoPlayer(_videoController)
+                  ),
                 ),
               ),
             if (!_isInitialized)
