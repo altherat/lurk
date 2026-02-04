@@ -54,7 +54,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                         prefixText: homeCommunityPlatform.communityPrefix,
                         floatingLabelBehavior: FloatingLabelBehavior.always,
                         inputFormatters: homeCommunityPlatform.communityNameInputFormatters,
-                        showPrefix: (isFocused, value) => isFocused || value.isNotEmpty,
+                        showPrefix: (isFocused, value) => isFocused || value.isNotEmpty || (homeCommunityName?.isNotEmpty ?? false),
                         onSubmitted: (value) {
                           Settings.homeCommunityName.value = value.isEmpty ? null : value;
                         },
@@ -210,7 +210,7 @@ class _DiggPostsFetchDepthSetting extends StatelessWidget {
     return _ChoiceSettingListTile(
       title: 'Posts fetch depth',
       setting: Settings.diggPostsFetchDepth,
-      infoText: "Digg's website and app seems to show fewer posts than what actually might exist for smaller communities (unsure if intentional). This setting causes additional requests in attempt to retrieve more posts (up to ${DiggApi.resultsLimit}). When loading popular communties with many posts, this setting should have no effect.\n\nExample (setting value of 3):\nWhen requesting posts from a lesser-known community, Digg might respond with 10 posts but also indicate that there are more posts available. Lurk will do up to 2 more requests to try and get a total of ${DiggApi.resultsLimit} posts.",
+      infoText: "Digg's website and app seems to show fewer posts than what actually might exist for smaller communities (unsure if intentional). This setting causes additional requests in attempt to retrieve more posts (up to ${DiggApi.resultsLimit} posts). When loading popular communties with many posts, this setting should have no effect.\n\nExample (setting value of 3):\nWhen requesting posts from a lesser-known community, Digg might respond with 10 posts but also indicate that there are more posts available. Lurk will do up to 2 more requests to try and get a total of ${DiggApi.resultsLimit} posts.",
       choices: List.generate(_maxDepth, (index) => index + 1),
     );
   }
@@ -287,7 +287,7 @@ class _TextFieldState extends State<_TextField> {
   @override void initState() {
     super.initState();
     _focusNode.addListener(_onFocusChange);
-    _showPrefix = widget.showPrefix?.call(false, _controller.text) ?? false;
+    _showPrefix = widget.showPrefix?.call(false, _controller.text) ?? true;
   }
 
   @override
@@ -456,7 +456,7 @@ class _TextSettingListTile<T> extends StatelessWidget {
             keyboardType: keyboardType,
             onChanged: onChanged,
             onSubmitted: (newValue) {
-              setting.value = fromText == null ? (newValue.isEmpty ? null : newValue as T) : fromText!.call(newValue);
+              setting.value = fromText != null ? fromText!.call(newValue) : (newValue.isEmpty ? null : newValue as T);
             },
           );
         },

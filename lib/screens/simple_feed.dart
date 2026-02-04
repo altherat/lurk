@@ -91,7 +91,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
   Future<void> _callOnFeedListState(Function(FeedListState state) fn) async {
     final feedListState = _feedListKeys[_tabController?.index ?? 0].currentState;
     if (feedListState != null) {
-      await feedListState.reload();
+      await fn(feedListState);
     }
   }
 
@@ -108,6 +108,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
     setState(() {
       _selectedFeedOptions[_tabController?.index ?? 0] = mapEquals(options, widget.feedOptions!.defaults) ? null : options;
     });
+    reload();
   }
 
   String _getSubtitle(Map<FeedOptionType, FeedOption> selectedOptions) => selectedOptions.values.map((o) => o.description.toLowerCase()).join(' / ');
@@ -129,10 +130,15 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
                 edgeOffset: overlapAbsorberHandle.layoutExtent ?? 0, 
                 onRefresh: _refresh,
                 child: Scrollbar(
+                  controller: _scrollControllers[i],
                   child: CustomScrollView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    controller: _scrollControllers[i],
+                    primary: false,
                     slivers: [
                       SliverOverlapInjector(handle: overlapAbsorberHandle),
                       FeedList(
+                        key: _feedListKeys[i],
                         platform: widget.platform,
                         initialItems: i == 0 ? widget.initialItems : null,
                         getItems: (String? pageToken) async {
@@ -174,8 +180,8 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
             );
           }
         ),
-        iconActionsBuilder: (_tabController!.animation!, (context, double value) {
-          final visibleIndex = value.round();
+        iconActionsBuilder: (_tabController!.animation!, (context) {
+          final visibleIndex = _tabController!.animation!.value.round();
           final subGroupOptions = widget.feedOptions!.options[visibleIndex].subGroup;
           if (subGroupOptions == null) return [];
           return [
@@ -244,6 +250,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
       slivers: [
         ...?widget.slivers,
         FeedList(
+          key: _feedListKeys[0],
           platform: widget.platform,
           initialItems: widget.initialItems,
           getItems: (String? pageToken) => widget.getItems(_selectedFeedOptions[0], pageToken),

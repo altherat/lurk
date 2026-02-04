@@ -64,12 +64,12 @@ class RedditApi extends Api {
   };
 
   Future<Response> _get(String path, {Map<String, dynamic>? params}) async {
-    // dev.log('[Reddit] _get: path=$path, params=$params]');
+    dev.log('[Reddit] _get: path=$path, params=$params]');
     return _handleResponse(_getClientHelper().get(path, params));
   }
 
   Future<Response> _post(String path, dynamic body) async {
-    // dev.log('[Reddit] _post: path=$path, params=$body]');
+    dev.log('[Reddit] _post: path=$path, params=$body]');
     return _handleResponse(_getClientHelper().post(path, body));
   }
 
@@ -302,7 +302,7 @@ class RedditApi extends Api {
     dev.log('[Reddit] getUserDetails: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}]');
     return MultiPartFeedResponse(
       items: getUserItems(id, options: options),
-      other: _get('/u/$id/about.json').then((response) {
+      other: _get('/user/$id/about.json').then((response) {
         final data = jsonDecode(response.body)['data'];
         return [
           UserStat(
@@ -328,11 +328,11 @@ class RedditApi extends Api {
 
   @override
   Future<PagedItems<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    // dev.log('[Reddit] getUserItems: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
+    dev.log('[Reddit] getUserItems: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
     final FeedOption? type = options?[FeedOptionType.category];
     final FeedOption? sort = options?[FeedOptionType.sort];
     final FeedOption? timeRange = options?[FeedOptionType.time];
-    String path = '/u/$id';
+    String path = '/user/$id';
     if (type != null) {
       if (type.id == UserFeedType.posts) {
         path += '/submitted';
@@ -452,7 +452,12 @@ class RedditApi extends Api {
       case SearchFeedType.users:
         return compute(
           (String body) {
+            debugPrint("body: $body");
             final json = jsonDecode(body);
+            if (json is! Map<String, dynamic>) {
+              return PagedItems(items: [], pageToken: null);
+            }
+            debugPrint('test: $json');
             final data = json['data'];
             final children = data['children'] as List;
 

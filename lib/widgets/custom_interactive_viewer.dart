@@ -102,10 +102,8 @@ class _CustomInteractiveViewerState extends State<CustomInteractiveViewer> with 
         }
         else {
           final tapPosition = _doubleTapDetails!.localPosition;
-          final double x = -tapPosition.dx * (targetScale - 1);
-          double y = -tapPosition.dy * (targetScale - 1);
-          if (y < 0) y = 0;
-
+          final x = -tapPosition.dx * (targetScale - 1);
+          final y = -tapPosition.dy * (targetScale - 1);
           targetMatrix = Matrix4.compose(
             Vector3(x, y, 0),
             Quaternion.identity(),
@@ -120,6 +118,7 @@ class _CustomInteractiveViewerState extends State<CustomInteractiveViewer> with 
           curve: Curves.easeInOutCubicEmphasized,
         ));
         _animationController.forward(from: 0);
+        _isDoubleTapScaling = false;
       },
       onDoubleTapDown: (details) {
         _doubleTapDetails = details;
@@ -136,21 +135,19 @@ class _CustomInteractiveViewerState extends State<CustomInteractiveViewer> with 
             double newScale = _transformationController.value.getMaxScaleOnAxis() + (details.focalPointDelta.dy * 0.01);
             newScale = newScale.clamp(widget.minScale, widget.maxScale);
             final tapPosition = _doubleTapPosition;
-            final double x = -tapPosition.dx * (newScale - 1);
-            double y = -tapPosition.dy * (newScale - 1);
-            if (y < 0) y = 0;
-            _transformationController.value = Matrix4.compose(
+            final x = -tapPosition.dx * (newScale - 1);
+            final y = -tapPosition.dy * (newScale - 1);
+            final matrix = Matrix4.compose(
               Vector3(x, y, 0),
               Quaternion.identity(),
               Vector3(newScale, newScale, 1),
             );
+            final translation = Offset(matrix.storage[12], matrix.storage[13]);
+            if (translation.dy < 0) {
+              matrix.setTranslationRaw(translation.dx, 0, 0);
+            }
+            _transformationController.value = matrix;
           }
-          final matrix = _transformationController.value;
-          final Offset translation = Offset(matrix.storage[12], matrix.storage[13]);
-          if (translation.dy < 0) {
-            matrix.setTranslationRaw(translation.dx, 0, 0);
-          }
-          _transformationController.value = matrix;
         },
         onInteractionEnd: (details) {
           _isDoubleTapScaling = false;

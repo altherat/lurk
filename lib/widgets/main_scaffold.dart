@@ -36,7 +36,7 @@ class MainScaffold<T> extends StatefulWidget {
   final PreferredSizeWidget? sliverAppBarBottom;
   final List<Widget>? slivers;
   final Widget? body;
-  final (ValueListenable<T>, List<Widget> Function(BuildContext context, T value))? iconActionsBuilder;
+  final (Listenable, List<Widget> Function(BuildContext context))? iconActionsBuilder;
   final RefreshCallback? onPullRefresh;
   final VoidCallback? onOtherRefresh;
 
@@ -452,7 +452,7 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
                 title: titleWidget,
                 bottom: widget.sliverAppBarBottom,
                 expandedHeight: appBarExpandedHeight,
-                actions: widget.iconActionsBuilder != null ? [...widget.iconActionsBuilder!.$2(context, widget.iconActionsBuilder!.$1.value), ...iconActions] : iconActions,
+                actions: widget.iconActionsBuilder != null ? [...widget.iconActionsBuilder!.$2(context), ...iconActions] : iconActions,
                 backgroundColor: appBarColor,
                 surfaceTintColor: appBarColor,
                 foregroundColor: appBarColor.contrast,

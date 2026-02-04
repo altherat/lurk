@@ -87,6 +87,7 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
     setState(() {
       _loadingState = LoadingState.loading;
       _items.clear();
+      _pageToken = null;
     });
     return _getItems();
   }
@@ -101,11 +102,14 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
   Widget build(BuildContext context) {
     super.build(context);
     if (_items.isEmpty) {
-      final Widget child;
       if (_loadingState == LoadingState.loading) {
-        child = LargeCenteredCircularProgressIndicator(platform: widget.platform);
+        return SliverFillRemaining(
+          hasScrollBody: false,
+          child: LargeCenteredCircularProgressIndicator(platform: widget.platform)
+        );
       }
-      else if (_loadingState == LoadingState.error) {
+      final Widget child;
+      if (_loadingState == LoadingState.error) {
         child = const LargeVerticalIconMessage(
           icon: Icons.feed_outlined,
           message: 'Something went wrong'
@@ -116,7 +120,7 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
       }
       return SliverFillRemaining(
         hasScrollBody: false,
-        child: child
+        child: Center(child: child)
       );
     }
     return SliverPadding(

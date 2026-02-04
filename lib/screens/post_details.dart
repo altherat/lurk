@@ -313,8 +313,8 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
           }
         )
       ],
-      iconActionsBuilder: (Settings.activeUser, (context, LoggedInUser? activeUser) {
-        if (activeUser == null) return [];
+      iconActionsBuilder: (Settings.activeUser, (context) {
+        if (Settings.activeUser.value == null) return [];
         return [
           IconButton(
             icon: const Icon(Icons.add_comment_rounded),
