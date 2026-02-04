@@ -9,3 +9,7 @@ I created this mainly out of boredom and have focused most on functionality that
 
 ## Versions
 There's 3 versions/APKs available with each release - a standalone Reddit app, a standalone Digg app, and one that combines both.
+
+## Screenshots
+
+<img src="screenshots/screenshot-1.png" width="200"> &nbsp; &nbsp; <img src="screenshots/screenshot-2.png" width="200"> &nbsp; &nbsp; <img src="screenshots/screenshot-3.png" width="200"> &nbsp; &nbsp; <img src="screenshots/screenshot-4.png" width="200">
