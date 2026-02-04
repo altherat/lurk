@@ -10,6 +10,7 @@ import 'package:lurk/core/database/database.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/community.dart';
+import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
@@ -104,7 +105,7 @@ class RedditApi extends Api {
   String get baseUrl => Settings.redditCopyOldRedditLinks.value ? _baseUrlOld : _baseUrl;
 
   @override
-  Future<PagedResult<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // dev.log('[Reddit] getPosts: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
     final sort = options?[FeedOptionType.sort];
     final timeRange = options?[FeedOptionType.time];
@@ -297,9 +298,9 @@ class RedditApi extends Api {
   }
 
   @override
-  FeedResponse<dynamic, List<UserStat>> getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
+  MultiPartFeedResponse<dynamic, List<UserStat>> getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
     dev.log('[Reddit] getUserDetails: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}]');
-    return FeedResponse(
+    return MultiPartFeedResponse(
       items: getUserItems(id, options: options),
       other: _get('/u/$id/about.json').then((response) {
         final data = jsonDecode(response.body)['data'];
@@ -326,7 +327,7 @@ class RedditApi extends Api {
   }
 
   @override
-  Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // dev.log('[Reddit] getUserItems: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
     final FeedOption? type = options?[FeedOptionType.category];
     final FeedOption? sort = options?[FeedOptionType.sort];
@@ -376,7 +377,7 @@ class RedditApi extends Api {
         return (
           postVotes,
           commentVotes,
-          PagedResult(
+          PagedItems(
             items: items,
             pageToken: data['after'],
           )
@@ -392,7 +393,7 @@ class RedditApi extends Api {
   }
 
   @override
-  Future<PagedResult<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // dev.log('[Reddit] search: query=$query, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
     final type = options?[FeedOptionType.category]?.id;
     final sort = options?[FeedOptionType.sort];
@@ -424,11 +425,11 @@ class RedditApi extends Api {
           (String body) {
             final json = jsonDecode(body);
             if (json is String) {
-              return PagedResult(items: [], pageToken: null);
+              return PagedItems(items: [], pageToken: null);
             }
             final data = json['data'];
             final children = data['children'] as List;
-            return PagedResult(
+            return PagedItems(
               items: children
                   .map((child) {
                     final Map<String, dynamic> childData = child['data'];
@@ -455,7 +456,7 @@ class RedditApi extends Api {
             final data = json['data'];
             final children = data['children'] as List;
 
-            return PagedResult(
+            return PagedItems(
               items: children
                 .map((child) {
                   final childData = child['data'];
@@ -705,7 +706,7 @@ class RedditApi extends Api {
     );
   }
 
-  (Map<String, bool?>, PagedResult<Post>) _parsePosts(String body) {
+  (Map<String, bool?>, PagedItems<Post>) _parsePosts(String body) {
     final Map<String, bool?> votes = {};
     final List<Post> posts = [];
     final json = jsonDecode(body);
@@ -717,7 +718,7 @@ class RedditApi extends Api {
     }
     return (
       votes,
-      PagedResult(
+      PagedItems(
         items: posts,
         pageToken: data['after']
       )

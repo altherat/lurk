@@ -23,6 +23,7 @@ class History extends CollectionListenable<String, bool> {
   }
   
   void add(String id) {
+    if (_ids.contains(id)) return;
     _ids.add(id);
     notifyListeners(id);
     _db.addHistory(id, _type);

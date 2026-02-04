@@ -5,7 +5,9 @@ import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
+import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post.dart';
+import 'package:lurk/models/user.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/widgets/comment_tile.dart';
@@ -14,7 +16,7 @@ import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
 import 'package:lurk/widgets/user_stats.dart';
 
-class UserDetailsScreen extends StatelessWidget {
+class UserDetailsScreen extends StatefulWidget {
 
   final Platform platform;
   final String username;
@@ -26,12 +28,30 @@ class UserDetailsScreen extends StatelessWidget {
   });
 
   @override
+  State<UserDetailsScreen> createState() => _UserDetailsScreenState();
+
+}
+
+class _UserDetailsScreenState extends State<UserDetailsScreen> {
+
+  late Future<PagedItems<dynamic>> _initialItemsFuture;
+  late Future<List<UserStat>>? _userStatsFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    final response = widget.platform.api.getUserDetails(widget.username);
+    _initialItemsFuture = response.items;
+    _userStatsFuture = response.other;
+  }
+
+  @override
   Widget build(BuildContext context) {
     return SimpleFeedScreen(
-      platform: platform,
-      feedOptions: platform.userFeedOptions,
-      getAll: (options) => platform.api.getUserDetails(username, options: options),
-      getItems: (options, pageToken) => platform.api.getUserItems(username, options: options, pageToken: pageToken),
+      platform: widget.platform,
+      feedOptions: widget.platform.userFeedOptions,
+      initialItems: _initialItemsFuture,
+      getItems: (options, pageToken) => widget.platform.api.getUserItems(widget.username, options: options, pageToken: pageToken),
       title: Builder(
         builder: (context) {
           final parentColor = DefaultTextStyle.of(context).style.color;
@@ -40,47 +60,46 @@ class UserDetailsScreen extends StatelessWidget {
             TextSpan(
               children: [
                 TextSpan(
-                  text: platform.userPrefix,
+                  text: widget.platform.userPrefix,
                   style: TextStyle(color: parentColor.withAlpha(min(parentAlpha, Constants.namePrefixAlpha)))
                 ),
-                TextSpan(text: username),
+                TextSpan(text: widget.username),
               ],
             ),
           );
         }
       ),
-      persistentHeaderBuilder: (context, loadingState, stats) {
-        final Widget child;
-        if (loadingState == LoadingState.error) {
-          child = Container(
-            alignment: Alignment.center,
-            padding: const EdgeInsets.all(16),
-            child: HorizontalIconMessage(
-              icon: Icons.warning_amber_rounded,
-              message: 'Failed to load user profile',
-            ),
-          );
-        }
-        else if (stats == null) {
-          child = CustomCircularProgressIndicator(
-            platform: platform,
-            padding: const EdgeInsets.all(16),
-          );
-        }
-        else {
-          child = SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: UserStats(
-              stats: stats,
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-            ),
-          );
-        }
-        return PreferredSize(
-          preferredSize: Size.fromHeight(80),
-          child: child
-        );
-      },
+      flexibleSpaceHeader: PreferredSize(
+        preferredSize: Size.fromHeight(80),
+        child: FutureBuilder(
+          future: _userStatsFuture,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return CustomCircularProgressIndicator(
+                platform: widget.platform,
+                padding: const EdgeInsets.all(16),
+              );
+            }
+            if (snapshot.hasError) {
+              return Container(
+                alignment: Alignment.center,
+                padding: const EdgeInsets.all(16),
+                child: HorizontalIconMessage(
+                  icon: Icons.warning_amber_rounded,
+                  message: 'Failed to load user profile',
+                ),
+              );
+            }
+            if (snapshot.hasData) {
+              return UserStats(
+                stats: snapshot.data!,
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+              );
+            }
+            return const SizedBox.shrink();
+          },
+        )
+      ),
       itemBuilder: (context, item) { 
         if (item is Post) {
           return PostTile(
@@ -102,8 +121,8 @@ class UserDetailsScreen extends StatelessWidget {
               'View context': () {
                 context.push(() {
                   return PostDetailsScreen.fromUrl(
-                    platform: platform,
-                    url: platform.api.getCommentUrl(item)
+                    platform: widget.platform,
+                    url: widget.platform.api.getCommentUrl(item)
                   );
                 });
               }
@@ -125,4 +144,5 @@ class UserDetailsScreen extends StatelessWidget {
       },
     );
   }
+
 }

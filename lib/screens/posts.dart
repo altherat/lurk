@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/services/settings.dart';
+import 'package:lurk/widgets/feed_list.dart';
+import 'package:lurk/widgets/main_scaffold.dart';
 import 'package:lurk/widgets/prefixed_community_name.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';

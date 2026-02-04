@@ -23,10 +23,11 @@ import 'package:lurk/widgets/list_tile_icon.dart';
 
 class MainScaffold<T> extends StatefulWidget {
 
-  final Platform platform;
-  final String? activeCommunityName;
   final GlobalKey<ScaffoldState>? scaffoldKey;
   final GlobalKey<RefreshIndicatorState>? refreshIndicatorKey;
+  final Platform platform;
+  final String? activeCommunityName;
+  final ScrollController? customScrollViewController;
   final Widget? title;
   final Widget? subtitle;
   final List<Widget> iconActions;
@@ -37,14 +38,15 @@ class MainScaffold<T> extends StatefulWidget {
   final Widget? body;
   final (ValueListenable<T>, List<Widget> Function(BuildContext context, T value))? iconActionsBuilder;
   final RefreshCallback? onPullRefresh;
-  final VoidCallback? onButtonRefresh;
+  final VoidCallback? onOtherRefresh;
 
   const MainScaffold({
     super.key,
-    required this.platform,
-    this.activeCommunityName,
     this.scaffoldKey,
     this.refreshIndicatorKey,
+    required this.platform,
+    this.activeCommunityName,
+    this.customScrollViewController,
     required this.title,
     this.subtitle,
     this.iconActions = const [],
@@ -55,7 +57,7 @@ class MainScaffold<T> extends StatefulWidget {
     this.body,
     this.iconActionsBuilder,
     this.onPullRefresh,
-    this.onButtonRefresh,
+    this.onOtherRefresh
   });
 
   @override
@@ -66,23 +68,30 @@ class MainScaffold<T> extends StatefulWidget {
 class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProviderStateMixin {
 
   final _isBottomBarVisible = ValueNotifier<bool>(true);
-  final _scrollController = ScrollController();
-  late GlobalKey<ScaffoldState> _scaffoldKey;
+  late final ScrollController _scrollController;
+  ScrollController? _managedScrollController;
+  late final GlobalKey<ScaffoldState> _scaffoldKey;
 
   @override
   void initState() {
     super.initState();
+    if (widget.customScrollViewController != null) {
+      _scrollController = widget.customScrollViewController!;
+    }
+    else {
+      _managedScrollController = ScrollController();
+      _scrollController = _managedScrollController!;
+    }
     _scaffoldKey = widget.scaffoldKey ?? GlobalKey<ScaffoldState>();
   }
 
   @override
   void dispose() {
-    _scrollController.dispose();
+    _managedScrollController?.dispose();
     super.dispose();
   }
 
   void _scrollToTopAndRefresh() {
-    if (widget.onButtonRefresh == null) return;
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
         0, 
@@ -90,7 +99,7 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
         curve: Curves.easeInOutCubicEmphasized
       );
     }
-    widget.onButtonRefresh!.call();
+    widget.onOtherRefresh?.call();
   }
 
   void _showUsersBottomSheet() {
@@ -455,6 +464,7 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
 
           if (widget.body != null) {
             body = NestedScrollView(
+              controller: _scrollController,
               headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
                 return [
                   SliverOverlapAbsorber(

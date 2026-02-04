@@ -7,6 +7,7 @@ import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/community.dart';
+import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
@@ -62,7 +63,7 @@ class DiggApi extends Api {
   }
 
   @override
-  Future<PagedResult<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // dev.log('[Digg] getPosts: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
     final sort = options?[FeedOptionType.sort];
     return _getPostsRecursive({
@@ -298,7 +299,7 @@ class DiggApi extends Api {
   }
 
   @override
-  FeedResponse<dynamic, List<UserStat>> getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
+  MultiPartFeedResponse<dynamic, List<UserStat>> getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
     // dev.log('[Digg] getUserDetails: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}]');
     final UserFeedType type = options?[FeedOptionType.category]?.id ?? Platform.digg.userFeedOptions.options.first.id;
     final FeedOption? sort = options?[FeedOptionType.sort];
@@ -376,7 +377,7 @@ class DiggApi extends Api {
         );
         
         final responseFuture = _client.query(queryOptions);
-        return FeedResponse(
+        return MultiPartFeedResponse(
           items: responseFuture.then((response) => _parsePostsResult(response.data!)),
           other: responseFuture.then((response) => _parseAllUserStats(response.data!['accounts']['edges'].first['node'])),
         );
@@ -450,11 +451,11 @@ class DiggApi extends Api {
         );
         
         final responseFuture = _client.query(queryOptions);
-        return FeedResponse(
+        return MultiPartFeedResponse(
           items: responseFuture.then((response) {
             final comments = response.data!['comments'];
             final pageInfo = comments['pageInfo'];
-            return PagedResult(
+            return PagedItems(
               items: (comments['edges'] as List).map((edge) => _parseComment(edge['node'])).toList(),
               pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
             );
@@ -467,7 +468,7 @@ class DiggApi extends Api {
   }
 
   @override
-  Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // dev.log('[Digg] getUserItems: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
     final UserFeedType type = options?[FeedOptionType.category]?.id ?? Platform.digg.userFeedOptions.options.first.id;
     final FeedOption? sort = options?[FeedOptionType.sort];
@@ -598,12 +599,12 @@ class DiggApi extends Api {
   }
 
   @override
-  Future<PagedResult<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // dev.log('[Digg] search: query=$query, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
     final type = options?[FeedOptionType.category]?.id ?? SearchFeedType.posts;
     final sort = options?[FeedOptionType.sort];
     final gql.QueryOptions queryOptions;
-    final PagedResult<dynamic> Function(Map<String, dynamic>) parseFn;
+    final PagedItems<dynamic> Function(Map<String, dynamic>) parseFn;
     if (type == SearchFeedType.communities) {
       queryOptions = gql.QueryOptions(
         document: gql.gql(r'''
@@ -636,7 +637,7 @@ class DiggApi extends Api {
         final Map<String, dynamic> communitiesData = data['communities'];
         final List edges = communitiesData['edges'];
         final pageInfo = communitiesData['pageInfo'];
-        return PagedResult(
+        return PagedItems(
           items: edges.map((edge) {
             final Map<String, dynamic> node = edge['node'];
             final String? iconUrl = node['iconUrl'];
@@ -684,7 +685,7 @@ class DiggApi extends Api {
         final accountsData = data['accounts'];
         final List edges = accountsData['edges'];
         final pageInfo = accountsData['pageInfo'];
-        return PagedResult(
+        return PagedItems(
           items: edges.map((edge) {
             final Map<String, dynamic> node = edge['node'];
             final String? iconUrl = node['avatarUrl'];
@@ -805,7 +806,7 @@ class DiggApi extends Api {
     throw UnimplementedError();
   }
 
-  Future<PagedResult<Post>> _getPostsRecursive(Map<String, dynamic> variables, {List<Post>? accumulatedPosts, int depth = 0}) async {
+  Future<PagedItems<Post>> _getPostsRecursive(Map<String, dynamic> variables, {List<Post>? accumulatedPosts, int depth = 0}) async {
     // dev.log('[Digg] _getPostsRecursive: variables=[${variables.entries.map((entry) => '${entry.key}=${entry.value}').join(', ')}], posts=${accumulatedPosts?.length}, depth=$depth');
     final gql.QueryOptions queryOptions = gql.QueryOptions(
       document: gql.gql(r'''
@@ -867,27 +868,27 @@ class DiggApi extends Api {
         depth: depth + 1,
       );
     }
-    return PagedResult(
+    return PagedItems(
       items: allPosts,
       pageToken: allPosts.length < resultsLimit ? null : pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
     );
 
   }
 
-  static PagedResult<Post> _parsePostsResult(Map<String, dynamic> data) {
+  static PagedItems<Post> _parsePostsResult(Map<String, dynamic> data) {
     final postsData = data['posts'];
     final List edges = postsData['edges'];
     final pageInfo = postsData['pageInfo'];
-    return PagedResult(
+    return PagedItems(
       items: edges.map((edge) => _parsePost(edge['node'])).toList(),
       pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
     );
   }
 
-  static PagedResult<Comment> _parseCommentsResult(Map<String, dynamic> data) {
+  static PagedItems<Comment> _parseCommentsResult(Map<String, dynamic> data) {
     final comments = data['comments'];
     final pageInfo = comments['pageInfo'];
-    return PagedResult(
+    return PagedItems(
       items: (comments['edges'] as List).map((edge) => _parseComment(edge['node'])).toList(),
       pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
     );

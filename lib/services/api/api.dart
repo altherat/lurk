@@ -4,6 +4,7 @@ import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/comment.dart';
+import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
@@ -47,13 +48,13 @@ abstract class Api {
     return null;
   }
 
-  Future<PagedResult<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
+  Future<PagedItems<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
   Future<PostDetails> getPostDetailsFromUrl(String url, {Map<FeedOptionType, FeedOption>? options});
   Future<PostDetails> getPostDetailsFromId(String id, {String? shortCommentId, Map<FeedOptionType, FeedOption>? options});
   Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? depth, Map<FeedOptionType, FeedOption>? options});
-  FeedResponse<dynamic, List<UserStat>> getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options});
-  Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
-  Future<PagedResult<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
+  MultiPartFeedResponse<dynamic, List<UserStat>> getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options});
+  Future<PagedItems<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
+  Future<PagedItems<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
 
   Future<String?> login();
   Future<void> logout(String id);
@@ -66,37 +67,14 @@ abstract class Api {
 
 }
 
-class PagedResult<T> {
+class MultiPartFeedResponse<T, U> {
 
-  final List<T> items;
-  final String? pageToken;
-
-  PagedResult({
-    required this.items,
-    this.pageToken,
-  });
-  
-}
-
-class FeedResponse<T, U> {
-
-  final Future<PagedResult<T>> items;
+  final Future<PagedItems<T>> items;
   final Future<U>? other;
 
-  const FeedResponse({
+  const MultiPartFeedResponse({
     required this.items,
     this.other
-  });
-
-}
-
-class UserDetailsResponse extends FeedResponse {
-
-  final Future<List<UserStat>> stats;
-
-  const UserDetailsResponse({
-    required this.stats,
-    required super.items
   });
 
 }

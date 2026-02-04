@@ -1,19 +1,17 @@
-import 'dart:developer' as dev;
-
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/comment.dart';
+import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/user.dart';
-import 'package:lurk/screens/simple_feed.dart';
-import 'package:lurk/services/history.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/services/history.dart';
 import 'package:lurk/services/settings.dart';
-import 'package:lurk/widgets/centered_full_height_scroll_view.dart';
 import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+import 'package:lurk/widgets/feed_list.dart';
 import 'package:lurk/widgets/feed_option_selector.dart';
 import 'package:lurk/widgets/html.dart';
 import 'package:lurk/widgets/icon_message.dart';
@@ -64,93 +62,37 @@ class PostDetailsScreen extends StatefulWidget {
 
 class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTickerProviderStateMixin {
 
+  final _feedListKey = GlobalKey<FeedListState>();
   final _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
 
   Post? _post;
   Map<FeedOptionType, FeedOption>? _feedOptions;
-  List<CommentItem>? _comments;
-  List<CommentItem>? _visibleComments;
   String? _contextCommentShortId;
-  bool _isLoading = true;
   final Set<String> _collapsedCommentIds = {};
-  late final AnimationController _animationController;
+  late List<CommentItem> _allComments;
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
-      vsync: this, 
-      duration: Constants.feedLoadAnimationDuration
-    );
-    if (widget.post != null) {
-      _post = widget.post!;
-      _getPostDetailsFromPost();
+    _post = widget.post;
+  }
+
+  Future<PagedItems<CommentItem>> _getItems([String? pageToken]) async {
+    final PostDetails postDetails;
+    if (_post != null) {
+      postDetails = await _getPostDetailsFromPost();
     }
     else {
-      final platform = Platform.forUrl(widget.url!);
-      if (platform != null) {
-        _getPostDetails();
-      }
-      else {
-        throw UnimplementedError('Unsupported URL: ${widget.url}');
-      }
+      postDetails = await widget.platform.api.getPostDetailsFromUrl(widget.url);
+      _post = postDetails.post;
     }
+    _allComments = postDetails.comments.toList();
+    _contextCommentShortId = postDetails.contextCommentShortId;
+    History.postDetails.add(_post!.id);
+    return PagedItems(items: postDetails.comments);
   }
 
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _getPostDetails() => _get(() => widget.platform.api.getPostDetailsFromUrl(widget.url!));
-
-  Future<void> _getPostDetailsFromPost() => _get(() => _post!.community.platform.api.getPostDetailsFromId(_post!.shortId, options: _feedOptions));
-
-  Future<void> _get(Future<PostDetails> Function() get) async {
-    try {
-      final postDetails = await get();
-      if (mounted) {
-        setState(() {
-          _isLoading = false;
-          _post = postDetails.post;
-          _comments = postDetails.comments;
-          _contextCommentShortId = postDetails.contextCommentShortId;
-          _visibleComments = List.of(_comments!);
-          _animationController.forward();
-        });
-        History.postDetails.add(_post!.id);
-      }
-    }
-    catch (e) {
-      dev.log('Error fetching post details: $e');
-      if (mounted) {
-        setState(() => _isLoading = false);
-      }
-      rethrow;
-    }
-  }
-
-  void _onCommentCollapseChanged() {
-    if (_comments == null) return;
-    _visibleComments!.clear();
-    int? currentCollapsedDepth;
-    for (var item in _comments!) {
-      if (currentCollapsedDepth != null) {
-        if (item.depth > currentCollapsedDepth) {
-          continue; 
-        }
-        else {
-          currentCollapsedDepth = null;
-        }
-      }
-      _visibleComments!.add(item);
-      if (item is Comment && _collapsedCommentIds.contains(item.id)) {
-        currentCollapsedDepth = item.depth;
-      }
-    }
-    setState(() {});
-  }
+  Future<PostDetails> _getPostDetailsFromPost() => _post!.community.platform.api.getPostDetailsFromId(_post!.shortId, options: _feedOptions);
 
   void _showAddCommentDialog(String id, Widget replyingToWidget) {
     showModalBottomSheet(
@@ -172,8 +114,8 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
   Widget build(BuildContext context) {
     final String title;
     final Map<String, VoidCallback> popupMenuActions;
-    final RefreshCallback? onRefresh;
     final List<Widget>? slivers;
+    final RefreshCallback? onRefresh;
     if (_post != null) {
       title = _post!.title;
       popupMenuActions = {
@@ -182,7 +124,6 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
         'Copy link': () => copyToClipboard(widget.url),
         'Copy comments link': () => copyToClipboard(_post!.community.platform.api.getPostDetailsUrl(_post!))
       };
-      onRefresh = _getPostDetailsFromPost;
       slivers = [
         SliverToBoxAdapter(
           child: Column(
@@ -256,191 +197,104 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
                 const SizedBox(height: 8)
             ]
           ),
-        )
+        ),
       ];
-      final Widget child;
-      if (_isLoading) {
-        child = SliverFillRemaining(
-          hasScrollBody: false,
-          child: LargeCenteredCircularProgressIndicator(platform: widget.platform)
-        );
-      }
-      else if (_visibleComments == null || _visibleComments!.isEmpty) {
-        child = SliverFillRemaining(
-          hasScrollBody: false,
-          child: LargeVerticalIconMessage(
-            icon: Icons.feed_outlined,
-            message: 'No comments'
-          ),
-        );
-      }
-      else {
-        child = AnimatedBuilder(
-          animation: _animationController,
-          builder: (context, child) {
-            return SliverList(
-              delegate: SliverChildBuilderDelegate(
-                childCount: _visibleComments!.length,
-                (context, index) {
-                  final item = _visibleComments![index];
-                  Widget? child;
-                  if (item is Comment) {
-                    final isCollapsed = _collapsedCommentIds.contains(item.id);
-                    child = CommentTile(
-                      padding: EdgeInsets.only(top: index == 0 ? 0 : 8, bottom: 4),
-                      comment: item,
-                      depth: item.depth,
-                      isCollapsed: isCollapsed,
-                      optionsBuilder: (context, activeUser) => {
-                        if (activeUser != null)
-                          'Reply': () {
-                            _showAddCommentDialog(
-                              item.id,
-                              CommentTile(
-                                comment: item,
-                                isInteractable: false,
-                              )
-                            );
-                          }
-                      },
-                      onTap: () async {
-                        setState(() {
-                          if (isCollapsed) {
-                            _collapsedCommentIds.remove(item.id);
-                          }
-                          else {
-                            _collapsedCommentIds.add(item.id);
-                          }
-                          _onCommentCollapseChanged();
-                        });
-                    
-                        // Some hack solution to try and get comment collapse animation in a flat list
-                    
-                        // final parentIndex = _visibleComments!.indexOf(item);
-                        // final List<CommentItem> itemsToRemove = [];
-                        // for (int i = parentIndex + 1; i < _visibleComments!.length; i++) {
-                        //   final current = _visibleComments![i];
-                        //   if (current.depth <= item.depth) {
-                        //     break; 
-                        //   }
-                        //   itemsToRemove.add(current);
-                        // }
-                    
-                        // if (itemsToRemove.isEmpty) {
-                        //   setState(() => _collapsedCommentIds.add(item.id));
-                        //   return;
-                        // }
-                    
-                        // final proxy = _CollapsingCommentItem(children: itemsToRemove);
-                        // setState(() {
-                        //   // _collapsedCommentIds.add(item.id);
-                        //   _visibleComments!.removeWhere((c) => itemsToRemove.contains(c));
-                        //   _visibleComments!.insert(parentIndex + 1, proxy);
-                        // });
-                        // await Future.delayed(const Duration(milliseconds: 2000));
-                        // if (mounted) {
-                        //   setState(() {
-                        //     _visibleComments!.remove(proxy);
-                        //   });
-                        // }
-                      },
-                      onDelete: () {
-                        setState(() {
-                          _visibleComments!.removeAt(index);
-                        });
-                      }
-                    );
-                    if (item.shortId == _contextCommentShortId) {
-                      child = DecoratedBox(
-                        decoration: BoxDecoration(color: Constants.contextCommentBackgroundColor),
-                        child: child
-                      );
-                    }
-                  }
-                  else if (item is LoadMoreComment) {
-                    child =_LoadMoreComments(
-                      platform: _post!.community.platform,
-                      comment: item,
-                      onLoadMoreComments: () async {
-                        final comments = await _post!.community.platform.api.getMoreComments(_post!.id, item.pageToken!, depth: item.depth);
-                        if (mounted) {
-                          setState(() {
-                            final index = _comments!.indexOf(item);
-                            if (index != -1) {
-                              _comments!.removeAt(index);
-                              _comments!.insertAll(index, comments);
-                              _onCommentCollapseChanged();
-                            }
-                          });
-                        }
-                      },
-                    );
-                  }
-                  return FeedItemTransition(
-                    progress: _animationController.value,
-                    child: child!
-                  );
-                  // if (item is _CollapsingCommentItem) {
-                  //   return TweenAnimationBuilder(
-                  //     duration: const Duration(milliseconds: 2000),
-                  //     tween: Tween(begin: 1.0, end: 0.0),
-                  //     builder: (context, value, child) {
-                  //       return ClipRect(
-                  //         child: Align(
-                  //           alignment: Alignment.topCenter,
-                  //           heightFactor: value,
-                  //           child: child,
-                  //         ),
-                  //       );
-                  //     },
-                  //     child: Column(
-                  //       children: item.children.map((item) {
-                  //         if (item is Comment) {
-                  //           return CommentTile(
-                  //             padding: EdgeInsets.only(bottom: 4),
-                  //             comment: item,
-                  //             depth: item.depth,
-                  //           );
-                  //         }
-                  //         if (item is LoadMoreComment) {
-                  //           return _LoadMoreComments(
-                  //             platform: _post!.community.platform,
-                  //             comment: item,
-                  //             onLoadMoreComments: () async {},
-                  //           );
-                  //         }
-                  //         return SizedBox.shrink();
-                  //       }).toList(),
-                  //     )
-                  //   );
-                  // }
-                },
-              ),
-            );
-          }
-        );
-      }
-      slivers.add(child);
+      onRefresh = () async {
+        final state = _feedListKey.currentState;
+        if (state != null){
+          await state.refresh();
+        }
+      };
     }
     else {
       title = widget.url;
       popupMenuActions = const {};
-      final Widget child;
-      if (_isLoading) {
-        onRefresh = null;
-        child = LargeCenteredCircularProgressIndicator(platform: widget.platform);
-      }
-      else {
-        onRefresh = _getPostDetails;
-        child = LargeVerticalIconMessage(
-          icon: Icons.error_outline_rounded,
-          message: 'Something went wrong',
-        );
-      }
-      slivers = [
-        SliverFillRemaining(child: child)
-      ];
+      slivers = [];
+      onRefresh = null;
     }
+    slivers.add(
+      FeedList(
+        key: _feedListKey,
+        platform: widget.platform,
+        getItems: _getItems,
+        noItemsBuilder: (BuildContext context) {
+          return LargeVerticalIconMessage(
+            icon: Icons.feed_outlined,
+            message: 'No comments'
+          );
+        },
+        itemBuilder: (context, index, item) {
+          if (item is Comment) {
+            final isCollapsed = _collapsedCommentIds.contains(item.id);
+            Widget child = CommentTile(
+              padding: EdgeInsets.only(top: index == 0 ? 0 : 8, bottom: 4),
+              comment: item,
+              depth: item.depth,
+              isCollapsed: isCollapsed,
+              optionsBuilder: (context, activeUser) => {
+                if (activeUser != null)
+                  'Reply': () {
+                    _showAddCommentDialog(
+                      item.id,
+                      CommentTile(
+                        comment: item,
+                        isInteractable: false,
+                      )
+                    );
+                  }
+              },
+              onTap: () async {
+                if (isCollapsed) {
+                  _collapsedCommentIds.remove(item.id);
+                }
+                else {
+                  _collapsedCommentIds.add(item.id);
+                }
+                _feedListKey.currentState?.updateItems((items) {
+                  items.clear();
+                  int? currentCollapsedDepth;
+                  for (var comment in _allComments) {
+                    if (currentCollapsedDepth != null) {
+                      if (comment.depth > currentCollapsedDepth) {
+                        continue; 
+                      }
+                      else {
+                        currentCollapsedDepth = null;
+                      }
+                    }
+                    items.add(comment);
+                    if (comment is Comment && _collapsedCommentIds.contains(comment.id)) {
+                      currentCollapsedDepth = comment.depth;
+                    }
+                  }
+                });
+              },
+              onDelete: () => _feedListKey.currentState?.updateItems((items) => items.removeAt(index))
+            );
+            if (item.shortId == _contextCommentShortId) {
+              child = DecoratedBox(
+                decoration: BoxDecoration(color: Constants.contextCommentBackgroundColor),
+                child: child
+              );
+            }
+            return child;
+          }
+          if (item is LoadMoreComment) {
+            return _LoadMoreComments(
+              platform: _post!.community.platform,
+              comment: item,
+              onLoadMoreComments: () async {
+                final comments = await _post!.community.platform.api.getMoreComments(_post!.id, item.pageToken!, depth: item.depth);
+                if (mounted) {
+                  _feedListKey.currentState?.updateItems((items) => items.replaceRange(index, index + 1, comments));
+                }
+              },
+            );
+          }
+          return const SizedBox.shrink();
+        },
+      )
+    );
     return MainScaffold(
       platform: widget.platform,
       refreshIndicatorKey: _refreshIndicatorKey,
@@ -453,14 +307,9 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
           feedOptions: widget.platform.postCommentsFeedOptions,
           selectedFeedOptions: _feedOptions,
           onFeedOptionsSelected: (options) {
-            setState(() {
-              _isLoading = true;
-              _comments?.clear();
-              _visibleComments?.clear();
-              _collapsedCommentIds.clear();
-              _feedOptions = options;
-            });
-            _getPostDetailsFromPost();
+            _feedOptions = options;
+            _collapsedCommentIds.clear();
+            _feedListKey.currentState?.reload();
           }
         )
       ],
@@ -484,7 +333,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
       }),
       slivers: slivers,
       onPullRefresh: onRefresh,
-      onButtonRefresh: () async => _refreshIndicatorKey.currentState?.show(),
+      onOtherRefresh: () => _refreshIndicatorKey.currentState?.show(),
     );
   }
 

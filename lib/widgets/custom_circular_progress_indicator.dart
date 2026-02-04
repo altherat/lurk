@@ -83,10 +83,12 @@ class PlatformCircularProgressIndicator extends StatelessWidget {
 class LargeCenteredCircularProgressIndicator extends StatelessWidget {
 
   final Platform? platform;
+  final EdgeInsetsGeometry padding;
   
   const LargeCenteredCircularProgressIndicator({
     super.key,
     this.platform,
+    this.padding = const EdgeInsetsGeometry.all(8),
   });
 
   @override
@@ -94,6 +96,7 @@ class LargeCenteredCircularProgressIndicator extends StatelessWidget {
     return CustomCircularProgressIndicator(
       platform: platform,
       alignment: Alignment.center,
+      padding: padding,
       size: _largeSize,
       strokeWidth: _largeStrokeWidth,
     );
