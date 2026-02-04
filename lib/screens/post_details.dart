@@ -7,13 +7,14 @@ import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/user.dart';
+import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/centered_full_height_scroll_view.dart';
 import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
-import 'package:lurk/widgets/custom_refresh_indicator.dart';
+import 'package:lurk/widgets/feed_option_selector.dart';
 import 'package:lurk/widgets/html.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
@@ -61,7 +62,7 @@ class PostDetailsScreen extends StatefulWidget {
   
 }
 
-class _PostDetailsScreenState extends State<PostDetailsScreen> {
+class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTickerProviderStateMixin {
 
   final _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
 
@@ -72,10 +73,15 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
   String? _contextCommentShortId;
   bool _isLoading = true;
   final Set<String> _collapsedCommentIds = {};
+  late final AnimationController _animationController;
 
   @override
   void initState() {
     super.initState();
+    _animationController = AnimationController(
+      vsync: this, 
+      duration: Constants.feedLoadAnimationDuration
+    );
     if (widget.post != null) {
       _post = widget.post!;
       _getPostDetailsFromPost();
@@ -89,6 +95,12 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
         throw UnimplementedError('Unsupported URL: ${widget.url}');
       }
     }
+  }
+
+  @override
+  void dispose() {
+    _animationController.dispose();
+    super.dispose();
   }
 
   Future<void> _getPostDetails() => _get(() => widget.platform.api.getPostDetailsFromUrl(widget.url!));
@@ -105,6 +117,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
           _comments = postDetails.comments;
           _contextCommentShortId = postDetails.contextCommentShortId;
           _visibleComments = List.of(_comments!);
+          _animationController.forward();
         });
         History.postDetails.add(_post!.id);
       }
@@ -157,213 +170,300 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String? title;
-    final List<Widget> iconActions = [];
+    final String title;
     final Map<String, VoidCallback> popupMenuActions;
     final RefreshCallback? onRefresh;
-    final Widget body;
+    final List<Widget>? slivers;
     if (_post != null) {
-      final url = widget.url ?? _post!.url;
       title = _post!.title;
       popupMenuActions = {
-        'View in browser': () => openInBrowser(url),
+        'View in browser': () => openInBrowser(widget.url),
         'View comments in browser': () => openInBrowser(_post!.community.platform.api.getPostDetailsUrl(_post!)),
-        'Copy link': () => copyToClipboard(url),
+        'Copy link': () => copyToClipboard(widget.url),
         'Copy comments link': () => copyToClipboard(_post!.community.platform.api.getPostDetailsUrl(_post!))
       };
       onRefresh = _getPostDetailsFromPost;
-      final List<Widget> headers = [
-        PostTile(
-          post: _post!,
-          onTapNavigate: false,
-          showThumbnail: !_post!.isSelf,
-          subtitle: Text(
-            'posted to ${_post!.community.name}\n${_post!.timeAgoLong} ago by ${_post!.author}',
-            style: const TextStyle(color: Constants.secondaryTextColor, fontSize: 12)
-          )
-        ),
-        if (_post!.textHtml != null)
-          Container(
-            margin: const EdgeInsets.all(8),
-            padding: const EdgeInsets.all(8),
-            width: double.infinity,
-            decoration: BoxDecoration(
-              border: Border.all(color: Constants.postTextHtmlBorderColor),
-              borderRadius: BorderRadius.circular(4),
-            ),
-            child: Html(
-              platform: _post!.community.platform,
-              html: _post!.textHtml!
-            )
-          )
-        else
-          const SizedBox(height: 8),
-        Container(
-          color: Constants.lighterBackgroundColor,
-          padding: const EdgeInsets.only(left: 16, top: 5, bottom: 5),
+      slivers = [
+        SliverToBoxAdapter(
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
-                _post!.commentsLabel,
-                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)
+              PostTile(
+                post: _post!,
+                onTapNavigate: false,
+                showThumbnail: !_post!.isSelf,
+                subtitle: Text(
+                  'posted to ${_post!.community.name}\n${_post!.timeAgoLong} ago by ${_post!.author}',
+                  style: const TextStyle(color: Constants.secondaryTextColor, fontSize: 12)
+                )
               ),
-              Text(
-                'sorted by${_feedOptions != null && _feedOptions!.length > 1 ? ': ${_feedOptions!.values.map((option) => option.label.toLowerCase()).join(' / ')}' : ' ${_post!.community.platform.postCommentsFeedOptions.options.first.label.toLowerCase()}'}',
-                style: const TextStyle(color: Constants.secondaryTextColor, fontSize: 11),
-              )
-            ],
-          )
-        ),
-        if (_contextCommentShortId != null)
-          InkWell(
-            onTap: () => context.push(() => PostDetailsScreen.fromPost(post: _post!)),
-            child: Container(
-              padding: const EdgeInsets.symmetric(vertical: 8),
-              child: Row(
-                children: [
-                  Icon(
-                    Icons.arrow_back,
-                    size: 16,
+              if (_post!.textHtml != null)
+                Container(
+                  margin: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Constants.postTextHtmlBorderColor),
+                    borderRadius: BorderRadius.circular(4),
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'All comments (${_post!.commentCount.toCommaString()})',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
+                  child: Html(
+                    platform: _post!.community.platform,
+                    html: _post!.textHtml!
+                  )
+                )
+              else
+                const SizedBox(height: 8),
+              Container(
+                color: Constants.lighterBackgroundColor,
+                padding: const EdgeInsets.only(left: 16, top: 5, bottom: 5),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Text(
+                      _post!.commentsLabel,
+                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)
                     ),
+                    Text(
+                      'sorted by${_feedOptions != null && _feedOptions!.length > 1 ? ': ${_feedOptions!.values.map((option) => option.label.toLowerCase()).join(' / ')}' : ' ${_post!.community.platform.postCommentsFeedOptions.options.first.label.toLowerCase()}'}',
+                      style: const TextStyle(color: Constants.secondaryTextColor, fontSize: 11),
+                    )
+                  ],
+                )
+              ),
+              if (_contextCommentShortId != null)
+                InkWell(
+                  onTap: () => context.push(() => PostDetailsScreen.fromPost(post: _post!)),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.arrow_back,
+                          size: 16,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'All comments (${_post!.commentCount.toCommaString()})',
+                          style: const TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    )
                   ),
-                ],
-              )
-            ),
-          )
-        else
-          const SizedBox(height: 8)
+                )
+              else
+                const SizedBox(height: 8)
+            ]
+          ),
+        )
       ];
+      final Widget child;
       if (_isLoading) {
-        body = Column(
-          children: [
-            ...headers,
-            Expanded(child: LargeCenteredCircularProgressIndicator(platform: widget.platform))
-          ],
+        child = SliverFillRemaining(
+          hasScrollBody: false,
+          child: LargeCenteredCircularProgressIndicator(platform: widget.platform)
         );
       }
       else if (_visibleComments == null || _visibleComments!.isEmpty) {
-        body = CenteredFullHeightScrollView(
-          headers: headers,
-          child: const LargeVerticalIconMessage(
+        child = SliverFillRemaining(
+          hasScrollBody: false,
+          child: LargeVerticalIconMessage(
             icon: Icons.feed_outlined,
             message: 'No comments'
-          )
+          ),
         );
       }
       else {
-        body = Scrollbar(
-          child: ListView.builder(
-            padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
-              itemCount: headers.length + _visibleComments!.length,
-              itemBuilder: (context, index) {
-                if (index < headers.length) {
-                  return headers[index];
-                }
-                index -= headers.length;
-                final item = _visibleComments![index];
-                if (item is Comment) {
-                  final isCollapsed = _collapsedCommentIds.contains(item.id);
-                  final child = CommentTile(
-                    padding: EdgeInsets.only(top: index == 0 ? 0 : 8, bottom: 4),
-                    comment: item,
-                    depth: item.depth,
-                    isCollapsed: isCollapsed,
-                    optionsBuilder: (context, activeUser) => {
-                      if (activeUser != null)
-                        'Reply': () {
-                          _showAddCommentDialog(
-                            item.id,
-                            CommentTile(
-                              comment: item,
-                              isInteractable: false,
-                            )
-                          );
-                        }
-                    },
-                    onTap: () {
-                      setState(() {
-                        if (isCollapsed) {
-                          _collapsedCommentIds.remove(item.id);
-                        }
-                        else {
-                          _collapsedCommentIds.add(item.id);
-                        }
-                        _onCommentCollapseChanged();
-                      });
-                    },
-                    onDelete: () {
-                      setState(() {
-                        _visibleComments!.removeAt(index);
-                      });
-                    }
-                  );
-                  return item.shortId == _contextCommentShortId
-                    ? DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: Constants.contextCommentBackgroundColor
-                        ),
-                        child: child
-                      )
-                    : child;
-                }
-                else if (item is LoadMoreComment) {
-                  return _LoadMoreComments(
-                    platform: _post!.community.platform,
-                    comment: item,
-                    onLoadMoreComments: () async {
-                      final comments = await _post!.community.platform.api.getMoreComments(_post!.id, item.pageToken!, depth: item.depth);
-                      if (mounted) {
-                        setState(() {
-                          final index = _comments!.indexOf(item);
-                          if (index != -1) {
-                            _comments!.removeAt(index);
-                            _comments!.insertAll(index, comments);
-                            _onCommentCollapseChanged();
+        child = AnimatedBuilder(
+          animation: _animationController,
+          builder: (context, child) {
+            return SliverList(
+              delegate: SliverChildBuilderDelegate(
+                childCount: _visibleComments!.length,
+                (context, index) {
+                  final item = _visibleComments![index];
+                  Widget? child;
+                  if (item is Comment) {
+                    final isCollapsed = _collapsedCommentIds.contains(item.id);
+                    child = CommentTile(
+                      padding: EdgeInsets.only(top: index == 0 ? 0 : 8, bottom: 4),
+                      comment: item,
+                      depth: item.depth,
+                      isCollapsed: isCollapsed,
+                      optionsBuilder: (context, activeUser) => {
+                        if (activeUser != null)
+                          'Reply': () {
+                            _showAddCommentDialog(
+                              item.id,
+                              CommentTile(
+                                comment: item,
+                                isInteractable: false,
+                              )
+                            );
                           }
+                      },
+                      onTap: () async {
+                        setState(() {
+                          if (isCollapsed) {
+                            _collapsedCommentIds.remove(item.id);
+                          }
+                          else {
+                            _collapsedCommentIds.add(item.id);
+                          }
+                          _onCommentCollapseChanged();
+                        });
+                    
+                        // Some hack solution to try and get comment collapse animation in a flat list
+                    
+                        // final parentIndex = _visibleComments!.indexOf(item);
+                        // final List<CommentItem> itemsToRemove = [];
+                        // for (int i = parentIndex + 1; i < _visibleComments!.length; i++) {
+                        //   final current = _visibleComments![i];
+                        //   if (current.depth <= item.depth) {
+                        //     break; 
+                        //   }
+                        //   itemsToRemove.add(current);
+                        // }
+                    
+                        // if (itemsToRemove.isEmpty) {
+                        //   setState(() => _collapsedCommentIds.add(item.id));
+                        //   return;
+                        // }
+                    
+                        // final proxy = _CollapsingCommentItem(children: itemsToRemove);
+                        // setState(() {
+                        //   // _collapsedCommentIds.add(item.id);
+                        //   _visibleComments!.removeWhere((c) => itemsToRemove.contains(c));
+                        //   _visibleComments!.insert(parentIndex + 1, proxy);
+                        // });
+                        // await Future.delayed(const Duration(milliseconds: 2000));
+                        // if (mounted) {
+                        //   setState(() {
+                        //     _visibleComments!.remove(proxy);
+                        //   });
+                        // }
+                      },
+                      onDelete: () {
+                        setState(() {
+                          _visibleComments!.removeAt(index);
                         });
                       }
-                    },
+                    );
+                    if (item.shortId == _contextCommentShortId) {
+                      child = DecoratedBox(
+                        decoration: BoxDecoration(color: Constants.contextCommentBackgroundColor),
+                        child: child
+                      );
+                    }
+                  }
+                  else if (item is LoadMoreComment) {
+                    child =_LoadMoreComments(
+                      platform: _post!.community.platform,
+                      comment: item,
+                      onLoadMoreComments: () async {
+                        final comments = await _post!.community.platform.api.getMoreComments(_post!.id, item.pageToken!, depth: item.depth);
+                        if (mounted) {
+                          setState(() {
+                            final index = _comments!.indexOf(item);
+                            if (index != -1) {
+                              _comments!.removeAt(index);
+                              _comments!.insertAll(index, comments);
+                              _onCommentCollapseChanged();
+                            }
+                          });
+                        }
+                      },
+                    );
+                  }
+                  return FeedItemTransition(
+                    progress: _animationController.value,
+                    child: child!
                   );
-                }
-                return const SizedBox.shrink();
-              },
-            ),
+                  // if (item is _CollapsingCommentItem) {
+                  //   return TweenAnimationBuilder(
+                  //     duration: const Duration(milliseconds: 2000),
+                  //     tween: Tween(begin: 1.0, end: 0.0),
+                  //     builder: (context, value, child) {
+                  //       return ClipRect(
+                  //         child: Align(
+                  //           alignment: Alignment.topCenter,
+                  //           heightFactor: value,
+                  //           child: child,
+                  //         ),
+                  //       );
+                  //     },
+                  //     child: Column(
+                  //       children: item.children.map((item) {
+                  //         if (item is Comment) {
+                  //           return CommentTile(
+                  //             padding: EdgeInsets.only(bottom: 4),
+                  //             comment: item,
+                  //             depth: item.depth,
+                  //           );
+                  //         }
+                  //         if (item is LoadMoreComment) {
+                  //           return _LoadMoreComments(
+                  //             platform: _post!.community.platform,
+                  //             comment: item,
+                  //             onLoadMoreComments: () async {},
+                  //           );
+                  //         }
+                  //         return SizedBox.shrink();
+                  //       }).toList(),
+                  //     )
+                  //   );
+                  // }
+                },
+              ),
+            );
+          }
         );
       }
+      slivers.add(child);
     }
     else {
       title = widget.url;
       popupMenuActions = const {};
+      final Widget child;
       if (_isLoading) {
         onRefresh = null;
-        body = LargeCenteredCircularProgressIndicator(platform: widget.platform);
+        child = LargeCenteredCircularProgressIndicator(platform: widget.platform);
       }
       else {
         onRefresh = _getPostDetails;
-        body = const CenteredFullHeightScrollView(
-          child: LargeVerticalIconMessage(
-            icon: Icons.error_outline_rounded,
-            message: 'Something went wrong',
-          )
+        child = LargeVerticalIconMessage(
+          icon: Icons.error_outline_rounded,
+          message: 'Something went wrong',
         );
       }
+      slivers = [
+        SliverFillRemaining(child: child)
+      ];
     }
     return MainScaffold(
       platform: widget.platform,
-      title: title != null ? Text(title) : null,
+      refreshIndicatorKey: _refreshIndicatorKey,
+      title: Text(title),
       subtitle: _post != null ? Text(_post!.community.prefixedName) : null,
       popupMenuActions: popupMenuActions,
-      iconActions: iconActions,
-      feedOptions: widget.platform.postCommentsFeedOptions,
-      selectedFeedOptions: _feedOptions,
+      iconActions: [
+        FeedFilterIconButton(
+          platform: widget.platform,
+          feedOptions: widget.platform.postCommentsFeedOptions,
+          selectedFeedOptions: _feedOptions,
+          onFeedOptionsSelected: (options) {
+            setState(() {
+              _isLoading = true;
+              _comments?.clear();
+              _visibleComments?.clear();
+              _collapsedCommentIds.clear();
+              _feedOptions = options;
+            });
+            _getPostDetailsFromPost();
+          }
+        )
+      ],
       iconActionsBuilder: (Settings.activeUser, (context, LoggedInUser? activeUser) {
         if (activeUser == null) return [];
         return [
@@ -382,23 +482,9 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> {
           )
         ];
       }),
-      body: CustomRefreshIndicator(
-        platform: widget.platform,
-        key: _refreshIndicatorKey,
-        onRefresh: onRefresh,
-        child: body
-      ),
-      onRefresh: () => _refreshIndicatorKey.currentState?.show(),
-      onFeedOptionsSelected: (options) {
-        setState(() {
-          _isLoading = true;
-          _comments?.clear();
-          _visibleComments?.clear();
-          _collapsedCommentIds.clear();
-          _feedOptions = options;
-        });
-        _getPostDetailsFromPost();
-      },
+      slivers: slivers,
+      onPullRefresh: onRefresh,
+      onButtonRefresh: () async => _refreshIndicatorKey.currentState?.show(),
     );
   }
 

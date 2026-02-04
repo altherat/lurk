@@ -20,7 +20,6 @@ import 'package:oauth2_client/access_token_response.dart';
 import 'package:oauth2_client/interfaces.dart';
 import 'package:oauth2_client/oauth2_client.dart';
 import 'package:oauth2_client/oauth2_helper.dart';
-import 'package:webview_flutter/webview_flutter.dart';
 
 class RedditApi extends Api {
 
@@ -64,12 +63,12 @@ class RedditApi extends Api {
   };
 
   Future<Response> _get(String path, {Map<String, dynamic>? params}) async {
-    dev.log('[Reddit] _get: path=$path, params=$params]');
+    // dev.log('[Reddit] _get: path=$path, params=$params]');
     return _handleResponse(_getClientHelper().get(path, params));
   }
 
   Future<Response> _post(String path, dynamic body) async {
-    dev.log('[Reddit] _post: path=$path, params=$body]');
+    // dev.log('[Reddit] _post: path=$path, params=$body]');
     return _handleResponse(_getClientHelper().post(path, body));
   }
 
@@ -129,7 +128,7 @@ class RedditApi extends Api {
 
   @override
   Future<PostDetails> getPostDetailsFromUrl(String url, {Map<FeedOptionType, FeedOption>? options}) async {
-    dev.log('[Reddit] getPostDetailsFromUrl: url=$url, options=[${options?.values.map((option) => option.id).join(', ')}]');
+    // dev.log('[Reddit] getPostDetailsFromUrl: url=$url, options=[${options?.values.map((option) => option.id).join(', ')}]');
     final uri = Uri.parse(url);
     final pathSegments = uri.pathSegments;
     final sort = uri.queryParameters['sort'];
@@ -150,7 +149,7 @@ class RedditApi extends Api {
 
   @override
   Future<PostDetails> getPostDetailsFromId(String id, {String? shortCommentId, Map<FeedOptionType, FeedOption>? options}) async {
-    dev.log('[Reddit] getPostDetailsFromId: id=$id, commentId=$shortCommentId, options=[${options?.values.map((option) => option.id).join(', ')}]');
+    // dev.log('[Reddit] getPostDetailsFromId: id=$id, commentId=$shortCommentId, options=[${options?.values.map((option) => option.id).join(', ')}]');
     final sort = options?[FeedOptionType.sort];
     final segments = ['comments', id];
     final params = {
@@ -299,7 +298,7 @@ class RedditApi extends Api {
 
   @override
   FeedResponse<dynamic, List<UserStat>> getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
-    // dev.log('[Reddit] getUserDetails: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}]');
+    dev.log('[Reddit] getUserDetails: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}]');
     return FeedResponse(
       items: getUserItems(id, options: options),
       other: _get('/u/$id/about.json').then((response) {
@@ -329,7 +328,7 @@ class RedditApi extends Api {
   @override
   Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // dev.log('[Reddit] getUserItems: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
-    final FeedOption? type = options?[FeedOptionType.type];
+    final FeedOption? type = options?[FeedOptionType.category];
     final FeedOption? sort = options?[FeedOptionType.sort];
     final FeedOption? timeRange = options?[FeedOptionType.time];
     String path = '/u/$id';
@@ -395,7 +394,7 @@ class RedditApi extends Api {
   @override
   Future<PagedResult<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // dev.log('[Reddit] search: query=$query, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
-    final type = options?[FeedOptionType.type]?.id;
+    final type = options?[FeedOptionType.category]?.id;
     final sort = options?[FeedOptionType.sort];
     final timeRange = options?[FeedOptionType.time];
     final Map<String, dynamic> params = {
@@ -529,7 +528,7 @@ class RedditApi extends Api {
 
   @override
   Future<void> logout(String id) async {
-    dev.log('[Reddit] logout: id=$id');
+    // dev.log('[Reddit] logout: id=$id');
     final helper = _authClientHelpers.remove(id);
     if (helper != null) {
       helper.dispose();
@@ -589,7 +588,7 @@ class RedditApi extends Api {
 
   @override
   Future<void> postComment(String id, String text) {
-    dev.log('[Reddit] postcomment: id=$id, text=$text');
+    // dev.log('[Reddit] postcomment: id=$id, text=$text');
     return _post(
       '/api/comment',
       {
@@ -602,7 +601,7 @@ class RedditApi extends Api {
 
   @override
   Future<void> deleteComment(String id) {
-    dev.log('[Reddit] deleteComment: id=$id');
+    // dev.log('[Reddit] deleteComment: id=$id');
     return _post(
       '/api/del',
       {
@@ -613,7 +612,7 @@ class RedditApi extends Api {
 
   @override
   Future<void> unsubscribe(String id) {
-    dev.log('[Reddit] unsubscribe: id=$id');
+    // dev.log('[Reddit] unsubscribe: id=$id');
     return _post(
       '/api/subscribe?action=unsub',
       {

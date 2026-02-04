@@ -46,6 +46,7 @@ class _PostsScreenState extends State<PostsScreen> {
   Widget build(BuildContext context) {
     return SimpleFeedScreen(
       key: _feedKey,
+      scaffoldKey: widget.scaffoldKey,
       platform: widget.community.platform,
       getItems: (options, pageToken) async {
         final result = await widget.community.platform.api.getPosts(widget.community.name, options: options, pageToken: pageToken);

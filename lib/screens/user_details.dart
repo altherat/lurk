@@ -8,11 +8,9 @@ import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/screens/simple_feed.dart';
-import 'package:lurk/services/history.dart';
 import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/icon_message.dart';
-import 'package:lurk/widgets/collection_listenable_builder.dart';
 import 'package:lurk/widgets/post_tile.dart';
 import 'package:lurk/widgets/user_stats.dart';
 
@@ -32,7 +30,6 @@ class UserDetailsScreen extends StatelessWidget {
     return SimpleFeedScreen(
       platform: platform,
       feedOptions: platform.userFeedOptions,
-      showDefaultFeedOptionsInSubtitle: platform.userFeedOptions.options.first.id != UserFeedType.all,
       getAll: (options) => platform.api.getUserDetails(username, options: options),
       getItems: (options, pageToken) => platform.api.getUserItems(username, options: options, pageToken: pageToken),
       title: Builder(
@@ -52,38 +49,37 @@ class UserDetailsScreen extends StatelessWidget {
           );
         }
       ),
-      headersBuilder: (context, loadingState, stats) {
+      persistentHeaderBuilder: (context, loadingState, stats) {
+        final Widget child;
         if (loadingState == LoadingState.error) {
-          return [
-            Container(
-              alignment: Alignment.center,
-              padding: const EdgeInsets.all(16),
-              child: HorizontalIconMessage(
-                icon: Icons.warning_amber_rounded,
-                message: 'Failed to load user profile',
-              ),
-            )
-          ];
-        }
-        if (stats == null) {
-          return [
-            CustomCircularProgressIndicator(
-              platform: platform,
-              padding: const EdgeInsets.all(16),
-            )
-          ];
-        }
-        return [
-          Center(
-            child: SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: UserStats(
-                stats: stats,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-              ),
+          child = Container(
+            alignment: Alignment.center,
+            padding: const EdgeInsets.all(16),
+            child: HorizontalIconMessage(
+              icon: Icons.warning_amber_rounded,
+              message: 'Failed to load user profile',
             ),
-          )
-        ];
+          );
+        }
+        else if (stats == null) {
+          child = CustomCircularProgressIndicator(
+            platform: platform,
+            padding: const EdgeInsets.all(16),
+          );
+        }
+        else {
+          child = SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: UserStats(
+              stats: stats,
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+            ),
+          );
+        }
+        return PreferredSize(
+          preferredSize: Size.fromHeight(80),
+          child: child
+        );
       },
       itemBuilder: (context, item) { 
         if (item is Post) {

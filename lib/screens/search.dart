@@ -1,4 +1,3 @@
-import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
@@ -29,7 +28,6 @@ class SearchScreen extends StatelessWidget {
     return SimpleFeedScreen(
       platform: platform,
       feedOptions: platform.searchFeedOptions,
-      showDefaultFeedOptionsInSubtitle: true,
       getItems: (options, pageToken) => platform.api.search(query, options: options, pageToken: pageToken),
       title: Text('"$query"'),
       itemBuilder: (context, item) {
@@ -50,7 +48,21 @@ class SearchScreen extends StatelessWidget {
                 Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text(item.prefixedName),
+                    Text.rich(
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      TextSpan(
+                        children: [
+                          TextSpan(
+                            text: item.platform.communityPrefix,
+                            style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
+                          ),
+                          TextSpan(
+                            text: item.name!,
+                          ),
+                        ],
+                      ),
+                    ),
                     Text(
                       item.subscriberCount!.toPluralString('subscriber'),
                       style: theme.textTheme.bodyMedium!.copyWith(color: theme.colorScheme.onSurfaceVariant)
@@ -60,14 +72,16 @@ class SearchScreen extends StatelessWidget {
               ],
             ),
             onTap: () => context.push(() => PostsScreen(community: item)),
-            subtitle: Padding(
-              padding: const EdgeInsets.only(top: 8),
-              child: Text(
-                item.description!,
-                maxLines: 4,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
+            subtitle: item.description != null
+              ? Padding(
+                  padding: const EdgeInsets.only(top: 8),
+                  child: Text(
+                    item.description!,
+                    maxLines: 4,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                )
+              : null
           );
         }
         if (item is LookedUpUser) {

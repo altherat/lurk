@@ -47,7 +47,7 @@ enum Platform {
       ],
     ),
     userFeedOptions: FeedOptionsGroup(
-      FeedOptionType.type,
+      FeedOptionType.category,
       [
         FeedOption('Overview', id: UserFeedType.all, subGroup: _redditUserFeedSortOptions),
         FeedOption('Posts', id: UserFeedType.posts, subGroup: _redditUserFeedSortOptions),
@@ -55,7 +55,7 @@ enum Platform {
       ]
     ),
     searchFeedOptions: FeedOptionsGroup(
-      FeedOptionType.type,
+      FeedOptionType.category,
       [
         FeedOption(
           'Posts',
@@ -110,7 +110,7 @@ enum Platform {
       ],
     ),
     userFeedOptions: FeedOptionsGroup(
-      FeedOptionType.type,
+      FeedOptionType.category,
       [
         FeedOption(
           'Posts',
@@ -140,7 +140,7 @@ enum Platform {
       ]
     ),
     searchFeedOptions: FeedOptionsGroup(
-      FeedOptionType.type,
+      FeedOptionType.category,
       [
         FeedOption('Posts', id: SearchFeedType.posts),
         FeedOption('Communities', id: SearchFeedType.communities),
@@ -277,7 +277,7 @@ const _redditUserFeedSortOptions = FeedOptionsGroup(
 
 enum FeedOptionType {
 
-  type,
+  category,
   sort('Sort'),
   time('Time');
 

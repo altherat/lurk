@@ -21,7 +21,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final String platformLabel = F.appFlavor == Flavor.combined ? 'Platform' : F.appFlavor.platforms.first.name;
+    final String platformLabel = F.appFlavor == Flavor.combined ? 'Platform' : F.appFlavor.platforms.first.name.toTitleCase();
     return Scaffold(
       appBar: const CustomAppBar(title: Text('Settings')),
       body: SafeArea(

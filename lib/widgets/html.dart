@@ -239,39 +239,56 @@ class _Image extends StatelessWidget {
                 ),
               );
             case LoadState.completed:
-              return Stack(
-                children: [
-                  Container(
-                    constraints: BoxConstraints(maxHeight: maxHeight),
-                    decoration: BoxDecoration(border: Border.all(color: Constants.commentIndentColor)),
-                    child: state.completedWidget,
-                  ),
-                  Positioned.fill(
-                    child: Material(
-                      color: Colors.transparent,
-                      child: InkWell(
-                        onLongPress: () {
-                          showSimpleTextOptionsBottomSheet(
-                            context: context,
-                            options: {
-                              'Save image': () {}, //TODO
-                              'View in browser': () => openInBrowser(url),
-                              'Copy link': () => copyToClipboard(url)
-                            }
-                          );
-                        },
-                        onTap: () {
-                          context.push(() {
-                            return ImageViewerScreen(
-                              platform: platform,
-                              url: url
-                            );
-                          });
-                        }
-                      ),
+              return Hero(
+                tag: 'media_$url',
+                // transitionOnUserGestures: true,
+                // flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
+                //   final Widget flyingWidget = flightDirection == HeroFlightDirection.push ? toHeroContext.widget : fromHeroContext.widget;
+                //   return Material(
+                //     color: Colors.transparent,
+                //     child: flyingWidget,
+                //   );
+                // },
+                child: Stack(
+                  children: [
+                    Container(
+                      constraints: BoxConstraints(maxHeight: maxHeight),
+                      decoration: BoxDecoration(border: Border.all(color: Constants.commentIndentColor)),
+                      child: state.completedWidget,
                     ),
-                  )
-                ],
+                    Positioned.fill(
+                      child: Material(
+                        color: Colors.transparent,
+                        child: InkWell(
+                          onLongPress: () {
+                            showSimpleTextOptionsBottomSheet(
+                              context: context,
+                              options: {
+                                'Save image': () {
+                                  saveImage(
+                                    context: context,
+                                    platform: platform,
+                                    url: url
+                                  );
+                                },
+                                'View in browser': () => openInBrowser(url),
+                                'Copy link': () => copyToClipboard(url)
+                              }
+                            );
+                          },
+                          onTap: () {
+                            context.push(() {
+                              return ImageViewerScreen(
+                                platform: platform,
+                                url: url
+                              );
+                            });
+                          }
+                        ),
+                      ),
+                    )
+                  ],
+                ),
               );
             case LoadState.failed:
               return const Icon(

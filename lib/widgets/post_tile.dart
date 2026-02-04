@@ -1,5 +1,6 @@
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/screens/image_gallery_viewer.dart';
 import 'package:lurk/screens/post_details.dart';
@@ -100,7 +101,12 @@ class PostTile extends StatelessWidget {
                       _VoteArrow(
                         assetName: 'assets/arrow_drop_up_rounded.png',
                         color: vote == true ? Constants.upvoteColor : Constants.secondaryTextColor,
-                        onPressed: canVote ? () => _updateVote(vote == true ? null : true) : null
+                        onPressed: canVote
+                          ? () {
+                            HapticFeedback.mediumImpact();
+                            _updateVote(vote == true ? null : true);
+                          }
+                          : null
                       ),
                       Text(
                         post.compactScore,
@@ -113,7 +119,12 @@ class PostTile extends StatelessWidget {
                       _VoteArrow(
                         assetName: 'assets/arrow_drop_down_rounded.png',
                         color: vote == false ? Constants.downvoteColor : Constants.secondaryTextColor,
-                        onPressed: canVote ? () => _updateVote(vote == false ? null : false) : null
+                        onPressed: canVote
+                          ? () {
+                            HapticFeedback.mediumImpact();
+                            _updateVote(vote == false ? null : false);
+                          }
+                          : null
                       ),
                     ],
                   );
@@ -175,7 +186,8 @@ class PostTile extends StatelessWidget {
                           headers: {'User-Agent': post.community.platform.api.savedOrDefaultUserAgent},
                           cacheWidth: (Constants.thumbnailSize * MediaQuery.devicePixelRatioOf(context)).round(),
                           fit: BoxFit.cover,
-                          loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed ? const Icon(Icons.broken_image_rounded) : null
+                          loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed ? const Icon(Icons.broken_image_rounded) : null,
+                          
                       )
                       : DecoratedBox(
                           decoration: BoxDecoration(
@@ -271,31 +283,24 @@ class _VoteArrow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool isActive = color != Constants.secondaryTextColor;
+
     return SizedBox(
       width: 40,
       height: 20,
       child: IconButton(
         padding: const EdgeInsets.all(4.5),
-        icon: Image.asset(
-          assetName,
-          color: color,
+        onPressed: onPressed,
+        icon: AnimatedScale(
+          scale: isActive ? 1.2 : 1.0, 
+          duration: const Duration(milliseconds: 150),
+          curve: Curves.easeInOutCubicEmphasized,
+          child: Image.asset(
+            assetName,
+            color: color,
+          ),
         ),
-        onPressed: onPressed
-      )
+      ),
     );
-    // return IconButton(
-    //   visualDensity: VisualDensity.compact,
-    //   style: IconButton.styleFrom(
-    //     tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-    //     minimumSize: Size.zero
-    //   ),
-    //   icon: Image.asset(
-    //     'assets/arrow_drop_up_rounded.png',
-    //     width: 18,
-    //     height: 18,
-    //     color: _upvote == true ? Constants.upvoteColor : Constants.secondaryTextColor,
-    //   ),
-    //   onPressed: () => _updateVote(_upvote == true ? null : true)
-    // );
   }
 }

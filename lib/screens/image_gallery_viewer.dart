@@ -129,57 +129,60 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
             );
           }
           final url = _post.galleryImageUrls[index - 1];
-          return Stack(
-            children: [
-              ExtendedImage.network(
-                url,
-                headers: {'User-Agent': widget.platform.api.savedOrDefaultUserAgent},
-                fit: BoxFit.fitWidth,
-                mode: ExtendedImageMode.gesture,
-                cacheWidth: (MediaQuery.of(context).size.width * MediaQuery.of(context).devicePixelRatio).toInt(),
-                loadStateChanged: (state) {
-                  switch (state.extendedImageLoadState) {
-                    case LoadState.loading:
-                      return Padding(
-                        padding: EdgeInsets.all(16),
-                        child: LargeCenteredCircularProgressIndicator(platform: widget.platform)
-                      );
-                    case LoadState.completed:
-                      return state.completedWidget;
-                    case LoadState.failed:
-                      final color = Theme.of(context).disabledColor;
-                      return Center(
-                        child: Column(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.broken_image_rounded,
-                              size: 80,
-                              color: color
-                            )
-                          ],
-                        ),
-                    );
-                  }
-                },
-              ),
-              Positioned.fill(
-                child: Material(
-                  color: Colors.transparent,
-                  child: InkWell(
-                    onTap: () {
-                      context.push(
-                        () => ImageViewerScreen(
-                          platform: widget.platform,
-                          url: url,
-                          post: widget.post,
-                        )
+          return Hero(
+            tag: 'media_$url',
+            child: Stack(
+              children: [
+                ExtendedImage.network(
+                  url,
+                  headers: {'User-Agent': widget.platform.api.savedOrDefaultUserAgent},
+                  fit: BoxFit.fitWidth,
+                  mode: ExtendedImageMode.gesture,
+                  cacheWidth: (MediaQuery.of(context).size.width * MediaQuery.of(context).devicePixelRatio).toInt(),
+                  loadStateChanged: (state) {
+                    switch (state.extendedImageLoadState) {
+                      case LoadState.loading:
+                        return Padding(
+                          padding: EdgeInsets.all(16),
+                          child: LargeCenteredCircularProgressIndicator(platform: widget.platform)
+                        );
+                      case LoadState.completed:
+                        return state.completedWidget;
+                      case LoadState.failed:
+                        final color = Theme.of(context).disabledColor;
+                        return Center(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.broken_image_rounded,
+                                size: 80,
+                                color: color
+                              )
+                            ],
+                          ),
                       );
                     }
-                  ),
+                  },
                 ),
-              )
-            ],
+                Positioned.fill(
+                  child: Material(
+                    color: Colors.transparent,
+                    child: InkWell(
+                      onTap: () {
+                        context.push(
+                          () => ImageViewerScreen(
+                            platform: widget.platform,
+                            url: url,
+                            post: widget.post,
+                          )
+                        );
+                      }
+                    ),
+                  ),
+                )
+              ],
+            ),
           );
         },
       );

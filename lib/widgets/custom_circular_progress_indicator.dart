@@ -9,7 +9,7 @@ class CustomCircularProgressIndicator extends StatelessWidget {
 
   final Platform? platform;
   final EdgeInsetsGeometry? padding;
-  final Alignment alignment;
+  final Alignment? alignment;
   final double? size;
   final double? strokeWidth;
 
@@ -24,10 +24,12 @@ class CustomCircularProgressIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    Widget child = PlatformCircularProgressIndicator(
-      platform: platform,
-      strokeWidth: strokeWidth,
-    );
+    Widget child = platform != null
+      ? PlatformCircularProgressIndicator(
+          platform: platform!,
+          strokeWidth: strokeWidth,
+        )
+      : CircularProgressIndicator.adaptive(strokeWidth: strokeWidth);
     if (size != null) {
       child = SizedBox(
         width: size,
@@ -41,35 +43,35 @@ class CustomCircularProgressIndicator extends StatelessWidget {
         child: child,
       );
     }
-    return Align(
-      alignment: alignment,
-      child: child,
-    );
+    if (alignment != null) {
+      child = Align(
+        alignment: alignment!,
+        child: child,
+      );
+    }
+    return child;
   }
 
 }
 
 class PlatformCircularProgressIndicator extends StatelessWidget {
 
-  final Platform? platform;
+  final Platform platform;
   final double? strokeWidth;
 
   const PlatformCircularProgressIndicator({
     super.key,
-    this.platform,
+    required this.platform,
     this.strokeWidth
   });
 
   @override
   Widget build(BuildContext context) {
-    if (platform == null) {
-      return CircularProgressIndicator.adaptive(strokeWidth: strokeWidth);
-    }
     return ValueListenableBuilder(
       valueListenable: Settings.showPlatformColorAccents,
       builder: (context, showPlatformColorAccents, child) {
         return CircularProgressIndicator.adaptive(
-          valueColor: showPlatformColorAccents ? AlwaysStoppedAnimation(platform!.color) : null,
+          valueColor: showPlatformColorAccents ? AlwaysStoppedAnimation(platform.color) : null,
           strokeWidth: strokeWidth
         );
       }
@@ -84,13 +86,14 @@ class LargeCenteredCircularProgressIndicator extends StatelessWidget {
   
   const LargeCenteredCircularProgressIndicator({
     super.key,
-    this.platform
+    this.platform,
   });
 
   @override
   Widget build(BuildContext context) {
     return CustomCircularProgressIndicator(
       platform: platform,
+      alignment: Alignment.center,
       size: _largeSize,
       strokeWidth: _largeStrokeWidth,
     );

@@ -35,28 +35,32 @@ class ImageViewerScreen extends StatelessWidget {
           url: url,
         );
       },
-      body: SizedBox.expand(
-        child: CustomInteractiveViewer(
-          child: ExtendedImage.network(
-            url,
-            headers: {'User-Agent': platform.api.savedOrDefaultUserAgent},
-            fit: BoxFit.fitWidth, 
-            alignment: Alignment.topCenter,
-            loadStateChanged: (state) {
-              switch (state.extendedImageLoadState) {
-                case LoadState.loading:
-                  return LargeCenteredCircularProgressIndicator(platform: platform);
-                case LoadState.completed:
-                  return state.completedWidget;
-                case LoadState.failed:
-                  return const Center(
-                    child: LargeVerticalIconMessage(
-                      icon: Icons.broken_image_rounded,
-                      message: 'Something went wrong'
-                    )
-                  );
-              }
-            },
+      body: Hero(
+        tag: 'media_$url',
+        // transitionOnUserGestures: true,
+        child: SizedBox.expand(
+          child: CustomInteractiveViewer(
+            child: ExtendedImage.network(
+              url,
+              headers: {'User-Agent': platform.api.savedOrDefaultUserAgent},
+              fit: BoxFit.contain, 
+              alignment: Alignment.topCenter,
+              loadStateChanged: (state) {
+                switch (state.extendedImageLoadState) {
+                  case LoadState.loading:
+                    return LargeCenteredCircularProgressIndicator(platform: platform);
+                  case LoadState.completed:
+                    return state.completedWidget;
+                  case LoadState.failed:
+                    return const Center(
+                      child: LargeVerticalIconMessage(
+                        icon: Icons.broken_image_rounded,
+                        message: 'Something went wrong'
+                      )
+                    );
+                }
+              },
+            ),
           ),
         ),
       ),

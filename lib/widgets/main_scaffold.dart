@@ -18,7 +18,6 @@ import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_app_bar.dart';
 import 'package:lurk/widgets/prefixed_community_name.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
-import 'package:lurk/widgets/feed_option_selector.dart';
 import 'package:lurk/widgets/custom_search_bar.dart';
 import 'package:lurk/widgets/list_tile_icon.dart';
 
@@ -27,32 +26,36 @@ class MainScaffold<T> extends StatefulWidget {
   final Platform platform;
   final String? activeCommunityName;
   final GlobalKey<ScaffoldState>? scaffoldKey;
+  final GlobalKey<RefreshIndicatorState>? refreshIndicatorKey;
   final Widget? title;
   final Widget? subtitle;
   final List<Widget> iconActions;
   final Map<String, VoidCallback>? popupMenuActions;
-  final FeedOptionsGroup? feedOptions;
-  final Map<FeedOptionType, FeedOption>? selectedFeedOptions;
-  final Widget body;
-  final VoidCallback? onRefresh;
-  final Function(Map<FeedOptionType, FeedOption>)? onFeedOptionsSelected;
+  final PreferredSizeWidget? sliverAppBarFlexibleBackground;
+  final PreferredSizeWidget? sliverAppBarBottom;
+  final List<Widget>? slivers;
+  final Widget? body;
   final (ValueListenable<T>, List<Widget> Function(BuildContext context, T value))? iconActionsBuilder;
+  final RefreshCallback? onPullRefresh;
+  final VoidCallback? onButtonRefresh;
 
   const MainScaffold({
     super.key,
     required this.platform,
     this.activeCommunityName,
     this.scaffoldKey,
+    this.refreshIndicatorKey,
     required this.title,
     this.subtitle,
     this.iconActions = const [],
     this.popupMenuActions,
-    this.feedOptions,
-    this.selectedFeedOptions,
-    required this.body,
-    this.onRefresh,
-    this.onFeedOptionsSelected,
-    this.iconActionsBuilder
+    this.sliverAppBarFlexibleBackground,
+    this.sliverAppBarBottom,
+    this.slivers,
+    this.body,
+    this.iconActionsBuilder,
+    this.onPullRefresh,
+    this.onButtonRefresh,
   });
 
   @override
@@ -79,7 +82,7 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
   }
 
   void _scrollToTopAndRefresh() {
-    if (widget.onRefresh == null) return;
+    if (widget.onButtonRefresh == null) return;
     if (_scrollController.hasClients) {
       _scrollController.animateTo(
         0, 
@@ -87,7 +90,7 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
         curve: Curves.easeInOutCubicEmphasized
       );
     }
-    widget.onRefresh!.call();
+    widget.onButtonRefresh!.call();
   }
 
   void _showUsersBottomSheet() {
@@ -109,30 +112,6 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
                 activeUser: activeUser!,
                 onLoginPressed: _onLoginPressed,
               )
-        );
-      }
-    );
-  }
-
-  void _showFeedOptionsBottomSheet() {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      builder: (context) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.only(bottom: 16),
-            child: _FeedOptionsSelector(
-              platform: widget.platform,
-              optionsGroup: widget.feedOptions!,
-              selected: widget.selectedFeedOptions,
-              onSelected: (options) {
-                widget.onFeedOptionsSelected!(options);
-                context.pop();
-              }
-            ),
-          ),
         );
       }
     );
@@ -174,35 +153,28 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             if (widget.title != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: DefaultTextStyle.merge(
-                  style: const TextStyle(height: 1),
-                  child: widget.title!
-                ),
+              DefaultTextStyle.merge(
+                style: const TextStyle(height: 1),
+                child: widget.title!
               ),
             if (widget.subtitle != null)
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 2),
-                child: ValueListenableBuilder(
-                  valueListenable: Settings.appBarColor,
-                  builder: (context, appBarColor, child) {
-                    return Builder(
-                      builder: (context) {
-                        final parentAlpha = (DefaultTextStyle.of(context).style.color!.a * 255).toInt();
-                        
-                        return DefaultTextStyle.merge(
-                          style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                            color: appBarColor.contrast.withAlpha(min(parentAlpha, Constants.appBarSubtitleAlpha)),
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          child: widget.subtitle!
-                        );
-                      },
-                    );
-                  }
-                ),
+              ValueListenableBuilder(
+                valueListenable: Settings.appBarColor,
+                builder: (context, appBarColor, child) {
+                  return Builder(
+                    builder: (context) {
+                      final parentAlpha = (DefaultTextStyle.of(context).style.color!.a * 255).toInt();
+                      return DefaultTextStyle.merge(
+                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                          color: appBarColor.contrast.withAlpha(min(parentAlpha, Constants.appBarSubtitleAlpha)),
+                        ),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        child: widget.subtitle!
+                      );
+                    },
+                  );
+                }
               )
           ],
         );
@@ -214,7 +186,6 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
         if (useBottomBar) {
           extendBody = true;
           final paddingBottom = MediaQuery.of(context).padding.bottom;
-          // paddingBottom = math.max(0.0, paddingBottom * 0.6);
           drawer = null;
           drawerEdgeDragWidth = 20;
           appBarDrawerIcon = null;
@@ -268,12 +239,6 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
                                                 iconSize: 26,
                                                 onPressed: _showUsersBottomSheet
                                               ),
-                                            IconButton(
-                                              icon: const Icon(Icons.sort_rounded),
-                                              tooltip: 'Filter',
-                                              iconSize: 26,
-                                              onPressed: _showFeedOptionsBottomSheet
-                                            ),
                                             IconButton(
                                               icon: const Icon(Icons.groups_rounded),
                                               tooltip: 'Communities',
@@ -418,15 +383,6 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
             onPressed: () => _scaffoldKey.currentState?.openDrawer(),
           );
           bottomBar = null;
-          if (widget.feedOptions != null) {
-            iconActions.add(
-              IconButton(
-                icon: const Icon(Icons.sort_rounded),
-                tooltip: 'Filter',
-                onPressed: _showFeedOptionsBottomSheet
-              )
-            );
-          }
         }
         if (widget.popupMenuActions != null) {
           popupMenuItems.insertAll(
@@ -448,47 +404,107 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
           );
         }
 
-        PreferredSizeWidget? appBar;
+        PreferredSizeWidget? scaffoldAppBar;
         Widget body;
-        if (widget.feedOptions != null) {
-          appBar = null;
-          body = ListenableBuilder(
+        if (widget.slivers != null || widget.sliverAppBarBottom != null || widget.sliverAppBarFlexibleBackground != null) {
+          scaffoldAppBar = null;
+          final paddingTop = MediaQuery.of(context).padding.top;
+          final appBarBottomHeight = widget.sliverAppBarBottom?.preferredSize.height ?? 0;
+          final appBarOffset = paddingTop + kToolbarHeight + appBarBottomHeight;
+          final double? appBarExpandedHeight;
+          final Widget? appBarFlexibleSpaceBar;
+          if (widget.sliverAppBarFlexibleBackground != null) {
+            final flexibleBackgroundWidgetHeight = widget.sliverAppBarFlexibleBackground!.preferredSize.height;
+            appBarExpandedHeight = kToolbarHeight + flexibleBackgroundWidgetHeight + appBarBottomHeight;
+            appBarFlexibleSpaceBar = FlexibleSpaceBar(
+              collapseMode: CollapseMode.parallax,
+              background: Container(
+                alignment: Alignment.bottomCenter,
+                padding: EdgeInsets.only(bottom: appBarBottomHeight),
+                child: SizedBox(
+                  height: flexibleBackgroundWidgetHeight,
+                  child: widget.sliverAppBarFlexibleBackground
+                )
+              ),
+            );
+          }
+          else {
+            appBarExpandedHeight = null;
+            appBarFlexibleSpaceBar = null;
+          }
+          final sliverAppBar = ListenableBuilder(
             listenable: Listenable.merge([Settings.appBarColor, widget.iconActionsBuilder?.$1]),
             builder: (context, child) {
-              final appBarColor = Settings.appBarColor.value;
-              return Stack(
-                children: [
-                  NestedScrollView(
-                    controller: _scrollController,
-                    headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-                      return [
-                        SliverAppBar(
-                          floating: true,
-                          snap: true,
-                          title: titleWidget,
-                          actions: widget.iconActionsBuilder != null ? [...widget.iconActionsBuilder!.$2(context, widget.iconActionsBuilder!.$1.value), ...iconActions] : iconActions,
-                          backgroundColor: appBarColor,
-                          surfaceTintColor: appBarColor,
-                          foregroundColor: appBarColor.contrast,
-                          leading: appBarDrawerIcon,
-                        ),
-                      ];
-                    },
-                    body: widget.body
-                  ),
-                  _Scrim(color: appBarColor!.withAlpha(Constants.scrimAlpha))
-                ],
+            final appBarColor = Settings.appBarColor.value;
+              return SliverAppBar(
+                pinned: widget.sliverAppBarBottom != null,
+                floating: true,
+                snap: true,
+                title: titleWidget,
+                bottom: widget.sliverAppBarBottom,
+                expandedHeight: appBarExpandedHeight,
+                actions: widget.iconActionsBuilder != null ? [...widget.iconActionsBuilder!.$2(context, widget.iconActionsBuilder!.$1.value), ...iconActions] : iconActions,
+                backgroundColor: appBarColor,
+                surfaceTintColor: appBarColor,
+                foregroundColor: appBarColor.contrast,
+                leading: appBarDrawerIcon,
+                flexibleSpace: appBarFlexibleSpaceBar
               );
             }
           );
+
+          if (widget.body != null) {
+            body = NestedScrollView(
+              headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+                return [
+                  SliverOverlapAbsorber(
+                    handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+                    sliver: sliverAppBar,
+                  ),
+                  ...?widget.slivers
+                ];
+              },
+              body: widget.body!
+            );
+          }
+          else {
+            body = CustomRefreshIndicator(
+              key: widget.refreshIndicatorKey,
+              platform: widget.platform,
+              edgeOffset: appBarOffset,
+              onRefresh: widget.onPullRefresh,
+              child: RawScrollbar(
+                controller: _scrollController,
+                padding: EdgeInsets.only(top: appBarOffset),
+                child: CustomScrollView(
+                  controller: _scrollController,
+                  slivers: [
+                    sliverAppBar,
+                    ...widget.slivers!,
+                  ]
+                ),
+              ),
+            );
+          }
+          body = Stack(
+            children: [
+              body,
+              ValueListenableBuilder(
+                valueListenable: Settings.appBarColor,
+                builder: (context, appBarColor, child) {
+                  return _Scrim(color: appBarColor.withAlpha(Constants.scrimAlpha));
+                }
+              )
+            ],
+          );
         }
         else {
-          appBar = CustomAppBar(
+          scaffoldAppBar = CustomAppBar(
             title: titleWidget,
             leading: appBarDrawerIcon,
             actions: iconActions,
           );
-          body = widget.body;
+          body = widget.body!;
         }
 
         if (useBottomBar) {
@@ -513,7 +529,7 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
           drawer: drawer,
           drawerEdgeDragWidth: drawerEdgeDragWidth,
           bottomNavigationBar: bottomBar,
-          appBar: appBar,
+          appBar: scaffoldAppBar,
           body: body
         );
       }
@@ -747,7 +763,7 @@ class _CommunityList extends StatefulWidget {
 class _CommunityListState extends State<_CommunityList> {
 
   static final RegExp _searchNameAllowedRegex = RegExp(
-    '[a-z0-9${
+    '[a-zA-Z0-9${
       F.appFlavor.platforms
       .expand((platform) => hexEscape('${platform.communityPrefix}${platform.userPrefix}${platform.communityNameAllowedChars}${platform.userNameAllowedChars}'))
       .toSet()
@@ -1014,7 +1030,8 @@ class _CommunityListState extends State<_CommunityList> {
                         void clean(String allowedChars) {
                           final escaped = hexEscape(allowedChars).join();
                           cleanValue = cleanValue
-                            .replaceAll(RegExp('[^a-zA-Z0-9$escaped]'), '')
+                            .toLowerCase()
+                            .replaceAll(RegExp('[^a-z0-9$escaped]'), '')
                             .replaceAllMapped(RegExp('[$escaped]{2,}'), (m) => m.group(0)![0])
                             .replaceFirst(RegExp('^[$escaped]'), '');
             
@@ -1268,146 +1285,4 @@ class _CommunityNameListTile extends StatelessWidget {
       ]
     );
   }
-}
-
-class _FeedOptionsSelector extends StatefulWidget {
-
-  final Platform platform;
-  final FeedOptionsGroup optionsGroup;
-  final Map<FeedOptionType, FeedOption>? selected;
-  final Function(Map<FeedOptionType, FeedOption>) onSelected;
-
-  const _FeedOptionsSelector({
-    super.key,
-    required this.platform,
-    required this.optionsGroup,
-    required this.selected,
-    required this.onSelected
-  });
-
-  @override
-  State<_FeedOptionsSelector> createState() => _FeedOptionsSelectorState();
-  
-}
-
-class _FeedOptionsSelectorState extends State<_FeedOptionsSelector> {
-
-  late final List<(FeedOptionType, FeedOption)> _selected;
-
-  @override
-  void initState() {
-    super.initState();
-    if (widget.selected != null) {
-      _selected = widget.selected!.entries.map((entry) => (entry.key, entry.value)).toList();
-    }
-    else {
-      // _selected = [(widget.optionsGroup.type, widget.optionsGroup.options.first)];
-      _selected = [];
-      void addDefaultSelection(FeedOptionsGroup group) {
-        final firstOption = group.options.first;
-        _selected.add((group.type, firstOption));
-        if (firstOption.subGroup != null) {
-          addDefaultSelection(firstOption.subGroup!);
-        }
-      }
-      addDefaultSelection(widget.optionsGroup);
-    }
-  }
-
-  void _onOptionSelected(int index, FeedOptionType feedOptionType, FeedOption option) {
-    if (_selected.length > index) {
-      _selected.removeRange(index, _selected.length);
-    }
-    _selected.add((feedOptionType, option));
-    if (option.subGroup != null) {
-      setState(() {});
-    }
-    else {
-      widget.onSelected({for (var item in _selected) item.$1: item.$2});
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final List<FeedOptionsGroup> toShow = [widget.optionsGroup];
-    for (var selection in _selected) {
-      final option = selection.$2;
-      if (option.subGroup != null) {
-        toShow.add(option.subGroup!);
-      }
-    }
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ...List.generate(toShow.length, (index) {
-          final group = toShow[index];
-          return _AnimatedRow(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(32, index == 0 ? 0 : 16, 32, 0),
-              child: FeedOptionSelector(
-                platform: widget.platform,
-                header: group.type.label,
-                options: group.options,
-                selected: _selected.length > index ? _selected[index].$2 : null,
-                onSelected: (option) => _onOptionSelected(index, group.type, option),
-              ),
-            ),
-          );
-        }),
-      ]
-    );
-  }
-
-}
-
-class _AnimatedRow extends StatefulWidget {
-
-  final Widget child;
-  const _AnimatedRow({
-    super.key, 
-    required this.child
-  });
-
-  @override
-  State<_AnimatedRow> createState() => _AnimatedRowState();
-
-}
-
-class _AnimatedRowState extends State<_AnimatedRow> with SingleTickerProviderStateMixin {
-
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-    _animation = CurvedAnimation(
-      parent: _controller,
-      curve: Curves.easeInOutCubicEmphasized,
-    );
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizeTransition(
-      sizeFactor: _animation,
-      axisAlignment: -1.0,
-      child: FadeTransition(
-        opacity: _animation,
-        child: widget.child
-      ),
-    );
-  }
-
 }

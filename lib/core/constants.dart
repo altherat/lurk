@@ -3,7 +3,9 @@ import 'package:lurk/core/enums.dart';
 
 class Constants {
 
-  static const pageTransitionDuration = Duration(milliseconds: 100);
+  static const screenTransitionDuration = Duration(milliseconds: 250);
+  static const reverseScreenTransitionDuration = Duration(milliseconds: 100);
+  static const feedLoadAnimationDuration = Duration(milliseconds: 400);
   static const thumbnailSize = 70;
   static const scrimAlpha = 125;
   static const appBarSubtitleAlpha = 175;

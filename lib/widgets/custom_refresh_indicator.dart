@@ -8,16 +8,18 @@ class CustomRefreshIndicator extends StatelessWidget {
   final Platform platform;
   final GlobalKey<RefreshIndicatorState>? flutterRefreshIndicatorKey;
   final double edgeOffset;
-  final RefreshCallback? onRefresh;
   final Widget child;
+  final bool Function(ScrollNotification)? notificationPredicate;
+  final RefreshCallback? onRefresh;
 
   const CustomRefreshIndicator({
     super.key,
     required this.platform,
     this.flutterRefreshIndicatorKey,
     this.edgeOffset = 0,
+    required this.child,
+    this.notificationPredicate,
     required this.onRefresh,
-    required this.child
   });
 
   @override
@@ -30,7 +32,7 @@ class CustomRefreshIndicator extends StatelessWidget {
           displacement: Constants.refreshIndicatorDisplacement,
           edgeOffset: edgeOffset,
           color: showPlatformColorAccents ? platform.color : null,
-          notificationPredicate: onRefresh != null ? defaultScrollNotificationPredicate : (notification) => false,
+          notificationPredicate: notificationPredicate ?? (onRefresh != null ? defaultScrollNotificationPredicate : (notification) => false),
           onRefresh: () async {
             await onRefresh?.call();
           },

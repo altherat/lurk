@@ -1,7 +1,6 @@
 
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
-import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/home.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/services/settings.dart';
@@ -21,6 +20,11 @@ class App extends StatelessWidget {
       navigatorObservers: [routeObserver],
       theme: ThemeData(
         useMaterial3: true,
+        // pageTransitionsTheme: const PageTransitionsTheme(
+        //   builders: {
+        //     TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
+        //   },
+        // ),
         colorScheme: .dark(
           primary: Constants.primaryColor,
           surface: Colors.black,
@@ -61,6 +65,9 @@ class App extends StatelessWidget {
         scrollbarTheme: ScrollbarThemeData(
           thumbColor: WidgetStateProperty.all(Constants.scrollbarColor)
         ),
+        tabBarTheme: const TabBarThemeData(
+          dividerColor: Colors.transparent,
+        )
       ),
       home: const _Home()
     );

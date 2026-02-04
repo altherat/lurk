@@ -1,6 +1,6 @@
 import 'dart:io';
-import 'dart:developer' as dev;
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
@@ -111,9 +111,35 @@ extension BuildContextExtension on BuildContext {
   Future<T?> push<T>(Widget Function() builder) {
     return Navigator.push<T>(
       this,
-      _PageRoute(builder: (_) => builder()),
+      // MaterialPageRoute(builder: (_) => builder())
+      _PageRoute(builder: (_) => builder())
     );
   }
+
+  // Future<T?> pushFadeThrough<T>(Widget Function() builder) {
+  //   return Navigator.push<T>(
+  //     this,
+  //     PageRouteBuilder(
+  //       transitionDuration: Constants.screenTransitionDuration,
+  //       reverseTransitionDuration: Constants.reverseScreenTransitionDuration,
+  //       pageBuilder: (context, animation, secondaryAnimation) => builder(),
+  //       transitionsBuilder: (context, animation, secondaryAnimation, child) {
+  //         final curve = CurvedAnimation(
+  //           parent: animation,
+  //           curve: Curves.easeInOutCubicEmphasized,
+  //         );
+  //         return FadeTransition(
+  //           opacity: curve,
+  //           child: ScaleTransition(
+  //             alignment: Alignment.center, 
+  //             scale: Tween<double>(begin: 0.85, end: 1.0).animate(curve),
+  //             child: child,
+  //           ),
+  //         );
+  //       },
+  //     ),
+  //   );
+  // }
 
   ScaffoldFeatureController<SnackBar, SnackBarClosedReason> showSnackBar({Duration duration = const Duration(seconds: 4), required Widget content, SnackBarAction? action}) {
     return ScaffoldMessenger.of(this).showSnackBar(
@@ -130,16 +156,28 @@ extension BuildContextExtension on BuildContext {
 
 }
 
-class _PageRoute<T> extends MaterialPageRoute<T> {
+class _PageRoute<T> extends PageRoute<T> with MaterialRouteTransitionMixin<T> {
+  
+  _PageRoute({
+    required this.builder,
+    super.settings,
+    this.maintainState = true,
+  });
 
-  _PageRoute({required super.builder});
+  final WidgetBuilder builder;
 
   @override
-  Duration get transitionDuration => Constants.pageTransitionDuration;
+  Widget buildContent(BuildContext context) => builder(context);
 
   @override
-  Duration get reverseTransitionDuration => Constants.pageTransitionDuration;
+  final bool maintainState;
 
+  @override
+  Duration get transitionDuration => Constants.screenTransitionDuration;
+
+  @override
+  Duration get reverseTransitionDuration => Constants.reverseScreenTransitionDuration;
+  
 }
 
 Future<void> openInBrowser(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);

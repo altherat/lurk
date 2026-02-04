@@ -63,7 +63,7 @@ class DiggApi extends Api {
 
   @override
   Future<PagedResult<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    dev.log('[Digg] getPosts: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
+    // dev.log('[Digg] getPosts: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
     final sort = options?[FeedOptionType.sort];
     return _getPostsRecursive({
       'first': resultsLimit,
@@ -300,7 +300,7 @@ class DiggApi extends Api {
   @override
   FeedResponse<dynamic, List<UserStat>> getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
     // dev.log('[Digg] getUserDetails: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}]');
-    final UserFeedType type = options?[FeedOptionType.type]?.id ?? Platform.digg.userFeedOptions.options.first.id;
+    final UserFeedType type = options?[FeedOptionType.category]?.id ?? Platform.digg.userFeedOptions.options.first.id;
     final FeedOption? sort = options?[FeedOptionType.sort];
     switch (type) {
       case UserFeedType.posts:
@@ -469,7 +469,7 @@ class DiggApi extends Api {
   @override
   Future<PagedResult<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // dev.log('[Digg] getUserItems: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
-    final UserFeedType type = options?[FeedOptionType.type]?.id ?? Platform.digg.userFeedOptions.options.first.id;
+    final UserFeedType type = options?[FeedOptionType.category]?.id ?? Platform.digg.userFeedOptions.options.first.id;
     final FeedOption? sort = options?[FeedOptionType.sort];
     switch (type) {
       case UserFeedType.posts:
@@ -600,7 +600,7 @@ class DiggApi extends Api {
   @override
   Future<PagedResult<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // dev.log('[Digg] search: query=$query, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
-    final type = options?[FeedOptionType.type]?.id ?? SearchFeedType.posts;
+    final type = options?[FeedOptionType.category]?.id ?? SearchFeedType.posts;
     final sort = options?[FeedOptionType.sort];
     final gql.QueryOptions queryOptions;
     final PagedResult<dynamic> Function(Map<String, dynamic>) parseFn;
@@ -638,12 +638,13 @@ class DiggApi extends Api {
         final pageInfo = communitiesData['pageInfo'];
         return PagedResult(
           items: edges.map((edge) {
-            final node = edge['node'];
+            final Map<String, dynamic> node = edge['node'];
+            final String? iconUrl = node['iconUrl'];
             return Community(
               platform: Platform.digg,
               name: node['slug'],
               description: node['description'],
-              iconUrl: node['iconUrl'],
+              iconUrl: iconUrl != null ? _getThumbnailUrl(Uri.parse(iconUrl)) : null,
               subscriberCount: node['memberCount'],
             );
           }).toList(),
@@ -686,10 +687,11 @@ class DiggApi extends Api {
         return PagedResult(
           items: edges.map((edge) {
             final Map<String, dynamic> node = edge['node'];
+            final String? iconUrl = node['avatarUrl'];
             return LookedUpUser(
               id: node['_id'],
               name: node['username'],
-              iconUrl: node['avatarUrl'],
+              iconUrl: iconUrl != null ? _getThumbnailUrl(Uri.parse(iconUrl)) : iconUrl,
               isSuspended: false,
               stats: [
                 UserStat(
@@ -804,7 +806,7 @@ class DiggApi extends Api {
   }
 
   Future<PagedResult<Post>> _getPostsRecursive(Map<String, dynamic> variables, {List<Post>? accumulatedPosts, int depth = 0}) async {
-    dev.log('[Digg] _getPostsRecursive: variables=[${variables.entries.map((entry) => '${entry.key}=${entry.value}').join(', ')}], posts=${accumulatedPosts?.length}, depth=$depth');
+    // dev.log('[Digg] _getPostsRecursive: variables=[${variables.entries.map((entry) => '${entry.key}=${entry.value}').join(', ')}], posts=${accumulatedPosts?.length}, depth=$depth');
     final gql.QueryOptions queryOptions = gql.QueryOptions(
       document: gql.gql(r'''
         query PostsQuery($first: Int, $where: PostWhere, $sort: PostSort, $after: String) {
