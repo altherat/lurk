@@ -14,7 +14,7 @@ class MediaScaffold extends StatelessWidget {
   final Widget body;
   final VoidCallback? onSave;
 
-  MediaScaffold({
+  const MediaScaffold({
     super.key,
     required this.platform,
     required this.url,

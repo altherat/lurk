@@ -13,6 +13,9 @@ import 'package:lurk/services/settings.dart';
 import 'package:lurk/services/votes.dart';
 import 'package:lurk/widgets/collection_listenable_builder.dart';
 
+const _voteWidth = 45.0;
+const _voteArrowHeight = 30.0;
+
 class PostTile extends StatelessWidget {
 
   final Post post;
@@ -88,49 +91,65 @@ class PostTile extends StatelessWidget {
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          ValueListenableBuilder(
-            valueListenable: Settings.activeUser,
-            builder: (context, activeUser, child) {
-              final canVote = activeUser != null;
-              return CollectionListenableBuilder(
-                id: post.id,
-                collectionListenable: Votes.posts,
-                builder: (context, vote) {
-                  return Column(
-                    children: [
-                      _VoteArrow(
-                        assetName: 'assets/arrow_drop_up_rounded.png',
-                        color: vote == true ? Constants.upvoteColor : Constants.secondaryTextColor,
-                        onPressed: canVote
-                          ? () {
-                            HapticFeedback.mediumImpact();
-                            _updateVote(vote == true ? null : true);
-                          }
-                          : null
-                      ),
-                      Text(
-                        post.compactScore,
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.bold,
-                          color: vote == true ? Constants.upvoteColor : vote == false ? Constants.downvoteColor : Constants.secondaryTextColor,
+          SizedBox(
+            width: _voteWidth,
+            height: _voteArrowHeight * 2,
+            child: ValueListenableBuilder(
+              valueListenable: Settings.activeUser,
+              builder: (context, activeUser, child) {
+                final canVote = activeUser != null;
+                return CollectionListenableBuilder(
+                  id: post.id,
+                  collectionListenable: Votes.posts,
+                  builder: (context, vote) {
+                    return Stack(
+                      children: [
+                        Align(
+                          alignment: Alignment.topCenter,
+                          child: _VoteArrow(
+                            assetName: 'assets/arrow_drop_up_rounded.png',
+                            isActive: vote == true,
+                            alignment: Alignment.topCenter,
+                            activeColor: Constants.upvoteColor,
+                            onPressed: () {
+                              if (!canVote) return;
+                              HapticFeedback.mediumImpact();
+                              _updateVote(vote == true ? null : true);
+                            }
+                          ),
                         ),
-                      ),
-                      _VoteArrow(
-                        assetName: 'assets/arrow_drop_down_rounded.png',
-                        color: vote == false ? Constants.downvoteColor : Constants.secondaryTextColor,
-                        onPressed: canVote
-                          ? () {
-                            HapticFeedback.mediumImpact();
-                            _updateVote(vote == false ? null : false);
-                          }
-                          : null
-                      ),
-                    ],
-                  );
-                }
-              );
-            }
+                        IgnorePointer(
+                          child: Center(
+                            child: Text(
+                              post.compactScore,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                                color: vote == true ? Constants.upvoteColor : vote == false ? Constants.downvoteColor : Constants.secondaryTextColor,
+                              ),
+                            ),
+                          ),
+                        ),
+                        Align(
+                          alignment: Alignment.bottomCenter,
+                          child: _VoteArrow(
+                            assetName: 'assets/arrow_drop_down_rounded.png',
+                            isActive: vote == false,
+                            alignment: Alignment.bottomCenter,
+                            activeColor: Constants.downvoteColor,
+                            onPressed: () {
+                              if (!canVote) return;
+                              HapticFeedback.mediumImpact();
+                              _updateVote(vote == false ? null : false);
+                            }
+                          ),
+                        ),
+                      ],
+                    );
+                  }
+                );
+              }
+            ),
           ),
           Expanded(
             child: Padding(
@@ -175,8 +194,8 @@ class PostTile extends StatelessWidget {
           ),
           if (showThumbnail)
             SizedBox(
-              width: Constants.thumbnailSize.toDouble(),
-              height: Constants.thumbnailSize.toDouble(),
+              width: Constants.thumbnailSize,
+              height: Constants.thumbnailSize,
               child: Stack(
                 children: [
                   Positioned.fill(
@@ -271,36 +290,53 @@ class PostTileCommentHistorySubtitle extends StatelessWidget {
 class _VoteArrow extends StatelessWidget {
 
   final String assetName;
-  final Color color;
+  final bool isActive;
+  final Color activeColor;
   final VoidCallback? onPressed;
+  final Alignment alignment;
 
   const _VoteArrow({
     super.key,
     required this.assetName,
-    required this.color,
+    required this.isActive,
+    required this.activeColor,
     required this.onPressed,
+    required this.alignment,
   });
 
   @override
   Widget build(BuildContext context) {
-    final bool isActive = color != Constants.secondaryTextColor;
-
+    final Color splashColor;
+    final Color arrowColor;
+    if (isActive) {
+      splashColor = Constants.secondaryTextColor;
+      arrowColor = activeColor;
+    }
+    else {
+      splashColor = activeColor;
+      arrowColor = Constants.secondaryTextColor;
+    }
     return SizedBox(
-      width: 40,
-      height: 20,
-      child: IconButton(
-        padding: const EdgeInsets.all(4.5),
-        onPressed: onPressed,
-        icon: AnimatedScale(
-          scale: isActive ? 1.2 : 1.0, 
-          duration: const Duration(milliseconds: 150),
-          curve: Curves.easeInOutCubicEmphasized,
-          child: Image.asset(
-            assetName,
-            color: color,
+      height: _voteArrowHeight,
+      child: InkResponse(
+        radius: 10,
+        splashColor: splashColor.withAlpha(150),
+        onTap: onPressed,
+        child: Container(
+          alignment: alignment,
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          child: AnimatedScale(
+            scale: isActive ? 1.2 : 1.0, 
+            duration: const Duration(milliseconds: 150),
+            curve: Curves.easeInOutCubicEmphasized,
+            child: Image.asset(
+              assetName,
+              color: arrowColor,
+            ),
           ),
         ),
       ),
     );
   }
+
 }

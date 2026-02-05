@@ -70,14 +70,14 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
           _feedListKeys.add(GlobalKey<FeedListState>());
           _refreshIndicatorKeys.add(GlobalKey<RefreshIndicatorState>());
           _scrollControllers.add(ScrollController());
-          _selectedFeedOptions.add(null);
+          _selectedFeedOptions.add(widget.feedOptions?.options[i].subGroup?.defaults);
        }
     }
     else {
       _feedListKeys = [GlobalKey<FeedListState>()];
       _refreshIndicatorKeys = [GlobalKey<RefreshIndicatorState>()];
       _scrollControllers = [ScrollController()];
-      _selectedFeedOptions = [null];
+      _selectedFeedOptions = [widget.feedOptions?.defaults];
     }
   }
 

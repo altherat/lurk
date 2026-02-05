@@ -469,7 +469,7 @@ class DiggApi extends Api {
 
   @override
   Future<PagedItems<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    // dev.log('[Digg] getUserItems: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
+    dev.log('[Digg] getUserItems: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
     final UserFeedType type = options?[FeedOptionType.category]?.id ?? Platform.digg.userFeedOptions.options.first.id;
     final FeedOption? sort = options?[FeedOptionType.sort];
     switch (type) {
@@ -532,7 +532,6 @@ class DiggApi extends Api {
               'after': pageToken
           }
         );
-        
         final response = await _client.query(queryOptions);
         return compute(_parsePostsResult, response.data!);
       case UserFeedType.comments:
@@ -591,6 +590,19 @@ class DiggApi extends Api {
           },
         );
         
+        debugPrint('variables: ${{
+            'first': resultsLimit,
+            'username': id,
+            'where': {
+              'author': {
+                'username_EQ': id
+              },
+            },
+            if (sort != null)
+              'sort': sort.id,
+            if (pageToken != null)
+              'after': pageToken
+          }}');
         final response = await _client.query(queryOptions);
         return compute(_parseCommentsResult, response.data!);
       case _:

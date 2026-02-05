@@ -1196,8 +1196,8 @@ class _CommunityListState extends State<_CommunityList> {
                         final Color? color;
                         if (community.isFavorite) {
                           icon = Icons.star_rounded;
-                          color = showPlatformColorAccents ? null : Theme.of(context).colorScheme.primary;
-                          // color = showPlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary;
+                          color = showPlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary;
+                          // color = showPlatformColorAccents ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.primary;
                         }
                         else {
                           icon = Icons.star_border_rounded;
