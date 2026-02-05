@@ -4,7 +4,7 @@ import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/feed_list.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
-import 'package:lurk/widgets/prefixed_community_name.dart';
+import 'package:lurk/widgets/prefixed_name.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
 
@@ -62,7 +62,7 @@ class _PostsScreenState extends State<PostsScreen> {
       title: widget.community.name == null && widget.community.platform.rootCommunityName.isNotEmpty ? Text(widget.community.platform.rootCommunityName) : PrefixedCommunityName(community: widget.community),
       activeCommunityName: widget.community.name,
       feedOptions: (widget.community.name == null ? widget.community.platform.rootPostsFeedOptions : null) ?? widget.community.platform.postsFeedOptions,
-      itemBuilder: (context, post) {
+      itemBuilder: (context, index, post) {
         return PostTile(
           post: post,
           showViewCommunityOption: post.community != widget.community,

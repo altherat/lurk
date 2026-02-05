@@ -29,7 +29,10 @@ class CustomCircularProgressIndicator extends StatelessWidget {
           platform: platform!,
           strokeWidth: strokeWidth,
         )
-      : CircularProgressIndicator.adaptive(strokeWidth: strokeWidth);
+      : CircularProgressIndicator.adaptive(
+        strokeWidth: strokeWidth,
+        strokeCap: StrokeCap.round
+    );
     if (size != null) {
       child = SizedBox(
         width: size,
@@ -72,7 +75,8 @@ class PlatformCircularProgressIndicator extends StatelessWidget {
       builder: (context, showPlatformColorAccents, child) {
         return CircularProgressIndicator.adaptive(
           valueColor: showPlatformColorAccents ? AlwaysStoppedAnimation(platform.color) : null,
-          strokeWidth: strokeWidth
+          strokeWidth: strokeWidth,
+          strokeCap: StrokeCap.round
         );
       }
     );

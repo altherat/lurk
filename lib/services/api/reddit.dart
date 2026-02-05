@@ -393,23 +393,20 @@ class RedditApi extends Api {
   }
 
   @override
-  Future<PagedItems<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    // dev.log('[Reddit] search: query=$query, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
+  Future<PagedItems<dynamic>> search(String query, String? communityName, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+    dev.log('[Reddit] search: query=$query, communityName=$communityName, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
     final type = options?[FeedOptionType.category]?.id;
     final sort = options?[FeedOptionType.sort];
     final timeRange = options?[FeedOptionType.time];
     final Map<String, dynamic> params = {
       'q': query,
+      if (sort != null)
+        'sort': sort.id,
+      if (timeRange != null)
+        't': timeRange.id,
+      if (pageToken != null)
+        'after': pageToken,
     };
-    if (sort != null) {
-      params['sort'] = sort.id;
-    }
-    if (timeRange != null) {
-      params['t'] = timeRange.id;
-    }
-    if (pageToken != null) {
-      params['after'] = pageToken;
-    }
     switch (type) {
       case SearchFeedType.communities:
         params['type'] = 'sr';
@@ -417,8 +414,16 @@ class RedditApi extends Api {
         params['type'] = 'user';
     }
 
-    final responseBody = (await _get('/search.json', params: params)).body;
+    final String path;
+    if (communityName != null) {
+      path = '/r/$communityName/search';
+      params['restrict_sr'] = 'true';
+    }
+    else {
+      path = '/search';
+    }
 
+    final responseBody = (await _get('$path.json', params: params)).body;
     switch (type) {
       case SearchFeedType.communities:
         return compute(
@@ -452,15 +457,12 @@ class RedditApi extends Api {
       case SearchFeedType.users:
         return compute(
           (String body) {
-            debugPrint("body: $body");
             final json = jsonDecode(body);
             if (json is! Map<String, dynamic>) {
               return PagedItems(items: [], pageToken: null);
             }
-            debugPrint('test: $json');
             final data = json['data'];
             final children = data['children'] as List;
-
             return PagedItems(
               items: children
                 .map((child) {

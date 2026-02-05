@@ -18,10 +18,13 @@ class SimpleFeedScreen<T> extends StatefulWidget {
   final Future<PagedItems<T>>? initialItems;
   final Future<PagedItems<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) getItems;
   final Widget title;
+  final Widget? subtitle;
+  final bool showFeedOptionsSubtitle;
+  final Map<String, void Function()>? popupMenuActions;
   final PreferredSizeWidget? flexibleSpaceHeader;
   final List<Widget>? slivers;
-  final Widget? Function(BuildContext context, T item) itemBuilder;
   final Widget Function(BuildContext context) noItemsBuilder;
+  final Widget? Function(BuildContext context, int index, T item) itemBuilder;
 
   const SimpleFeedScreen({
     super.key,
@@ -29,13 +32,16 @@ class SimpleFeedScreen<T> extends StatefulWidget {
     required this.platform,
     this.activeCommunityName,
     this.feedOptions,
-    this.flexibleSpaceHeader,
-    this.slivers,
     this.initialItems,
     required this.getItems,
     required this.title,
-    required this.itemBuilder,
+    this.subtitle,
+    this.showFeedOptionsSubtitle = true,
+    this.popupMenuActions,
+    this.flexibleSpaceHeader,
+    this.slivers,
     required this.noItemsBuilder,
+    required this.itemBuilder,
   });
 
   @override
@@ -84,6 +90,8 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
     super.dispose();
   }
 
+  FeedListState? get feedList => _feedListKeys[_tabController?.index ?? 0].currentState;
+
   Future<void> reload() => _callOnFeedListState((state) => state.reload());
 
   Future<void> _refresh() => _callOnFeedListState((state) => state.refresh());
@@ -131,10 +139,11 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
                 onRefresh: _refresh,
                 child: Scrollbar(
                   controller: _scrollControllers[i],
+                  interactive: false,
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    controller: _scrollControllers[i],
-                    primary: false,
+                    // controller: _scrollControllers[i],
+                    // primary: false,
                     slivers: [
                       SliverOverlapInjector(handle: overlapAbsorberHandle),
                       FeedList(
@@ -151,7 +160,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
                           );
                         },
                         noItemsBuilder: widget.noItemsBuilder,
-                        itemBuilder: (context, index, T item) => widget.itemBuilder(context, item)
+                        itemBuilder: widget.itemBuilder
                       )
                     ]
                   ),
@@ -166,19 +175,23 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
         platform: widget.platform,
         activeCommunityName: widget.activeCommunityName,
         title: widget.title,
-        subtitle: ValueListenableBuilder(
-          valueListenable: _tabController!.animation!,
-          builder: (context, value, child) {
-            final index = value.round();
-            final feedOptionsAtScrollIndex = widget.feedOptions!.options[index].subGroup;
-            if (feedOptionsAtScrollIndex == null) {
-              return const SizedBox.shrink();
-            }
-            return Opacity(
-              opacity: (1.0 - ((value - index).abs() * 2)).clamp(0.0, 1.0),
-              child: Text(_getSubtitle(_selectedFeedOptions[index] ?? feedOptionsAtScrollIndex.defaults))
-            );
-          }
+        subtitle: widget.subtitle ?? (
+          widget.showFeedOptionsSubtitle
+            ? ValueListenableBuilder(
+                valueListenable: _tabController!.animation!,
+                builder: (context, value, child) {
+                  final index = value.round();
+                  final feedOptionsAtScrollIndex = widget.feedOptions!.options[index].subGroup;
+                  if (feedOptionsAtScrollIndex == null) {
+                    return const SizedBox.shrink();
+                  }
+                  return Opacity(
+                    opacity: (1.0 - ((value - index).abs() * 2)).clamp(0.0, 1.0),
+                    child: Text(_getSubtitle(_selectedFeedOptions[index] ?? feedOptionsAtScrollIndex.defaults))
+                  );
+                }
+              )
+            : null
         ),
         iconActionsBuilder: (_tabController!.animation!, (context) {
           final visibleIndex = _tabController!.animation!.value.round();
@@ -193,6 +206,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
             )
           ];
         }),
+        popupMenuActions: widget.popupMenuActions,
         sliverAppBarBottom: PreferredSize(
           preferredSize: const Size.fromHeight(48),
           child: ValueListenableBuilder(
@@ -237,7 +251,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
       activeCommunityName: widget.activeCommunityName,
       customScrollViewController: _scrollControllers[0],
       title: widget.title,
-      subtitle: (feedOptions != null && selectedFeedOptions != null && !mapEquals(selectedFeedOptions, feedOptions.defaults)) ? Text(_getSubtitle(selectedFeedOptions)) : null,
+      subtitle: widget.subtitle ?? (widget.showFeedOptionsSubtitle && feedOptions != null && selectedFeedOptions != null && !mapEquals(selectedFeedOptions, feedOptions.defaults) ? Text(_getSubtitle(selectedFeedOptions)) : null),
       iconActions: [
         FeedFilterIconButton(
           platform: widget.platform,
@@ -246,6 +260,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
           onFeedOptionsSelected: _onFeedOptionsSelected
         )
       ],
+      popupMenuActions: widget.popupMenuActions,
       sliverAppBarFlexibleBackground: widget.flexibleSpaceHeader,
       slivers: [
         ...?widget.slivers,
@@ -255,7 +270,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
           initialItems: widget.initialItems,
           getItems: (String? pageToken) => widget.getItems(_selectedFeedOptions[0], pageToken),
           noItemsBuilder: widget.noItemsBuilder,
-          itemBuilder: (context, index, T item) => widget.itemBuilder(context, item)
+          itemBuilder: widget.itemBuilder
         )
       ],
       onPullRefresh: _refresh,

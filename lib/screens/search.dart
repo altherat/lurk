@@ -10,27 +10,45 @@ import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/list_tile_icon.dart';
 import 'package:lurk/widgets/post_tile.dart';
+import 'package:lurk/widgets/prefixed_name.dart';
 import 'package:lurk/widgets/user_stats.dart';
 
 class SearchScreen extends StatelessWidget {
 
   final Platform platform;
   final String query;
+  final String? communityName;
 
   const SearchScreen({
     super.key,
     required this.platform,
-    required this.query
+    required this.query,
+    this.communityName
   });
 
   @override
   Widget build(BuildContext context) {
+    final FeedOptionsGroup feedOptions;
+    final Widget title;
+    if (communityName != null) {
+      feedOptions = platform.postsFeedOptions;
+      title = PrefixedName(
+        before: TextSpan(text: '"$query" in '),
+        prefix: platform.communityPrefix,
+        name: communityName!,
+      );
+    }
+    else {
+      feedOptions = platform.searchFeedOptions;
+      title = Text('"query"');
+    }
     return SimpleFeedScreen(
       platform: platform,
-      feedOptions: platform.searchFeedOptions,
-      getItems: (options, pageToken) => platform.api.search(query, options: options, pageToken: pageToken),
-      title: Text('"$query"'),
-      itemBuilder: (context, item) {
+      activeCommunityName: communityName,
+      feedOptions: feedOptions,
+      getItems: (options, pageToken) => platform.api.search(query, communityName, options: options, pageToken: pageToken),
+      title: title,
+      itemBuilder: (context, index, item) {
         if (item is Post) {
           return PostTile(post: item);
         }

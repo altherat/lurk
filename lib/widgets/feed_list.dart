@@ -55,7 +55,7 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
   @override
   bool get wantKeepAlive => true;
 
-  Future<void> _getItems() => _processItems(widget.getItems(_pageToken), (items) => _items.addAll(items));
+  Future<void> _getItems() => _processItems(widget.getItems(null), (items) => _items = items);
 
   Future<void> _processItems(Future<PagedItems<T>> future, void Function(List<T> items) fn) async {
     try {
@@ -139,7 +139,7 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
                       setState(() {
                         _loadingState = LoadingState.loading;
                       });
-                      _getItems();
+                      _processItems(widget.getItems(_pageToken), (items) => _items.addAll(items));
                     });
                   }
                   return CustomCircularProgressIndicator(

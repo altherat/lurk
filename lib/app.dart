@@ -1,4 +1,3 @@
-
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/screens/home.dart';
@@ -8,11 +7,30 @@ import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
 
-class App extends StatelessWidget {
+class App extends StatefulWidget {
 
   const App({
     super.key
   });
+
+  @override
+  State<App> createState() => _AppState();
+
+}
+
+class _AppState extends State<App> {
+
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  late final Future<void> _servicesInitFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _servicesInitFuture = Future.wait([
+      Settings.init(),
+      History.init(),
+    ]);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -69,58 +87,26 @@ class App extends StatelessWidget {
           dividerColor: Colors.transparent,
         )
       ),
-      home: const _Home()
-    );
-  }
-
-}
-
-class _Home extends StatefulWidget {
-
-  const _Home({
-    super.key
-  });
-
-  @override
-  State<_Home> createState() => _HomeState();
-  
-}
-
-class _HomeState extends State<_Home> {
-
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
-  late final Future<void> _servicesInitFuture;
-
-  @override
-  void initState() {
-    super.initState();
-    _servicesInitFuture = Future.wait([
-      Settings.init(),
-      History.init(),
-    ]);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return FutureBuilder(
-      future: _servicesInitFuture,
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.done) {
-          return PopScope(
-            canPop: false,
-            onPopInvokedWithResult: (bool didPop, dynamic result) {
-              if (didPop) {
-                return;
-              }
-              if (!(_scaffoldKey.currentState?.isDrawerOpen ?? false)) {
-                _scaffoldKey.currentState?.openDrawer();
-              }
-            },
-            child: HomeScreen(scaffoldKey: _scaffoldKey)
-          );
-        }
-        return const LargeCenteredCircularProgressIndicator();
-      },
+      home: FutureBuilder(
+        future: _servicesInitFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return PopScope(
+              canPop: false,
+              onPopInvokedWithResult: (bool didPop, dynamic result) {
+                if (didPop) {
+                  return;
+                }
+                if (!(_scaffoldKey.currentState?.isDrawerOpen ?? false)) {
+                  _scaffoldKey.currentState?.openDrawer();
+                }
+              },
+              child: HomeScreen(scaffoldKey: _scaffoldKey)
+            );
+          }
+          return const LargeCenteredCircularProgressIndicator();
+        },
+      )
     );
   }
 

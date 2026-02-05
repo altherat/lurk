@@ -1,6 +1,5 @@
 import 'dart:math';
 
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' hide SearchBar;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -16,7 +15,7 @@ import 'package:lurk/screens/settings.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_app_bar.dart';
-import 'package:lurk/widgets/prefixed_community_name.dart';
+import 'package:lurk/widgets/prefixed_name.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/custom_search_bar.dart';
 import 'package:lurk/widgets/list_tile_icon.dart';
@@ -485,6 +484,7 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
               onRefresh: widget.onPullRefresh,
               child: RawScrollbar(
                 controller: _scrollController,
+                interactive: false,
                 padding: EdgeInsets.only(top: appBarOffset),
                 child: CustomScrollView(
                   controller: _scrollController,
@@ -753,7 +753,6 @@ class _CommunityList extends StatefulWidget {
   final Platform platform;
   final String? activeCommunityName;
   final GlobalKey<ScaffoldState> scaffoldKey;
-  final EdgeInsetsGeometry? padding;
   final VoidCallback? onActiveCommunitySelected;
 
   const _CommunityList({
@@ -761,7 +760,6 @@ class _CommunityList extends StatefulWidget {
     required this.platform,
     required this.activeCommunityName,
     required this.scaffoldKey,
-    this.padding,
     required this.onActiveCommunitySelected
   });
 
@@ -797,7 +795,8 @@ class _CommunityListState extends State<_CommunityList> {
     super.initState();
     _visibleCommunities = Settings.communities.value.toList();
     _searchPlatform = widget.platform;
-    _searchType = Settings.searchType.value ?? SearchType.community;
+    final savedSearchType = Settings.searchType.value;
+    _searchType = savedSearchType == null || (savedSearchType == SearchType.withinCommunity && (widget.activeCommunityName == null || !_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames.contains(widget.activeCommunityName))) ? SearchType.community : savedSearchType;
     _updateSearchBarTexts();
     _searchBarFocusNode.addListener(_onSearchBarFocusChanged);
     Settings.communities.addListener(_onCommunitiesSettingChanged);
@@ -834,7 +833,7 @@ class _CommunityListState extends State<_CommunityList> {
   void _onSearchBarFocusChanged() {
     setState(() {
       _isSearchBarFocused = _searchBarFocusNode.hasFocus;
-      if (_searchType != SearchType.all) {
+      if (_searchType == SearchType.community || _searchType == SearchType.user) {
         _searchBarHint = _searchBarFocusNode.hasFocus ? _searchBarHint.toLowerCase() : _searchBarHint.toTitleCase();
       }
     });
@@ -849,7 +848,7 @@ class _CommunityListState extends State<_CommunityList> {
   }
 
   void _onCommunityTap(Community community) {
-    if (community.platform == widget.platform && community.name == (widget.activeCommunityName ?? widget.platform.homeCommunity)) {
+    if (community.platform == widget.platform && community.name == (widget.activeCommunityName ?? widget.platform.homeCommunityName)) {
       context.pop();
       widget.onActiveCommunitySelected?.call();
       return;
@@ -861,9 +860,11 @@ class _CommunityListState extends State<_CommunityList> {
   }
 
   void _cyclePlatform() {
-
     setState(() {
       _searchPlatform = Platform.values[(Platform.values.indexOf(_searchPlatform) + 1) % Platform.values.length];
+      if (_searchType == SearchType.withinCommunity && !_searchPlatform.canSearchWithinCommunities) {
+        _updateSearchType(SearchType.all);
+      }
       _updateSearchBarTexts();
       _updateIsSearchValid();
     });
@@ -871,7 +872,8 @@ class _CommunityListState extends State<_CommunityList> {
 
   void _cycleSearchType() {
     setState(() {
-      _updateSearchType(SearchType.values[(SearchType.values.indexOf(_searchType) + 1) % SearchType.values.length]);
+      final searchTypes = widget.activeCommunityName != null && (!_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames.contains(widget.activeCommunityName)) ? SearchType.values.where((type) => type != SearchType.withinCommunity).toList() : SearchType.values;
+      _updateSearchType(searchTypes[(searchTypes.indexOf(_searchType) + 1) % searchTypes.length]);
       _updateSearchBarTexts();
       _updateIsSearchValid();
     });
@@ -885,21 +887,36 @@ class _CommunityListState extends State<_CommunityList> {
   void _updateSearchBarTexts() {
     switch (_searchType) {
       case SearchType.community:
+        _searchController.text = _cleanName(_searchController.text, _searchPlatform.communityNameAllowedChars);
         _searchBarPrefixText = _searchPlatform.communityPrefix;
         _searchBarHint = _searchBarFocusNode.hasFocus ? _searchPlatform.communityLabel : _searchPlatform.communityLabel.toTitleCase();
       case SearchType.user:
+        _searchController.text = _cleanName(_searchController.text, _searchPlatform.userNameAllowedChars);
         _searchBarPrefixText = _searchPlatform.userPrefix;
         _searchBarHint = _searchBarFocusNode.hasFocus ? 'username' : 'Username';
+      case SearchType.withinCommunity:
+        _searchBarPrefixText = null;
+        _searchBarHint = 'Search ${_searchPlatform.getPrefixedCommunityName(widget.activeCommunityName!)}';
       case SearchType.all:
         _searchBarPrefixText = null;
         _searchBarHint = 'Search ${_searchPlatform.name.toTitleCase()}';
     }
   }
 
+  String _cleanName(String value, String allowedChars) {
+    final escaped = hexEscape(allowedChars).join();
+    return value
+      .toLowerCase()
+      .replaceAll(RegExp('[^a-z0-9$escaped]'), '')
+      .replaceAllMapped(RegExp('[$escaped]{2,}'), (m) => m.group(0)![0])
+      .replaceFirst(RegExp('^[$escaped]'), '');
+  }
+
   void _updateIsSearchValid() {
     _isSearchValid = switch (_searchType) {
       SearchType.community => RegExp(_searchPlatform.communityNameValidation).hasMatch(_searchQuery),
       SearchType.user => RegExp(_searchPlatform.userNameValidation).hasMatch(_searchQuery),
+      SearchType.withinCommunity => _searchQuery.isNotEmpty,
       SearchType.all => _searchQuery.isNotEmpty,
     };
   }
@@ -925,7 +942,6 @@ class _CommunityListState extends State<_CommunityList> {
               leadingForegroundColor = Colors.black;
             }
             final listView = ListView.builder(
-              padding: widget.padding,
               itemCount: headerCount + _visibleCommunities.length,
               itemBuilder: (context, index) {
                 if (index == 0) {
@@ -1036,22 +1052,11 @@ class _CommunityListState extends State<_CommunityList> {
                       }
             
                       if (cleanValue.isNotEmpty) {
-            
-                        void clean(String allowedChars) {
-                          final escaped = hexEscape(allowedChars).join();
-                          cleanValue = cleanValue
-                            .toLowerCase()
-                            .replaceAll(RegExp('[^a-z0-9$escaped]'), '')
-                            .replaceAllMapped(RegExp('[$escaped]{2,}'), (m) => m.group(0)![0])
-                            .replaceFirst(RegExp('^[$escaped]'), '');
-            
-                        }
-            
                         if (_searchType == SearchType.community) {
-                          clean(_searchPlatform.communityNameAllowedChars);
+                          cleanValue = _cleanName(cleanValue, _searchPlatform.communityNameAllowedChars);
                         }
                         else if (_searchType == SearchType.user) {
-                          clean(_searchPlatform.userNameAllowedChars);
+                          cleanValue = _cleanName(cleanValue, _searchPlatform.userNameAllowedChars);
                         }
                       }
             
@@ -1076,7 +1081,7 @@ class _CommunityListState extends State<_CommunityList> {
                           }
                           String? query = value;
                           if (query.isEmpty) {
-                            if (_searchPlatform.homeCommunity != null) {
+                            if (_searchPlatform.homeCommunityName != null) {
                               return;
                             }
                             query = null;
@@ -1099,6 +1104,18 @@ class _CommunityListState extends State<_CommunityList> {
                               username: value
                             );
                           });
+                        case SearchType.withinCommunity:
+                          final query = value.trim();
+                          if (query.isEmpty) return;
+                          context.pop();
+                          context.push(() {
+                            return SearchScreen(
+                              platform: _searchPlatform,
+                              query: query,
+                              communityName: widget.activeCommunityName,
+                            );
+                          });
+                          return;
                         case SearchType.all:
                           final query = value.trim();
                           if (query.isEmpty) return;
@@ -1197,7 +1214,7 @@ class _CommunityListState extends State<_CommunityList> {
                       Settings.communities.update(community.copyWith(isFavorite: !community.isFavorite));
                     }
                   ),
-                  title: F.appFlavor == Flavor.combined || community.platform.homeCommunity == null ? PrefixedCommunityName(community: community) : Text(community.name!),
+                  title: F.appFlavor == Flavor.combined || community.platform.homeCommunityName == null ? PrefixedCommunityName(community: community) : Text(community.name!),
                   onTap: (community) => _onCommunityTap(community),
                 );
               }

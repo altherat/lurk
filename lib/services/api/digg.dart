@@ -599,10 +599,9 @@ class DiggApi extends Api {
   }
 
   @override
-  Future<PagedItems<dynamic>> search(String query, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<dynamic>> search(String query, String? communityName, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     // dev.log('[Digg] search: query=$query, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
     final type = options?[FeedOptionType.category]?.id ?? SearchFeedType.posts;
-    final sort = options?[FeedOptionType.sort];
     final gql.QueryOptions queryOptions;
     final PagedItems<dynamic> Function(Map<String, dynamic>) parseFn;
     if (type == SearchFeedType.communities) {
@@ -711,6 +710,7 @@ class DiggApi extends Api {
       };
     }
     else {
+      final sort = options?[FeedOptionType.sort];
       queryOptions = gql.QueryOptions(
         document: gql.gql(r'''
           query PostsQuery($first: Int, $after: String, $where: PostWhere, $sort: PostSort) {
@@ -755,7 +755,13 @@ class DiggApi extends Api {
         '''),
         variables: {
           'first': resultsLimit,
-          'where': {'query_MATCHES': query},
+          'where': {
+            'query_MATCHES': query,
+            if (communityName != null)
+              'community': {
+                'slug_EQ': communityName
+              }
+          },
           'sort': sort?.id ?? 'TRENDING',
           if (pageToken != null)
             'after': pageToken,

@@ -100,7 +100,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
           },
         )
       ),
-      itemBuilder: (context, item) { 
+      itemBuilder: (context, index, item) { 
         if (item is Post) {
           return PostTile(
             post: item,

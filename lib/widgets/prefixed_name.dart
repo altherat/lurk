@@ -5,6 +5,45 @@ import 'package:lurk/core/constants.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/services/settings.dart';
 
+class PrefixedName extends StatelessWidget {
+
+  final String prefix;
+  final String? name;
+  final TextSpan? before;
+  final TextSpan? after;
+
+  const PrefixedName({
+    super.key,
+    required this.prefix,
+    required this.name,
+    this.before,
+    this.after
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final parentColor = DefaultTextStyle.of(context).style.color;
+    final parentAlpha = (parentColor!.a * 255).toInt();
+    return Text.rich(
+      TextSpan(
+        children: [
+          ?before,
+          TextSpan(
+            text: prefix,
+            style: TextStyle(color: parentColor.withAlpha(min(parentAlpha, Constants.namePrefixAlpha))),
+          ),
+          if (name != null && name!.isNotEmpty)
+            TextSpan(
+              text: name,
+            ),
+          ?after
+        ],
+      ),
+    );
+  }
+
+}
+
 class PrefixedCommunityName extends StatelessWidget {
 
   final Community community;
@@ -52,37 +91,3 @@ class PrefixedCommunityName extends StatelessWidget {
   }
 
 }
-
-// class PrefixedName extends StatelessWidget {
-
-//   final String prefix;
-//   final int? prefixAlpha;
-//   final String name;
-
-//   const PrefixedName({
-//     super.key,
-//     required this.prefix,
-//     required this.prefixAlpha,
-//     required this.name
-//   });
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final parentColor = DefaultTextStyle.of(context).style.color;
-//     final parentAlpha = (parentColor!.a * 255).toInt();
-//     return Text.rich(
-//       TextSpan(
-//         children: [
-//           TextSpan(
-//             text: prefix,
-//             style: TextStyle(color: parentColor.withAlpha(min(parentAlpha, Constants.namePrefixAlpha))),
-//           ),
-//           if (name.isNotEmpty)
-//             TextSpan(
-//               text: name,
-//             ),
-//         ],
-//       ),
-//     );
-//   }
-// }

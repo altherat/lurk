@@ -5,8 +5,8 @@ import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/post_details.dart';
-import 'package:lurk/models/user.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/comment_tile.dart';
@@ -62,28 +62,36 @@ class PostDetailsScreen extends StatefulWidget {
 
 class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTickerProviderStateMixin {
 
-  final _feedListKey = GlobalKey<FeedListState>();
-  final _refreshIndicatorKey = GlobalKey<RefreshIndicatorState>();
-
+  final _simpleFeedScreenKey = GlobalKey<SimpleFeedScreenState>();
+  late Future<PagedItems<CommentItem>> _initialItemsFuture;
   Post? _post;
-  Map<FeedOptionType, FeedOption>? _feedOptions;
   String? _contextCommentShortId;
   final Set<String> _collapsedCommentIds = {};
   late List<CommentItem> _allComments;
+  late final ValueNotifier<Map<FeedOptionType, FeedOption>?> _feedOptionsNotifier;
 
   @override
   void initState() {
     super.initState();
     _post = widget.post;
+    _feedOptionsNotifier = ValueNotifier(null);
+    _initialItemsFuture = _getItems(null, null);
   }
 
-  Future<PagedItems<CommentItem>> _getItems([String? pageToken]) async {
+  @override
+  void dispose() {
+    _feedOptionsNotifier.dispose();
+    super.dispose();
+  }
+
+  Future<PagedItems<CommentItem>> _getItems(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) async {
+    _feedOptionsNotifier.value = feedOptions;
     final PostDetails postDetails;
     if (_post != null) {
-      postDetails = await _getPostDetailsFromPost();
+      postDetails = await _post!.community.platform.api.getPostDetailsFromId(_post!.shortId, shortCommentId: _contextCommentShortId, options: feedOptions);
     }
     else {
-      postDetails = await widget.platform.api.getPostDetailsFromUrl(widget.url);
+      postDetails = await widget.platform.api.getPostDetailsFromUrl(widget.url, options: feedOptions);
       _post = postDetails.post;
     }
     _allComments = postDetails.comments.toList();
@@ -91,8 +99,6 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
     History.postDetails.add(_post!.id);
     return PagedItems(items: postDetails.comments);
   }
-
-  Future<PostDetails> _getPostDetailsFromPost() => _post!.community.platform.api.getPostDetailsFromId(_post!.shortId, options: _feedOptions);
 
   void _showAddCommentDialog(String id, Widget replyingToWidget) {
     showModalBottomSheet(
@@ -113,9 +119,8 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
   @override
   Widget build(BuildContext context) {
     final String title;
-    final Map<String, VoidCallback> popupMenuActions;
+    final Map<String, VoidCallback>? popupMenuActions;
     final List<Widget>? slivers;
-    final RefreshCallback? onRefresh;
     if (_post != null) {
       title = _post!.title;
       popupMenuActions = {
@@ -163,9 +168,14 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
                       _post!.commentsLabel,
                       style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold)
                     ),
-                    Text(
-                      'sorted by${_feedOptions != null && _feedOptions!.length > 1 ? ': ${_feedOptions!.values.map((option) => option.label.toLowerCase()).join(' / ')}' : ' ${_post!.community.platform.postCommentsFeedOptions.options.first.label.toLowerCase()}'}',
-                      style: const TextStyle(color: Constants.secondaryTextColor, fontSize: 11),
+                    ValueListenableBuilder(
+                      valueListenable: _feedOptionsNotifier,
+                      builder: (context, feedOptions, child) {
+                        return Text(
+                          'sorted by${feedOptions != null ? ': ${feedOptions.values.map((option) => option.label.toLowerCase()).join(' / ')}' : ' ${_post!.community.platform.postCommentsFeedOptions.options.first.label.toLowerCase()}'}',
+                          style: const TextStyle(color: Constants.secondaryTextColor, fontSize: 11),
+                        );
+                      }
                     )
                   ],
                 )
@@ -199,141 +209,99 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
           ),
         ),
       ];
-      onRefresh = () async {
-        final state = _feedListKey.currentState;
-        if (state != null){
-          await state.refresh();
-        }
-      };
     }
     else {
       title = widget.url;
       popupMenuActions = const {};
       slivers = [];
-      onRefresh = null;
     }
-    slivers.add(
-      FeedList(
-        key: _feedListKey,
-        platform: widget.platform,
-        getItems: _getItems,
-        noItemsBuilder: (BuildContext context) {
-          return LargeVerticalIconMessage(
-            icon: Icons.feed_outlined,
-            message: 'No comments'
-          );
-        },
-        itemBuilder: (context, index, item) {
-          if (item is Comment) {
-            final isCollapsed = _collapsedCommentIds.contains(item.id);
-            Widget child = CommentTile(
-              padding: EdgeInsets.only(top: index == 0 ? 0 : 8, bottom: 4),
-              comment: item,
-              depth: item.depth,
-              isCollapsed: isCollapsed,
-              optionsBuilder: (context, activeUser) => {
-                if (activeUser != null)
-                  'Reply': () {
-                    _showAddCommentDialog(
-                      item.id,
-                      CommentTile(
-                        comment: item,
-                        isInteractable: false,
-                      )
-                    );
-                  }
-              },
-              onTap: () async {
-                if (isCollapsed) {
-                  _collapsedCommentIds.remove(item.id);
-                }
-                else {
-                  _collapsedCommentIds.add(item.id);
-                }
-                _feedListKey.currentState?.updateItems((items) {
-                  items.clear();
-                  int? currentCollapsedDepth;
-                  for (var comment in _allComments) {
-                    if (currentCollapsedDepth != null) {
-                      if (comment.depth > currentCollapsedDepth) {
-                        continue; 
-                      }
-                      else {
-                        currentCollapsedDepth = null;
-                      }
-                    }
-                    items.add(comment);
-                    if (comment is Comment && _collapsedCommentIds.contains(comment.id)) {
-                      currentCollapsedDepth = comment.depth;
-                    }
-                  }
-                });
-              },
-              onDelete: () => _feedListKey.currentState?.updateItems((items) => items.removeAt(index))
-            );
-            if (item.shortId == _contextCommentShortId) {
-              child = DecoratedBox(
-                decoration: BoxDecoration(color: Constants.contextCommentBackgroundColor),
-                child: child
-              );
-            }
-            return child;
-          }
-          if (item is LoadMoreComment) {
-            return _LoadMoreComments(
-              platform: _post!.community.platform,
-              comment: item,
-              onLoadMoreComments: () async {
-                final comments = await _post!.community.platform.api.getMoreComments(_post!.id, item.pageToken!, depth: item.depth);
-                if (mounted) {
-                  _feedListKey.currentState?.updateItems((items) => items.replaceRange(index, index + 1, comments));
-                }
-              },
-            );
-          }
-          return const SizedBox.shrink();
-        },
-      )
-    );
-    return MainScaffold(
+    return SimpleFeedScreen(
+      key: _simpleFeedScreenKey,
       platform: widget.platform,
-      refreshIndicatorKey: _refreshIndicatorKey,
+      feedOptions: widget.platform.postCommentsFeedOptions,
+      initialItems: _initialItemsFuture,
+      getItems: _getItems,
       title: Text(title),
       subtitle: _post != null ? Text(_post!.community.prefixedName) : null,
+      showFeedOptionsSubtitle: false,
       popupMenuActions: popupMenuActions,
-      iconActions: [
-        FeedFilterIconButton(
-          platform: widget.platform,
-          feedOptions: widget.platform.postCommentsFeedOptions,
-          selectedFeedOptions: _feedOptions,
-          onFeedOptionsSelected: (options) {
-            _feedOptions = options;
-            _collapsedCommentIds.clear();
-            _feedListKey.currentState?.reload();
-          }
-        )
-      ],
-      iconActionsBuilder: (Settings.activeUser, (context) {
-        if (Settings.activeUser.value == null) return [];
-        return [
-          IconButton(
-            icon: const Icon(Icons.add_comment_rounded),
-            tooltip: 'Add comment',
-            onPressed: () {
-              _showAddCommentDialog(
-                _post!.id,
-                PostTile(
-                  post: _post!,
-                  isInteractable: false,
-                ),
-              );
-            }
-          )
-        ];
-      }),
       slivers: slivers,
-      onPullRefresh: onRefresh,
-      onOtherRefresh: () => _refreshIndicatorKey.currentState?.show(),
+      noItemsBuilder: (BuildContext context) {
+        return LargeVerticalIconMessage(
+          icon: Icons.feed_outlined,
+          message: 'No comments'
+        );
+      },
+      itemBuilder: (context, index, item) {
+        if (item is Comment) {
+          final isCollapsed = _collapsedCommentIds.contains(item.id);
+          Widget child = CommentTile(
+            padding: EdgeInsets.only(top: index == 0 ? 0 : 8, bottom: 4),
+            comment: item,
+            depth: item.depth,
+            isCollapsed: isCollapsed,
+            optionsBuilder: (context, activeUser) => {
+              if (activeUser != null)
+                'Reply': () {
+                  _showAddCommentDialog(
+                    item.id,
+                    CommentTile(
+                      comment: item,
+                      isInteractable: false,
+                    )
+                  );
+                }
+            },
+            onTap: () async {
+              if (isCollapsed) {
+                _collapsedCommentIds.remove(item.id);
+              }
+              else {
+                _collapsedCommentIds.add(item.id);
+              }
+              _simpleFeedScreenKey.currentState?.feedList?.updateItems((items) {
+                items.clear();
+                int? currentCollapsedDepth;
+                for (var comment in _allComments) {
+                  if (currentCollapsedDepth != null) {
+                    if (comment.depth > currentCollapsedDepth) {
+                      continue; 
+                    }
+                    else {
+                      currentCollapsedDepth = null;
+                    }
+                  }
+                  items.add(comment);
+                  if (comment is Comment && _collapsedCommentIds.contains(comment.id)) {
+                    currentCollapsedDepth = comment.depth;
+                  }
+                }
+              });
+            },
+            onDelete: () => _simpleFeedScreenKey.currentState?.feedList?.updateItems((items) => items.removeAt(index))
+          );
+          if (item.shortId == _contextCommentShortId) {
+            child = DecoratedBox(
+              decoration: BoxDecoration(color: Constants.contextCommentBackgroundColor),
+              child: child
+            );
+          }
+          return child;
+        }
+        if (item is LoadMoreComment) {
+          return _LoadMoreComments(
+            platform: _post!.community.platform,
+            comment: item,
+            onLoadMoreComments: () async {
+              final comments = await _post!.community.platform.api.getMoreComments(_post!.id, item.pageToken!, depth: item.depth);
+              if (mounted) {
+                _simpleFeedScreenKey.currentState?.feedList?.updateItems((items) => items.replaceRange(index, index + 1, comments));
+              }
+            },
+          );
+        }
+        return const SizedBox.shrink();
+      },
     );
   }
 

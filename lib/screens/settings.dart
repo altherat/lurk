@@ -36,7 +36,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 choiceLabel: (platform) => platform.name.toTitleCase(),
                 selectedColor: (platform) => platform.color,
                 onSelected: (platform) {
-                  Settings.homeCommunityName.defaultValue = platform.homeCommunity;
+                  Settings.homeCommunityName.defaultValue = platform.homeCommunityName;
                 }
               ),
             ],

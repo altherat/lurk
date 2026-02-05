@@ -12,8 +12,10 @@ enum Platform {
     color: Color(0xFFFF4500),
     communityLabel: 'subreddit',
     communityPrefix: 'r/',
-    homeCommunity: 'popular',
+    homeCommunityName: 'popular',
     rootCommunityName: 'Front page',
+    aggregateCommunityNames: {'all', 'popular'},
+    canSearchWithinCommunities: true,
     userPrefix: 'u/',
     communityPath: r'^\/r\/([^\/]+)\/?$',
     userPath: r'^\/(?:u|user)\/([^\/]+)\/?$',
@@ -82,7 +84,10 @@ enum Platform {
     color: Color(0xFF1F65DB),
     communityLabel: 'community',
     communityPrefix: '/',
+    homeCommunityName: null,
     rootCommunityName: '',
+    aggregateCommunityNames: {},
+    canSearchWithinCommunities: false,
     userPrefix: '@',
     communityPath: r'^\/(?!d\/)([^\/]+)\/?$',
     userPath: r'^\/@([^\/]+)\/?$',
@@ -155,8 +160,10 @@ enum Platform {
   final Color color;
   final String communityLabel;
   final String communityPrefix;
-  final String? homeCommunity;
+  final String? homeCommunityName;
   final String rootCommunityName;
+  final Set<String?> aggregateCommunityNames;
+  final bool canSearchWithinCommunities;
   final String userPrefix;
   final String communityPath;
   final String userPath;
@@ -178,8 +185,10 @@ enum Platform {
     required this.domains,
     required this.color,
     required this.communityPrefix,
-    this.homeCommunity,
+    required this.homeCommunityName,
     required this.rootCommunityName,
+    required this.aggregateCommunityNames,
+    required this.canSearchWithinCommunities,
     required this.userPrefix,
     required this.communityPath,
     required this.userPath,
@@ -208,6 +217,8 @@ enum Platform {
     }
     return null;
   }
+
+  String getPrefixedCommunityName(String communityName) => '$communityPrefix$communityName';
 
   String getPrefixedUsername(String username) => '$userPrefix$username';
 
@@ -348,6 +359,7 @@ enum SearchType {
 
   community(Icons.groups_2_rounded),
   user(Icons.person_rounded),
+  withinCommunity(Icons.public),
   all(Icons.public);
 
   final IconData icon;
