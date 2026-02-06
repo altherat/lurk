@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
@@ -11,15 +13,17 @@ import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 
-class Html extends StatelessWidget {
+class CustomHtml extends StatelessWidget {
 
   final Platform platform;
   final String html;
+  final Map<String, Size>? imageSizes;
 
-  const Html({
+  const CustomHtml({
     super.key,
     required this.platform,
     required this.html,
+    this.imageSizes,
   });
 
   @override
@@ -35,6 +39,9 @@ class Html extends StatelessWidget {
           html,
           rebuildTriggers: [showImages],
           textStyle: textStyle,
+          onLoadingBuilder: (context, element, loadingProgress) {
+            return Center(child: const CircularProgressIndicator());
+          },
           customStylesBuilder: (element) {
             if (element.localName == 'p') {
               if (element.parent?.localName == 'blockquote') {
@@ -95,7 +102,8 @@ class Html extends StatelessWidget {
                 final String url = element.attributes['src']!;
                 return _Image(
                   platform: platform,
-                  url: url
+                  url: url,
+                  size: imageSizes?[url]
                 );
               }
               else if (element.localName == 'a') {
@@ -103,7 +111,8 @@ class Html extends StatelessWidget {
                 if (Uri.tryParse(url)?.host == 'preview.redd.it') {
                   return _Image(
                     platform: platform,
-                    url: url
+                    url: url,
+                    size: imageSizes?[url]
                   );
                 }
               }
@@ -130,34 +139,39 @@ class Html extends StatelessWidget {
             return null;
           },
           onTapUrl: (url) {
-            if (url.startsWith('/r/')) {
+
+            final communityName = platform.getCommunityNameFromPath(url);
+            if (communityName != null) {
               context.push(
                 () => PostsScreen(
                   community: Community(
-                    platform: Platform.reddit,
-                    name: Uri.parse(url).pathSegments[1].toLowerCase()
-                  )
-                )
+                    platform: platform,
+                    name: communityName.toLowerCase(),
+                  ),
+                ),
               );
+              return true;
             }
-            else if (url.startsWith('/u/')) {
+
+            final userName = platform.getUserNameFromPath(url);
+            if (userName != null) {
               context.push(
                 () => UserDetailsScreen(
-                  platform: Platform.reddit,
-                  username: Uri.parse(url).pathSegments[1].toLowerCase()
-                )
+                  platform: platform,
+                  username: userName.toLowerCase(),
+                ),
               );
+              return true;
             }
-            else {
-              navigate(context, platform, url);
-            }
+
+            navigate(context, platform, url);
             return true;
           },
           onTapImage: (imageMetadata) {
             final url = imageMetadata.sources.firstOrNull?.url;
-             if (url != null) {
+            if (url != null) {
               navigate(context, platform, url);
-             }
+            }
           },
         );
       }
@@ -208,95 +222,115 @@ class _Image extends StatelessWidget {
 
   final Platform platform;
   final String url;
+  final Size? size;
 
   const _Image({
     super.key,
     required this.platform,
-    required this.url
+    required this.url,
+    required this.size
   });
 
   @override
   Widget build(BuildContext context) {
-    final maxHeight = MediaQuery.of(context).size.height * 0.25;
+    final screenSize = MediaQuery.of(context).size;
+    final maxHeight = screenSize.height * 0.25;
+    final double minWidth;
+    final double maxWidth;
+    final double minHeight;
+    final BoxDecoration? outerContainerDecoration;
+    if (size != null) {
+      maxWidth = screenSize.width;
+      minHeight = min(size!.height, maxHeight);
+      minWidth = min(minHeight * size!.aspectRatio, maxWidth);
+      outerContainerDecoration =  BoxDecoration(border: Border.all(color: Constants.commentIndentColor));
+    }
+    else {
+      minWidth = 0;
+      maxWidth = double.infinity;
+      minHeight = 0;
+      outerContainerDecoration = null;
+    }
     return Align(
       alignment: Alignment.topLeft,
-      child: ExtendedImage.network(
-        url,
-        headers: {'User-Agent': platform.api.savedOrDefaultUserAgent},
-        cacheHeight: (maxHeight * MediaQuery.devicePixelRatioOf(context)).round(),
-        fit: BoxFit.contain,
-        loadStateChanged: (state) {
-          switch (state.extendedImageLoadState) {
-            case LoadState.loading:
-              return Padding(
-                padding: EdgeInsets.symmetric(
-                  horizontal: 2,
-                  vertical: 8
-                ),
-                child: PlatformCircularProgressIndicator(
+      child: Container(
+        decoration: outerContainerDecoration,
+        constraints: BoxConstraints(
+          minWidth: minWidth,
+          maxWidth: maxWidth,
+          minHeight: minHeight,
+          maxHeight: maxHeight
+        ),
+        child: ExtendedImage.network(
+          url,
+          headers: {'User-Agent': platform.api.savedOrDefaultUserAgent},
+          cacheHeight: (maxHeight * MediaQuery.devicePixelRatioOf(context)).round(),
+          fit: BoxFit.contain,
+          loadStateChanged: (state) {
+            if (state.extendedImageLoadState == LoadState.loading) {
+              return UnconstrainedBox(
+                child: CustomCircularProgressIndicator(
                   platform: platform,
-                  strokeWidth: 4
+                  padding: EdgeInsets.symmetric(horizontal: 2, vertical: 8),
                 ),
               );
-            case LoadState.completed:
-              return Hero(
-                tag: 'media_$url',
-                // transitionOnUserGestures: true,
-                // flightShuttleBuilder: (flightContext, animation, flightDirection, fromHeroContext, toHeroContext) {
-                //   final Widget flyingWidget = flightDirection == HeroFlightDirection.push ? toHeroContext.widget : fromHeroContext.widget;
-                //   return Material(
-                //     color: Colors.transparent,
-                //     child: flyingWidget,
-                //   );
-                // },
-                child: Stack(
-                  children: [
-                    Container(
-                      constraints: BoxConstraints(maxHeight: maxHeight),
-                      decoration: BoxDecoration(border: Border.all(color: Constants.commentIndentColor)),
-                      child: state.completedWidget,
-                    ),
-                    Positioned.fill(
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onLongPress: () {
-                            showSimpleTextOptionsBottomSheet(
-                              context: context,
-                              options: {
-                                'Save image': () {
-                                  saveImage(
-                                    context: context,
-                                    platform: platform,
-                                    url: url
-                                  );
-                                },
-                                'View in browser': () => openInBrowser(url),
-                                'Copy link': () => copyToClipboard(url)
-                              }
-                            );
-                          },
-                          onTap: () {
-                            context.push(() {
-                              return ImageViewerScreen(
-                                platform: platform,
-                                url: url
-                              );
-                            });
-                          }
-                        ),
-                      ),
-                    )
-                  ],
-                ),
+            }
+            Widget child;
+            if (state.extendedImageLoadState == LoadState.completed) {
+              child = DecoratedBox(
+                decoration: BoxDecoration(border: Border.all(color: Constants.commentIndentColor)),
+                child: state.completedWidget,
               );
-            case LoadState.failed:
-              return const Icon(
+            }
+            else {
+              child = const Icon(
                 Icons.broken_image_rounded,
-                color: Constants.secondaryTextColor
+                color: Constants.secondaryTextColor,
+                size: 32
               );
+            }
+            return Hero(
+              tag: 'media_$url',
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  child,
+                  Positioned.fill(
+                    child: Material(
+                      color: Colors.transparent,
+                      child: InkWell(
+                        onLongPress: () {
+                          showSimpleTextOptionsBottomSheet(
+                            context: context,
+                            options: {
+                              'Save image': () {
+                                saveImage(
+                                  context: context,
+                                  platform: platform,
+                                  url: url
+                                );
+                              },
+                              'View in browser': () => openInBrowser(url),
+                              'Copy link': () => copyToClipboard(url)
+                            }
+                          );
+                        },
+                        onTap: () {
+                          context.push(() {
+                            return ImageViewerScreen(
+                              platform: platform,
+                              url: url
+                            );
+                          });
+                        }
+                      ),
+                    ),
+                  )
+                ],
+              ),
+            );
           }
-        }
+        ),
       ),
     );
   }

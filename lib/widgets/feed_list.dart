@@ -34,7 +34,7 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
 
   late final AnimationController _animationController;
   LoadingState _loadingState = LoadingState.loading;
-  List<T> _items = [];
+  List<T> items = [];
   String? _pageToken;
 
   @override
@@ -45,7 +45,7 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
       duration: Constants.feedLoadAnimationDuration
     );
     if (widget.initialItems != null) {
-      _processItems(widget.initialItems!, (items) => _items = items);
+      _processItems(widget.initialItems!, (items) => this.items = items);
     }
     else {
       _getItems();
@@ -55,7 +55,7 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
   @override
   bool get wantKeepAlive => true;
 
-  Future<void> _getItems() => _processItems(widget.getItems(null), (items) => _items = items);
+  Future<void> _getItems() => _processItems(widget.getItems(null), (items) => this.items = items);
 
   Future<void> _processItems(Future<PagedItems<T>> future, void Function(List<T> items) fn) async {
     try {
@@ -86,7 +86,7 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
     _animationController.reset();
     setState(() {
       _loadingState = LoadingState.loading;
-      _items.clear();
+      items.clear();
       _pageToken = null;
     });
     return _getItems();
@@ -95,13 +95,13 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
   Future<void> refresh() => _getItems();
 
   void updateItems(Function(List<T> items) update) {
-    setState(() => update(_items));
+    setState(() => update(items));
   }
 
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    if (_items.isEmpty) {
+    if (this.items.isEmpty) {
       if (_loadingState == LoadingState.loading) {
         return SliverFillRemaining(
           hasScrollBody: false,
@@ -130,16 +130,16 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
         builder: (context, child) {
           return SliverList(
             delegate: SliverChildBuilderDelegate(
-              childCount: (_pageToken != null ? _items.length + 1 : _items.length),
+              childCount: (_pageToken != null ? this.items.length + 1 : this.items.length),
               (context, index) {
-                if (index == _items.length) {
+                if (index == this.items.length) {
                   if (_loadingState != LoadingState.loading) {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       if (!mounted) return;
                       setState(() {
                         _loadingState = LoadingState.loading;
                       });
-                      _processItems(widget.getItems(_pageToken), (items) => _items.addAll(items));
+                      _processItems(widget.getItems(_pageToken), (items) => this.items.addAll(items));
                     });
                   }
                   return CustomCircularProgressIndicator(
@@ -152,7 +152,7 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
                 }
                 return _FeedItemTransition(
                   progress: _animationController.value,
-                  child: widget.itemBuilder(context, index, _items[index])!
+                  child: widget.itemBuilder(context, index, this.items[index])!
                 );
               }
             )

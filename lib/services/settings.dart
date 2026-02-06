@@ -37,8 +37,6 @@ class Settings {
 
   static late final RelationalListSettingNotifier<Community> communities;
 
-  static bool isInitialized = false;
-
   static Future<void> init() async {
 
     final db = Database.instance;
@@ -49,31 +47,106 @@ class Settings {
       save: db.saveLoggedInUser,
       delete: db.deleteLoggedInUser
     );
+    
     final activeUserId = dbSettings.activeUserId;
-    activeUser = SettingNotifier(activeUserId != null ? loggedInUsers.value.firstWhere((user) => user.id == activeUserId) : null, (user) => SettingsCompanion(activeUserId: Value(user?.id)));
+    activeUser = SettingNotifier(
+      initialValue: activeUserId != null ? loggedInUsers.value.firstWhere((user) => user.id == activeUserId) : null,
+      companionBuilder: (user) => SettingsCompanion(activeUserId: Value(user?.id)),
+    );
 
-    homeCommunityPlatform = SettingNotifier(dbSettings.homeCommunityPlatform, (value) => SettingsCompanion(homeCommunityPlatform: Value(value)), F.appFlavor.defaultCommunities.first.platform);
-    homeCommunityName = SettingNotifier(dbSettings.homeCommunityName, (value) => SettingsCompanion(homeCommunityName: Value(value)), activeUserId == null ? homeCommunityPlatform.value.homeCommunityName : null);
-    showCommentImages = SettingNotifier(dbSettings.showCommentImages, (value) => SettingsCompanion(showCommentImages: Value(value)), Constants.defaultShowCommentImages);
-    autoplayVideos = SettingNotifier(dbSettings.autoplayVideos, (value) => SettingsCompanion(autoplayVideos: Value(value)), Constants.defaultAutoplayVideos);
-    appBarColor = SettingNotifier(dbSettings.appBarColor != null ? Color(dbSettings.appBarColor!) : null, (value) => SettingsCompanion(appBarColor: Value(value.toARGB32())), Constants.defaultAppBarColor);
-    useBottomBar = SettingNotifier(dbSettings.useBottomBar, (value) => SettingsCompanion(useBottomBar: Value(value)), Constants.defaultUseBottomBar);
-    showPlatformColorAccents = SettingNotifier(dbSettings.showPlatformColorAccents, (value) => SettingsCompanion(showPlatformColorAccents: Value(value)), Constants.defaultShowPlatformColorAccents);
-    showPlatformColorTextAccents = SettingNotifier(dbSettings.showPlatformColorTextAccents, (value) => SettingsCompanion(showPlatformColorTextAccents: Value(value)), Constants.defaultShowPlatformColorTextAccents);
-    redditCopyOldRedditLinks = SettingNotifier(dbSettings.redditCopyOldRedditLinks, (value) => SettingsCompanion(redditCopyOldRedditLinks: Value(value)), Constants.defaultRedditCopyOldRedditLinks);
-    redditClientId = SettingNotifier(dbSettings.redditClientId, (value) => SettingsCompanion(redditClientId: Value(value)));
-    redditRedirectUri = SettingNotifier(dbSettings.redditRedirectUri, (value) => SettingsCompanion(redditRedirectUri: Value(value)));
-    redditDeviceId = Setting(dbSettings.redditDeviceId, (value) => SettingsCompanion(redditDeviceId: Value(value)));
-    diggPostsFetchDepth = SettingNotifier(dbSettings.diggPostsFetchDepth, (value) => SettingsCompanion(diggPostsFetchDepth: Value(value)), Constants.defaultDiggPostsFetchDepth);
-    customUserAgent = SettingNotifier(dbSettings.userAgent, (value) => SettingsCompanion(userAgent: Value(value)));
-    searchType = Setting(dbSettings.searchType, (value) => SettingsCompanion(searchType: Value(value)));
+    homeCommunityPlatform = SettingNotifier(
+      initialValue: dbSettings.homeCommunityPlatform,
+      companionBuilder: (value) => SettingsCompanion(homeCommunityPlatform: Value(value)),
+      defaultValue: F.appFlavor.defaultCommunities.first.platform,
+    );
+
+    homeCommunityName = SettingNotifier(
+      initialValue: dbSettings.homeCommunityName,
+      companionBuilder: (value) => SettingsCompanion(homeCommunityName: Value(value)),
+      defaultValue: activeUserId == null ? homeCommunityPlatform.value.homeCommunityName : null,
+    );
+
+    showCommentImages = SettingNotifier(
+      initialValue: dbSettings.showCommentImages,
+      companionBuilder: (value) => SettingsCompanion(showCommentImages: Value(value)),
+      defaultValue: Constants.defaultShowCommentImages,
+    );
+
+    autoplayVideos = SettingNotifier(
+      initialValue: dbSettings.autoplayVideos,
+      companionBuilder: (value) => SettingsCompanion(autoplayVideos: Value(value)),
+      defaultValue: Constants.defaultAutoplayVideos,
+    );
+
+    appBarColor = SettingNotifier(
+      initialValue: dbSettings.appBarColor != null ? Color(dbSettings.appBarColor!) : null,
+      nullableCompanionBuilder: (value) => SettingsCompanion(appBarColor: Value(value?.toARGB32())),
+      defaultValue: Constants.defaultAppBarColor,
+    );
+    debugPrint('saved: ${dbSettings.appBarColor}');
+
+    useBottomBar = SettingNotifier(
+      initialValue: dbSettings.useBottomBar,
+      companionBuilder: (value) => SettingsCompanion(useBottomBar: Value(value)),
+      defaultValue: Constants.defaultUseBottomBar,
+    );
+
+    showPlatformColorAccents = SettingNotifier(
+      initialValue: dbSettings.showPlatformColorAccents,
+      companionBuilder: (value) => SettingsCompanion(showPlatformColorAccents: Value(value)),
+      defaultValue: Constants.defaultShowPlatformColorAccents,
+    );
+
+    showPlatformColorTextAccents = SettingNotifier(
+      initialValue: dbSettings.showPlatformColorTextAccents,
+      companionBuilder: (value) => SettingsCompanion(showPlatformColorTextAccents: Value(value)),
+      defaultValue: Constants.defaultShowPlatformColorTextAccents,
+    );
+
+    redditCopyOldRedditLinks = SettingNotifier(
+      initialValue: dbSettings.redditCopyOldRedditLinks,
+      companionBuilder: (value) => SettingsCompanion(redditCopyOldRedditLinks: Value(value)),
+      defaultValue: Constants.defaultRedditCopyOldRedditLinks,
+    );
+
+    redditClientId = SettingNotifier(
+      initialValue: dbSettings.redditClientId,
+      companionBuilder: (value) => SettingsCompanion(redditClientId: Value(value)),
+    );
+
+    redditRedirectUri = SettingNotifier(
+      initialValue: dbSettings.redditRedirectUri,
+      companionBuilder: (value) => SettingsCompanion(redditRedirectUri: Value(value)),
+    );
+
+    redditDeviceId = Setting(
+      initialValue: dbSettings.redditDeviceId,
+      companionBuilder: (value) => SettingsCompanion(redditDeviceId: Value(value)),
+    );
+
+    diggPostsFetchDepth = SettingNotifier(
+      initialValue: dbSettings.diggPostsFetchDepth,
+      companionBuilder: (value) => SettingsCompanion(diggPostsFetchDepth: Value(value)),
+      defaultValue: Constants.defaultDiggPostsFetchDepth,
+    );
+
+    customUserAgent = SettingNotifier(
+      initialValue: dbSettings.userAgent,
+      companionBuilder: (value) => SettingsCompanion(userAgent: Value(value)),
+    );
+
+    searchType = Setting(
+      initialValue: dbSettings.searchType,
+      companionBuilder: (value) => SettingsCompanion(searchType: Value(value)),
+    );
+
     communities = RelationalListSettingNotifier<Community>(
       dbCommunities,
       save: db.saveCommunity,
       saveAll: db.saveAllCommunities,
       delete: db.deleteCommunity,
     );
-    isInitialized = true;
+
   }
 
 }
@@ -85,8 +158,13 @@ class Setting<T> {
   T? _defaultValue;
   bool hasSavedValue;
 
-  Setting(T? initialValue, this.companionBuilder, [T? defaultValue])
-    : _value = initialValue ?? defaultValue as T, _defaultValue = defaultValue, hasSavedValue = initialValue != null;
+  Setting({
+    required T? initialValue,
+    required this.companionBuilder,
+    T? defaultValue,
+  })  : _value = initialValue ?? defaultValue as T,
+        _defaultValue = defaultValue,
+        hasSavedValue = initialValue != null;
 
   T get value => _value;
 
@@ -110,25 +188,36 @@ class Setting<T> {
 
 class SettingNotifier<T> extends ValueNotifier<T> {
 
-  final SettingsCompanion Function(T) companionBuilder;
+  final SettingsCompanion Function(T value)? companionBuilder;
+  final SettingsCompanion Function(T? value)? nullableCompanionBuilder;
   T? _defaultValue;
   bool hasSavedValue;
 
-  SettingNotifier(T? initialValue, this.companionBuilder, [T? defaultValue]) 
-    : _defaultValue = defaultValue, hasSavedValue = initialValue != null, super(initialValue ?? defaultValue as T);
+  SettingNotifier({
+    required T? initialValue,
+    this.companionBuilder,
+    this.nullableCompanionBuilder,
+    T? defaultValue,
+  })  : assert(companionBuilder != null || nullableCompanionBuilder != null),
+        _defaultValue = defaultValue,
+        hasSavedValue = initialValue != null,
+        super(initialValue ?? defaultValue as T);
 
   @override
-  set value(T newValue) {
-    if (super.value == newValue) return;
+  set value(T? newValue) {
+    final T finalValue = newValue ?? _defaultValue as T;
+    if (super.value == finalValue && hasSavedValue == (newValue != null)) return;
+    final SettingsCompanion companion;
     if (newValue == null) {
-      super.value = _defaultValue as T;
       hasSavedValue = false;
+      companion = nullableCompanionBuilder!(null);
     }
     else {
-      super.value = newValue;
       hasSavedValue = true;
+      companion = companionBuilder?.call(newValue) ?? nullableCompanionBuilder!(newValue);
     }
-    Database.instance.updateSettings(companionBuilder(newValue));
+    super.value = finalValue;
+    Database.instance.updateSettings(companion);
   }
   
   T? get defaultValue => _defaultValue;

@@ -485,9 +485,11 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
               child: RawScrollbar(
                 controller: _scrollController,
                 interactive: false,
+                radius: const Radius.circular(8),
                 padding: EdgeInsets.only(top: appBarOffset),
                 child: CustomScrollView(
                   controller: _scrollController,
+                  physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
                     sliverAppBar,
                     ...widget.slivers!,
@@ -872,7 +874,7 @@ class _CommunityListState extends State<_CommunityList> {
 
   void _cycleSearchType() {
     setState(() {
-      final searchTypes = widget.activeCommunityName != null && (!_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames.contains(widget.activeCommunityName)) ? SearchType.values.where((type) => type != SearchType.withinCommunity).toList() : SearchType.values;
+      final searchTypes = widget.activeCommunityName == null || !_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames.contains(widget.activeCommunityName) ? SearchType.values.where((type) => type != SearchType.withinCommunity).toList() : SearchType.values;
       _updateSearchType(searchTypes[(searchTypes.indexOf(_searchType) + 1) % searchTypes.length]);
       _updateSearchBarTexts();
       _updateIsSearchValid();

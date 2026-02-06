@@ -25,14 +25,20 @@ class CustomCircularProgressIndicator extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     Widget child = platform != null
-      ? PlatformCircularProgressIndicator(
-          platform: platform!,
-          strokeWidth: strokeWidth,
+      ? ValueListenableBuilder(
+          valueListenable: Settings.showPlatformColorAccents,
+          builder: (context, showPlatformColorAccents, child) {
+            return CircularProgressIndicator.adaptive(
+              valueColor: showPlatformColorAccents ? AlwaysStoppedAnimation(platform!.color) : null,
+              strokeWidth: strokeWidth,
+              strokeCap: StrokeCap.round
+            );
+          }
         )
       : CircularProgressIndicator.adaptive(
-        strokeWidth: strokeWidth,
-        strokeCap: StrokeCap.round
-    );
+          strokeWidth: strokeWidth,
+          strokeCap: StrokeCap.round
+        );
     if (size != null) {
       child = SizedBox(
         width: size,
@@ -53,33 +59,6 @@ class CustomCircularProgressIndicator extends StatelessWidget {
       );
     }
     return child;
-  }
-
-}
-
-class PlatformCircularProgressIndicator extends StatelessWidget {
-
-  final Platform platform;
-  final double? strokeWidth;
-
-  const PlatformCircularProgressIndicator({
-    super.key,
-    required this.platform,
-    this.strokeWidth
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return ValueListenableBuilder(
-      valueListenable: Settings.showPlatformColorAccents,
-      builder: (context, showPlatformColorAccents, child) {
-        return CircularProgressIndicator.adaptive(
-          valueColor: showPlatformColorAccents ? AlwaysStoppedAnimation(platform.color) : null,
-          strokeWidth: strokeWidth,
-          strokeCap: StrokeCap.round
-        );
-      }
-    );
   }
 
 }

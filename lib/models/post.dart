@@ -63,5 +63,5 @@ class Post {
   String get timeAgoLong => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgoLong;
 
   String get commentsLabel => commentCount == 1 ? '1 comment' : '${commentCount.toCommaString()} comments';
-  
+
 }

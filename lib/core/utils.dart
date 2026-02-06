@@ -1,6 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
@@ -187,12 +186,15 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
   final uri = Uri.tryParse(url);
   if (uri == null) return;
 
-  final host = uri.host;
+  var host = uri.host;
   if (host.isEmpty) return;
 
-  final path = uri.path.toLowerCase();
+  host = host.toLowerCase();
 
-  if (host == 'i.redd.it' || host.endsWith('.imgix.net') || path.endsWith('.jpg') || path.endsWith('.jpeg') || path.endsWith('.png') || path.endsWith('.gif') || path.endsWith('.webp')) {
+  final path = uri.path;
+  final pathLowerCase = path.toLowerCase();
+
+  if (host == 'i.redd.it' || host.endsWith('.imgix.net') || pathLowerCase.endsWith('.jpg') || pathLowerCase.endsWith('.jpeg') || pathLowerCase.endsWith('.png') || pathLowerCase.endsWith('.gif') || pathLowerCase.endsWith('.webp')) {
     return context.push(
       () => ImageViewerScreen(
         platform: platform,
@@ -202,7 +204,20 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
     );
   }
 
-  if (uri.host == 'v.redd.it' || path.endsWith('.mp4') || path.endsWith('.mov')) {
+  if (host == 'giphy.com' || host == 'www.giphy.com') {
+    final match = RegExp(r'gifs\/(?:.*-)?([a-zA-Z0-9]{5,})').firstMatch(url);
+    if (match != null) {
+      return context.push(
+        () => ImageViewerScreen(
+          platform: platform,
+          url: 'https://media.giphy.com/media/${match.group(1)}/giphy.webp',
+          post: post,
+        )
+      );
+    }
+  }
+
+  if (uri.host == 'v.redd.it' || pathLowerCase.endsWith('.mp4') || pathLowerCase.endsWith('.mov')) {
     return context.push(
       () => VideoViewerScreen(
         platform: platform,
@@ -215,7 +230,7 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
   final resolvedPlatform = Platform.forHost(host);
   if (resolvedPlatform != null) {
 
-    final communityName = resolvedPlatform.getCommunityName(path);
+    final communityName = resolvedPlatform.getCommunityNameFromPath(path);
     if (communityName != null) {
       return context.push(
         () => PostsScreen(
@@ -227,7 +242,7 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
       );
     }
 
-    final userName = resolvedPlatform.getUserName(path);
+    final userName = resolvedPlatform.getUserNameFromPath(path);
     if (userName != null) {
       return context.push(
         () => UserDetailsScreen(
@@ -237,11 +252,13 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
       );
     }
 
-    if (resolvedPlatform.isPostDetails(path)) {
+    final postUrlInfo = resolvedPlatform.getPostUrlInfoFromPath(path);
+    if (postUrlInfo != null) {
       return context.push(
         () => PostDetailsScreen.fromUrl(
           platform: resolvedPlatform,
-          url: url
+          url: url,
+          urlInfo: postUrlInfo,
         )
       );
     }
@@ -274,13 +291,7 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
       url: url,
     )
   );
-
-  // if (await launchUrl(uri, mode: LaunchMode.inAppBrowserView)) {
-  //   return true;
-  // }
-  // else if (context.mounted) {
-  //   ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text('Something went wrong')));
-  // }
+  
 }
 
 Future<void> showSimpleTextBottomSheet({

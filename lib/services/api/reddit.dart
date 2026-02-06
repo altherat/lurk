@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:developer' as dev;
 import 'dart:io' as io;
 import 'dart:math';
+import 'dart:ui';
 import 'package:flutter/foundation.dart';
 import 'package:html/parser.dart';
 import 'package:http/http.dart';
@@ -238,6 +239,7 @@ class RedditApi extends Api {
                 isSubmitter: authorElement?.classes.contains('submitter') ?? false,
                 score: scoreTitle == null ? null : int.tryParse(scoreTitle),
                 timestampMs: dateTimeString != null ? DateTime.parse(dateTimeString).millisecondsSinceEpoch : 0,
+                images: const {},
                 text: textHtml!.text,
                 textHtml: textHtml.innerHtml.trim(),
               )
@@ -768,6 +770,16 @@ class RedditApi extends Api {
 
   (bool?, Comment) _parseCommentFromJson(Map<String, dynamic> data, int depth) {
     final author = data['author'];
+    
+    final Map<String, Size> images = {};
+    final Map<String, dynamic>? mediaMetadata = data['media_metadata'];
+    if (mediaMetadata != null) {
+      for (var entry in mediaMetadata.values) {
+        final source = entry['s'];
+        images[((source['u'] ?? source['gif']) as String).replaceAll('&amp;', '&')] = Size((source['x'] as num).toDouble(), (source['y'] as num).toDouble());
+      }
+    }
+
     return (
       data['likes'],
       Comment(
@@ -785,11 +797,11 @@ class RedditApi extends Api {
         timestampMs: (data['created_utc'] as num).toInt() * 1000,
         text: data['body'],
         textHtml: (data['body_html'] as String).replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&'),
+        images: images,
         postTitle: data['link_title'],
         communityName: (data['subreddit'] as String).toLowerCase()
       )
     );
-  
   }
   
   LoggedInUser _parseLoggedInUser(String body) {

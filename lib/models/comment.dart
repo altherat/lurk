@@ -1,5 +1,7 @@
 
 
+import 'dart:ui';
+
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart' as utils;
 
@@ -28,6 +30,7 @@ class Comment extends CommentItem {
   final int timestampMs;
   final String? text;
   final String? textHtml;
+  final Map<String, Size> images;
 
   final String? postTitle;
   final String? communityName;
@@ -47,6 +50,7 @@ class Comment extends CommentItem {
     required this.timestampMs,
     required this.text,
     required this.textHtml,
+    required this.images,
     this.postTitle,
     this.communityName,
   });

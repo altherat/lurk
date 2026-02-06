@@ -7,7 +7,7 @@ import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/services/votes.dart';
 import 'package:lurk/widgets/collection_listenable_builder.dart';
-import 'package:lurk/widgets/html.dart';
+import 'package:lurk/widgets/custom_html.dart';
 
 class CommentTile extends StatelessWidget {
 
@@ -149,9 +149,10 @@ class CommentTile extends StatelessWidget {
           }
         ),
         if (!isCollapsed && htmlText != null)
-          Html(
+          CustomHtml(
             platform: comment.platform,
-            html: htmlText
+            html: htmlText,
+            imageSizes: comment.images,
           )
       ],
     );

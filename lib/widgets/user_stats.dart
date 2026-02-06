@@ -8,7 +8,7 @@ class UserStats extends StatelessWidget {
   final List<UserStat> stats;
   final EdgeInsetsGeometry? padding;
   final double valueFontSize;
-  final Color? valueColor;
+  final Color? color;
   final double labelFontSize;
 
   const UserStats({
@@ -16,7 +16,7 @@ class UserStats extends StatelessWidget {
     required this.stats,
     this.padding,
     this.valueFontSize = 18,
-    this.valueColor,
+    this.color,
     this.labelFontSize = 11,
   });
 
@@ -48,7 +48,7 @@ class UserStats extends StatelessWidget {
                   displayValue,
                   style: TextStyle(
                     fontSize: valueFontSize,
-                    color: valueColor,
+                    color: color,
                     fontWeight: FontWeight.bold
                   ),
                 ),
@@ -56,7 +56,7 @@ class UserStats extends StatelessWidget {
                   stat.label,
                   style: TextStyle(
                     fontSize: labelFontSize,
-                    color: Constants.secondaryTextColor,
+                    color: color?.withAlpha(Constants.secondaryTextColorAlpha)
                   ),
                 ),
               ],

@@ -17,7 +17,7 @@ class SimpleFeedScreen<T> extends StatefulWidget {
   final FeedOptionsGroup? feedOptions;
   final Future<PagedItems<T>>? initialItems;
   final Future<PagedItems<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) getItems;
-  final Widget title;
+  final Widget? title;
   final Widget? subtitle;
   final bool showFeedOptionsSubtitle;
   final Map<String, void Function()>? popupMenuActions;
@@ -142,8 +142,6 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
                   interactive: false,
                   child: CustomScrollView(
                     physics: const AlwaysScrollableScrollPhysics(),
-                    // controller: _scrollControllers[i],
-                    // primary: false,
                     slivers: [
                       SliverOverlapInjector(handle: overlapAbsorberHandle),
                       FeedList(

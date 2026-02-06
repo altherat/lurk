@@ -283,9 +283,11 @@ class _TextFieldState extends State<_TextField> {
   late final _controller = TextEditingController(text: widget.defaultValue ?? '');
   final _focusNode = FocusNode();
   late bool _showPrefix;
+  String? _lastSubmittedValue;
 
   @override void initState() {
     super.initState();
+    _lastSubmittedValue = widget.defaultValue;
     _focusNode.addListener(_onFocusChange);
     _showPrefix = widget.showPrefix?.call(false, _controller.text) ?? true;
   }
@@ -300,7 +302,9 @@ class _TextFieldState extends State<_TextField> {
 
   void _onFocusChange() {
     if (!_focusNode.hasFocus) {
-      widget.onSubmitted(_controller.text);
+      if (_controller.text != _lastSubmittedValue) {
+        _submit(_controller.text);
+      }
     }
     _updateShowPrefix();
   }
@@ -314,6 +318,11 @@ class _TextFieldState extends State<_TextField> {
         });
       }
     }
+  }
+
+  void _submit(String value) {
+    _lastSubmittedValue = value;
+    widget.onSubmitted(value);
   }
 
   @override
@@ -341,7 +350,7 @@ class _TextFieldState extends State<_TextField> {
         _updateShowPrefix();
         widget.onChanged?.call(value);
       },
-      onSubmitted: widget.onSubmitted,
+      onSubmitted: _submit
     );
   }
 
@@ -506,6 +515,7 @@ class _ColorSettingListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    debugPrint("TEST: ${setting.value}");
     return _TextSettingListTile(
       setting: setting,
       label: label,

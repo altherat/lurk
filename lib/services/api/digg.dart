@@ -1,5 +1,6 @@
 import 'dart:developer' as dev;
 import 'dart:io' as io;
+import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:graphql_flutter/graphql_flutter.dart' as gql;
@@ -22,6 +23,64 @@ class DiggApi extends Api {
     'Accept': 'application/graphql-response+json',
     'Content-Type': 'application/json',
   };
+
+  final postFragment = r'''
+    fragment PostFragment on Post {
+      _id
+      title
+      score
+      commentCount
+      createdDate
+      deletedDate
+      slug
+      type
+      nsfw
+      text
+      author {
+        _id
+        username
+      }
+      community {
+        slug
+      }
+      attachments {
+        __typename
+        ... on Image {
+          url
+        }
+      }
+      externalContent {
+        url
+        imageUrl
+      }
+    }
+  ''';
+  final commentFragment = r'''
+    fragment CommentFragment on Comment {
+      _id
+      text
+      score
+      createdDate
+      deletedDate
+      commentCount
+      author {
+        _id
+        username
+      }
+      pm,
+      attachments {
+        __typename
+        ... on Image {
+          url
+          width
+          height
+        }
+        ... on GiphyGIF {
+          id
+        }
+      }
+    }
+  ''';
 
   static const resultsLimit = 30;
 
@@ -100,33 +159,7 @@ class DiggApi extends Api {
           posts(first: 1, where: $postWhere) {
             edges {
               node {
-                _id
-                title
-                score
-                commentCount
-                createdDate
-                deletedDate
-                slug
-                type
-                nsfw
-                text
-                author {
-                  _id
-                  username
-                }
-                community {
-                  slug
-                }
-                attachments {
-                  __typename
-                  ... on Image {
-                    url
-                  }
-                }
-                externalContent {
-                  url
-                  imageUrl
-                }
+                ...PostFragment
               }
             }
           }
@@ -155,31 +188,10 @@ class DiggApi extends Api {
             }
           }
         }
-
-        fragment CommentFragment on Comment {
-          _id
-          text
-          score
-          createdDate
-          deletedDate
-          commentCount
-          author {
-            _id,
-            username
-          }
-          pm,
-          attachments {
-            __typename
-            ... on Image {
-              url
-            }
-            ... on GiphyGIF {
-              id
-            }
-          }
-        }
-
-      '''),
+        '''
+        + postFragment
+        + commentFragment
+      ),
       variables: {
         'first': 20,
         'postWhere': {
@@ -238,33 +250,10 @@ class DiggApi extends Api {
             }
           }
         }
-
-        fragment CommentFragment on Comment {
-          _id
-          text
-          score
-          createdDate
-          deletedDate
-          commentCount
-          author {
-            _id,
-            username
-          }
-          pm
-          attachments {
-            __typename
-            ... on Image {
-              url
-            }
-            ... on GiphyGIF {
-              id
-            }
-          }
-        }
-
-      '''),
+        '''
+        + commentFragment
+      ),
       variables: {
-        'parentId': id,
         'first': 20,
         'postWhere': {
           '_id_EQ': id, 
@@ -326,33 +315,7 @@ class DiggApi extends Api {
               posts(first: $first, where: $where, sort: $sort) {
                 edges {
                   node {
-                    _id
-                    title
-                    score
-                    upvoteCount
-                    commentCount
-                    createdDate
-                    deletedDate
-                    slug
-                    type
-                    nsfw
-                    text
-                    author {
-                      username
-                    }
-                    community {
-                      slug
-                    }
-                    externalContent {
-                      url
-                      imageUrl
-                    }
-                    attachments {
-                      __typename
-                      ... on Image {
-                        url
-                      }
-                    }
+                    ...PostFragment
                   }
                 }
                 pageInfo {
@@ -362,7 +325,9 @@ class DiggApi extends Api {
               }
 
             }
-          '''),
+            '''
+            + postFragment
+          ),
           variables: {
             'first': resultsLimit,
             'username': id,
@@ -403,29 +368,11 @@ class DiggApi extends Api {
               comments(first: $first, where: $where, sort: $sort) {
                 edges {
                   node {
-                    _id
-                    text
-                    score
-                    createdDate
-                    deletedDate
-                    commentCount
-                    author {
-                      username
-                    }
+                    ...CommentFragment
                     post {
                       title
                       community {
                         slug
-                      }
-                    }
-                    pm
-                    attachments {
-                      __typename
-                      ... on Image {
-                        url
-                      }
-                      ... on GiphyGIF {
-                        id
                       }
                     }
                   }
@@ -436,7 +383,9 @@ class DiggApi extends Api {
                 }
               }
             }
-          '''),
+            '''
+            + commentFragment
+          ),
           variables: {
             'first': resultsLimit,
             'username': id,
@@ -481,33 +430,7 @@ class DiggApi extends Api {
               posts(first: $first, where: $where, sort: $sort, after: $after) {
                 edges {
                   node {
-                    _id
-                    title
-                    score
-                    upvoteCount
-                    commentCount
-                    createdDate
-                    deletedDate
-                    slug
-                    type
-                    nsfw
-                    text
-                    author {
-                      username
-                    }
-                    community {
-                      slug
-                    }
-                    externalContent {
-                      url
-                      imageUrl
-                    }
-                    attachments {
-                      __typename
-                      ... on Image {
-                        url
-                      }
-                    }
+                    ...PostFragment
                   }
                 }
                 pageInfo {
@@ -517,7 +440,9 @@ class DiggApi extends Api {
               }
 
             }
-          '''),
+            '''
+            + postFragment
+          ),
           variables: {
             'first': resultsLimit,
             'username': id,
@@ -542,29 +467,11 @@ class DiggApi extends Api {
               comments(first: $first, where: $where, sort: $sort, after: $after) {
                 edges {
                   node {
-                    _id
-                    text
-                    score
-                    createdDate
-                    deletedDate
-                    commentCount
-                    author {
-                      username
-                    }
+                    ...CommentFragment
                     post {
                       title
                       community {
                         slug
-                      }
-                    }
-                    pm
-                    attachments {
-                      __typename
-                      ... on Image {
-                        url
-                      }
-                      ... on GiphyGIF {
-                        id
                       }
                     }
                   }
@@ -575,7 +482,9 @@ class DiggApi extends Api {
                 }
               }
             }
-          '''),
+            '''
+            + commentFragment
+          ),
           variables: {
             'first': resultsLimit,
             'where': {
@@ -636,7 +545,8 @@ class DiggApi extends Api {
               }
             }
           }
-        '''),
+          '''
+        ),
         variables: {
           'first': resultsLimit,
           'where': {'query': query},
@@ -684,7 +594,8 @@ class DiggApi extends Api {
               }
             }
           }
-        '''),
+          '''
+        ),
         variables: {
           'first': resultsLimit,
           'where': {'username_CONTAINS': query},
@@ -729,33 +640,7 @@ class DiggApi extends Api {
             posts(first: $first, after: $after, where: $where, sort: $sort) {
               edges {
                 node {
-                  _id
-                  title
-                  score
-                  upvoteCount
-                  commentCount
-                  createdDate
-                  deletedDate
-                  slug
-                  type
-                  nsfw
-                  text
-                  author {
-                    username
-                  }
-                  community {
-                    slug
-                  }
-                  externalContent {
-                    url
-                    imageUrl
-                  }
-                  attachments {
-                    __typename
-                    ... on Image {
-                      url
-                    }
-                  }
+                  ...PostFragment
                 }
               }
               pageInfo {
@@ -764,7 +649,9 @@ class DiggApi extends Api {
               }
             }
           }
-        '''),
+          '''
+          + postFragment
+        ),
         variables: {
           'first': resultsLimit,
           'where': {
@@ -833,33 +720,7 @@ class DiggApi extends Api {
           posts(first: $first, where: $where, sort: $sort, after: $after) {
             edges {
               node {
-                _id
-                title
-                score
-                upvoteCount
-                commentCount
-                createdDate
-                deletedDate
-                slug
-                type
-                nsfw
-                text
-                author {
-                  username
-                }
-                community {
-                  slug
-                }
-                externalContent {
-                  url
-                  imageUrl
-                }
-                attachments {
-                  __typename
-                  ... on Image {
-                    url
-                  }
-                }
+                ...PostFragment
               }
             }
             pageInfo {
@@ -869,7 +730,9 @@ class DiggApi extends Api {
           }
 
         }
-      '''),
+        '''
+        + postFragment
+      ),
       variables: variables
     );
     final response = await _client.query(queryOptions);
@@ -1089,10 +952,13 @@ class DiggApi extends Api {
       communityName = null;
     }
 
+    final Map<String, Size> images = {};
     final String html = ((pm != null ? _parsePmToHtml(pm) : text) ?? '') + attachments.map((a) {
       switch (a['__typename']) {
         case 'Image':
-          return '<img src="${a['url']}">';
+          final url = a['url'];
+          images[url] = Size((a['width'] as num).toDouble(), (a['height'] as num).toDouble());
+          return '<img src="$url">';
         case 'GiphyGIF':
           return '<img src="https://media.giphy.com/media/${a['id']}/giphy.gif">';
       }
@@ -1115,11 +981,13 @@ class DiggApi extends Api {
       timestampMs: DateTime.parse(data['createdDate']).millisecondsSinceEpoch,
       text: text,
       textHtml: html.isEmpty ? null : html,
+      images: images,
       postTitle: postTitle,
       communityName: communityName,
     );
   }
 
+  // ProseMirror
   static String _parsePmToHtml(Map<String, dynamic> pm) {
     final html = StringBuffer();
     for (var block in pm['content']) {
@@ -1128,15 +996,30 @@ class DiggApi extends Api {
           if (paragraph['type'] == 'paragraph') {
             html.write('<p>');
             for (var node in paragraph['content']) {
-              if (node['type'] == 'text') {
+              final type = node['type'];
+              if (type == 'text') {
                 final String nodeText = node['text'];
-                var linkMark = (node['marks'] as List).firstWhere(
-                  (m) => m['type'] == 'link', 
-                  orElse: () => null
-                );
-                html.write(linkMark != null ? '<a href="${linkMark['attrs']['href']}">$nodeText</a>' : nodeText);
+                final List marks = node['marks'] ?? [];
+                var linkMark = marks.firstWhere((m) => m['type'] == 'link', orElse: () => null);
+
+                if (linkMark != null) {
+                  html.write('<a href="${linkMark['attrs']['href']}">$nodeText</a>');
+                } else {
+                  html.write(nodeText);
+                }
+              } 
+              else if (type == 'mention') {
+                final attrs = node['attrs'];
+                final String label = '${attrs['mentionSuggestionChar']}${attrs['label']}';
+                final String type = attrs['type'];
+                if (type == 'account') {
+                  html.write('<a href="/$label" class="mention">$label</a>');
+                }
+                else if (type == 'community') {
+                  html.write('<a href="/$label" class="mention">$label</a>');
+                }
               }
-              else if (node['type'] == 'hardBreak') {
+              else if (type == 'hardBreak') {
                 html.write('<br/>');
               }
             }

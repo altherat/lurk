@@ -8,15 +8,13 @@ import 'package:lurk/models/post_details.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/services/history.dart';
-import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
-import 'package:lurk/widgets/feed_list.dart';
-import 'package:lurk/widgets/feed_option_selector.dart';
-import 'package:lurk/widgets/html.dart';
+import 'package:lurk/widgets/custom_html.dart';
 import 'package:lurk/widgets/icon_message.dart';
-import 'package:lurk/widgets/main_scaffold.dart';
 import 'package:lurk/widgets/post_tile.dart';
+
+// const _collapseAnimationDuration = Duration(milliseconds: 2000);
 
 class PostDetailsScreen extends StatefulWidget {
 
@@ -24,11 +22,16 @@ class PostDetailsScreen extends StatefulWidget {
   final String url;
   final Post? post;
 
+  final String? inferredTitle;
+  final String? inferredSubtitle;
+
   const PostDetailsScreen._({
     super.key,
     required this.platform,
     required this.url,
     this.post,
+    this.inferredTitle,
+    this.inferredSubtitle,
   });
 
   factory PostDetailsScreen.fromPost({
@@ -46,12 +49,25 @@ class PostDetailsScreen extends StatefulWidget {
   factory PostDetailsScreen.fromUrl({
     Key? key,
     required Platform platform,
-    required String url
+    required String url,
+    required PostUrlInfo? urlInfo,
   }) {
+    final String? title;
+    final String? subtitle;
+    if (urlInfo == null) {
+      title = null;
+      subtitle = url;
+    }
+    else  {
+      title = urlInfo.inferredTitle ?? url;
+      subtitle = platform.getPrefixedCommunityName(urlInfo.communityName);
+    }
     return PostDetailsScreen._(
       key: key,
       platform: platform,
       url: url,
+      inferredTitle: title,
+      inferredSubtitle: subtitle
     );
   }
 
@@ -96,6 +112,9 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
     }
     _allComments = postDetails.comments.toList();
     _contextCommentShortId = postDetails.contextCommentShortId;
+    if (mounted) {
+      setState(() {});
+    }
     History.postDetails.add(_post!.id);
     return PagedItems(items: postDetails.comments);
   }
@@ -118,11 +137,13 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
 
   @override
   Widget build(BuildContext context) {
-    final String title;
+    final Widget? title;
+    final Widget subtitle;
     final Map<String, VoidCallback>? popupMenuActions;
     final List<Widget>? slivers;
     if (_post != null) {
-      title = _post!.title;
+      title = Text(_post!.title);
+      subtitle = Text(_post!.community.prefixedName);
       popupMenuActions = {
         'View in browser': () => openInBrowser(widget.url),
         'View comments in browser': () => openInBrowser(_post!.community.platform.api.getPostDetailsUrl(_post!)),
@@ -143,15 +164,8 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
                 )
               ),
               if (_post!.textHtml != null)
-                Container(
-                  margin: const EdgeInsets.all(8),
-                  padding: const EdgeInsets.all(8),
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Constants.postTextHtmlBorderColor),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Html(
+                _TextContent(
+                  child: CustomHtml(
                     platform: _post!.community.platform,
                     html: _post!.textHtml!
                   )
@@ -211,7 +225,8 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
       ];
     }
     else {
-      title = widget.url;
+      title = widget.inferredTitle != null ? Text(widget.inferredTitle!) : null;
+      subtitle = Text(widget.inferredSubtitle != null ? widget.inferredSubtitle! : widget.url);
       popupMenuActions = const {};
       slivers = [];
     }
@@ -221,8 +236,8 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
       feedOptions: widget.platform.postCommentsFeedOptions,
       initialItems: _initialItemsFuture,
       getItems: _getItems,
-      title: Text(title),
-      subtitle: _post != null ? Text(_post!.community.prefixedName) : null,
+      title: title,
+      subtitle: subtitle,
       showFeedOptionsSubtitle: false,
       popupMenuActions: popupMenuActions,
       slivers: slivers,
@@ -253,30 +268,54 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
                 }
             },
             onTap: () async {
-              if (isCollapsed) {
-                _collapsedCommentIds.remove(item.id);
-              }
-              else {
-                _collapsedCommentIds.add(item.id);
-              }
-              _simpleFeedScreenKey.currentState?.feedList?.updateItems((items) {
-                items.clear();
-                int? currentCollapsedDepth;
-                for (var comment in _allComments) {
-                  if (currentCollapsedDepth != null) {
-                    if (comment.depth > currentCollapsedDepth) {
-                      continue; 
-                    }
-                    else {
-                      currentCollapsedDepth = null;
-                    }
-                  }
-                  items.add(comment);
-                  if (comment is Comment && _collapsedCommentIds.contains(comment.id)) {
-                    currentCollapsedDepth = comment.depth;
-                  }
+                if (isCollapsed) {
+                  _collapsedCommentIds.remove(item.id);
                 }
-              });
+                else {
+                  _collapsedCommentIds.add(item.id);
+                }
+                _simpleFeedScreenKey.currentState?.feedList?.updateItems((items) {
+                  items.clear();
+                  int? currentCollapsedDepth;
+                  for (var comment in _allComments) {
+                    if (currentCollapsedDepth != null) {
+                      if (comment.depth > currentCollapsedDepth) {
+                        continue; 
+                      }
+                      else {
+                        currentCollapsedDepth = null;
+                      }
+                    }
+                    items.add(comment);
+                    if (comment is Comment && _collapsedCommentIds.contains(comment.id)) {
+                      currentCollapsedDepth = comment.depth;
+                    }
+                  }
+                });
+
+            //   final listState = _simpleFeedScreenKey.currentState!.feedList!;
+            //   final visibleComments = listState.items;
+            //   final parentIndex = visibleComments.indexOf(item);
+            //   final List<CommentItem> itemsToRemove = [];
+            //   for (int i = parentIndex + 1; i < visibleComments.length; i++) {
+            //     final current = visibleComments[i];
+            //     if (current.depth <= item.depth) {
+            //       break; 
+            //     }
+            //     itemsToRemove.add(current);
+            //   }
+            //   if (itemsToRemove.isEmpty) {
+            //     setState(() => _collapsedCommentIds.add(item.id));
+            //     return;
+            //   }
+            //   final collapsingItem = _CollapsingCommentBlockItem(children: itemsToRemove);
+            //   listState.updateItems((items) {
+            //     // _collapsedCommentIds.add(item.id);
+            //     visibleComments.removeWhere((c) => itemsToRemove.contains(c));
+            //     visibleComments.insert(parentIndex + 1, collapsingItem);
+            //   });
+            // },
+
             },
             onDelete: () => _simpleFeedScreenKey.currentState?.feedList?.updateItems((items) => items.removeAt(index))
           );
@@ -300,6 +339,46 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
             },
           );
         }
+        // if (item is _CollapsingCommentBlockItem) {
+        //   return TweenAnimationBuilder(
+        //     duration: _collapseAnimationDuration,
+        //     curve: Curves.easeInOutCubicEmphasized,
+        //     tween: Tween(begin: 1.0, end: 0.0),
+        //     onEnd: () {
+        //       debugPrint('end');
+        //       _simpleFeedScreenKey.currentState!.feedList!.updateItems((items) => items.remove(item));
+        //     },
+        //     builder: (context, value, child) {
+        //       return ClipRect(
+        //         child: Align(
+        //           alignment: Alignment.topCenter,
+        //           heightFactor: value,
+        //           child: child,
+        //         ),
+        //       );
+        //     },
+        //     child: Column(
+        //       crossAxisAlignment: CrossAxisAlignment.stretch,
+        //       children: item.children.map((item) {
+        //         if (item is Comment) {
+        //           return CommentTile(
+        //             padding: EdgeInsets.only(top: index == 0 ? 0 : 8, bottom: 4),
+        //             comment: item,
+        //             depth: item.depth,
+        //             isInteractable: false,
+        //           );
+        //         }
+        //         if (item is LoadMoreComment) {
+        //           return _LoadMoreComments(
+        //             platform: _post!.community.platform,
+        //             comment: item,
+        //           );
+        //         }
+        //         return SizedBox.shrink();
+        //       }).toList(),
+        //     )
+        //   );
+        // }
         return const SizedBox.shrink();
       },
     );
@@ -307,17 +386,153 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
 
 }
 
+class _TextContent extends StatefulWidget {
+
+  final Widget child;
+
+  const _TextContent({
+    super.key,
+    required this.child,
+  });
+
+  @override
+  State<_TextContent> createState() => _TextContentState();
+
+}
+
+class _TextContentState extends State<_TextContent> {
+
+  bool _isExpanded = false;
+  bool _showFadingEdge = false;
+  late ScrollController _scrollController;
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController = ScrollController();
+    _scrollController.addListener(_updateFade);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _updateFade());
+  }
+
+  void _updateFade() {
+    if (!_scrollController.hasClients) return;
+    final showFadingEdge = _scrollController.position.maxScrollExtent > 0 && _scrollController.position.pixels < _scrollController.position.maxScrollExtent - 10;
+    if (_showFadingEdge != showFadingEdge) {
+      setState(() => _showFadingEdge = showFadingEdge);
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final availableHeight = MediaQuery.of(context).size.height;
+    final backgroundColor = Theme.of(context).colorScheme.surface;
+    return AnimatedContainer(
+      duration: Constants.postTextContentExpansionAnimationDuration,
+      curve: Curves.easeInOutCubicEmphasized,
+      width: double.infinity,
+      margin: const EdgeInsets.all(8),
+      constraints: BoxConstraints(
+        maxHeight: _isExpanded ? availableHeight * 0.5 : availableHeight * 0.25
+      ),
+      decoration: BoxDecoration(
+        border: Border.all(color: Constants.postTextHtmlBorderColor),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: InkWell(
+        onTap: () => setState(() => _isExpanded = !_isExpanded),
+        child: RawScrollbar(
+          controller: _scrollController,
+          padding: EdgeInsets.zero,
+          radius: const Radius.circular(8),
+          child: ShaderMask(
+            shaderCallback: (Rect rect) {
+              return LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [backgroundColor, Colors.transparent],
+                stops: [_showFadingEdge ? 0.75 : 1, 1],
+              ).createShader(rect);
+            },
+            blendMode: BlendMode.dstIn,
+            child: SingleChildScrollView(
+              controller: _scrollController,
+              padding: const EdgeInsets.all(8),
+              child: widget.child
+            ),
+          ),
+        )
+      )
+    );
+  }
+
+  // I give up - just using a scroll view
+  // @override
+  // Widget build(BuildContext context) {
+  //   final availableHeight = MediaQuery.of(context).size.height;
+  //   return Container(
+  //     width: double.infinity,
+  //     margin: const EdgeInsets.all(8),
+  //     decoration: BoxDecoration(
+  //       border: Border.all(color: Constants.postTextHtmlBorderColor),
+  //       borderRadius: BorderRadius.circular(4),
+  //     ),
+  //     child: InkWell(
+  //       onTap: () => setState(() => _isExpanded = !_isExpanded),
+  //       child: Padding(
+  //         padding: const EdgeInsets.all(8),
+  //         child: ClipRect(
+  //           child: AnimatedSize(
+  //             alignment: Alignment.topLeft,
+  //             duration: Constants.postTextContentExpansionAnimationDuration,
+  //             curve: Curves.easeInOutCubicEmphasized,
+  //             child: ConstrainedBox(
+  //               constraints: BoxConstraints(
+  //                 maxHeight: _isExpanded ? double.infinity : availableHeight * 0.25,
+  //               ),
+  //               child: ShaderMask(
+  //                 shaderCallback: (Rect bounds) {
+  //                   if (_isExpanded) return const LinearGradient(colors: [Colors.white, Colors.white]).createShader(bounds);
+  //                   return LinearGradient(
+  //                     begin: Alignment.topCenter,
+  //                     end: Alignment.bottomCenter,
+  //                     colors: [Colors.white, Colors.transparent],
+  //                     stops: [0.8, 1.0],
+  //                   ).createShader(bounds);
+  //                 },
+  //                 blendMode: BlendMode.dstIn,
+  //                 child: UnconstrainedBox(
+  //                   constrainedAxis: Axis.horizontal,
+  //                   alignment: Alignment.topCenter,
+  //                   child: widget.child
+  //                 ),
+  //               )
+  //             )
+  //           ),
+  //         ),
+  //       ),
+  //     )
+  //   );
+  // }
+
+}
+
 class _LoadMoreComments extends StatefulWidget {
 
   final Platform platform;
   final LoadMoreComment comment;
-  final Future Function() onLoadMoreComments;
+  final Future Function()? onLoadMoreComments;
 
   const _LoadMoreComments({
     super.key,
     required this.platform,
     required this.comment,
-    required this.onLoadMoreComments,
+    this.onLoadMoreComments,
   });
 
   @override
@@ -335,27 +550,22 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
     final Widget child;
     if (_isLoading) {
       onTap = null;
-      child = Align(
+      child = CustomCircularProgressIndicator(
+        platform: widget.platform,
+        padding: EdgeInsets.symmetric(vertical: 8),
         alignment: Alignment.topLeft,
-        child: Padding(
-          padding: EdgeInsets.symmetric(vertical: 8),
-          child: SizedBox(
-            height: 20,
-            width: 20,
-            child: PlatformCircularProgressIndicator(
-              platform: widget.platform,
-              strokeWidth: 2.5
-            ),
-          ),
-        ),
+        size: 20,
+        strokeWidth: 2.5
       );
     }
     else {
-      onTap = () async {
-        setState(() => _isLoading = true);
-        await widget.onLoadMoreComments();
-        setState(() => _isLoading = false);
-      };
+      onTap = widget.onLoadMoreComments != null
+        ? () async {
+            setState(() => _isLoading = true);
+            await widget.onLoadMoreComments!();
+            setState(() => _isLoading = false);
+          }
+        : null;
       child = Padding(
         padding: const EdgeInsets.symmetric(vertical: 8),
         child: Text(
@@ -482,3 +692,13 @@ class _AddCommentBottomSheetContentState extends State<_AddCommentBottomSheetCon
   }
 
 }
+
+// class _CollapsingCommentBlockItem extends CommentItem {
+
+//   final List<CommentItem> children;
+
+//   _CollapsingCommentBlockItem({
+//     required this.children
+//   })  : super(depth: 0);
+
+// }

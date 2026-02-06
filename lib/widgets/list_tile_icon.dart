@@ -36,15 +36,11 @@ class ListTileIcon extends StatelessWidget {
       loadStateChanged: (state) {
         switch (state.extendedImageLoadState) {
           case LoadState.loading:
-            return Center(
-              child: SizedBox(
-                width: 24,
-                height: 24,
-                child: PlatformCircularProgressIndicator(
-                  platform: platform,
-                  strokeWidth: 2.5
-                ),
-              ),
+            return CustomCircularProgressIndicator(
+              platform: platform,
+              alignment: Alignment.center,
+              size: 24,
+              strokeWidth: 2.5
             );
           case LoadState.completed:
             return null;

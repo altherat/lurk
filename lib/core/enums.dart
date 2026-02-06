@@ -19,7 +19,7 @@ enum Platform {
     userPrefix: 'u/',
     communityPath: r'^\/r\/([^\/]+)\/?$',
     userPath: r'^\/(?:u|user)\/([^\/]+)\/?$',
-    postPath: r'^\/r\/([^\/]+)\/comments\/([^\/]+)',
+    postPath: r'^\/r\/([^\/]+)\/comments\/[^\/]+(?:\/([^\/]+))?\/?$',
     galleryPath: r'^\/gallery\/([^\/]+)\/?$',
     unresolvedPath: r'^\/r\/[^\/]+\/s\/[^\/]+\/?$',
     communityNameAllowedChars: '_',
@@ -89,9 +89,9 @@ enum Platform {
     aggregateCommunityNames: {},
     canSearchWithinCommunities: false,
     userPrefix: '@',
-    communityPath: r'^\/(?!d\/)([^\/]+)\/?$',
+    communityPath: r'^\/(?![d@]\/|@)([^\/]+)\/?$',
     userPath: r'^\/@([^\/]+)\/?$',
-    postPath: r'^\/(?!d\/)([^\/]+)\/([^\/]+)',
+    postPath: r'^\/(?!d\/)([^\/]+)\/[^\/]+(?:\/([^\/]+))?\/?$',
     communityNameAllowedChars: '-',
     userNameAllowedChars: '_-',
     communityNameValidation: r'^$|^(?=.{3,24}$)[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?$',
@@ -224,11 +224,21 @@ enum Platform {
 
   static Platform? forUrl(String url) => forHost(Uri.parse(url).host);
 
-  String? getCommunityName(String urlPath) => RegExp(communityPath).firstMatch(urlPath)?.group(1);
+  String? getCommunityNameFromPath(String urlPath) => RegExp(communityPath).firstMatch(urlPath)?.group(1);
   
-  String? getUserName(String urlPath) => RegExp(userPath).firstMatch(urlPath)?.group(1);
+  String? getUserNameFromPath(String urlPath) => RegExp(userPath).firstMatch(urlPath)?.group(1);
 
-  bool isPostDetails(String urlPath) => RegExp(postPath).hasMatch(urlPath);
+  PostUrlInfo? getPostUrlInfoFromPath(String urlPath) {
+    final match = RegExp(postPath).firstMatch(urlPath);
+    if (match != null && match.groupCount >= 1) {
+      final titleSlug = match.group(2);
+      return PostUrlInfo(
+        communityName: match.group(1)!.toLowerCase(),
+        inferredTitle: titleSlug != null ? titleSlug[0].toUpperCase() + titleSlug.substring(1).replaceAll(RegExp(r'[_-]+'), ' ') : null 
+      );
+    }
+    return null;
+  }
 
   bool isGallery(String urlPath) => galleryPath != null && RegExp(galleryPath!).hasMatch(urlPath);
 
@@ -385,5 +395,17 @@ class _NameInputFormatter extends TextInputFormatter {
     }
     return text.isNotEmpty && RegExp('[${RegExp.escape(allowedChars)}]').hasMatch(text[0]) ? oldValue : newValue;
   }
+
+}
+
+class PostUrlInfo {
+
+  final String communityName;
+  final String? inferredTitle;
+
+  PostUrlInfo({
+    required this.communityName,
+    required this.inferredTitle
+  });
 
 }

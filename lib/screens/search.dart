@@ -40,7 +40,7 @@ class SearchScreen extends StatelessWidget {
     }
     else {
       feedOptions = platform.searchFeedOptions;
-      title = Text('"query"');
+      title = Text('"$query"');
     }
     return SimpleFeedScreen(
       platform: platform,
@@ -114,7 +114,7 @@ class SearchScreen extends StatelessWidget {
             subtitle = UserStats(
               stats: item.stats!,
               valueFontSize: 13,
-              valueColor: Theme.of(context).colorScheme.onSurfaceVariant,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
               labelFontSize: 10,
             );
           }

@@ -77,15 +77,11 @@ class _SnackBarProgressContentState extends State<SnackBarProgressContent> {
       message = widget.completeMessage;
     }
     else {
-      prefix = Center(
-        child: SizedBox(
-          width: 24,
-          height: 24,
-          child: PlatformCircularProgressIndicator(
-            platform: widget.platform,
-            strokeWidth: 3,
-          ),
-        ),
+      prefix = CustomCircularProgressIndicator(
+        platform: widget.platform,
+        alignment: Alignment.center,
+        size: 24,
+        strokeWidth: 3,
       );
       message = widget.progressMessage;
     }

@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
@@ -10,10 +8,12 @@ import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/screens/simple_feed.dart';
+import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
+import 'package:lurk/widgets/prefixed_name.dart';
 import 'package:lurk/widgets/user_stats.dart';
 
 class UserDetailsScreen extends StatefulWidget {
@@ -52,22 +52,9 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
       feedOptions: widget.platform.userFeedOptions,
       initialItems: _initialItemsFuture,
       getItems: (options, pageToken) => widget.platform.api.getUserItems(widget.username, options: options, pageToken: pageToken),
-      title: Builder(
-        builder: (context) {
-          final parentColor = DefaultTextStyle.of(context).style.color;
-          final parentAlpha = (parentColor!.a * 255).toInt();
-          return Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: widget.platform.userPrefix,
-                  style: TextStyle(color: parentColor.withAlpha(min(parentAlpha, Constants.namePrefixAlpha)))
-                ),
-                TextSpan(text: widget.username),
-              ],
-            ),
-          );
-        }
+      title: PrefixedName(
+        prefix: widget.platform.userPrefix,
+        name: widget.username,
       ),
       flexibleSpaceHeader: PreferredSize(
         preferredSize: Size.fromHeight(80),
@@ -91,9 +78,15 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
               );
             }
             if (snapshot.hasData) {
-              return UserStats(
-                stats: snapshot.data!,
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+              return ValueListenableBuilder(
+                valueListenable: Settings.appBarColor,
+                builder: (context, appBarColor, child) {
+                  return UserStats(
+                    stats: snapshot.data!,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                    color: appBarColor.contrast,
+                  );
+                }
               );
             }
             return const SizedBox.shrink();
@@ -122,7 +115,8 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                 context.push(() {
                   return PostDetailsScreen.fromUrl(
                     platform: widget.platform,
-                    url: widget.platform.api.getCommentUrl(item)
+                    url: widget.platform.api.getCommentUrl(item),
+                    urlInfo:widget.platform.getPostUrlInfoFromPath(item.permalink)
                   );
                 });
               }

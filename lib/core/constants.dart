@@ -6,8 +6,10 @@ class Constants {
   static const screenTransitionDuration = Duration(milliseconds: 250);
   static const reverseScreenTransitionDuration = Duration(milliseconds: 100);
   static const feedLoadAnimationDuration = Duration(milliseconds: 500);
+  static const postTextContentExpansionAnimationDuration = Duration(milliseconds: 400);
   static const thumbnailSize = 70.0;
   static const scrimAlpha = 125;
+  static const secondaryTextColorAlpha = 179;
   static const appBarSubtitleAlpha = 175;
   static const namePrefixAlpha = 125;
   static const refreshIndicatorDisplacement = 15.0;

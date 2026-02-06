@@ -1,6 +1,7 @@
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/screens/image_gallery_viewer.dart';
 import 'package:lurk/screens/post_details.dart';
@@ -14,7 +15,7 @@ import 'package:lurk/services/votes.dart';
 import 'package:lurk/widgets/collection_listenable_builder.dart';
 
 const _voteWidth = 45.0;
-const _voteArrowHeight = 30.0;
+const _voteHeight = 70.0;
 
 class PostTile extends StatelessWidget {
 
@@ -93,7 +94,7 @@ class PostTile extends StatelessWidget {
         children: [
           SizedBox(
             width: _voteWidth,
-            height: _voteArrowHeight * 2,
+            height: _voteHeight,
             child: ValueListenableBuilder(
               valueListenable: Settings.activeUser,
               builder: (context, activeUser, child) {
@@ -317,16 +318,16 @@ class _VoteArrow extends StatelessWidget {
       arrowColor = Constants.secondaryTextColor;
     }
     return SizedBox(
-      height: _voteArrowHeight,
+      height: _voteHeight / 2,
       child: InkResponse(
         radius: 10,
         splashColor: splashColor.withAlpha(150),
         onTap: onPressed,
         child: Container(
           alignment: alignment,
-          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+          padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           child: AnimatedScale(
-            scale: isActive ? 1.2 : 1.0, 
+            scale: isActive ? 1.2 : 1, 
             duration: const Duration(milliseconds: 150),
             curve: Curves.easeInOutCubicEmphasized,
             child: Image.asset(
