@@ -937,7 +937,7 @@ class _CommunityListState extends State<_CommunityList> {
     return ValueListenableBuilder(
       valueListenable: Settings.activeUser,
       builder: (context, activeUser, child) {
-        final showRootPage = activeUser?.platform.api.hasLogin ?? false;
+        final showRootPage = _searchQuery.isEmpty && activeUser?.platform.api.hasLogin == true;
         final headerCount = showRootPage ? 2 : 1;
         return ValueListenableBuilder(
           valueListenable: Settings.showPlatformColorAccents,
@@ -1080,6 +1080,24 @@ class _CommunityListState extends State<_CommunityList> {
                         setState(() {
                           _searchQuery = cleanValue;
                           _updateVisibleCommunities();
+                          if (cleanValue.isEmpty) {
+                            _sortVisibleCommunities();
+                          }
+                          else {
+                            _visibleCommunities.sort((c1, c2) {
+                              if (c1.isFavorite != c2.isFavorite) {
+                                return c1.isFavorite ? -1 : 1;
+                              }
+                              final name1 = (c1.name ?? '').toLowerCase();
+                              final name2 = (c2.name ?? '').toLowerCase();
+                              final startsWith1 = name1.startsWith(cleanValue);
+                              final startsWith2 = name2.startsWith(cleanValue);
+                              if (startsWith1 != startsWith2) {
+                                return startsWith1 ? -1 : 1;
+                              }
+                              return (c1.name ?? '').compareTo((c2.name ?? ''));
+                            });
+                          }
                           _updateIsSearchValid();
                         });
                       }

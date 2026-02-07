@@ -1004,7 +1004,6 @@ class DiggApi extends Api {
                 }
               } 
               else if (type == 'mention') {
-                debugPrint("here: $node");
                 final attrs = node['attrs'];
                 final String label = '${attrs['mentionSuggestionChar']}${attrs['label']}';
                 final String type = attrs['type'];

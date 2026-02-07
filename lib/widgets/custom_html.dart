@@ -139,7 +139,6 @@ class CustomHtml extends StatelessWidget {
             return null;
           },
           onTapUrl: (url) {
-            debugPrint('onTapUrl: $url');
 
             final communityName = platform.getCommunityNameFromPath(url);
             if (communityName != null) {

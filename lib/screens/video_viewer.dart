@@ -140,7 +140,6 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    _isInitialized = false;
     return MediaScaffold(
       platform: widget.platform,
       url: widget.url,
