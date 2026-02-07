@@ -270,6 +270,7 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
                                                           child: _CommunityList(
                                                             platform: widget.platform,
                                                             activeCommunityName: widget.activeCommunityName,
+                                                            reverse: Settings.reverseCommunityList.value,
                                                             scaffoldKey: _scaffoldKey,
                                                             onActiveCommunitySelected: _scrollToTopAndRefresh
                                                           )
@@ -306,6 +307,57 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
         }
         else {
           final theme = Theme.of(context);
+          final reverse = Settings.reverseCommunityList.value;
+          final divider = const Divider(height: 1, color: Constants.lighterBackgroundColor);
+          final communityList = Expanded(
+            child: _CommunityList(
+              platform: widget.platform,
+              activeCommunityName: widget.activeCommunityName,
+              reverse: reverse,
+              scaffoldKey: _scaffoldKey,
+              onActiveCommunitySelected: _scrollToTopAndRefresh
+            )
+          );
+          final userList = ValueListenableBuilder(
+            valueListenable: Settings.loggedInUsers,
+            builder: (context, loggedInUsers, child) {
+              if (loggedInUsers.isEmpty) {
+                if (widget.platform.api.hasLogin) {
+                  return ValueListenableBuilder(
+                    valueListenable: Settings.redditClientId,
+                    builder: (context, redditClientId, child) {
+                      return ValueListenableBuilder(
+                        valueListenable: Settings.redditRedirectUri,
+                        builder: (context, redditRedirectUri, child) {
+                          if (redditClientId == null || redditRedirectUri == null) {
+                            return const ListTile(leading: _SettingsIconButton());
+                          }
+                          return ListTile(
+                            title: Text('Login to Reddit'),
+                            onTap: _onLoginPressed,
+                            trailing: const _SettingsIconButton(),
+                          );
+                        }
+                      );
+                    }
+                  );
+                }
+                return const ListTile(leading: _SettingsIconButton());
+              }
+              return ValueListenableBuilder(
+                valueListenable: Settings.activeUser,
+                builder: (context, activeUser, child) {
+                  return _UserList(
+                    loggedInUsers: loggedInUsers,
+                    activeUser: activeUser!,
+                    addUserTileTrailing: const _SettingsIconButton(),
+                    reverse: reverse,
+                    onLoginPressed: _onLoginPressed,
+                  );
+                }
+              );
+            }
+          );
           extendBody = false;
           drawer = Drawer(
             child: AnnotatedRegion<SystemUiOverlayStyle>(
@@ -315,71 +367,24 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
                 statusBarBrightness: Brightness.dark,      
               ),
               child: SafeArea(
-                top: false,
+                top: reverse,
+                bottom: !reverse,
                 child: Stack(
                   children: [
-                    Column(children: [
-                      Expanded(
-                        child: _CommunityList(
-                          platform: widget.platform,
-                          activeCommunityName: widget.activeCommunityName,
-                          scaffoldKey: _scaffoldKey,
-                          onActiveCommunitySelected: _scrollToTopAndRefresh
-                        )
-                      ),
-                      DecoratedBox(
-                        decoration: const BoxDecoration(
-                          border: Border(
-                            top: BorderSide(
-                              color: Constants.lighterBackgroundColor,
-                              width: 1,
-                            ),
-                          ),
-                        ),
-                        child: SafeArea(
-                          top: false,
-                          child: ValueListenableBuilder(
-                            valueListenable: Settings.loggedInUsers,
-                            builder: (context, loggedInUsers, child) {
-                              if (loggedInUsers.isEmpty) {
-                                if (widget.platform.api.hasLogin) {
-                                  return ValueListenableBuilder(
-                                    valueListenable: Settings.redditClientId,
-                                    builder: (context, redditClientId, child) {
-                                      return ValueListenableBuilder(
-                                        valueListenable: Settings.redditRedirectUri,
-                                        builder: (context, redditRedirectUri, child) {
-                                          if (redditClientId == null || redditRedirectUri == null) {
-                                            return const ListTile(leading: _SettingsIconButton());
-                                          }
-                                          return ListTile(
-                                            title: Text('Login to Reddit'),
-                                            onTap: _onLoginPressed,
-                                            trailing: const _SettingsIconButton(),
-                                          );
-                                        }
-                                      );
-                                    }
-                                  );
-                                }
-                                return const ListTile(leading: _SettingsIconButton());
-                              }
-                              return ValueListenableBuilder(
-                                valueListenable: Settings.activeUser,
-                                builder: (context, activeUser, child) {
-                                  return _UserList(
-                                    loggedInUsers: loggedInUsers,
-                                    activeUser: activeUser!,
-                                    addUserTileTrailing: const _SettingsIconButton(),
-                                    onLoginPressed: _onLoginPressed,
-                                  );
-                                }
-                              );
-                            }
-                          ),
-                        ),
-                      )
-                    ]),
+                    Column(
+                      children: reverse
+                        ? [
+                            userList,
+                            divider,
+                            communityList,
+                            SizedBox(height: MediaQuery.of(context).viewInsets.bottom)
+                          ]
+                        : [
+                            communityList,
+                            divider,
+                            userList
+                          ]
+                    ),
                     _Scrim(color: (theme.drawerTheme.backgroundColor ?? theme.canvasColor).withAlpha(Constants.scrimAlpha)),
                   ],
                 ),
@@ -585,6 +590,7 @@ class _UserList extends StatefulWidget {
 
   final List<LoggedInUser> loggedInUsers;
   final LoggedInUser activeUser;
+  final bool reverse;
   final Widget? addUserTileTrailing;
   final VoidCallback onLoginPressed;
 
@@ -592,6 +598,7 @@ class _UserList extends StatefulWidget {
     super.key,
     required this.loggedInUsers,
     required this.activeUser,
+    this.reverse = false,
     this.addUserTileTrailing,
     required this.onLoginPressed,
   });
@@ -633,51 +640,64 @@ class _UserListState extends State<_UserList> {
   @override
   Widget build(BuildContext context) {
     final inactiveUsers = widget.loggedInUsers.where((user) => user != widget.activeUser);
+    final children = [
+      AnimatedCrossFade(
+        firstChild: const SizedBox(width: double.infinity, height: 0),
+        secondChild: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              horizontalTitleGap: 8,
+              leading: IconButton(
+                icon: Icon(Icons.add_rounded),
+                onPressed: widget.onLoginPressed
+              ),
+              title: Text('Add user'),
+              trailing: widget.addUserTileTrailing,
+              onTap: widget.onLoginPressed,
+            ),
+            ...inactiveUsers.map((user) => _UserListTile(
+              platform: user.platform,
+              user: user,
+              onTap: () async {
+                Settings.activeUser.value = user;
+                await Future.delayed(const Duration(milliseconds: 300));
+                setState(() => _isExpanded = false);
+              },
+              onLongPress: () => _onTileLongPress(user, false)
+            ))
+          ],
+        ),
+        crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+        duration: const Duration(milliseconds: 500),
+        sizeCurve: Curves.easeInOutCubicEmphasized, 
+      ),
+      _UserListTile(
+        platform: widget.activeUser.platform,
+        user: widget.activeUser,
+        trailing: IconButton(
+          onPressed: () => setState(() => _isExpanded = !_isExpanded),
+          icon: TweenAnimationBuilder<double>(
+            tween: Tween<double>(end: (_isExpanded ^ widget.reverse) ? pi : 0),
+            duration: const Duration(milliseconds: 1000),
+            curve: Curves.easeInOutCubicEmphasized,
+            builder: (context, rotation, child) {
+              return Transform(
+                alignment: Alignment.center,
+                transform: Matrix4.identity()..rotateX(rotation),
+                  // ..rotateY(rotation),
+                child: const Icon(Icons.expand_less_rounded),
+              );
+            },
+          ),
+        ),
+        onTap: () => setState(() => _isExpanded = !_isExpanded),
+        onLongPress: () => _onTileLongPress(widget.activeUser, true)
+      )
+    ];
     return Column(
       mainAxisSize: MainAxisSize.min,
-      children: [
-        AnimatedCrossFade(
-          firstChild: const SizedBox(width: double.infinity, height: 0),
-          secondChild: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                horizontalTitleGap: 8,
-                leading: IconButton(
-                  icon: Icon(Icons.add_rounded),
-                  onPressed: widget.onLoginPressed
-                ),
-                title: Text('Add user'),
-                trailing: widget.addUserTileTrailing,
-                onTap: widget.onLoginPressed,
-              ),
-              ...inactiveUsers.map((user) => _UserListTile(
-                platform: user.platform,
-                user: user,
-                onTap: () async {
-                  Settings.activeUser.value = user;
-                  await Future.delayed(const Duration(milliseconds: 300));
-                  setState(() => _isExpanded = false);
-                },
-                onLongPress: () => _onTileLongPress(user, false)
-              ))
-            ],
-          ),
-          crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-          duration: const Duration(milliseconds: 500),
-          sizeCurve: Curves.easeInOutCubicEmphasized, 
-        ),
-        _UserListTile(
-          platform: widget.activeUser.platform,
-          user: widget.activeUser,
-          trailing: IconButton(
-            icon: Icon(_isExpanded ? Icons.expand_more_rounded : Icons.expand_less_rounded),
-            onPressed: () => setState(() => _isExpanded = !_isExpanded)
-          ),
-          onTap: () => setState(() => _isExpanded = !_isExpanded),
-          onLongPress: () => _onTileLongPress(widget.activeUser, true)
-        )
-      ],
+      children: widget.reverse ? children.reversed.toList() : children
     );
   }
 
@@ -763,6 +783,7 @@ class _CommunityList extends StatefulWidget {
 
   final Platform platform;
   final String? activeCommunityName;
+  final bool reverse;
   final GlobalKey<ScaffoldState> scaffoldKey;
   final VoidCallback? onActiveCommunitySelected;
 
@@ -770,6 +791,7 @@ class _CommunityList extends StatefulWidget {
     super.key,
     required this.platform,
     required this.activeCommunityName,
+    required this.reverse,
     required this.scaffoldKey,
     required this.onActiveCommunitySelected
   });
@@ -953,6 +975,7 @@ class _CommunityListState extends State<_CommunityList> {
               leadingForegroundColor = Colors.black;
             }
             final listView = ListView.builder(
+              reverse: widget.reverse,
               itemCount: headerCount + _visibleCommunities.length,
               itemBuilder: (context, index) {
                 if (index == 0) {
@@ -1200,7 +1223,7 @@ class _CommunityListState extends State<_CommunityList> {
                             )
                           ),
                           Icon(
-                            Icons.reddit_rounded, //TODO
+                            Icons.reddit_rounded, //TODO?
                             size: 32,
                             color: activeUser.platform.color
                           ),

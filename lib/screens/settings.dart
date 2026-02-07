@@ -87,6 +87,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               label: 'Bottom bar'
             ),
             _BoolSettingListTile(
+              setting: Settings.reverseCommunityList,
+              label: 'Reverse community list'
+            ),
+            _BoolSettingListTile(
               setting: Settings.showPlatformColorAccents,
               label: '$platformLabel color accents'
             ),

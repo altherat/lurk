@@ -14,6 +14,7 @@ class Settings extends Table {
 
   IntColumn get appBarColor => integer().nullable()();
   BoolColumn get useBottomBar => boolean().withDefault(const Constant(Constants.defaultUseBottomBar))();
+  BoolColumn get reverseCommunityList => boolean().withDefault(const Constant(Constants.defaultReverseCommunityList))();
   BoolColumn get showPlatformColorAccents => boolean().withDefault(const Constant(Constants.defaultShowPlatformColorAccents))();
   BoolColumn get showPlatformColorTextAccents => boolean().withDefault(const Constant(Constants.defaultShowPlatformColorTextAccents))();
 

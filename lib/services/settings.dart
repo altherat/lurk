@@ -21,6 +21,7 @@ class Settings {
   static late final SettingNotifier<bool> autoplayVideos;
   static late final SettingNotifier<Color> appBarColor;
   static late final SettingNotifier<bool> useBottomBar;
+  static late final SettingNotifier<bool> reverseCommunityList;
   static late final SettingNotifier<bool> showPlatformColorAccents;
   static late final SettingNotifier<bool> showPlatformColorTextAccents;
 
@@ -88,6 +89,12 @@ class Settings {
       initialValue: dbSettings.useBottomBar,
       companionBuilder: (value) => SettingsCompanion(useBottomBar: Value(value)),
       defaultValue: Constants.defaultUseBottomBar,
+    );
+
+    reverseCommunityList = SettingNotifier(
+      initialValue: dbSettings.reverseCommunityList,
+      companionBuilder: (value) => SettingsCompanion(reverseCommunityList: Value(value)),
+      defaultValue: Constants.defaultReverseCommunityList,
     );
 
     showPlatformColorAccents = SettingNotifier(

@@ -367,6 +367,20 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     ),
     defaultValue: const Constant(Constants.defaultUseBottomBar),
   );
+  static const VerificationMeta _reverseCommunityListMeta =
+      const VerificationMeta('reverseCommunityList');
+  @override
+  late final GeneratedColumn<bool> reverseCommunityList = GeneratedColumn<bool>(
+    'reverse_community_list',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("reverse_community_list" IN (0, 1))',
+    ),
+    defaultValue: const Constant(Constants.defaultReverseCommunityList),
+  );
   static const VerificationMeta _showPlatformColorAccentsMeta =
       const VerificationMeta('showPlatformColorAccents');
   @override
@@ -499,6 +513,7 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     autoplayVideos,
     appBarColor,
     useBottomBar,
+    reverseCommunityList,
     showPlatformColorAccents,
     showPlatformColorTextAccents,
     redditCopyOldRedditLinks,
@@ -567,6 +582,15 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         useBottomBar.isAcceptableOrUnknown(
           data['use_bottom_bar']!,
           _useBottomBarMeta,
+        ),
+      );
+    }
+    if (data.containsKey('reverse_community_list')) {
+      context.handle(
+        _reverseCommunityListMeta,
+        reverseCommunityList.isAcceptableOrUnknown(
+          data['reverse_community_list']!,
+          _reverseCommunityListMeta,
         ),
       );
     }
@@ -688,6 +712,10 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.bool,
         data['${effectivePrefix}use_bottom_bar'],
       )!,
+      reverseCommunityList: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}reverse_community_list'],
+      )!,
       showPlatformColorAccents: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}show_platform_color_accents'],
@@ -760,6 +788,7 @@ class Setting extends DataClass implements Insertable<Setting> {
   final bool autoplayVideos;
   final int? appBarColor;
   final bool useBottomBar;
+  final bool reverseCommunityList;
   final bool showPlatformColorAccents;
   final bool showPlatformColorTextAccents;
   final bool redditCopyOldRedditLinks;
@@ -778,6 +807,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     required this.autoplayVideos,
     this.appBarColor,
     required this.useBottomBar,
+    required this.reverseCommunityList,
     required this.showPlatformColorAccents,
     required this.showPlatformColorTextAccents,
     required this.redditCopyOldRedditLinks,
@@ -809,6 +839,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       map['app_bar_color'] = Variable<int>(appBarColor);
     }
     map['use_bottom_bar'] = Variable<bool>(useBottomBar);
+    map['reverse_community_list'] = Variable<bool>(reverseCommunityList);
     map['show_platform_color_accents'] = Variable<bool>(
       showPlatformColorAccents,
     );
@@ -857,6 +888,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           ? const Value.absent()
           : Value(appBarColor),
       useBottomBar: Value(useBottomBar),
+      reverseCommunityList: Value(reverseCommunityList),
       showPlatformColorAccents: Value(showPlatformColorAccents),
       showPlatformColorTextAccents: Value(showPlatformColorTextAccents),
       redditCopyOldRedditLinks: Value(redditCopyOldRedditLinks),
@@ -900,6 +932,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       autoplayVideos: serializer.fromJson<bool>(json['autoplayVideos']),
       appBarColor: serializer.fromJson<int?>(json['appBarColor']),
       useBottomBar: serializer.fromJson<bool>(json['useBottomBar']),
+      reverseCommunityList: serializer.fromJson<bool>(
+        json['reverseCommunityList'],
+      ),
       showPlatformColorAccents: serializer.fromJson<bool>(
         json['showPlatformColorAccents'],
       ),
@@ -939,6 +974,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       'autoplayVideos': serializer.toJson<bool>(autoplayVideos),
       'appBarColor': serializer.toJson<int?>(appBarColor),
       'useBottomBar': serializer.toJson<bool>(useBottomBar),
+      'reverseCommunityList': serializer.toJson<bool>(reverseCommunityList),
       'showPlatformColorAccents': serializer.toJson<bool>(
         showPlatformColorAccents,
       ),
@@ -968,6 +1004,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     bool? autoplayVideos,
     Value<int?> appBarColor = const Value.absent(),
     bool? useBottomBar,
+    bool? reverseCommunityList,
     bool? showPlatformColorAccents,
     bool? showPlatformColorTextAccents,
     bool? redditCopyOldRedditLinks,
@@ -990,6 +1027,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     autoplayVideos: autoplayVideos ?? this.autoplayVideos,
     appBarColor: appBarColor.present ? appBarColor.value : this.appBarColor,
     useBottomBar: useBottomBar ?? this.useBottomBar,
+    reverseCommunityList: reverseCommunityList ?? this.reverseCommunityList,
     showPlatformColorAccents:
         showPlatformColorAccents ?? this.showPlatformColorAccents,
     showPlatformColorTextAccents:
@@ -1031,6 +1069,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       useBottomBar: data.useBottomBar.present
           ? data.useBottomBar.value
           : this.useBottomBar,
+      reverseCommunityList: data.reverseCommunityList.present
+          ? data.reverseCommunityList.value
+          : this.reverseCommunityList,
       showPlatformColorAccents: data.showPlatformColorAccents.present
           ? data.showPlatformColorAccents.value
           : this.showPlatformColorAccents,
@@ -1072,6 +1113,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('autoplayVideos: $autoplayVideos, ')
           ..write('appBarColor: $appBarColor, ')
           ..write('useBottomBar: $useBottomBar, ')
+          ..write('reverseCommunityList: $reverseCommunityList, ')
           ..write('showPlatformColorAccents: $showPlatformColorAccents, ')
           ..write(
             'showPlatformColorTextAccents: $showPlatformColorTextAccents, ',
@@ -1097,6 +1139,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     autoplayVideos,
     appBarColor,
     useBottomBar,
+    reverseCommunityList,
     showPlatformColorAccents,
     showPlatformColorTextAccents,
     redditCopyOldRedditLinks,
@@ -1119,6 +1162,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.autoplayVideos == this.autoplayVideos &&
           other.appBarColor == this.appBarColor &&
           other.useBottomBar == this.useBottomBar &&
+          other.reverseCommunityList == this.reverseCommunityList &&
           other.showPlatformColorAccents == this.showPlatformColorAccents &&
           other.showPlatformColorTextAccents ==
               this.showPlatformColorTextAccents &&
@@ -1140,6 +1184,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<bool> autoplayVideos;
   final Value<int?> appBarColor;
   final Value<bool> useBottomBar;
+  final Value<bool> reverseCommunityList;
   final Value<bool> showPlatformColorAccents;
   final Value<bool> showPlatformColorTextAccents;
   final Value<bool> redditCopyOldRedditLinks;
@@ -1158,6 +1203,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.autoplayVideos = const Value.absent(),
     this.appBarColor = const Value.absent(),
     this.useBottomBar = const Value.absent(),
+    this.reverseCommunityList = const Value.absent(),
     this.showPlatformColorAccents = const Value.absent(),
     this.showPlatformColorTextAccents = const Value.absent(),
     this.redditCopyOldRedditLinks = const Value.absent(),
@@ -1177,6 +1223,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.autoplayVideos = const Value.absent(),
     this.appBarColor = const Value.absent(),
     this.useBottomBar = const Value.absent(),
+    this.reverseCommunityList = const Value.absent(),
     this.showPlatformColorAccents = const Value.absent(),
     this.showPlatformColorTextAccents = const Value.absent(),
     this.redditCopyOldRedditLinks = const Value.absent(),
@@ -1196,6 +1243,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<bool>? autoplayVideos,
     Expression<int>? appBarColor,
     Expression<bool>? useBottomBar,
+    Expression<bool>? reverseCommunityList,
     Expression<bool>? showPlatformColorAccents,
     Expression<bool>? showPlatformColorTextAccents,
     Expression<bool>? redditCopyOldRedditLinks,
@@ -1216,6 +1264,8 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (autoplayVideos != null) 'autoplay_videos': autoplayVideos,
       if (appBarColor != null) 'app_bar_color': appBarColor,
       if (useBottomBar != null) 'use_bottom_bar': useBottomBar,
+      if (reverseCommunityList != null)
+        'reverse_community_list': reverseCommunityList,
       if (showPlatformColorAccents != null)
         'show_platform_color_accents': showPlatformColorAccents,
       if (showPlatformColorTextAccents != null)
@@ -1241,6 +1291,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<bool>? autoplayVideos,
     Value<int?>? appBarColor,
     Value<bool>? useBottomBar,
+    Value<bool>? reverseCommunityList,
     Value<bool>? showPlatformColorAccents,
     Value<bool>? showPlatformColorTextAccents,
     Value<bool>? redditCopyOldRedditLinks,
@@ -1261,6 +1312,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       autoplayVideos: autoplayVideos ?? this.autoplayVideos,
       appBarColor: appBarColor ?? this.appBarColor,
       useBottomBar: useBottomBar ?? this.useBottomBar,
+      reverseCommunityList: reverseCommunityList ?? this.reverseCommunityList,
       showPlatformColorAccents:
           showPlatformColorAccents ?? this.showPlatformColorAccents,
       showPlatformColorTextAccents:
@@ -1304,6 +1356,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     }
     if (useBottomBar.present) {
       map['use_bottom_bar'] = Variable<bool>(useBottomBar.value);
+    }
+    if (reverseCommunityList.present) {
+      map['reverse_community_list'] = Variable<bool>(
+        reverseCommunityList.value,
+      );
     }
     if (showPlatformColorAccents.present) {
       map['show_platform_color_accents'] = Variable<bool>(
@@ -1356,6 +1413,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('autoplayVideos: $autoplayVideos, ')
           ..write('appBarColor: $appBarColor, ')
           ..write('useBottomBar: $useBottomBar, ')
+          ..write('reverseCommunityList: $reverseCommunityList, ')
           ..write('showPlatformColorAccents: $showPlatformColorAccents, ')
           ..write(
             'showPlatformColorTextAccents: $showPlatformColorTextAccents, ',
@@ -2231,6 +2289,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<bool> autoplayVideos,
       Value<int?> appBarColor,
       Value<bool> useBottomBar,
+      Value<bool> reverseCommunityList,
       Value<bool> showPlatformColorAccents,
       Value<bool> showPlatformColorTextAccents,
       Value<bool> redditCopyOldRedditLinks,
@@ -2251,6 +2310,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<bool> autoplayVideos,
       Value<int?> appBarColor,
       Value<bool> useBottomBar,
+      Value<bool> reverseCommunityList,
       Value<bool> showPlatformColorAccents,
       Value<bool> showPlatformColorTextAccents,
       Value<bool> redditCopyOldRedditLinks,
@@ -2305,6 +2365,11 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<bool> get useBottomBar => $composableBuilder(
     column: $table.useBottomBar,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get reverseCommunityList => $composableBuilder(
+    column: $table.reverseCommunityList,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2404,6 +2469,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get reverseCommunityList => $composableBuilder(
+    column: $table.reverseCommunityList,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get showPlatformColorAccents => $composableBuilder(
     column: $table.showPlatformColorAccents,
     builder: (column) => ColumnOrderings(column),
@@ -2498,6 +2568,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get reverseCommunityList => $composableBuilder(
+    column: $table.reverseCommunityList,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get showPlatformColorAccents => $composableBuilder(
     column: $table.showPlatformColorAccents,
     builder: (column) => column,
@@ -2583,6 +2658,7 @@ class $$SettingsTableTableManager
                 Value<bool> autoplayVideos = const Value.absent(),
                 Value<int?> appBarColor = const Value.absent(),
                 Value<bool> useBottomBar = const Value.absent(),
+                Value<bool> reverseCommunityList = const Value.absent(),
                 Value<bool> showPlatformColorAccents = const Value.absent(),
                 Value<bool> showPlatformColorTextAccents = const Value.absent(),
                 Value<bool> redditCopyOldRedditLinks = const Value.absent(),
@@ -2601,6 +2677,7 @@ class $$SettingsTableTableManager
                 autoplayVideos: autoplayVideos,
                 appBarColor: appBarColor,
                 useBottomBar: useBottomBar,
+                reverseCommunityList: reverseCommunityList,
                 showPlatformColorAccents: showPlatformColorAccents,
                 showPlatformColorTextAccents: showPlatformColorTextAccents,
                 redditCopyOldRedditLinks: redditCopyOldRedditLinks,
@@ -2621,6 +2698,7 @@ class $$SettingsTableTableManager
                 Value<bool> autoplayVideos = const Value.absent(),
                 Value<int?> appBarColor = const Value.absent(),
                 Value<bool> useBottomBar = const Value.absent(),
+                Value<bool> reverseCommunityList = const Value.absent(),
                 Value<bool> showPlatformColorAccents = const Value.absent(),
                 Value<bool> showPlatformColorTextAccents = const Value.absent(),
                 Value<bool> redditCopyOldRedditLinks = const Value.absent(),
@@ -2639,6 +2717,7 @@ class $$SettingsTableTableManager
                 autoplayVideos: autoplayVideos,
                 appBarColor: appBarColor,
                 useBottomBar: useBottomBar,
+                reverseCommunityList: reverseCommunityList,
                 showPlatformColorAccents: showPlatformColorAccents,
                 showPlatformColorTextAccents: showPlatformColorTextAccents,
                 redditCopyOldRedditLinks: redditCopyOldRedditLinks,

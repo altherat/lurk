@@ -45,6 +45,7 @@ class Constants {
   static const defaultAutoplayVideos = true;
   static const defaultAppBarColor = Color(0xFF000000);
   static const defaultUseBottomBar = false;
+  static const defaultReverseCommunityList = false;
   static const diggPostsFetchDepth = 3;
   static const defaultShowPlatformColorAccents = true;
   static const defaultShowPlatformColorTextAccents = false;
