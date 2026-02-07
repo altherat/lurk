@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/core/utils.dart' as utils;
 import 'package:lurk/models/community.dart';
@@ -22,7 +24,8 @@ class Post {
   final bool isSelf;
   final bool isNsfw;
   final bool isGallery;
-  final List<String> galleryImageUrls;
+  final Size? mediaSize;
+  final List<GalleryImage> galleryImages;
 
   Post({
     required this.community,
@@ -43,7 +46,8 @@ class Post {
     required this.isSelf,
     required this.isNsfw,
     required this.isGallery,
-    this.galleryImageUrls = const [],
+    required this.mediaSize,
+    required this.galleryImages,
   }) : shortId = shortId ?? id;
 
   String get compactScore {
@@ -63,5 +67,17 @@ class Post {
   String get timeAgoLong => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgoLong;
 
   String get commentsLabel => commentCount == 1 ? '1 comment' : '${commentCount.toCommaString()} comments';
+
+}
+
+class GalleryImage {
+
+  final String url;
+  final Size size;
+
+  const GalleryImage({
+    required this.url,
+    required this.size,
+  });
 
 }

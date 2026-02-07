@@ -1,7 +1,7 @@
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
-import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+import 'package:lurk/widgets/custom_progress_indicators.dart';
 
 class ListTileIcon extends StatelessWidget {
   

@@ -515,7 +515,6 @@ class _ColorSettingListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    debugPrint("TEST: ${setting.value}");
     return _TextSettingListTile(
       setting: setting,
       label: label,

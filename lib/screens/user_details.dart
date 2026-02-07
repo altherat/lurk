@@ -10,7 +10,7 @@ import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/comment_tile.dart';
-import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
 import 'package:lurk/widgets/prefixed_name.dart';

@@ -5,7 +5,7 @@ import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/paged_items.dart';
-import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/icon_message.dart';
 
 class FeedList<T> extends StatefulWidget {

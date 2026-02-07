@@ -1,5 +1,6 @@
 import 'dart:math';
 
+import 'package:flutter/cupertino.dart' hide RefreshCallback;
 import 'package:flutter/material.dart' hide SearchBar;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
@@ -23,7 +24,7 @@ import 'package:lurk/widgets/list_tile_icon.dart';
 class MainScaffold<T> extends StatefulWidget {
 
   final GlobalKey<ScaffoldState>? scaffoldKey;
-  final GlobalKey<RefreshIndicatorState>? refreshIndicatorKey;
+  final GlobalKey<CustomRefreshIndicatorState>? refreshIndicatorKey;
   final Platform platform;
   final String? activeCommunityName;
   final ScrollController? customScrollViewController;
@@ -483,19 +484,27 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
               edgeOffset: appBarOffset,
               onRefresh: widget.onPullRefresh,
               child: RawScrollbar(
+            // body = RawScrollbar(
                 controller: _scrollController,
                 interactive: false,
                 radius: const Radius.circular(8),
                 padding: EdgeInsets.only(top: appBarOffset),
                 child: CustomScrollView(
                   controller: _scrollController,
+                  // physics: const BouncingScrollPhysics(
+                  //   parent: AlwaysScrollableScrollPhysics(),
+                  // ),
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
                     sliverAppBar,
+                    // MaterialSliverRefreshControl(
+                    //   platform: widget.platform,
+                    //   onRefresh: widget.onPullRefresh,
+                    // ),
                     ...widget.slivers!,
                   ]
                 ),
-              ),
+              )
             );
           }
           body = Stack(

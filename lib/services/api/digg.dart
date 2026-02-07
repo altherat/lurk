@@ -47,6 +47,8 @@ class DiggApi extends Api {
         __typename
         ... on Image {
           url
+          width
+          height
         }
       }
       externalContent {
@@ -498,20 +500,6 @@ class DiggApi extends Api {
               'after': pageToken
           },
         );
-        
-        debugPrint('variables: ${{
-            'first': resultsLimit,
-            'username': id,
-            'where': {
-              'author': {
-                'username_EQ': id
-              },
-            },
-            if (sort != null)
-              'sort': sort.id,
-            if (pageToken != null)
-              'after': pageToken
-          }}');
         final response = await _client.query(queryOptions);
         return compute(_parseCommentsResult, response.data!);
       case _:
@@ -789,20 +777,27 @@ class DiggApi extends Api {
     final String url;
     final String domain;
     final String? thumbnailUrl;
-    final List<String> galleryImageUrls;
+    final Size? mediaSize;
+    final List<GalleryImage> galleryImages;
     if (attachments.isNotEmpty) {
       url = attachments.first['url'];
       thumbnailUrl = _getThumbnailUrl(Uri.parse(url));
       if (attachments.length > 1) {
         domain = 'image/gallery';
-        galleryImageUrls = attachments.map((item) => item['url'] as String).toList();
+        mediaSize = null;
+        galleryImages = attachments.map((a) => GalleryImage(url: a['url'], size: Size((a['width'] as num).toDouble(), (a['height'] as num).toDouble()))).toList();
       }
       else {
+        final attachment = attachments.first;
+        final num? width = attachment['width'];
         domain = 'image';
-        galleryImageUrls = [];
+        mediaSize = width != null ? Size(width.toDouble(), (attachment['height'] as num).toDouble()) : null;
+        galleryImages = const [];
       }
     }
     else {
+      mediaSize = null;
+      galleryImages = const [];
       if (externalContent != null) {
         url = externalContent['url'];
         final host = Uri.parse(url).host;
@@ -822,7 +817,6 @@ class DiggApi extends Api {
         domain = 'self.$communityName';
         thumbnailUrl = null;
       }
-      galleryImageUrls = [];
     }
     return Post(
       community: Community(
@@ -844,7 +838,8 @@ class DiggApi extends Api {
       thumbnailUrl: thumbnailUrl,
       isGallery: attachments.length > 1,
       isDeleted: json['deletedDate'] != null,
-      galleryImageUrls: galleryImageUrls,
+      mediaSize: mediaSize,
+      galleryImages: galleryImages,
     );
   }
 
@@ -1009,14 +1004,15 @@ class DiggApi extends Api {
                 }
               } 
               else if (type == 'mention') {
+                debugPrint("here: $node");
                 final attrs = node['attrs'];
                 final String label = '${attrs['mentionSuggestionChar']}${attrs['label']}';
                 final String type = attrs['type'];
                 if (type == 'account') {
-                  html.write('<a href="/$label" class="mention">$label</a>');
+                  html.write('<a href="/$label">$label</a>');
                 }
                 else if (type == 'community') {
-                  html.write('<a href="/$label" class="mention">$label</a>');
+                  html.write('<a href="$label">$label</a>');
                 }
               }
               else if (type == 'hardBreak') {

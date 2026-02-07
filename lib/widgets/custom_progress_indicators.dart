@@ -12,6 +12,7 @@ class CustomCircularProgressIndicator extends StatelessWidget {
   final Alignment? alignment;
   final double? size;
   final double? strokeWidth;
+  final double? value;
 
   const CustomCircularProgressIndicator({
     super.key,
@@ -19,7 +20,8 @@ class CustomCircularProgressIndicator extends StatelessWidget {
     this.padding,
     this.alignment = Alignment.center,
     this.size,
-    this.strokeWidth
+    this.strokeWidth,
+    this.value
   });
 
   @override
@@ -31,13 +33,15 @@ class CustomCircularProgressIndicator extends StatelessWidget {
             return CircularProgressIndicator.adaptive(
               valueColor: showPlatformColorAccents ? AlwaysStoppedAnimation(platform!.color) : null,
               strokeWidth: strokeWidth,
-              strokeCap: StrokeCap.round
+              strokeCap: StrokeCap.round,
+              value: value
             );
           }
         )
       : CircularProgressIndicator.adaptive(
           strokeWidth: strokeWidth,
-          strokeCap: StrokeCap.round
+          strokeCap: StrokeCap.round,
+          value: value
         );
     if (size != null) {
       child = SizedBox(
@@ -61,6 +65,41 @@ class CustomCircularProgressIndicator extends StatelessWidget {
     return child;
   }
 
+}
+
+class CustomLinearProgressIndicator extends StatelessWidget {
+
+  final Platform? platform;
+  final double? value;
+
+  const CustomLinearProgressIndicator({
+    super.key,
+    this.platform,
+    this.value
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (platform != null) {
+      return ValueListenableBuilder(
+        valueListenable: Settings.showPlatformColorAccents,
+        builder: (context, showPlatformColorAccents, child) {
+          return LinearProgressIndicator(
+            value: value,
+            color: showPlatformColorAccents ? platform!.color : null,
+            backgroundColor: Colors.transparent,
+            minHeight: 3,
+          );
+        }
+      );
+    }
+    return LinearProgressIndicator(
+      value: value,
+      backgroundColor: Colors.transparent,
+      minHeight: 3,
+    );
+  }
+  
 }
 
 class LargeCenteredCircularProgressIndicator extends StatelessWidget {

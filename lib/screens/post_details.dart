@@ -9,7 +9,7 @@ import 'package:lurk/core/utils.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/widgets/comment_tile.dart';
-import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/custom_html.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
@@ -164,7 +164,14 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
                 )
               ),
               if (_post!.textHtml != null)
-                _TextContent(
+                Container(
+                  margin: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(8),
+                  width: double.infinity,
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Constants.postTextHtmlBorderColor),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
                   child: CustomHtml(
                     platform: _post!.community.platform,
                     html: _post!.textHtml!
@@ -345,7 +352,6 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
         //     curve: Curves.easeInOutCubicEmphasized,
         //     tween: Tween(begin: 1.0, end: 0.0),
         //     onEnd: () {
-        //       debugPrint('end');
         //       _simpleFeedScreenKey.currentState!.feedList!.updateItems((items) => items.remove(item));
         //     },
         //     builder: (context, value, child) {
@@ -386,90 +392,90 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
 
 }
 
-class _TextContent extends StatefulWidget {
+// class _TextContent extends StatefulWidget {
 
-  final Widget child;
+//   final Widget child;
 
-  const _TextContent({
-    super.key,
-    required this.child,
-  });
+//   const _TextContent({
+//     super.key,
+//     required this.child,
+//   });
 
-  @override
-  State<_TextContent> createState() => _TextContentState();
+//   @override
+//   State<_TextContent> createState() => _TextContentState();
 
-}
+// }
 
-class _TextContentState extends State<_TextContent> {
+// class _TextContentState extends State<_TextContent> {
 
-  bool _isExpanded = false;
-  bool _showFadingEdge = false;
-  late ScrollController _scrollController;
+//   bool _isExpanded = false;
+//   bool _showFadingEdge = false;
+//   late ScrollController _scrollController;
 
-  @override
-  void initState() {
-    super.initState();
-    _scrollController = ScrollController();
-    _scrollController.addListener(_updateFade);
-    WidgetsBinding.instance.addPostFrameCallback((_) => _updateFade());
-  }
+//   @override
+//   void initState() {
+//     super.initState();
+//     _scrollController = ScrollController();
+//     _scrollController.addListener(_updateFade);
+//     WidgetsBinding.instance.addPostFrameCallback((_) => _updateFade());
+//   }
 
-  void _updateFade() {
-    if (!_scrollController.hasClients) return;
-    final showFadingEdge = _scrollController.position.maxScrollExtent > 0 && _scrollController.position.pixels < _scrollController.position.maxScrollExtent - 10;
-    if (_showFadingEdge != showFadingEdge) {
-      setState(() => _showFadingEdge = showFadingEdge);
-    }
-  }
+//   void _updateFade() {
+//     if (!_scrollController.hasClients) return;
+//     final showFadingEdge = _scrollController.position.maxScrollExtent > 0 && _scrollController.position.pixels < _scrollController.position.maxScrollExtent - 10;
+//     if (_showFadingEdge != showFadingEdge) {
+//       setState(() => _showFadingEdge = showFadingEdge);
+//     }
+//   }
 
-  @override
-  void dispose() {
-    _scrollController.dispose();
-    super.dispose();
-  }
+//   @override
+//   void dispose() {
+//     _scrollController.dispose();
+//     super.dispose();
+//   }
 
-  @override
-  Widget build(BuildContext context) {
-    final availableHeight = MediaQuery.of(context).size.height;
-    final backgroundColor = Theme.of(context).colorScheme.surface;
-    return AnimatedContainer(
-      duration: Constants.postTextContentExpansionAnimationDuration,
-      curve: Curves.easeInOutCubicEmphasized,
-      width: double.infinity,
-      margin: const EdgeInsets.all(8),
-      constraints: BoxConstraints(
-        maxHeight: _isExpanded ? availableHeight * 0.5 : availableHeight * 0.25
-      ),
-      decoration: BoxDecoration(
-        border: Border.all(color: Constants.postTextHtmlBorderColor),
-        borderRadius: BorderRadius.circular(4),
-      ),
-      child: InkWell(
-        onTap: () => setState(() => _isExpanded = !_isExpanded),
-        child: RawScrollbar(
-          controller: _scrollController,
-          padding: EdgeInsets.zero,
-          radius: const Radius.circular(8),
-          child: ShaderMask(
-            shaderCallback: (Rect rect) {
-              return LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [backgroundColor, Colors.transparent],
-                stops: [_showFadingEdge ? 0.75 : 1, 1],
-              ).createShader(rect);
-            },
-            blendMode: BlendMode.dstIn,
-            child: SingleChildScrollView(
-              controller: _scrollController,
-              padding: const EdgeInsets.all(8),
-              child: widget.child
-            ),
-          ),
-        )
-      )
-    );
-  }
+//   @override
+//   Widget build(BuildContext context) {
+//     final availableHeight = MediaQuery.of(context).size.height;
+//     final backgroundColor = Theme.of(context).colorScheme.surface;
+//     return AnimatedContainer(
+//       duration: Constants.postTextContentExpansionAnimationDuration,
+//       curve: Curves.easeInOutCubicEmphasized,
+//       width: double.infinity,
+//       margin: const EdgeInsets.all(8),
+//       constraints: BoxConstraints(
+//         maxHeight: _isExpanded ? availableHeight * 0.5 : availableHeight * 0.25
+//       ),
+//       decoration: BoxDecoration(
+//         border: Border.all(color: Constants.postTextHtmlBorderColor),
+//         borderRadius: BorderRadius.circular(4),
+//       ),
+//       child: InkWell(
+//         onTap: () => setState(() => _isExpanded = !_isExpanded),
+//         child: RawScrollbar(
+//           controller: _scrollController,
+//           padding: EdgeInsets.zero,
+//           radius: const Radius.circular(8),
+//           child: ShaderMask(
+//             shaderCallback: (Rect rect) {
+//               return LinearGradient(
+//                 begin: Alignment.topCenter,
+//                 end: Alignment.bottomCenter,
+//                 colors: [backgroundColor, Colors.transparent],
+//                 stops: [_showFadingEdge ? 0.75 : 1, 1],
+//               ).createShader(rect);
+//             },
+//             blendMode: BlendMode.dstIn,
+//             child: SingleChildScrollView(
+//               controller: _scrollController,
+//               padding: const EdgeInsets.all(8),
+//               child: widget.child
+//             ),
+//           ),
+//         )
+//       )
+//     );
+//   }
 
   // I give up - just using a scroll view
   // @override
@@ -520,7 +526,7 @@ class _TextContentState extends State<_TextContent> {
   //   );
   // }
 
-}
+// }
 
 class _LoadMoreComments extends StatefulWidget {
 

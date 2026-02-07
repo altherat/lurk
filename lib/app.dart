@@ -3,7 +3,7 @@ import 'package:lurk/core/constants.dart';
 import 'package:lurk/screens/home.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/services/settings.dart';
-import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+import 'package:lurk/widgets/custom_progress_indicators.dart';
 
 final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
 

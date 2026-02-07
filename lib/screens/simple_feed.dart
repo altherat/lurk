@@ -52,7 +52,7 @@ class SimpleFeedScreen<T> extends StatefulWidget {
 class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTickerProviderStateMixin {
 
   late List<GlobalKey<FeedListState>> _feedListKeys;
-  late List<GlobalKey<RefreshIndicatorState>> _refreshIndicatorKeys;
+  late List<GlobalKey<CustomRefreshIndicatorState>> _refreshIndicatorKeys;
   late List<ScrollController> _scrollControllers;
   TabController? _tabController;
   late List<Map<FeedOptionType, FeedOption>?> _selectedFeedOptions;
@@ -68,14 +68,14 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
        _selectedFeedOptions = [];
        for (var i = 0; i < widget.feedOptions!.options.length; i++) {
           _feedListKeys.add(GlobalKey<FeedListState>());
-          _refreshIndicatorKeys.add(GlobalKey<RefreshIndicatorState>());
+          _refreshIndicatorKeys.add(GlobalKey<CustomRefreshIndicatorState>());
           _scrollControllers.add(ScrollController());
           _selectedFeedOptions.add(widget.feedOptions?.options[i].subGroup?.defaults);
        }
     }
     else {
       _feedListKeys = [GlobalKey<FeedListState>()];
-      _refreshIndicatorKeys = [GlobalKey<RefreshIndicatorState>()];
+      _refreshIndicatorKeys = [GlobalKey<CustomRefreshIndicatorState>()];
       _scrollControllers = [ScrollController()];
       _selectedFeedOptions = [widget.feedOptions?.defaults];
     }
@@ -92,24 +92,25 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
 
   FeedListState? get feedList => _feedListKeys[_tabController?.index ?? 0].currentState;
 
-  Future<void> reload() => _callOnFeedListState((state) => state.reload());
+  Future<void> reload() => _callOnFeedListState(_tabController?.index ?? 0, (state) => state.reload());
 
-  Future<void> _refresh() => _callOnFeedListState((state) => state.refresh());
+  Future<void> _refresh(int index) => _callOnFeedListState(index, (state) => state.refresh());
 
-  Future<void> _callOnFeedListState(Function(FeedListState state) fn) async {
-    final feedListState = _feedListKeys[_tabController?.index ?? 0].currentState;
+  Future<void> _callOnFeedListState(int index, Function(FeedListState state) fn) async {
+    final feedListState = feedList;
     if (feedListState != null) {
       await fn(feedListState);
     }
   }
 
-  void _onOtherRefresh() {
-    _scrollControllers[_tabController!.index].animateTo(
+  void _onOtherRefresh(int index) {
+    _scrollControllers[index].animateTo(
       0, 
       duration: const Duration(milliseconds: 300), 
       curve: Curves.easeInOutCubicEmphasized
     );
-    _refresh();
+    _refreshIndicatorKeys[index].currentState?.show();
+    _refresh(index);
   }
   
   void _onFeedOptionsSelected(Map<FeedOptionType, FeedOption>? options) {
@@ -134,9 +135,10 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
             builder: (context) {
               final overlapAbsorberHandle = NestedScrollView.sliverOverlapAbsorberHandleFor(context);
               return CustomRefreshIndicator(
+                key: _refreshIndicatorKeys[i],
                 platform: widget.platform,
                 edgeOffset: overlapAbsorberHandle.layoutExtent ?? 0, 
-                onRefresh: _refresh,
+                onRefresh: () => _refresh(i),
                 child: Scrollbar(
                   controller: _scrollControllers[i],
                   interactive: false,
@@ -237,7 +239,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
           controller: _tabController,
           children: pages,
         ),
-        onOtherRefresh: _onOtherRefresh,
+        onOtherRefresh: () => _onOtherRefresh(_tabController!.index),
       );
     }
     final feedOptions = widget.feedOptions;
@@ -271,8 +273,8 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
           itemBuilder: widget.itemBuilder
         )
       ],
-      onPullRefresh: _refresh,
-      onOtherRefresh: _onOtherRefresh
+      onPullRefresh: () => _refresh(0),
+      onOtherRefresh: () => _onOtherRefresh(0)
     );
   }
 

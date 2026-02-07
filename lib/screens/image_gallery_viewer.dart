@@ -6,7 +6,7 @@ import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/image_viewer.dart';
-import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
 
 class ImageGalleryViewerScreen extends StatefulWidget {
@@ -52,19 +52,19 @@ class ImageGalleryViewerScreen extends StatefulWidget {
 }
 
 class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
-  
-  late bool _isLoading;
+
+  late bool _isLoadingPost;
   late final Post _post;
 
   @override
   void initState() {
     super.initState();
     if (widget.post == null) {
-      _isLoading = true;
+      _isLoadingPost = true;
       _getGalleryFromUrl();
     }
     else {
-      _isLoading = false;
+      _isLoadingPost = false;
       _post = widget.post!;
     }
   }
@@ -74,7 +74,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
     if (mounted) {
       setState(() {
         _post = postDetails.post;
-        _isLoading = false;
+        _isLoadingPost = false;
       });
     }
   }
@@ -83,20 +83,20 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
   Widget build(BuildContext context) {
     final VoidCallback? onSave;
     final Widget body;
-    if (_isLoading) {
+    if (_isLoadingPost) {
       onSave = null;
       body = LargeCenteredCircularProgressIndicator(platform: widget.platform);
     }
     else {
       onSave = () {
-        final count = _post.galleryImageUrls.length;
+        final count = _post.galleryImages.length;
         saveMedia(
           context: context,
           platform: widget.platform,
           snackbarMediaTypeMessage: '$count images',
           save: () async {
-            for (final url in _post.galleryImageUrls) {
-              final filePath = await downloadMediaToTemp(url, widget.platform.api.savedOrDefaultUserAgent);
+            for (final image in _post.galleryImages) {
+              final filePath = await downloadMediaToTemp(image.url, widget.platform.api.savedOrDefaultUserAgent);
               await Gal.putImage(filePath);
             }
           },
@@ -105,12 +105,12 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
       body = ListView.separated(
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
         cacheExtent: MediaQuery.of(context).size.height,
-        itemCount: 1 + _post.galleryImageUrls.length,
+        itemCount: 1 + _post.galleryImages.length,
         separatorBuilder: (context, index) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
           if (index == 0) {
             return Padding(
-              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              padding: const EdgeInsets.fromLTRB(13, 16, 16, 0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -123,18 +123,18 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text(_post.galleryImageUrls.length.toPluralString('image'))
+                  Text(_post.galleryImages.length.toPluralString('image'))
                 ],
               ),
             );
           }
-          final url = _post.galleryImageUrls[index - 1];
+          final image = _post.galleryImages[index - 1];
           return Hero(
-            tag: 'media_$url',
+            tag: 'media_${image.url}',
             child: Stack(
               children: [
                 ExtendedImage.network(
-                  url,
+                  image.url,
                   headers: {'User-Agent': widget.platform.api.savedOrDefaultUserAgent},
                   fit: BoxFit.fitWidth,
                   mode: ExtendedImageMode.gesture,
@@ -142,9 +142,13 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                   loadStateChanged: (state) {
                     switch (state.extendedImageLoadState) {
                       case LoadState.loading:
-                        return Padding(
-                          padding: EdgeInsets.all(16),
-                          child: LargeCenteredCircularProgressIndicator(platform: widget.platform)
+                        return Container(
+                          decoration: BoxDecoration(border: Border.all(color: Constants.lighterBackgroundColor)),
+                          alignment: Alignment.topCenter,
+                          child: AspectRatio(
+                            aspectRatio: image.size.width / image.size.height,
+                            child: LargeCenteredCircularProgressIndicator(platform: widget.platform),
+                          ),
                         );
                       case LoadState.completed:
                         return state.completedWidget;
@@ -173,7 +177,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                         context.push(
                           () => ImageViewerScreen(
                             platform: widget.platform,
-                            url: url,
+                            url: image.url,
                             post: widget.post,
                           )
                         );

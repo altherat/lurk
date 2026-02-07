@@ -26,6 +26,7 @@ class _CustomInteractiveViewerState extends State<CustomInteractiveViewer> with 
   Animation<Matrix4>? _animation;
   TapDownDetails? _doubleTapDetails;
   bool _isDoubleTapScaling = false;
+  bool _fixToTop = false;
   Offset _doubleTapPosition = Offset.zero;
 
   @override
@@ -82,6 +83,7 @@ class _CustomInteractiveViewerState extends State<CustomInteractiveViewer> with 
         _doubleTapDetails = details;
         _doubleTapPosition = details.localPosition;
         _isDoubleTapScaling = true;
+        _fixToTop = _transformationController.value.storage[13].abs() <= 0.01;
       },
       child: InteractiveViewer(
         transformationController: _transformationController,
@@ -95,8 +97,8 @@ class _CustomInteractiveViewerState extends State<CustomInteractiveViewer> with 
             final scaleChange = (currentScale + (details.focalPointDelta.dy * 0.01)).clamp(widget.minScale, widget.maxScale) / currentScale;
             final pivot = _doubleTapPosition;
             final Matrix4 newMatrix = Matrix4.translationValues(pivot.dx, pivot.dy, 0.0) * Matrix4.diagonal3Values(scaleChange, scaleChange, 1.0) * Matrix4.translationValues(-pivot.dx, -pivot.dy, 0.0) * currentMatrix;
-            if (newMatrix.storage[13] < 0) {
-              newMatrix.setTranslationRaw(newMatrix.storage[12], 0, 0);
+            if (_fixToTop && newMatrix.storage[13] < 0) {
+              newMatrix.storage[13] = 0;
             }
             _transformationController.value = newMatrix;
           }

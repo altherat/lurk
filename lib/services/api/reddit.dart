@@ -661,8 +661,30 @@ class RedditApi extends Api {
       // }
     // }
 
-    final List<String> galleryImageUrls = [];
-    final bool isGallery = data['is_gallery'] == true;
+    Size? mediaSize;
+    final media = data['media'];
+    if (media != null) {
+      final video = media['reddit_video'];
+      if (video != null) {
+        mediaSize = Size((video['width'] as num).toDouble(), (video['height'] as num).toDouble());
+      }
+    }
+    else {
+      final preview = data['preview'];
+      if (preview != null) {
+        final List images = preview['images'];
+        if (images.isNotEmpty) {
+          final source = images[0]['source'];
+          mediaSize = Size(
+            (source['width'] as num).toDouble(),
+            (source['height'] as num).toDouble(),
+          );
+        }
+      }
+    }
+
+    final List<GalleryImage> galleryImages = [];
+    final isGallery = data['is_gallery'] == true;
     final String domain;
     if (isGallery) {
       domain = 'image/gallery';
@@ -676,7 +698,7 @@ class RedditApi extends Api {
             final source = mediaItem['s'];
             String? imageUrl = source['u'] ?? source['gif'];
             if (imageUrl != null) {
-              galleryImageUrls.add(imageUrl.replaceAll('&amp;', '&'));
+              galleryImages.add(GalleryImage(url: imageUrl.replaceAll('&amp;', '&'), size: Size((source['x'] as num).toDouble(),(source['y'] as num).toDouble())));
             }
           }
         }
@@ -710,7 +732,8 @@ class RedditApi extends Api {
         isNsfw: data['over_18'],
         isGallery: isGallery,
         isDeleted: author == '[deleted]',
-        galleryImageUrls: galleryImageUrls
+        mediaSize: mediaSize,
+        galleryImages: galleryImages
       )
     );
   }

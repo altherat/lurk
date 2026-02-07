@@ -11,7 +11,7 @@ import 'package:lurk/screens/image_viewer.dart';
 import 'package:lurk/screens/posts.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
-import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+import 'package:lurk/widgets/custom_progress_indicators.dart';
 
 class CustomHtml extends StatelessWidget {
 
@@ -139,6 +139,7 @@ class CustomHtml extends StatelessWidget {
             return null;
           },
           onTapUrl: (url) {
+            debugPrint('onTapUrl: $url');
 
             final communityName = platform.getCommunityNameFromPath(url);
             if (communityName != null) {
@@ -319,7 +320,8 @@ class _Image extends StatelessWidget {
                           context.push(() {
                             return ImageViewerScreen(
                               platform: platform,
-                              url: url
+                              url: url,
+                              size: size
                             );
                           });
                         }

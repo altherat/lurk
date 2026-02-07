@@ -4,6 +4,7 @@ import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/services/settings.dart';
+import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'package:webview_flutter_android/webview_flutter_android.dart';
@@ -93,20 +94,12 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
               children: [
                 _WebView(controller: _controller),
                 ValueListenableBuilder(
-                  valueListenable: Settings.showPlatformColorAccents,
-                  builder: (context, showPlatformColorAccents, child) {
-                    return ValueListenableBuilder(
-                      valueListenable: _progressNotifier,
-                      builder: (context, progress, child) {
-                        if (progress == 1) return SizedBox.shrink();
-                        return LinearProgressIndicator(
-                          value: progress,
-                          color: showPlatformColorAccents ? widget.post?.community.platform.color ?? widget.platform?.color : null,
-                          backgroundColor: Colors.transparent,
-                          minHeight: 3,
-                        );
-                      }
-                    );
+                  valueListenable: _progressNotifier,
+                  builder: (context, progress, child) {
+                    if (progress == 1) {
+                      return SizedBox.shrink();
+                    }
+                    return CustomLinearProgressIndicator(value: progress);
                   }
                 )
               ],

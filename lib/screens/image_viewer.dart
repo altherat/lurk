@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
-import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/custom_interactive_viewer.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
@@ -13,12 +13,14 @@ class ImageViewerScreen extends StatelessWidget {
   final Platform platform;
   final String url;
   final Post? post;
+  final Size? size;
 
   const ImageViewerScreen({
     super.key,
     required this.platform,
     required this.url,
     this.post,
+    this.size
   });
 
   @override
@@ -48,16 +50,27 @@ class ImageViewerScreen extends StatelessWidget {
               loadStateChanged: (state) {
                 switch (state.extendedImageLoadState) {
                   case LoadState.loading:
-                    return LargeCenteredCircularProgressIndicator(platform: platform);
-                  case LoadState.completed:
-                    return state.completedWidget;
-                  case LoadState.failed:
-                    return const Center(
-                      child: LargeVerticalIconMessage(
-                        icon: Icons.broken_image_rounded,
-                        message: 'Something went wrong'
-                      )
-                    );
+                    final progressIndicator = LargeCenteredCircularProgressIndicator(platform: platform);
+                    final size = this.size ?? post?.mediaSize;
+                    if (size != null) {
+                      return Align(
+                        alignment: Alignment.topCenter,
+                        child: AspectRatio(
+                          aspectRatio: size.width / size.height,
+                          child: progressIndicator,
+                        ),
+                      );
+                    }
+                    return progressIndicator;
+                case LoadState.completed:
+                  return state.completedWidget;
+                case LoadState.failed:
+                  return const Center(
+                    child: LargeVerticalIconMessage(
+                      icon: Icons.broken_image_rounded,
+                      message: 'Something went wrong'
+                    )
+                  );
                 }
               },
             ),
@@ -66,4 +79,5 @@ class ImageViewerScreen extends StatelessWidget {
       ),
     );
   }
+  
 }

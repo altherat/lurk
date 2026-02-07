@@ -83,7 +83,6 @@ class Settings {
       nullableCompanionBuilder: (value) => SettingsCompanion(appBarColor: Value(value?.toARGB32())),
       defaultValue: Constants.defaultAppBarColor,
     );
-    debugPrint('saved: ${dbSettings.appBarColor}');
 
     useBottomBar = SettingNotifier(
       initialValue: dbSettings.useBottomBar,

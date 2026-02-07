@@ -12,7 +12,7 @@ import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
-import 'package:lurk/widgets/custom_circular_progress_indicator.dart';
+import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/custom_interactive_viewer.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
 import 'package:path_provider/path_provider.dart';
@@ -140,6 +140,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
+    _isInitialized = false;
     return MediaScaffold(
       platform: widget.platform,
       url: widget.url,
@@ -208,13 +209,21 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
           );
         }
       },
-      body: GestureDetector(
-        behavior: HitTestBehavior.opaque,
-        onTap: () => _onControlsChanged(() => setState(() => _showControls = !_showControls)),
-        child: Stack(
-          children: [
-            if (_isInitialized)
-              CustomInteractiveViewer(
+      body: Stack(
+        children: [
+          if (!_isInitialized)
+            _ProgressIndicator(
+              platform: widget.platform,
+              size: widget.post?.mediaSize,
+            )
+          else ...[
+            Listener(
+              onPointerUp: (event) {
+                if (event.buttons == 0) { 
+                  _onControlsChanged(() => setState(() => _showControls = !_showControls));
+                }
+              },
+              child: CustomInteractiveViewer(
                 child: Align(
                   alignment: Alignment.topCenter,
                   child: AspectRatio(
@@ -223,168 +232,194 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
                   ),
                 ),
               ),
-            if (!_isInitialized)
-              LargeCenteredCircularProgressIndicator(platform: widget.platform)
-            else ...[
-              Positioned(
-                bottom: 0,
-                left: 0,
-                right: 0,
-                child: IgnorePointer(
-                  ignoring: !_showControls,
-                  child: AnimatedOpacity(
-                    opacity: _showControls ? 1 : 0,
-                    duration: const Duration(milliseconds: 300),
-                    child: Container(
-                      width: double.infinity,
-                      padding: const EdgeInsets.symmetric(vertical: 10),
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          begin: Alignment.bottomCenter,
-                          end: Alignment.topCenter,
-                          colors: [Colors.black87, Colors.black26],
-                        ),
+            ),
+            Positioned(
+              bottom: 0,
+              left: 0,
+              right: 0,
+              child: IgnorePointer(
+                ignoring: !_showControls,
+                child: AnimatedOpacity(
+                  opacity: _showControls ? 1 : 0,
+                  duration: const Duration(milliseconds: 300),
+                  curve: Curves.easeInOutCubicEmphasized,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 10),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        begin: Alignment.bottomCenter,
+                        end: Alignment.topCenter,
+                        colors: [Colors.black87, Colors.black26],
                       ),
-                      child: SafeArea(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0),
-                          child: Column(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Row(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  IconButton(
-                                    icon: ValueListenableBuilder(
-                                      valueListenable: _videoController,
-                                      builder: (context, value, child) {
-                                        return Icon(
-                                          value.volume == 0 ? Icons.volume_off_rounded : Icons.volume_up_rounded,
-                                          color: Colors.white,
-                                          size: 34,
-                                        );
-                                      }
-                                    ),
-                                    onPressed: () => _onControlsChanged(() => _videoController.setVolume(_videoController.value.volume > 0 ? 0 : 1))
-                                  ),
-                                  const SizedBox(width: 20),
-                                  IconButton(
-                                    icon: Icon(
-                                      Icons.replay_5_rounded,
-                                      color: Colors.white,
-                                      size: 34,
-                                    ),
-                                    onPressed: () => _onControlsChanged(() => _videoController.seekTo(_videoController.value.position - const Duration(seconds: 5)))
-                                  ),
-                                  const SizedBox(width: 20),
-                                  IconButton(
-                                    icon: ValueListenableBuilder(
-                                      valueListenable: _videoController,
-                                      builder: (context, value, child) {
-                                        return Icon(
-                                          value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                                          color: Colors.white,
-                                          size: 48,
-                                        );
-                                      },
-                                    ),
-                                    onPressed: () => _onControlsChanged(() => _videoController.value.isPlaying ? _videoController.pause() : _videoController.play()),
-                                  ),
-                                  const SizedBox(width: 20),
-                                  IconButton(
-                                    icon: Icon(
-                                      Icons.forward_5_rounded,
-                                      color: Colors.white,
-                                      size: 34,
-                                    ),
-                                    onPressed: () => _onControlsChanged(() => _videoController.seekTo(_videoController.value.position + const Duration(seconds: 5)))
-                                  ),
-                                  const SizedBox(width: 20),
-                                  PopupMenuButton<double>(
-                                    initialValue: _videoController.value.playbackSpeed,
-                                    icon: const Icon(
-                                      Icons.settings_rounded,
-                                      color: Colors.white,
-                                      size: 34
-                                    ),
-                                    onSelected: (value) => _onControlsChanged(() => _videoController.setPlaybackSpeed(value)),
-                                    itemBuilder: (context) => playbackSpeeds.map((speed) {
-                                      return PopupMenuItem<double>(
-                                        value: speed,
-                                        child: Text('${speed % 1 == 0 ? speed.toInt() : speed}x'),
-                                      );
-                                    }).toList(),
-                                  )
-                                ],
-                              ),
-                              ValueListenableBuilder(
-                                valueListenable: _videoController,
-                                builder: (context, VideoPlayerValue playerValue, child) {
-                                  return ValueListenableBuilder(
-                                    valueListenable: _sliderNotifier,
-                                    builder: (context, sliderValue, child) {
-                                      final duration = playerValue.duration;
-                                      return Row(
-                                        children: [
-                                          Text(
-                                            _formatDuration(Duration(milliseconds: sliderValue.round())),
-                                            style: const TextStyle(color: Colors.white),
-                                          ),
-                                          Expanded(
-                                            child: ValueListenableBuilder(
-                                              valueListenable: Settings.showPlatformColorAccents,
-                                              builder: (context, showPlatformColorAccents, child) {
-                                                final color = showPlatformColorAccents ? widget.platform.color : null;
-                                                return Slider(
-                                                  thumbColor: color,
-                                                  activeColor: color,
-                                                  inactiveColor: (color ?? Constants.primaryColor).withAlpha(100),
-                                                  value: min(sliderValue, duration.inMilliseconds.toDouble()),
-                                                  max: duration.inMilliseconds.toDouble(),
-                                                  onChangeStart: (_) {
-                                                    _isDragging = true;
-                                                    _disposeHideControlsTimer();
-                                                  },
-                                                  onChanged: (value) => _sliderNotifier.value = value,
-                                                  onChangeEnd: (value) async {
-                                                    await _videoController.seekTo(Duration(milliseconds: value.toInt()));
-                                                    _isDragging = false;
-                                                  }
-                                                );
-                                              }
-                                            ),
-                                          ),
-                                          Text(
-                                            _formatDuration(duration),
-                                            style: const TextStyle(color: Colors.white),
-                                          ),
-                                        ],
+                    ),
+                    child: SafeArea(
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16.0),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                IconButton(
+                                  icon: ValueListenableBuilder(
+                                    valueListenable: _videoController,
+                                    builder: (context, value, child) {
+                                      return Icon(
+                                        value.volume == 0 ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+                                        color: Colors.white,
+                                        size: 34,
                                       );
                                     }
-                                  );
-                                }
-                              ),
-                            ],
-                          ),
+                                  ),
+                                  onPressed: () => _onControlsChanged(() => _videoController.setVolume(_videoController.value.volume > 0 ? 0 : 1))
+                                ),
+                                const SizedBox(width: 20),
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.replay_5_rounded,
+                                    color: Colors.white,
+                                    size: 34,
+                                  ),
+                                  onPressed: () => _onControlsChanged(() => _videoController.seekTo(_videoController.value.position - const Duration(seconds: 5)))
+                                ),
+                                const SizedBox(width: 20),
+                                IconButton(
+                                  icon: ValueListenableBuilder(
+                                    valueListenable: _videoController,
+                                    builder: (context, value, child) {
+                                      return Icon(
+                                        value.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                                        color: Colors.white,
+                                        size: 48,
+                                      );
+                                    },
+                                  ),
+                                  onPressed: () => _onControlsChanged(() => _videoController.value.isPlaying ? _videoController.pause() : _videoController.play()),
+                                ),
+                                const SizedBox(width: 20),
+                                IconButton(
+                                  icon: Icon(
+                                    Icons.forward_5_rounded,
+                                    color: Colors.white,
+                                    size: 34,
+                                  ),
+                                  onPressed: () => _onControlsChanged(() => _videoController.seekTo(_videoController.value.position + const Duration(seconds: 5)))
+                                ),
+                                const SizedBox(width: 20),
+                                PopupMenuButton<double>(
+                                  initialValue: _videoController.value.playbackSpeed,
+                                  icon: const Icon(
+                                    Icons.settings_rounded,
+                                    color: Colors.white,
+                                    size: 34
+                                  ),
+                                  onSelected: (value) => _onControlsChanged(() => _videoController.setPlaybackSpeed(value)),
+                                  itemBuilder: (context) => playbackSpeeds.map((speed) {
+                                    return PopupMenuItem<double>(
+                                      value: speed,
+                                      child: Text('${speed % 1 == 0 ? speed.toInt() : speed}x'),
+                                    );
+                                  }).toList(),
+                                )
+                              ],
+                            ),
+                            ValueListenableBuilder(
+                              valueListenable: _videoController,
+                              builder: (context, VideoPlayerValue playerValue, child) {
+                                return ValueListenableBuilder(
+                                  valueListenable: _sliderNotifier,
+                                  builder: (context, sliderValue, child) {
+                                    final duration = playerValue.duration;
+                                    return Row(
+                                      children: [
+                                        Text(
+                                          _formatDuration(Duration(milliseconds: sliderValue.round())),
+                                          style: const TextStyle(color: Colors.white),
+                                        ),
+                                        Expanded(
+                                          child: ValueListenableBuilder(
+                                            valueListenable: Settings.showPlatformColorAccents,
+                                            builder: (context, showPlatformColorAccents, child) {
+                                              final color = showPlatformColorAccents ? widget.platform.color : null;
+                                              return Slider(
+                                                thumbColor: color,
+                                                activeColor: color,
+                                                inactiveColor: (color ?? Constants.primaryColor).withAlpha(100),
+                                                value: min(sliderValue, duration.inMilliseconds.toDouble()),
+                                                max: duration.inMilliseconds.toDouble(),
+                                                onChangeStart: (_) {
+                                                  _isDragging = true;
+                                                  _disposeHideControlsTimer();
+                                                },
+                                                onChanged: (value) => _sliderNotifier.value = value,
+                                                onChangeEnd: (value) async {
+                                                  await _videoController.seekTo(Duration(milliseconds: value.toInt()));
+                                                  _isDragging = false;
+                                                }
+                                              );
+                                            }
+                                          ),
+                                        ),
+                                        Text(
+                                          _formatDuration(duration),
+                                          style: const TextStyle(color: Colors.white),
+                                        ),
+                                      ],
+                                    );
+                                  }
+                                );
+                              }
+                            ),
+                          ],
                         ),
                       ),
                     ),
                   ),
                 ),
               ),
-              ValueListenableBuilder(
-                valueListenable: _videoController,
-                builder: (context, VideoPlayerValue value, child) {
-                  return value.isBuffering && !value.isCompleted
-                      ? LargeCenteredCircularProgressIndicator(platform: widget.platform)
-                      : const SizedBox.shrink();
-                },
-              )
-            ]
-          ],
-        ),
+            ),
+            ValueListenableBuilder(
+              valueListenable: _videoController,
+              builder: (context, VideoPlayerValue value, child) {
+                return value.isBuffering && !value.isCompleted
+                    ? _ProgressIndicator(
+                        platform: widget.platform,
+                        size: widget.post?.mediaSize,
+                      )
+                    : const SizedBox.shrink();
+              },
+            )
+          ]
+        ],
       )
     );
+  }
+
+}
+
+class _ProgressIndicator extends StatelessWidget {
+  
+  final Platform platform;
+  final Size? size;
+
+  const _ProgressIndicator({
+    super.key,
+    required this.platform,
+    required this.size
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final progressIndicator = LargeCenteredCircularProgressIndicator(platform: platform);
+    if (size != null) {
+      return AspectRatio(
+        aspectRatio: size!.width / size!.height,
+        child: progressIndicator
+      );
+    }
+    return progressIndicator;
   }
 
 }
