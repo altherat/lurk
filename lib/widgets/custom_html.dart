@@ -188,7 +188,6 @@ class _HtmlLink extends StatelessWidget {
   final TextStyle textStyle;
 
   const _HtmlLink({
-    super.key,
     required this.platform,
     required this.url,
     required this.placeholder,
@@ -225,7 +224,6 @@ class _Image extends StatelessWidget {
   final Size? size;
 
   const _Image({
-    super.key,
     required this.platform,
     required this.url,
     required this.size

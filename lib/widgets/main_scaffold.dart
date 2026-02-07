@@ -17,14 +17,13 @@ import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_app_bar.dart';
 import 'package:lurk/widgets/prefixed_name.dart';
-import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/custom_search_bar.dart';
 import 'package:lurk/widgets/list_tile_icon.dart';
 
 class MainScaffold<T> extends StatefulWidget {
 
   final GlobalKey<ScaffoldState>? scaffoldKey;
-  final GlobalKey<CustomRefreshIndicatorState>? refreshIndicatorKey;
+  final GlobalKey<RefreshIndicatorState>? refreshIndicatorKey;
   final Platform platform;
   final String? activeCommunityName;
   final ScrollController? customScrollViewController;
@@ -38,7 +37,7 @@ class MainScaffold<T> extends StatefulWidget {
   final Widget? body;
   final (Listenable, List<Widget> Function(BuildContext context))? iconActionsBuilder;
   final RefreshCallback? onPullRefresh;
-  final VoidCallback? onOtherRefresh;
+  final ScrollController? Function()? onOtherRefresh;
 
   const MainScaffold({
     super.key,
@@ -92,14 +91,14 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
   }
 
   void _scrollToTopAndRefresh() {
-    if (_scrollController.hasClients) {
-      _scrollController.animateTo(
+    final scrollController = widget.onOtherRefresh?.call() ?? _scrollController;
+    if (scrollController.hasClients) {
+      scrollController.animateTo(
         0, 
         duration: const Duration(milliseconds: 300), 
         curve: Curves.easeInOutCubicEmphasized
       );
     }
-    widget.onOtherRefresh?.call();
   }
 
   void _showUsersBottomSheet() {
@@ -126,33 +125,49 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
     );
   }
 
+  Future<void> _getSubscribedCommunityNames() async {
+    final subscribedCommunityNames = await widget.platform.api.getSubscribedCommunityNames();
+    Settings.communities.addAll(
+      subscribedCommunityNames.map((name) {
+        return Community(
+          platform: Platform.reddit,
+          name: name
+        );
+      })
+    );
+  }
+
   Future<void> _onLoginPressed() async {
     context.pop();
     final username = await widget.platform.api.login();
-    if (mounted && username != null) {
-      context.showSnackBar(
-        content: Text.rich(
-          TextSpan(
-            children: [
-              TextSpan(
-                text: 'Logged in to ${widget.platform.name.toTitleCase()} as '
-              ),
-              TextSpan(
-                text: username,
-                style: TextStyle(
-                  color: widget.platform.color,
-                  fontWeight: FontWeight.bold
+    if (username != null) {
+      _getSubscribedCommunityNames();
+      if (mounted) {
+        context.showSnackBar(
+          content: Text.rich(
+            TextSpan(
+              children: [
+                TextSpan(
+                  text: 'Logged in to ${widget.platform.name.toTitleCase()} as '
+                ),
+                TextSpan(
+                  text: username,
+                  style: TextStyle(
+                    color: widget.platform.color,
+                    fontWeight: FontWeight.bold
+                  )
                 )
-              )
-            ]
+              ]
+            )
           )
-        )
-      );
+        );
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     return ValueListenableBuilder(
       valueListenable: Settings.useBottomBar,
       builder: (context, useBottomBar, child) {
@@ -246,12 +261,14 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
                                                 icon: const Icon(Icons.reddit_rounded),
                                                 tooltip: 'Login',
                                                 iconSize: 26,
+                                                color: appBarColor.contrast,
                                                 onPressed: _showUsersBottomSheet
                                               ),
                                             IconButton(
                                               icon: const Icon(Icons.groups_rounded),
                                               tooltip: 'Communities',
                                               iconSize: 26,
+                                              color: appBarColor.contrast,
                                               onPressed: () {
                                                 showModalBottomSheet(
                                                   context: context,
@@ -285,6 +302,7 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
                                               icon: const Icon(Icons.refresh_rounded),
                                               tooltip: 'Refresh',
                                               iconSize: 26,
+                                              color: appBarColor.contrast,
                                               onPressed: _scrollToTopAndRefresh
                                             ),
                                           ]
@@ -306,7 +324,6 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
           );
         }
         else {
-          final theme = Theme.of(context);
           final reverse = Settings.reverseCommunityList.value;
           final divider = const Divider(height: 1, color: Constants.lighterBackgroundColor);
           final communityList = Expanded(
@@ -483,11 +500,12 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
             );
           }
           else {
-            body = CustomRefreshIndicator(
+            body = RefreshIndicator(
               key: widget.refreshIndicatorKey,
-              platform: widget.platform,
               edgeOffset: appBarOffset,
-              onRefresh: widget.onPullRefresh,
+              onRefresh: () async {
+                await widget.onPullRefresh?.call();
+              },
               child: RawScrollbar(
             // body = RawScrollbar(
                 controller: _scrollController,
@@ -549,6 +567,46 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
           );
         }
 
+        return ValueListenableBuilder(
+          valueListenable: Settings.showPlatformColorAccents,
+          builder: (context, showPlatformColorAccents, child) {
+            final scaffold = Scaffold(
+              key: _scaffoldKey,
+              extendBody: extendBody,
+              drawer: drawer,
+              drawerEdgeDragWidth: drawerEdgeDragWidth,
+              bottomNavigationBar: bottomBar,
+              appBar: scaffoldAppBar,
+              body: body
+            );
+            if (showPlatformColorAccents) {
+              return Theme(
+                data: theme.copyWith(
+                  colorScheme: theme.colorScheme.copyWith(
+                    primary: widget.platform.color,
+                    onPrimary: Colors.white,
+                    secondaryContainer: widget.platform.color,
+                    onSecondaryContainer: Colors.white,
+                  ),
+                  bottomNavigationBarTheme: theme.bottomNavigationBarTheme.copyWith(
+                    selectedItemColor: widget.platform.color,
+                  ),
+                  textSelectionTheme: TextSelectionThemeData(
+                    cursorColor: widget.platform.color.withAlpha(200),
+                    selectionColor: widget.platform.color.withAlpha(75),
+                    selectionHandleColor: widget.platform.color,
+                  ),
+                  snackBarTheme: theme.snackBarTheme.copyWith(
+                    actionBackgroundColor: widget.platform.color
+                  ),
+                ),
+                child: scaffold
+              );
+            }
+            return scaffold;
+          }
+        );
+
         return Scaffold(
           key: _scaffoldKey,
           extendBody: extendBody,
@@ -569,7 +627,6 @@ class _Scrim extends StatelessWidget {
   final Color color;
 
   const _Scrim({
-    super.key,
     required this.color
   });
 
@@ -595,7 +652,6 @@ class _UserList extends StatefulWidget {
   final VoidCallback onLoginPressed;
 
   const _UserList({
-    super.key,
     required this.loggedInUsers,
     required this.activeUser,
     this.reverse = false,
@@ -705,9 +761,7 @@ class _UserListState extends State<_UserList> {
 
 class _SettingsIconButton extends StatelessWidget {
 
-  const _SettingsIconButton({
-    super.key
-  });
+  const _SettingsIconButton();
 
   @override
   Widget build(BuildContext context) {
@@ -730,7 +784,6 @@ class _UserListTile extends StatelessWidget {
   final VoidCallback? onLongPress;
 
   const _UserListTile({
-    super.key,
     required this.platform,
     required this.user,
     this.trailing,
@@ -757,7 +810,6 @@ class _UserIcon extends StatelessWidget {
   final LoggedInUser user;
 
   const _UserIcon({
-    super.key,
     required this.user,
   });
 
@@ -788,7 +840,6 @@ class _CommunityList extends StatefulWidget {
   final VoidCallback? onActiveCommunitySelected;
 
   const _CommunityList({
-    super.key,
     required this.platform,
     required this.activeCommunityName,
     required this.reverse,
@@ -880,8 +931,8 @@ class _CommunityListState extends State<_CommunityList> {
     );
   }
 
-  void _onCommunityTap(Community community) {
-    if (community.platform == widget.platform && community.name == (widget.activeCommunityName ?? widget.platform.homeCommunityName)) {
+  void _onCommunityTap(Community community, bool isRoot) {
+    if (community.platform == widget.platform && ((community.name == null && isRoot) || community.name == (widget.activeCommunityName ?? widget.platform.homeCommunityName))) {
       context.pop();
       widget.onActiveCommunitySelected?.call();
       return;
@@ -956,6 +1007,9 @@ class _CommunityListState extends State<_CommunityList> {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+    final primaryColor = theme.colorScheme.primary;
+    final leadingForegroundColor = ThemeData.estimateBrightnessForColor(primaryColor) == Brightness.dark ? Colors.white : Colors.black;
     return ValueListenableBuilder(
       valueListenable: Settings.activeUser,
       builder: (context, activeUser, child) {
@@ -964,66 +1018,53 @@ class _CommunityListState extends State<_CommunityList> {
         return ValueListenableBuilder(
           valueListenable: Settings.showPlatformColorAccents,
           builder: (context, showPlatformColorAccents, child) {
-            final Color accentColor;
-            final Color leadingForegroundColor;
-            if (showPlatformColorAccents) {
-              accentColor = _searchPlatform.color;
-              leadingForegroundColor = Colors.white;
-            }
-            else {
-              accentColor = Theme.of(context).colorScheme.primary;
-              leadingForegroundColor = Colors.black;
-            }
             final listView = ListView.builder(
               reverse: widget.reverse,
               itemCount: headerCount + _visibleCommunities.length,
               itemBuilder: (context, index) {
                 if (index == 0) {
                   final isCombinedFlavor = F.appFlavor == Flavor.combined;
-                  final double width;
-                  final double rightCornerRadius;
-                  final Alignment? alignment;
-                  final Widget child;
+                  final double leadingWidth;
+                  final double leadingRightCornerRadius;
+                  final Alignment? leadingAlignment;
+                  final Widget leadingChild;
                   if (_searchBarPrefixText != null && _isSearchBarFocused) {
-                    width = 48;
-                    rightCornerRadius = 6;
-                    alignment = Alignment.centerRight;
-                    child = Transform.translate(
+                    leadingWidth = 52;
+                    leadingRightCornerRadius = 6;
+                    leadingAlignment = Alignment.centerRight;
+                    leadingChild = Transform.translate(
                       offset: const Offset(0, 0.5), // Can't get text aligned without this
                       child: Text(
                         _searchBarPrefixText!,
                         style: TextStyle(
                           fontSize: Theme.of(context).searchBarTheme.textStyle?.resolve({})?.fontSize ?? 16,
                           color: leadingForegroundColor.withAlpha(200),
-                          // color: Colors.black
-                          // fontWeight: FontWeight.bold
                         ),
                       ),
                     );
                   }
                   else {
-                    width = 40;
-                    rightCornerRadius = 20;
-                    alignment = null;
-                    child = Icon(
+                    leadingWidth = 40;
+                    leadingRightCornerRadius = 20;
+                    leadingAlignment = null;
+                    leadingChild = Icon(
                       Icons.search_rounded,
                       color: leadingForegroundColor
                     );
                   }
                   final leadingIcon = AnimatedContainer(
                     duration: const Duration(milliseconds: 200),
-                    width: width,
+                    width: leadingWidth,
                     height: 40,
-                    alignment: alignment,
+                    alignment: leadingAlignment,
                     decoration: BoxDecoration(
-                      color: accentColor,
-                      // color: _searchPlatform.color.withAlpha(Constants.platformColorBackgroundAlpha),
+                      color: primaryColor,
                       borderRadius: BorderRadius.horizontal(
                         left: const Radius.circular(20),
-                        right: Radius.circular(rightCornerRadius),
+                        right: Radius.circular(leadingRightCornerRadius),
                       ),
                     ),
-                    child: child
+                    child: leadingChild
                   );
                   final searchBar = SearchBar(
                     controller: _searchController,
@@ -1034,10 +1075,10 @@ class _CommunityListState extends State<_CommunityList> {
                     hintStyle: WidgetStatePropertyAll(TextStyle(color: Colors.white60)),
                     inputFormatters: _searchType != SearchType.all ? [FilteringTextInputFormatter.allow(_searchNameAllowedRegex)] : null,
                     backgroundColor: WidgetStateProperty.all(Constants.lighterBackgroundColor),
-                    side: _isSearchValid && _isSearchBarFocused ? WidgetStatePropertyAll(BorderSide(color: accentColor),) : null,
+                    side: _isSearchValid && _isSearchBarFocused ? WidgetStatePropertyAll(BorderSide(color: primaryColor),) : null,
                     leading: Container(
-                      width: 48,
-                      height: 48,
+                      width: 52,
+                      height: 40,
                       alignment: Alignment.centerLeft,
                       margin: EdgeInsets.only(left: 8),
                       child: isCombinedFlavor
@@ -1184,6 +1225,7 @@ class _CommunityListState extends State<_CommunityList> {
             
                   return ListTile(
                     minVerticalPadding: 0,
+                    contentPadding: EdgeInsets.symmetric(horizontal: 12),
                     title: Padding(
                       padding: const EdgeInsets.only(bottom: 8),
                       child: KeyboardListener(
@@ -1231,63 +1273,57 @@ class _CommunityListState extends State<_CommunityList> {
                       )
                     ),
                     title: Text(activeUser.platform.rootCommunityName),
-                    onTap: (community) => _onCommunityTap(community),
+                    onTap: (community) => _onCommunityTap(community, true),
                   );
                 }
             
                 final community = _visibleCommunities[index - headerCount];
+                final IconData icon;
+                final Color? color;
+                if (community.isFavorite) {
+                  icon = Icons.star_rounded;
+                  color = primaryColor;
+                }
+                else {
+                  icon = Icons.star_border_rounded;
+                  color = null;
+                }
                 return _CommunityNameListTile(
                   platform: widget.platform,
                   community: community,
                   activeCommunityName: widget.activeCommunityName,
                   leading: IconButton(
-                    icon: ValueListenableBuilder(
-                      valueListenable: Settings.showPlatformColorAccents,
-                      builder: (context, showPlatformColorAccents, child) {
-                        final IconData icon;
-                        final Color? color;
-                        if (community.isFavorite) {
-                          icon = Icons.star_rounded;
-                          color = showPlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary;
-                          // color = showPlatformColorAccents ? Theme.of(context).colorScheme.onSurface : Theme.of(context).colorScheme.primary;
-                        }
-                        else {
-                          icon = Icons.star_border_rounded;
-                          color = null;
-                        }
-                        return Icon(
-                          icon,
-                          color: color,
-                          size: 24
-                        );
-                      }
+                    icon: Icon(
+                      icon,
+                      color: color,
+                      size: 24
                     ),
                     onPressed: () {
                       Settings.communities.update(community.copyWith(isFavorite: !community.isFavorite));
                     }
                   ),
                   title: F.appFlavor == Flavor.combined || community.platform.homeCommunityName == null ? PrefixedCommunityName(community: community) : Text(community.name!),
-                  onTap: (community) => _onCommunityTap(community),
+                  onTap: (community) => _onCommunityTap(community, false),
                 );
               }
             );
             if (activeUser == null) {
               return listView;
             }
-            return CustomRefreshIndicator(
-              platform: widget.platform,
+            return RefreshIndicator(
               edgeOffset: MediaQuery.of(context).padding.top + 56,
               onRefresh: () async {
                 final List<Community> subcscribedCommunities = [];
-                for (var platform in F.appFlavor.platforms) {
+                for (final platform in F.appFlavor.platforms) {
                   if (platform.api.hasLogin) {
-                    final subscribedCommunityNames = await widget.platform.api.getSubscribedCommunityNames();
-                    subscribedCommunityNames.map((name) {
-                      return Community(
-                        platform: platform,
-                        name: name
+                    for (final communityName in (await widget.platform.api.getSubscribedCommunityNames())) {
+                      subcscribedCommunities.add(
+                        Community(
+                          platform: platform,
+                          name: communityName
+                        )
                       );
-                    });
+                    }
                   }
                 }
                 Settings.communities.addAll(subcscribedCommunities);
@@ -1312,7 +1348,6 @@ class _CommunityNameListTile extends StatelessWidget {
   final void Function(Community community) onTap;
 
   const _CommunityNameListTile({
-    super.key,
     required this.platform,
     required this.community,
     required this.activeCommunityName,
@@ -1330,36 +1365,33 @@ class _CommunityNameListTile extends StatelessWidget {
           leading: leading,
           title: title,
           onTap: () => onTap(community),
-          onLongPress: () {
-            final activeUser = Settings.activeUser.value;
-            showSimpleOptionsDialog(
-              context: context,
-              title: community.prefixedName,
-              options: {
-                if (community.name != null && activeUser != null)
-                  'Unsubscribe': () => activeUser.platform.api.unsubscribe(community.name!),
-                'Remove': () => Settings.communities.remove(community)
-              },
-            );
-          }
+          onLongPress: community.name != null
+            ? () {
+                // final activeUser = Settings.activeUser.value;
+                showSimpleOptionsDialog(
+                  context: context,
+                  title: community.prefixedName,
+                  options: {
+                    // if (community.name != null && activeUser != null)
+                    //   'Unsubscribe': () => activeUser.platform.api.unsubscribe(community.name!),
+                    'Remove': () => Settings.communities.remove(community)
+                  },
+                );
+              }
+            : null
         ),
         if (community.platform == platform && community.name == activeCommunityName)
           Positioned(
             left: 0,
             top: 8,
             bottom: 8,
-            child: ValueListenableBuilder(
-              valueListenable: Settings.showPlatformColorAccents,
-              builder: (context, showPlatformColorAccents, child) {
-                return Container(
-                  width: 4,
-                  decoration: BoxDecoration(
-                    color: showPlatformColorAccents ? community.platform.color : Theme.of(context).colorScheme.primary,
-                    borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
-                  ),
-                );
-              }
-            ),
+            child: Container(
+              width: 4,
+              decoration: BoxDecoration(
+                color: Theme.of(context).colorScheme.primary,
+                borderRadius: const BorderRadius.horizontal(right: Radius.circular(4)),
+              ),
+            )
           )
       ]
     );

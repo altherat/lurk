@@ -138,6 +138,7 @@ class SearchScreen extends StatelessWidget {
               : null
           );
         }
+        return null;
       },
       noItemsBuilder: (context) {
         return const LargeVerticalIconMessage(

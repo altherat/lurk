@@ -535,7 +535,6 @@ class _LoadMoreComments extends StatefulWidget {
   final Future Function()? onLoadMoreComments;
 
   const _LoadMoreComments({
-    super.key,
     required this.platform,
     required this.comment,
     this.onLoadMoreComments,
@@ -602,7 +601,6 @@ class _AddCommentBottomSheetContent extends StatefulWidget {
   final Widget replyingToWidget;
 
   const _AddCommentBottomSheetContent({
-    super.key,
     required this.platform,
     required this.replyingToId,
     required this.replyingToWidget

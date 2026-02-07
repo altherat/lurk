@@ -338,28 +338,20 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
                                           style: const TextStyle(color: Colors.white),
                                         ),
                                         Expanded(
-                                          child: ValueListenableBuilder(
-                                            valueListenable: Settings.showPlatformColorAccents,
-                                            builder: (context, showPlatformColorAccents, child) {
-                                              final color = showPlatformColorAccents ? widget.platform.color : null;
-                                              return Slider(
-                                                thumbColor: color,
-                                                activeColor: color,
-                                                inactiveColor: (color ?? Constants.primaryColor).withAlpha(100),
-                                                value: min(sliderValue, duration.inMilliseconds.toDouble()),
-                                                max: duration.inMilliseconds.toDouble(),
-                                                onChangeStart: (_) {
-                                                  _isDragging = true;
-                                                  _disposeHideControlsTimer();
-                                                },
-                                                onChanged: (value) => _sliderNotifier.value = value,
-                                                onChangeEnd: (value) async {
-                                                  await _videoController.seekTo(Duration(milliseconds: value.toInt()));
-                                                  _isDragging = false;
-                                                }
-                                              );
+                                          child: Slider(
+                                            value: min(sliderValue, duration.inMilliseconds.toDouble()),
+                                            max: duration.inMilliseconds.toDouble(),
+                                            inactiveColor: Theme.of(context).colorScheme.primary.withAlpha(100),
+                                            onChangeStart: (_) {
+                                              _isDragging = true;
+                                              _disposeHideControlsTimer();
+                                            },
+                                            onChanged: (value) => _sliderNotifier.value = value,
+                                            onChangeEnd: (value) async {
+                                              await _videoController.seekTo(Duration(milliseconds: value.toInt()));
+                                              _isDragging = false;
                                             }
-                                          ),
+                                          )
                                         ),
                                         Text(
                                           _formatDuration(duration),
@@ -404,7 +396,6 @@ class _ProgressIndicator extends StatelessWidget {
   final Size? size;
 
   const _ProgressIndicator({
-    super.key,
     required this.platform,
     required this.size
   });

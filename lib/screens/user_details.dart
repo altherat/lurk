@@ -129,6 +129,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
             )
           );
         }
+        return null;
       },
       noItemsBuilder: (context) {
         return const LargeVerticalIconMessage(

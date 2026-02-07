@@ -4,7 +4,6 @@ import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/services/settings.dart';
-import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/feed_list.dart';
 import 'package:lurk/widgets/feed_option_selector.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
@@ -52,7 +51,7 @@ class SimpleFeedScreen<T> extends StatefulWidget {
 class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTickerProviderStateMixin {
 
   late List<GlobalKey<FeedListState>> _feedListKeys;
-  late List<GlobalKey<CustomRefreshIndicatorState>> _refreshIndicatorKeys;
+  late List<GlobalKey<RefreshIndicatorState>> _refreshIndicatorKeys;
   late List<ScrollController> _scrollControllers;
   TabController? _tabController;
   late List<Map<FeedOptionType, FeedOption>?> _selectedFeedOptions;
@@ -68,14 +67,14 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
        _selectedFeedOptions = [];
        for (var i = 0; i < widget.feedOptions!.options.length; i++) {
           _feedListKeys.add(GlobalKey<FeedListState>());
-          _refreshIndicatorKeys.add(GlobalKey<CustomRefreshIndicatorState>());
+          _refreshIndicatorKeys.add(GlobalKey<RefreshIndicatorState>());
           _scrollControllers.add(ScrollController());
           _selectedFeedOptions.add(widget.feedOptions?.options[i].subGroup?.defaults);
        }
     }
     else {
       _feedListKeys = [GlobalKey<FeedListState>()];
-      _refreshIndicatorKeys = [GlobalKey<CustomRefreshIndicatorState>()];
+      _refreshIndicatorKeys = [GlobalKey<RefreshIndicatorState>()];
       _scrollControllers = [ScrollController()];
       _selectedFeedOptions = [widget.feedOptions?.defaults];
     }
@@ -103,16 +102,6 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
     }
   }
 
-  void _onOtherRefresh(int index) {
-    _scrollControllers[index].animateTo(
-      0, 
-      duration: const Duration(milliseconds: 300), 
-      curve: Curves.easeInOutCubicEmphasized
-    );
-    _refreshIndicatorKeys[index].currentState?.show();
-    _refresh(index);
-  }
-  
   void _onFeedOptionsSelected(Map<FeedOptionType, FeedOption>? options) {
     setState(() {
       _selectedFeedOptions[_tabController?.index ?? 0] = mapEquals(options, widget.feedOptions!.defaults) ? null : options;
@@ -134,9 +123,8 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
           Builder(
             builder: (context) {
               final overlapAbsorberHandle = NestedScrollView.sliverOverlapAbsorberHandleFor(context);
-              return CustomRefreshIndicator(
+              return RefreshIndicator(
                 key: _refreshIndicatorKeys[i],
-                platform: widget.platform,
                 edgeOffset: overlapAbsorberHandle.layoutExtent ?? 0, 
                 onRefresh: () => _refresh(i),
                 child: Scrollbar(
@@ -212,23 +200,15 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
           child: ValueListenableBuilder(
             valueListenable: Settings.appBarColor,
             builder: (context, appBarColor, child) {
-              return ValueListenableBuilder(
-                valueListenable: Settings.showPlatformColorAccents,
-                builder: (context, showPlatformColorAccents, child) {
-                  final color = showPlatformColorAccents ? widget.platform.color : null;
-                  return DecoratedBox(
-                    decoration: BoxDecoration(
-                      color: appBarColor
-                    ),
-                    child: TabBar(
-                      controller: _tabController,
-                      tabs: tabs,
-                      labelColor: color,
-                      indicatorColor: color,
-                      unselectedLabelColor: appBarColor.contrast,
-                    ),
-                  );
-                }
+              return DecoratedBox(
+                decoration: BoxDecoration(
+                  color: appBarColor
+                ),
+                child: TabBar(
+                  controller: _tabController,
+                  tabs: tabs,
+                  unselectedLabelColor: appBarColor.contrast,
+                ),
               );
             }
           ),
@@ -239,7 +219,11 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
           controller: _tabController,
           children: pages,
         ),
-        onOtherRefresh: () => _onOtherRefresh(_tabController!.index),
+        onOtherRefresh: () {
+          final index = _tabController!.index;
+          _refreshIndicatorKeys[index].currentState?.show();
+          return _scrollControllers[index];
+        }
       );
     }
     final feedOptions = widget.feedOptions;
@@ -274,7 +258,10 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
         )
       ],
       onPullRefresh: () => _refresh(0),
-      onOtherRefresh: () => _onOtherRefresh(0)
+      onOtherRefresh: () {
+        _refreshIndicatorKeys[0].currentState?.show();
+        return null;
+      }
     );
   }
 

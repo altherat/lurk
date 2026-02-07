@@ -123,7 +123,6 @@ class _Icon extends StatelessWidget {
   final double offset;
 
   const _Icon({
-    super.key,
     required this.icon,
     required this.size,
     required this.color

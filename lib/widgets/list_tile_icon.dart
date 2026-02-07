@@ -62,7 +62,6 @@ class _Placeholder extends StatelessWidget {
   final double size;
 
   const _Placeholder({
-    super.key,
     required this.icon,
     required this.size
   });

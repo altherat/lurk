@@ -135,9 +135,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
 class _Divider extends StatelessWidget {
 
-  const _Divider({
-    super.key
-  });
+  const _Divider();
 
   @override
   Widget build(BuildContext context) {
@@ -151,9 +149,7 @@ class _Divider extends StatelessWidget {
 
 class _RedditLinksFromOldRedditSetting extends StatelessWidget {
 
-  const _RedditLinksFromOldRedditSetting({
-    super.key
-  });
+  const _RedditLinksFromOldRedditSetting();
 
   @override
   Widget build(BuildContext context) {
@@ -168,9 +164,7 @@ class _RedditLinksFromOldRedditSetting extends StatelessWidget {
 
 class _RedditClientIdSetting extends StatelessWidget {
 
-  const _RedditClientIdSetting({
-    super.key
-  });
+  const _RedditClientIdSetting();
 
   @override
   Widget build(BuildContext context) {
@@ -186,9 +180,7 @@ class _RedditClientIdSetting extends StatelessWidget {
 
 class _RedditRedirectUriSetting extends StatelessWidget {
 
-  const _RedditRedirectUriSetting({
-    super.key
-  });
+  const _RedditRedirectUriSetting();
 
   @override
   Widget build(BuildContext context) {
@@ -205,9 +197,7 @@ class _DiggPostsFetchDepthSetting extends StatelessWidget {
 
   final _maxDepth = 5;
 
-  const _DiggPostsFetchDepthSetting({
-    super.key
-  });
+  const _DiggPostsFetchDepthSetting();
 
   @override
   Widget build(BuildContext context) {
@@ -226,7 +216,6 @@ class _Header extends StatelessWidget {
   final String text;
 
   const _Header({
-    super.key,
     required this.text,
   });
 
@@ -262,7 +251,6 @@ class _TextField extends StatefulWidget {
   final Function(String value) onSubmitted;
 
   const _TextField({
-    super.key,
     required this.defaultValue,
     this.label,
     this.hintText,
@@ -360,45 +348,12 @@ class _TextFieldState extends State<_TextField> {
 
 }
 
-class CommunityInputFormatter extends TextInputFormatter {
-
-  final Platform platform;
-
-  CommunityInputFormatter(this.platform);
-
-  @override
-  TextEditingValue formatEditUpdate(
-    TextEditingValue oldValue,
-    TextEditingValue newValue,
-  ) {
-    final text = newValue.text;
-    final allowedChars = platform.communityNameAllowedChars;
-
-    // 1. Prevent consecutive special characters (e.g., __ or --)
-    if (allowedChars.isNotEmpty) {
-      final escapedChars = RegExp.escape(allowedChars);
-      // This regex looks for any allowed special char followed by another special char
-      if (RegExp('[$escapedChars]{2,}').hasMatch(text)) {
-        return oldValue;
-      }
-    }
-
-    // 2. Prevent starting with a special character (Reddit/Digg usually require Alphanumeric start)
-    if (text.isNotEmpty && RegExp('[${RegExp.escape(allowedChars)}]').hasMatch(text[0])) {
-       return oldValue;
-    }
-
-    return newValue;
-  }
-}
-
 class _InfoIconButton extends StatelessWidget {
 
   final String? title;
   final String text;
 
   const _InfoIconButton({
-    super.key,
     required this.title,
     required this.text
   });
@@ -453,7 +408,6 @@ class _TextSettingListTile<T> extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return ListTile(
-      // minVerticalPadding: 0,
       title: ValueListenableBuilder<T?>(
         valueListenable: setting,
         builder: (context, value, child) {
@@ -485,7 +439,6 @@ class _IntSettingListTile extends StatelessWidget {
   final String label;
 
   const _IntSettingListTile({
-    super.key,
     required this.setting,
     required this.label,
   });
@@ -512,7 +465,6 @@ class _ColorSettingListTile extends StatelessWidget {
   final String label;
 
   const _ColorSettingListTile({
-    super.key,
     required this.setting,
     required this.label,
   });
@@ -543,7 +495,6 @@ class _BoolSettingListTile extends StatelessWidget {
   final String? infoText;
 
   const _BoolSettingListTile({
-    super.key,
     required this.setting,
     required this.label,
     this.infoText
@@ -611,6 +562,7 @@ class _ChoiceSettingListTile<T> extends StatelessWidget {
                 valueListenable: setting,
                 builder: (context, value, child) {
                   return Row(
+                    spacing: Constants.choiceChipGapSize,
                     children: List.generate(choices.length, (index) {
                       final choice = choices[index];
                       final labelString = choiceLabel?.call(choice) ?? choice.toString();
@@ -625,25 +577,19 @@ class _ChoiceSettingListTile<T> extends StatelessWidget {
                         selectedColor = null;
                         labelStyle = null;
                       }
-                      return Padding(
-                        padding: EdgeInsets.only(left: index == 0 ? 0 : Constants.choiceChipGapSize / 2, right: index == choices.length - 1 ? 0 : Constants.choiceChipGapSize / 2),
-                        child: ChoiceChip(
-                          label: Text(labelString),
-                          selected: isSelected,
-                          showCheckmark: false, 
-                          materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                          backgroundColor: Constants.lighterBackgroundColor, 
-                          selectedColor: selectedColor,
-                          labelStyle: labelStyle,
-                          side: BorderSide.none,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                          onSelected: (bool selected) {
-                            if (selected) {
-                              setting.value = choice;
-                              onSelected?.call(choice);
-                            }
-                          },
-                        ),
+                      return ChoiceChip(
+                        label: Text(labelString),
+                        selected: isSelected,
+                        backgroundColor: Constants.lighterBackgroundColor, 
+                        selectedColor: selectedColor,
+                        labelStyle: labelStyle,
+                        side: BorderSide.none,
+                        onSelected: (bool selected) {
+                          if (selected) {
+                            setting.value = choice;
+                            onSelected?.call(choice);
+                          }
+                        },
                       );
                     })
                   );

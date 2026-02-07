@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
-import 'package:lurk/services/settings.dart';
 
 class FeedOptionSelector extends StatelessWidget {
 
@@ -37,38 +36,23 @@ class FeedOptionSelector extends StatelessWidget {
               )
             )
           ),
-        ValueListenableBuilder(
-          valueListenable: Settings.showPlatformColorAccents,
-          builder: (context, showPlatformColorAccents, child) {
-            return Wrap(
-              spacing: Constants.choiceChipGapSize,
-              runSpacing: Constants.choiceChipGapSize / 2,
-              children: options.map((filter) {
-                final Color? backgroundColor;
-                final Color? foregroundColor;
-                if (showPlatformColorAccents) {
-                  backgroundColor = platform.color;
-                  foregroundColor = Colors.white;
+        Wrap(
+          spacing: Constants.choiceChipGapSize,
+          runSpacing: Constants.choiceChipGapSize,
+          children: options.map((filter) {
+            final isSelected = selected == filter;
+            return ChoiceChip(
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              label: Text(filter.label),
+              selected: isSelected,
+              labelStyle: isSelected ? null : TextStyle(color: Theme.of(context).colorScheme.onSurface),
+              onSelected: (selected) {
+                if (selected) {
+                  onSelected(filter);
                 }
-                else {
-                  backgroundColor = null;
-                  foregroundColor = null;
-                }
-                return ChoiceChip(
-                  label: Text(filter.label),
-                  selected: selected == filter,
-                  showCheckmark: false,
-                  labelStyle: TextStyle(color: foregroundColor),
-                  color: WidgetStateProperty.resolveWith<Color?>((states) => states.contains(WidgetState.selected) || states.contains(WidgetState.pressed) ? backgroundColor : null),
-                  onSelected: (selected) {
-                    if (selected) {
-                      onSelected(filter);
-                    }
-                  },
-                );
-              }).toList(),
+              },
             );
-          }
+          }).toList(),
         )
       ],
     );
@@ -135,7 +119,6 @@ class _FeedOptionsSelector extends StatefulWidget {
   final Function(Map<FeedOptionType, FeedOption>) onSelected;
 
   const _FeedOptionsSelector({
-    super.key,
     required this.platform,
     required this.optionsGroup,
     required this.selected,
@@ -221,7 +204,6 @@ class _AnimatedRow extends StatefulWidget {
 
   final Widget child;
   const _AnimatedRow({
-    super.key, 
     required this.child
   });
 

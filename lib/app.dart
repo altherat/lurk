@@ -38,24 +38,36 @@ class _AppState extends State<App> {
       navigatorObservers: [routeObserver],
       theme: ThemeData(
         useMaterial3: true,
-        // pageTransitionsTheme: const PageTransitionsTheme(
-        //   builders: {
-        //     TargetPlatform.android: FadeUpwardsPageTransitionsBuilder(),
-        //   },
-        // ),
         colorScheme: .dark(
           primary: Constants.primaryColor,
           surface: Colors.black,
           onSurfaceVariant: Constants.secondaryTextColor,
-          secondaryContainer: Constants.primaryColor, 
+          secondaryContainer: Constants.primaryColor,
         ),
-        // splashColor: Constants.splashColor,
-        // highlightColor: Constants.highlightColor,
+        progressIndicatorTheme: const ProgressIndicatorThemeData(
+          refreshBackgroundColor: Constants.refreshIndicatorBackgroundColor
+        ),
         bottomNavigationBarTheme: const BottomNavigationBarThemeData(
           selectedItemColor: Constants.primaryColor,
         ),
+        tabBarTheme: const TabBarThemeData(
+          dividerColor: Colors.transparent,
+        ),
         popupMenuTheme: const PopupMenuThemeData(
           color: Constants.popupMenuColor
+        ),
+        chipTheme: const ChipThemeData(
+          showCheckmark: false,
+        ),
+        inputDecorationTheme: const InputDecorationTheme(
+          hintStyle: TextStyle(color: Constants.textFieldHintColor),
+          suffixIconColor: Constants.textFieldHintColor,
+          enabledBorder: UnderlineInputBorder(
+            borderSide: BorderSide(color: Constants.textFieldHintColor),
+          )
+        ),
+        scrollbarTheme: ScrollbarThemeData(
+          thumbColor: WidgetStateProperty.all(Constants.scrollbarColor)
         ),
         snackBarTheme: const SnackBarThemeData(
           backgroundColor: Colors.black,
@@ -70,22 +82,6 @@ class _AppState extends State<App> {
         dialogTheme: DialogThemeData(
           backgroundColor: Constants.dialogBackgroundColor
         ),
-        inputDecorationTheme: const InputDecorationTheme(
-          hintStyle: TextStyle(color: Constants.textFieldHintColor),
-          suffixIconColor: Constants.textFieldHintColor,
-          enabledBorder: UnderlineInputBorder(
-            borderSide: BorderSide(color: Constants.textFieldHintColor),
-          )
-        ),
-        progressIndicatorTheme: const ProgressIndicatorThemeData(
-          refreshBackgroundColor: Constants.refreshIndicatorBackgroundColor
-        ),
-        scrollbarTheme: ScrollbarThemeData(
-          thumbColor: WidgetStateProperty.all(Constants.scrollbarColor)
-        ),
-        tabBarTheme: const TabBarThemeData(
-          dividerColor: Colors.transparent,
-        )
       ),
       home: FutureBuilder(
         future: _servicesInitFuture,

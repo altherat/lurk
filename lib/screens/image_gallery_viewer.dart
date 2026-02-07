@@ -70,7 +70,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
   }
 
   Future<void> _getGalleryFromUrl() async {
-    final postDetails = await widget.platform.api.getPostDetailsFromUrl(widget.url!);
+    final postDetails = await widget.platform.api.getPostDetailsFromUrl(widget.url);
     if (mounted) {
       setState(() {
         _post = postDetails.post;

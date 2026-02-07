@@ -522,15 +522,6 @@ class RedditApi extends Api {
       _authClientHelpers.remove(null);
       Settings.loggedInUsers.add(user);
       Settings.activeUser.value = user;
-      final subscribedCommunityNames = await getSubscribedCommunityNames();
-      Settings.communities.addAll(
-        subscribedCommunityNames.map((name) {
-          return Community(
-            platform: Platform.reddit,
-            name: name
-          );
-        })
-      );
       return user.name;
     }
     return null;

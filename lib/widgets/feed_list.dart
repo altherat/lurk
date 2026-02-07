@@ -101,7 +101,7 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
   @override
   Widget build(BuildContext context) {
     super.build(context);
-    if (this.items.isEmpty) {
+    if (items.isEmpty) {
       if (_loadingState == LoadingState.loading) {
         return SliverFillRemaining(
           hasScrollBody: false,
@@ -130,9 +130,9 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
         builder: (context, child) {
           return SliverList(
             delegate: SliverChildBuilderDelegate(
-              childCount: (_pageToken != null ? this.items.length + 1 : this.items.length),
+              childCount: (_pageToken != null ? items.length + 1 : items.length),
               (context, index) {
-                if (index == this.items.length) {
+                if (index == items.length) {
                   if (_loadingState != LoadingState.loading) {
                     WidgetsBinding.instance.addPostFrameCallback((_) {
                       if (!mounted) return;
@@ -152,7 +152,7 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
                 }
                 return _FeedItemTransition(
                   progress: _animationController.value,
-                  child: widget.itemBuilder(context, index, this.items[index])!
+                  child: widget.itemBuilder(context, index, items[index])!
                 );
               }
             )
@@ -176,7 +176,6 @@ class _FeedItemTransition extends StatelessWidget {
   final Widget child;
 
   const _FeedItemTransition({
-    super.key,
     required this.progress,
     required this.child,
   });
