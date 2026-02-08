@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
-import 'package:lurk/services/settings.dart';
 
 const _largeSize = 64.0;
 const _largeStrokeWidth = 6.0;

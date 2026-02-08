@@ -7,9 +7,11 @@ import 'package:lurk/core/utils.dart' as utils;
 
 abstract class CommentItem {
 
+  final Platform platform;
   final int depth;
 
   const CommentItem({
+    required this.platform,
     required this.depth
   });
   
@@ -17,7 +19,6 @@ abstract class CommentItem {
 
 class Comment extends CommentItem {
   
-  final Platform platform;
   final String id;
   final String shortId;
   final String permalink;
@@ -36,8 +37,8 @@ class Comment extends CommentItem {
   final String? communityName;
 
   const Comment({
+    required super.platform,
     required super.depth,
-    required this.platform,
     required this.id,
     required this.shortId,
     required this.permalink,
@@ -67,6 +68,7 @@ class LoadMoreComment extends CommentItem {
   final String? pageToken;
 
   const LoadMoreComment({
+    required super.platform,
     required super.depth,
     required this.count,
     required this.pageToken

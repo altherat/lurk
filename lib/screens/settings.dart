@@ -433,32 +433,6 @@ class _TextSettingListTile<T> extends StatelessWidget {
 
 }
 
-class _IntSettingListTile extends StatelessWidget {
-
-  final SettingNotifier<int> setting;
-  final String label;
-
-  const _IntSettingListTile({
-    required this.setting,
-    required this.label,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return _TextSettingListTile(
-      setting: setting,
-      label: label,
-      hintText: setting.defaultValue?.toString(),
-      keyboardType: TextInputType.number,
-      inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'[0-9]'))],
-      textCapitalization: TextCapitalization.characters,
-      toText: (value) => value?.toString(),
-      fromText: (value) => value != null ? int.parse(value) : null
-    );
-  }
-
-}
-
 class _ColorSettingListTile extends StatelessWidget {
 
   final SettingNotifier<Color?> setting;

@@ -1,7 +1,6 @@
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/screens/image_gallery_viewer.dart';
 import 'package:lurk/screens/post_details.dart';
@@ -297,7 +296,6 @@ class _VoteArrow extends StatelessWidget {
   final Alignment alignment;
 
   const _VoteArrow({
-    super.key,
     required this.assetName,
     required this.isActive,
     required this.activeColor,

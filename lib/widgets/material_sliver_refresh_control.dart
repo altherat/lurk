@@ -5,7 +5,7 @@ import 'package:lurk/widgets/custom_progress_indicators.dart';
 class MaterialSliverRefreshControl extends StatelessWidget {
 
   final Platform platform;
-  final RefreshCallback? onRefresh;
+  final RefreshCallback onRefresh;
 
   const MaterialSliverRefreshControl({
     super.key,
@@ -24,16 +24,18 @@ class MaterialSliverRefreshControl extends StatelessWidget {
           child: OverflowBox(
             minHeight: refreshIndicatorExtent,
             maxHeight: refreshIndicatorExtent,
-            child: CustomCircularProgressIndicator(
-              platform: platform,
-              size: 28,
-              strokeWidth: 3.5,
-              value: refreshState == RefreshIndicatorMode.refresh ? null : refreshState == RefreshIndicatorMode.armed ? 1 : (pulledExtent / refreshTriggerPullDistance).clamp(0, 1),
+            child: Opacity(
+              opacity: (pulledExtent / refreshIndicatorExtent).clamp(0.0, 1.0),
+              child: CustomCircularProgressIndicator(
+                platform: platform,
+                size: 28,
+                strokeWidth: 3.5,
+                value: refreshState == RefreshIndicatorMode.drag || refreshState == RefreshIndicatorMode.done ? (pulledExtent / refreshTriggerPullDistance).clamp(0.0, 1.0) : null
+              ),
             ),
-          )
+          ),
         );
       },
     );
   }
-  
 }

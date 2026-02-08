@@ -277,6 +277,7 @@ class DiggApi extends Api {
         if (pageInfo['hasNextPage']) {
           comments.add(
             LoadMoreComment(
+              platform: Platform.digg,
               depth: 0,
               count: data['posts']['edges'][0]['node']['commentCount'] - comments.length,
               pageToken: pageInfo['endCursor'],
@@ -866,6 +867,7 @@ class DiggApi extends Api {
     if (pageInfo['hasNextPage']) {
       comments.add(
         LoadMoreComment(
+          platform: Platform.digg,
           depth: 0,
           count: post.commentCount - comments.length,
           pageToken: pageInfo['endCursor']

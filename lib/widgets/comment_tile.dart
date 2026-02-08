@@ -11,149 +11,102 @@ import 'package:lurk/widgets/custom_html.dart';
 
 class CommentTile extends StatelessWidget {
 
-  final EdgeInsetsGeometry? padding;
   final Comment comment;
   final int depth;
-  final bool isCollapsed;
-  final bool isInteractable;
+  final EdgeInsetsGeometry? padding;
   final bool showCommunityName;
   final bool showViewUserOption;
+  final bool isCollapsed;
+  final bool isInteractable;
   final Map<String, Function()> Function(BuildContext context, LoggedInUser? activeUser)? optionsBuilder;
   final Widget? header;
+  final Widget Function(BuildContext context, Widget body)? bodyBuilder;
   final VoidCallback? onTap;
   final VoidCallback? onDelete;
   
   const CommentTile({
     super.key,
-    this.padding,
     required this.comment,
     this.depth = 0,
-    this.isCollapsed = false,
-    this.isInteractable = true,
+    this.padding,
     this.showCommunityName = false,
     this.showViewUserOption = true,
+    this.isCollapsed = false,
+    this.isInteractable = true,
     this.optionsBuilder,
     this.header,
+    this.bodyBuilder,
     this.onTap,
     this.onDelete
   });
 
   @override
   Widget build(BuildContext context) {
-    final interactionCallback = isInteractable
-      ? () {
-          final activeUser = Settings.activeUser.value;
-          showSimpleTextOptionsBottomSheet(
-            context: context,
-            title: '${comment.authorName == null ? 'Deleted' : comment.authorName!.toPosessive()} comment',
-            options: {
-              if (activeUser != null && activeUser.id == comment.authorId)
-                'Delete comment': () {
-                  onDelete?.call();
-                  comment.platform.api.deleteComment(comment.id);
-                },
-              ...?optionsBuilder?.call(context, activeUser),
-              if (showViewUserOption && comment.authorName != null)
-                'View ${comment.platform.userPrefix}${comment.authorName}': () {
-                  context.push(
-                    () => UserDetailsScreen(
-                      platform: comment.platform,
-                      username: comment.authorName!
-                    )
-                  );
-                },
-              if (comment.text != null)
-                'Copy text': () => copyToClipboard(comment.text!),
-              'Copy link': () => copyToClipboard(comment.platform.api.getCommentUrl(comment)),
-            }
-          );
-        }
-      : null;
     final VoidCallback? onTap;
     final VoidCallback? onLongPress;
-    if (this.onTap == null) {
-      onTap = interactionCallback;
-      onLongPress = interactionCallback;
+    if (isInteractable) {
+      void optionsCallback() {
+        final activeUser = Settings.activeUser.value;
+        showSimpleTextOptionsBottomSheet(
+          context: context,
+          title: '${comment.authorName == null ? 'Deleted' : comment.authorName!.toPosessive()} comment',
+          options: {
+            if (activeUser != null && activeUser.id == comment.authorId)
+              'Delete comment': () {
+                onDelete?.call();
+                comment.platform.api.deleteComment(comment.id);
+              },
+            ...?optionsBuilder?.call(context, activeUser),
+            if (showViewUserOption && comment.authorName != null)
+              'View ${comment.platform.userPrefix}${comment.authorName}': () {
+                context.push(
+                  () => UserDetailsScreen(
+                    platform: comment.platform,
+                    username: comment.authorName!
+                  )
+                );
+              },
+            if (comment.text != null)
+              'Copy text': () => copyToClipboard(comment.text!),
+            'Copy link': () => copyToClipboard(comment.platform.api.getCommentUrl(comment)),
+          }
+        );
+      }
+      if (this.onTap == null) {
+        onTap = optionsCallback;
+        onLongPress = optionsCallback;
+      }
+      else {
+        onTap = this.onTap;
+        onLongPress = optionsCallback;
+      }
     }
     else {
-      onTap = this.onTap;
-      onLongPress = interactionCallback;
+      onTap = null;
+      onLongPress = null;
     }
 
-    final String? authorTag;
-    final Color authorColor;
-    if (comment.isModerator) {
-      authorTag = 'M';
-      authorColor = Constants.commentModeratorColor;
-    }
-    else if (comment.isSubmitter) {
-      authorTag = 'S';
-      authorColor = Constants.commentSubmitterColor;
-    }
-    else {
-      authorTag = null;
-      authorColor = Constants.commentAuthorColor;
-    }
-    final String? htmlText = comment.isDeleted ? '[deleted]' : comment.textHtml;
+    final body = CommentTileBody(
+      comment: comment
+    );
     Widget child = Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         ?header,
         CollectionListenableBuilder(
           id: comment.id,
           collectionListenable: Votes.comments,
           builder: (context, vote) {
-            return Text.rich(
-              TextSpan(
-                style: TextStyle(
-                  fontSize: 12,
-                  color: Constants.secondaryTextColor,
-                  fontStyle: isCollapsed ? FontStyle.italic : null
-                ),
-                children: [
-                  if (vote != null)
-                    WidgetSpan(
-                      alignment: PlaceholderAlignment.middle,
-                      child: SizedBox(
-                        width: 16,
-                        height: 16,
-                        child: OverflowBox(
-                          maxWidth: 28,
-                          maxHeight: 28,
-                          child: Icon(
-                            vote ? Icons.arrow_drop_up_rounded : Icons.arrow_drop_down_rounded,
-                            size: 28, 
-                            color: vote ? Constants.upvoteColor : Constants.downvoteColor,
-                          ),
-                        ),
-                      ),
-                    ),
-                  TextSpan(
-                    text: !comment.isDeleted && comment.authorName != null ? comment.authorName : '[deleted]',
-                    style: TextStyle(
-                      fontWeight: FontWeight.bold,
-                      color: authorColor
-                    ),
-                  ),
-                  if (authorTag != null)
-                    TextSpan(
-                      text: ' [$authorTag]',
-                      style: TextStyle(color: authorColor)
-                    ),
-                  TextSpan(text: ' • ${comment.score?.toPluralString('point') ?? '[~]'} • ${comment.timeAgoLong}${showCommunityName ? ' • ${comment.communityName}' : ''}'),
-                  if (isCollapsed)
-                    const TextSpan(text: ' [+]'),
-                ],
-              ),
+            return CommentTileHeader(
+              comment: comment,
+              isCollapsed: isCollapsed,
+              vote: vote,
+              showCommunityName: showCommunityName,
             );
           }
         ),
-        if (!isCollapsed && htmlText != null)
-          CustomHtml(
-            platform: comment.platform,
-            html: htmlText,
-            imageSizes: comment.images,
-          )
+        if (!isCollapsed)
+          bodyBuilder?.call(context, body) ?? body
       ],
     );
     if (padding != null) {
@@ -173,6 +126,107 @@ class CommentTile extends StatelessWidget {
       onLongPress: onLongPress,
       child: child,
     );
+  }
+
+}
+
+class CommentTileHeader extends StatelessWidget {
+
+  final Comment comment;
+  final bool? vote;
+  final bool showCommunityName;
+  final bool isCollapsed;
+
+  const CommentTileHeader({
+    super.key,
+    required this.comment,
+    required this.vote,
+    this.showCommunityName = false,
+    this.isCollapsed = false
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final String? authorTag;
+    final Color authorColor;
+    if (comment.isModerator) {
+      authorTag = 'M';
+      authorColor = Constants.commentModeratorColor;
+    }
+    else if (comment.isSubmitter) {
+      authorTag = 'S';
+      authorColor = Constants.commentSubmitterColor;
+    }
+    else {
+      authorTag = null;
+      authorColor = Constants.commentAuthorColor;
+    }
+    return Text.rich(
+      TextSpan(
+        style: TextStyle(
+          fontSize: 12,
+          color: Constants.secondaryTextColor,
+          fontStyle: isCollapsed ? FontStyle.italic : null
+        ),
+        children: [
+          if (vote != null)
+            WidgetSpan(
+              alignment: PlaceholderAlignment.middle,
+              child: SizedBox(
+                width: 16,
+                height: 16,
+                child: OverflowBox(
+                  maxWidth: 28,
+                  maxHeight: 28,
+                  child: Icon(
+                    vote! ? Icons.arrow_drop_up_rounded : Icons.arrow_drop_down_rounded,
+                    size: 28, 
+                    color: vote! ? Constants.upvoteColor : Constants.downvoteColor,
+                  ),
+                ),
+              ),
+            ),
+          TextSpan(
+            text: !comment.isDeleted && comment.authorName != null ? comment.authorName : '[deleted]',
+            style: TextStyle(
+              fontWeight: FontWeight.bold,
+              color: authorColor
+            ),
+          ),
+          if (authorTag != null)
+            TextSpan(
+              text: ' [$authorTag]',
+              style: TextStyle(color: authorColor)
+            ),
+          TextSpan(text: ' • ${comment.score?.toPluralString('point') ?? '[~]'} • ${comment.timeAgoLong}${showCommunityName ? ' • ${comment.communityName}' : ''}'),
+          if (isCollapsed)
+            const TextSpan(text: ' [+]'),
+        ],
+      ),
+    );
+  }
+}
+
+class CommentTileBody extends StatelessWidget {
+
+  final Comment comment;
+
+  const CommentTileBody({
+    super.key,
+    required this.comment
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final String? htmlText = comment.isDeleted ? '[deleted]' : comment.textHtml;
+    if (htmlText != null) {
+      return CustomHtml(
+        platform: comment.platform,
+        html: htmlText,
+        imageSizes: comment.images,
+      );
+    }
+    return const SizedBox.shrink();
   }
 
 }

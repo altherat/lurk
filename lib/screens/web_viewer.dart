@@ -100,6 +100,7 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
                     return LinearProgressIndicator(
                       value: progress,
                       minHeight: 3,
+                      borderRadius: BorderRadius.circular(10),
                     );
                   }
                 )

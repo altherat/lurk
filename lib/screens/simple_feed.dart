@@ -4,6 +4,7 @@ import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/services/settings.dart';
+import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/feed_list.dart';
 import 'package:lurk/widgets/feed_option_selector.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
@@ -50,7 +51,7 @@ class SimpleFeedScreen<T> extends StatefulWidget {
 
 class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTickerProviderStateMixin {
 
-  late List<GlobalKey<FeedListState>> _feedListKeys;
+  late List<GlobalKey<FeedListState<T>>> _feedListKeys;
   late List<GlobalKey<RefreshIndicatorState>> _refreshIndicatorKeys;
   late List<ScrollController> _scrollControllers;
   TabController? _tabController;
@@ -66,14 +67,14 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
        _scrollControllers = [];
        _selectedFeedOptions = [];
        for (var i = 0; i < widget.feedOptions!.options.length; i++) {
-          _feedListKeys.add(GlobalKey<FeedListState>());
+          _feedListKeys.add(GlobalKey<FeedListState<T>>());
           _refreshIndicatorKeys.add(GlobalKey<RefreshIndicatorState>());
           _scrollControllers.add(ScrollController());
           _selectedFeedOptions.add(widget.feedOptions?.options[i].subGroup?.defaults);
        }
     }
     else {
-      _feedListKeys = [GlobalKey<FeedListState>()];
+      _feedListKeys = [GlobalKey<FeedListState<T>>()];
       _refreshIndicatorKeys = [GlobalKey<RefreshIndicatorState>()];
       _scrollControllers = [ScrollController()];
       _selectedFeedOptions = [widget.feedOptions?.defaults];
@@ -89,7 +90,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
     super.dispose();
   }
 
-  FeedListState? get feedList => _feedListKeys[_tabController?.index ?? 0].currentState;
+  FeedListState<T>? get feedList => _feedListKeys[_tabController?.index ?? 0].currentState;
 
   Future<void> reload() => _callOnFeedListState(_tabController?.index ?? 0, (state) => state.reload());
 
@@ -123,7 +124,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
           Builder(
             builder: (context) {
               final overlapAbsorberHandle = NestedScrollView.sliverOverlapAbsorberHandleFor(context);
-              return RefreshIndicator(
+              return CustomRefreshIndicator(
                 key: _refreshIndicatorKeys[i],
                 edgeOffset: overlapAbsorberHandle.layoutExtent ?? 0, 
                 onRefresh: () => _refresh(i),

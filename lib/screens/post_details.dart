@@ -1,4 +1,7 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/comment.dart';
@@ -13,8 +16,6 @@ import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/custom_html.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
-
-// const _collapseAnimationDuration = Duration(milliseconds: 2000);
 
 class PostDetailsScreen extends StatefulWidget {
 
@@ -76,15 +77,16 @@ class PostDetailsScreen extends StatefulWidget {
   
 }
 
-class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTickerProviderStateMixin {
+class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProviderStateMixin {
 
-  final _simpleFeedScreenKey = GlobalKey<SimpleFeedScreenState>();
+  final _simpleFeedScreenKey = GlobalKey<SimpleFeedScreenState<CommentItem>>();
   late Future<PagedItems<CommentItem>> _initialItemsFuture;
   Post? _post;
   String? _contextCommentShortId;
   final Set<String> _collapsedCommentIds = {};
-  late List<CommentItem> _allComments;
   late final ValueNotifier<Map<FeedOptionType, FeedOption>?> _feedOptionsNotifier;
+  final Map<Comment, _ParentCollapsingAnimationState> _parentCollapsingAnimationStates = {};
+  final Map<CommentItem, _ChildCollapsingAnimationState> _childCollapsingAnimationStates = {};
 
   @override
   void initState() {
@@ -96,6 +98,9 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
 
   @override
   void dispose() {
+    for (var state in _parentCollapsingAnimationStates.values) {
+      state.controller.dispose();
+    }
     _feedOptionsNotifier.dispose();
     super.dispose();
   }
@@ -110,7 +115,6 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
       postDetails = await widget.platform.api.getPostDetailsFromUrl(widget.url, options: feedOptions);
       _post = postDetails.post;
     }
-    _allComments = postDetails.comments.toList();
     _contextCommentShortId = postDetails.contextCommentShortId;
     if (mounted) {
       setState(() {});
@@ -255,13 +259,17 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
         );
       },
       itemBuilder: (context, index, item) {
+        final childCollapsingAnimationState = _childCollapsingAnimationStates[item];
+        Widget child;
         if (item is Comment) {
+          final parentCollapsingAnimationState = _parentCollapsingAnimationStates[item];
           final isCollapsed = _collapsedCommentIds.contains(item.id);
-          Widget child = CommentTile(
+          child = CommentTile(
             padding: EdgeInsets.only(top: index == 0 ? 0 : 8, bottom: 4),
             comment: item,
             depth: item.depth,
             isCollapsed: isCollapsed,
+            isInteractable: parentCollapsingAnimationState?.controller.isAnimating != true && childCollapsingAnimationState?.controller.isAnimating != true,
             optionsBuilder: (context, activeUser) => {
               if (activeUser != null)
                 'Reply': () {
@@ -274,57 +282,125 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
                   );
                 }
             },
-            onTap: () async {
-                if (isCollapsed) {
-                  _collapsedCommentIds.remove(item.id);
-                }
-                else {
-                  _collapsedCommentIds.add(item.id);
-                }
-                _simpleFeedScreenKey.currentState?.feedList?.updateItems((items) {
-                  items.clear();
-                  int? currentCollapsedDepth;
-                  for (var comment in _allComments) {
-                    if (currentCollapsedDepth != null) {
-                      if (comment.depth > currentCollapsedDepth) {
-                        continue; 
-                      }
-                      else {
-                        currentCollapsedDepth = null;
-                      }
-                    }
-                    items.add(comment);
-                    if (comment is Comment && _collapsedCommentIds.contains(comment.id)) {
-                      currentCollapsedDepth = comment.depth;
-                    }
-                  }
-                });
-
-            //   final listState = _simpleFeedScreenKey.currentState!.feedList!;
-            //   final visibleComments = listState.items;
-            //   final parentIndex = visibleComments.indexOf(item);
-            //   final List<CommentItem> itemsToRemove = [];
-            //   for (int i = parentIndex + 1; i < visibleComments.length; i++) {
-            //     final current = visibleComments[i];
-            //     if (current.depth <= item.depth) {
-            //       break; 
-            //     }
-            //     itemsToRemove.add(current);
-            //   }
-            //   if (itemsToRemove.isEmpty) {
-            //     setState(() => _collapsedCommentIds.add(item.id));
-            //     return;
-            //   }
-            //   final collapsingItem = _CollapsingCommentBlockItem(children: itemsToRemove);
-            //   listState.updateItems((items) {
-            //     // _collapsedCommentIds.add(item.id);
-            //     visibleComments.removeWhere((c) => itemsToRemove.contains(c));
-            //     visibleComments.insert(parentIndex + 1, collapsingItem);
-            //   });
-            // },
-
+            bodyBuilder: (context, body) {
+              if (parentCollapsingAnimationState != null) {
+                return _CollapseAnimation(
+                  collapsingCommentsState: parentCollapsingAnimationState,
+                  offset: 0,
+                  originalHeight: parentCollapsingAnimationState.bodyHeight,
+                  child: body
+                );
+              }
+              return body;
             },
-            onDelete: () => _simpleFeedScreenKey.currentState?.feedList?.updateItems((items) => items.removeAt(index))
+            onTap: () {
+              final parentItem = item;
+              final feedList = _simpleFeedScreenKey.currentState!.feedList!;
+              if (isCollapsed) {
+                final onScreenExpandingChildItems = parentCollapsingAnimationState!.childCollapsingAnimationState.childOffsets.keys;
+                feedList.updateItems((items) {
+                  items.insertAll(index + 1, onScreenExpandingChildItems);
+                  _collapsedCommentIds.remove(item.id);
+                });
+                parentCollapsingAnimationState.controller
+                  .forward(from: 0)
+                  .then((_) {
+                    feedList.updateItems((items) {
+                      items.insertAll(index + 1 + onScreenExpandingChildItems.length, parentCollapsingAnimationState.childCollapsingAnimationState.offScreenChildItems);
+                      _parentCollapsingAnimationStates.remove(parentItem)!.controller.dispose();
+                      for (var child in onScreenExpandingChildItems) {
+                        _childCollapsingAnimationStates.remove(child);
+                      }
+                    });
+                  });
+                return;
+              }
+              final screenHeight = MediaQuery.of(context).size.height;
+
+              final renderSliverList = context.findRenderObject() as RenderSliverList;
+              RenderBox? parentBox = renderSliverList.firstChild;
+              while (parentBox != null) {
+                final parentData = parentBox.parentData as SliverMultiBoxAdaptorParentData;
+                if (parentData.index == index) {
+                  break;
+                }
+                parentBox = renderSliverList.childAfter(parentBox);
+              }
+              
+              RenderFlex? parentColumn;
+              void visitor(RenderObject child) {
+                if (parentColumn != null) return;
+                if (child is RenderFlex && child.direction == Axis.vertical) {
+                  parentColumn = child;
+                  return;
+                }
+                child.visitChildren(visitor);
+              }
+              parentBox!.visitChildren(visitor);
+
+              final parentBody = parentColumn!.lastChild;
+              final parentBodyHeight = parentBody!.size.height;
+              final parentTopY = parentBox.localToGlobal(Offset.zero).dy;
+              final Map<CommentItem, double> childOffsets = {};
+              final Map<CommentItem, double> childHeights = {};
+              double accumulatedHeight = parentBodyHeight;
+              RenderBox? currentChild = renderSliverList.childAfter(parentBox);
+              final items = _simpleFeedScreenKey.currentState!.feedList!.items;
+              final Set<CommentItem> offScreenChildrenToRemove = {};
+              for (var i = index + 1; i < items.length; i++) {
+                final childItem = items[i];
+                if (childItem.depth <= parentItem.depth) {
+                  break;
+                }
+                if (parentTopY + accumulatedHeight > screenHeight) {
+                  // debugPrint('offscreen: ${childItem is Comment ? childItem.text : 'LoadMoreComment'}');
+                  offScreenChildrenToRemove.add(childItem);
+                }
+                else if ((currentChild?.parentData as SliverMultiBoxAdaptorParentData).index == i) {
+                  // debugPrint('collapsing: ${childItem is Comment ? childItem.text : 'LoadMoreComment'}');
+                  final height = currentChild!.size.height;
+                  childHeights[childItem] = height;
+                  childOffsets[childItem] = accumulatedHeight;
+                  accumulatedHeight += height;
+                  currentChild = renderSliverList.childAfter(currentChild);
+                }
+              }
+              // debugPrint("accumulatedHeight=$accumulatedHeight, offScreenChildrenToRemove=${offScreenChildrenToRemove.length}");
+              // debugPrint('offsets=${childOffsets.map((item, value) => MapEntry((item is Comment ? item.id : 'LoadMoreComment'), value))}');
+              // debugPrint('heights=${childHeights.map((item, value) => MapEntry((item is Comment ? item.id : 'LoadMoreComment'), value))}');
+              final animationController = AnimationController(
+                vsync: this, 
+                duration: Duration(milliseconds: (150 + accumulatedHeight * 0.15).toInt()),
+              );
+              final childAnimationStates = _ChildCollapsingAnimationState(
+                totalHeight: accumulatedHeight,
+                childOffsets: childOffsets,
+                childHeights: childHeights,
+                offScreenChildItems: offScreenChildrenToRemove,
+                controller: animationController
+              );
+              _parentCollapsingAnimationStates[parentItem] = _ParentCollapsingAnimationState(
+                totalHeight: accumulatedHeight,
+                controller: animationController,
+                bodyHeight: parentBodyHeight,
+                childCollapsingAnimationState: childAnimationStates
+              );
+              for (var item in childOffsets.keys) {
+                _childCollapsingAnimationStates[item] = childAnimationStates;
+              }
+              feedList.updateItems((items) {
+                items.removeWhere((item) => offScreenChildrenToRemove.contains(item));
+              });
+              animationController
+                .reverse(from: 1)
+                .then((_) {
+                  if (!mounted) return;
+                  feedList.updateItems((items) {
+                    items.removeWhere((item) => childOffsets.containsKey(item));
+                    _collapsedCommentIds.add(parentItem.id);
+                  });
+                });
+            }
           );
           if (item.shortId == _contextCommentShortId) {
             child = DecoratedBox(
@@ -332,12 +408,10 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
               child: child
             );
           }
-          return child;
         }
-        if (item is LoadMoreComment) {
-          return _LoadMoreComments(
-            platform: _post!.community.platform,
-            comment: item,
+        else {
+          child = _LoadMoreComments(
+            comment: item as LoadMoreComment,
             onLoadMoreComments: () async {
               final comments = await _post!.community.platform.api.getMoreComments(_post!.id, item.pageToken!, depth: item.depth);
               if (mounted) {
@@ -346,49 +420,117 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
             },
           );
         }
-        // if (item is _CollapsingCommentBlockItem) {
-        //   return TweenAnimationBuilder(
-        //     duration: _collapseAnimationDuration,
-        //     curve: Curves.easeInOutCubicEmphasized,
-        //     tween: Tween(begin: 1.0, end: 0.0),
-        //     onEnd: () {
-        //       _simpleFeedScreenKey.currentState!.feedList!.updateItems((items) => items.remove(item));
-        //     },
-        //     builder: (context, value, child) {
-        //       return ClipRect(
-        //         child: Align(
-        //           alignment: Alignment.topCenter,
-        //           heightFactor: value,
-        //           child: child,
-        //         ),
-        //       );
-        //     },
-        //     child: Column(
-        //       crossAxisAlignment: CrossAxisAlignment.stretch,
-        //       children: item.children.map((item) {
-        //         if (item is Comment) {
-        //           return CommentTile(
-        //             padding: EdgeInsets.only(top: index == 0 ? 0 : 8, bottom: 4),
-        //             comment: item,
-        //             depth: item.depth,
-        //             isInteractable: false,
-        //           );
-        //         }
-        //         if (item is LoadMoreComment) {
-        //           return _LoadMoreComments(
-        //             platform: _post!.community.platform,
-        //             comment: item,
-        //           );
-        //         }
-        //         return SizedBox.shrink();
-        //       }).toList(),
-        //     )
-        //   );
-        // }
-        return const SizedBox.shrink();
+        if (childCollapsingAnimationState != null) {
+          return _CollapseAnimation(
+            collapsingCommentsState: childCollapsingAnimationState!,
+            offset: childCollapsingAnimationState.childOffsets[item]!,
+            originalHeight: childCollapsingAnimationState.childHeights[item]!,
+            child: child
+          );
+        }
+        return child;
       },
     );
   }
+
+}
+
+class _CollapseAnimation extends StatelessWidget {
+
+  final _CollapsingAnimationState collapsingCommentsState;
+  final double offset;
+  final double originalHeight;
+  final Widget child;
+  
+  const _CollapseAnimation({
+    required this.collapsingCommentsState,
+    required this.offset,
+    required this.originalHeight,
+    required this.child
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedBuilder(
+      animation: collapsingCommentsState.controller,
+      builder: (context, child) {
+        final double curtain = collapsingCommentsState.totalHeight * collapsingCommentsState.sizeAnimation.value;
+        final double visibleHeight = (curtain - offset).clamp(0.0, originalHeight).toDouble();
+        return Opacity(
+          opacity: collapsingCommentsState.opacityAnimation.value,
+          child: SizedBox(
+            height: visibleHeight,
+            child: ClipRect(
+              child: OverflowBox(
+                minHeight: originalHeight,
+                maxHeight: originalHeight,
+                alignment: Alignment.topCenter,
+                child: child,
+              ),
+            ),
+          ),
+        );
+      },
+      child: RepaintBoundary(child: child)
+    );
+  }
+
+}
+
+abstract class _CollapsingAnimationState {
+
+  final double totalHeight;
+  final AnimationController controller;
+  final Animation<double> sizeAnimation;
+  final Animation<double> opacityAnimation;
+
+  _CollapsingAnimationState({
+    required this.totalHeight,
+    required this.controller,
+  })  : sizeAnimation = CurvedAnimation(
+          parent: controller,
+          curve: Curves.easeInOutCubicEmphasized,
+          reverseCurve: Curves.easeInExpo
+          // curve: Curves.easeOutCubic,
+          // reverseCurve: Curves.easeInCubic
+          // reverseCurve: Easing.emphasizedDecelerate.flipped
+        ),
+        opacityAnimation = CurvedAnimation(
+          parent: controller,
+          curve: const Interval(0.15, 0.8, curve: Curves.linear),
+          reverseCurve: const Interval(0.15, 0.8, curve: Curves.linear).flipped
+          // curve: Curves.linear
+        );
+
+}
+
+class _ParentCollapsingAnimationState extends _CollapsingAnimationState{
+
+  final double bodyHeight;
+  final _ChildCollapsingAnimationState childCollapsingAnimationState;
+
+  _ParentCollapsingAnimationState({
+    required super.totalHeight,
+    required super.controller,
+    required this.bodyHeight,
+    required this.childCollapsingAnimationState
+  });
+
+}
+
+class _ChildCollapsingAnimationState extends _CollapsingAnimationState {
+
+  final Map<CommentItem, double> childOffsets;
+  final Map<CommentItem, double> childHeights;
+  final Set<CommentItem> offScreenChildItems;
+
+  _ChildCollapsingAnimationState({
+    required super.totalHeight,
+    required super.controller,
+    required this.childOffsets,
+    required this.childHeights,
+    required this.offScreenChildItems
+  });
 
 }
 
@@ -530,12 +672,10 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with SingleTicker
 
 class _LoadMoreComments extends StatefulWidget {
 
-  final Platform platform;
   final LoadMoreComment comment;
   final Future Function()? onLoadMoreComments;
 
   const _LoadMoreComments({
-    required this.platform,
     required this.comment,
     this.onLoadMoreComments,
   });
@@ -556,7 +696,7 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
     if (_isLoading) {
       onTap = null;
       child = CustomCircularProgressIndicator(
-        platform: widget.platform,
+        platform: widget.comment.platform,
         padding: EdgeInsets.symmetric(vertical: 8),
         alignment: Alignment.topLeft,
         size: 20,
@@ -571,17 +711,7 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
             setState(() => _isLoading = false);
           }
         : null;
-      child = Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Text(
-          'load ${widget.comment.count.toPluralString('more comment')}',
-          style: const TextStyle(
-            fontSize: 12,
-            fontWeight: FontWeight.bold,
-            color: Constants.linkTextColor
-          ),
-        )
-      );
+      child = _LoadMoreCommentsText(comment: widget.comment);
     }
     return InkWell(
       onTap: onTap,
@@ -589,6 +719,33 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
         depth: widget.comment.depth,
         child: child
       ),
+    );
+  }
+
+}
+
+class _LoadMoreCommentsText extends StatelessWidget {
+
+  final LoadMoreComment comment;
+  final EdgeInsetsGeometry padding;
+
+  const _LoadMoreCommentsText({
+    required this.comment,
+    this.padding = const EdgeInsets.symmetric(vertical: 8)
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: padding,
+      child: Text(
+        'load ${comment.count.toPluralString('more comment')}',
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Constants.linkTextColor
+        ),
+      )
     );
   }
 
@@ -696,13 +853,3 @@ class _AddCommentBottomSheetContentState extends State<_AddCommentBottomSheetCon
   }
 
 }
-
-// class _CollapsingCommentBlockItem extends CommentItem {
-
-//   final List<CommentItem> children;
-
-//   _CollapsingCommentBlockItem({
-//     required this.children
-//   })  : super(depth: 0);
-
-// }

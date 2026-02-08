@@ -1,7 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter/cupertino.dart' hide RefreshCallback;
-import 'package:flutter/material.dart' hide SearchBar;
+import 'package:flutter/material.dart' hide SearchBar, RefreshCallback;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/constants.dart';
@@ -16,6 +16,7 @@ import 'package:lurk/screens/settings.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_app_bar.dart';
+import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/prefixed_name.dart';
 import 'package:lurk/widgets/custom_search_bar.dart';
 import 'package:lurk/widgets/list_tile_icon.dart';
@@ -500,7 +501,7 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
             );
           }
           else {
-            body = RefreshIndicator(
+            body = CustomRefreshIndicator(
               key: widget.refreshIndicatorKey,
               edgeOffset: appBarOffset,
               onRefresh: () async {
@@ -514,16 +515,14 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
                 padding: EdgeInsets.only(top: appBarOffset),
                 child: CustomScrollView(
                   controller: _scrollController,
-                  // physics: const BouncingScrollPhysics(
-                  //   parent: AlwaysScrollableScrollPhysics(),
-                  // ),
                   physics: const AlwaysScrollableScrollPhysics(),
                   slivers: [
                     sliverAppBar,
-                    // MaterialSliverRefreshControl(
-                    //   platform: widget.platform,
-                    //   onRefresh: widget.onPullRefresh,
-                    // ),
+                    // if (widget.onPullRefresh != null)
+                    //   MaterialSliverRefreshControl(
+                    //     platform: widget.platform,
+                    //     onRefresh: widget.onPullRefresh!,
+                    //   ),
                     ...widget.slivers!,
                   ]
                 ),
@@ -606,21 +605,27 @@ class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProv
             return scaffold;
           }
         );
-
-        return Scaffold(
-          key: _scaffoldKey,
-          extendBody: extendBody,
-          drawer: drawer,
-          drawerEdgeDragWidth: drawerEdgeDragWidth,
-          bottomNavigationBar: bottomBar,
-          appBar: scaffoldAppBar,
-          body: body
-        );
       }
     );
   }
 
 }
+
+// class StiffBouncingScrollPhysics extends BouncingScrollPhysics {
+
+//   const StiffBouncingScrollPhysics({super.parent});
+
+//   @override
+//   StiffBouncingScrollPhysics applyTo(ScrollPhysics? ancestor) {
+//     return StiffBouncingScrollPhysics(parent: buildParent(ancestor));
+//   }
+
+//   @override
+//   double frictionFactor(double overscrollFraction) {
+//     return super.frictionFactor(overscrollFraction) * 0.25;
+//   }
+
+// }
 
 class _Scrim extends StatelessWidget {
 
@@ -1282,7 +1287,7 @@ class _CommunityListState extends State<_CommunityList> {
                 final Color? color;
                 if (community.isFavorite) {
                   icon = Icons.star_rounded;
-                  color = primaryColor;
+                  color = community.platform.color;
                 }
                 else {
                   icon = Icons.star_border_rounded;

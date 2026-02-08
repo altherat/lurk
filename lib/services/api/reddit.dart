@@ -251,6 +251,7 @@ class RedditApi extends Api {
             final idMatch = RegExp(r"morechildren\(.*?\s*'.*?'\s*,\s*'.*?'\s*,\s*'(.*?)'").firstMatch(moreLink.attributes['onclick']!);
             items.add(
               LoadMoreComment(
+                platform: Platform.reddit,
                 depth: currentDepth,
                 count: int.tryParse(countMatch!.group(1)!)!,
                 pageToken: idMatch!.group(1)!
@@ -284,6 +285,7 @@ class RedditApi extends Api {
           else if (kind == 'more') {
             items.add(
               LoadMoreComment(
+                platform: Platform.reddit,
                 depth: currentDepth,
                 count: data['count'] ?? 0,
                 pageToken: (data['children'] as List).join(','),
@@ -771,6 +773,7 @@ class RedditApi extends Api {
         if (data['count'] != 0) {
           comments.add(
             LoadMoreComment(
+              platform: Platform.reddit,
               depth: depth,
               count: data['count']!,
               pageToken: List<String>.from(data['children']!).join(','),
