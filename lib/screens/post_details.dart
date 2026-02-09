@@ -9,11 +9,14 @@ import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/models/user.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/services/history.dart';
+import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/custom_html.dart';
+import 'package:lurk/widgets/feed_list.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
 
@@ -123,18 +126,96 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
     return PagedItems(items: postDetails.comments);
   }
 
-  void _showAddCommentDialog(String id, Widget replyingToWidget) {
-    showModalBottomSheet(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (context) {
-        return _AddCommentBottomSheetContent(
-          platform: widget.platform,
-          replyingToId: id,
-          replyingToWidget: replyingToWidget,
-        );
+  Future<void> _collapseComment(FeedListState feedList, Comment comment, int index) {
+    final screenHeight = MediaQuery.of(context).size.height;
+    final renderSliverList = context.findRenderObject() as RenderSliverList;
+    RenderBox? parentBox = renderSliverList.firstChild;
+    double parentBodyHeight = 0;
+    while (parentBox != null) {
+      final parentData = parentBox.parentData as SliverMultiBoxAdaptorParentData;
+      if (parentData.index == index) {
+
+        void findBody(RenderObject object) {
+          if (parentBodyHeight > 0) return;
+          if (object is RenderMetaData && object.metaData == 'commentBody') {
+            parentBodyHeight = object.size.height;
+            return;
+          }
+          object.visitChildren(findBody);
+        }
+
+        parentBox.visitChildren(findBody);
+        break;
+      }
+      parentBox = renderSliverList.childAfter(parentBox);
+    }
+
+    final parentTopY = parentBox!.localToGlobal(Offset.zero).dy;
+    final Map<CommentItem, double> childOffsets = {};
+    final Map<CommentItem, double> childHeights = {};
+    double accumulatedHeight = parentBodyHeight;
+    RenderBox? currentChild = renderSliverList.childAfter(parentBox);
+    final items = _simpleFeedScreenKey.currentState!.feedList!.items;
+    final Set<CommentItem> offScreenChildrenToRemove = {};
+    for (var i = index + 1; i < items.length; i++) {
+      final childItem = items[i];
+      if (childItem.depth <= comment.depth) {
+        break;
+      }
+      if (parentTopY + accumulatedHeight > screenHeight) {
+        // debugPrint('offscreen: ${childItem is Comment ? childItem.text : 'LoadMoreComment'}');
+        offScreenChildrenToRemove.add(childItem);
+      }
+      else if ((currentChild?.parentData as SliverMultiBoxAdaptorParentData).index == i) {
+        // debugPrint('collapsing: ${childItem is Comment ? childItem.text : 'LoadMoreComment'}');
+        final height = currentChild!.size.height;
+        childHeights[childItem] = height;
+        childOffsets[childItem] = accumulatedHeight;
+        accumulatedHeight += height;
+        currentChild = renderSliverList.childAfter(currentChild);
+      }
+    }
+    // debugPrint("accumulatedHeight=$accumulatedHeight, offScreenChildrenToRemove=${offScreenChildrenToRemove.length}");
+    // debugPrint('offsets=${childOffsets.map((item, value) => MapEntry((item is Comment ? item.id : 'LoadMoreComment'), value))}');
+    // debugPrint('heights=${childHeights.map((item, value) => MapEntry((item is Comment ? item.id : 'LoadMoreComment'), value))}');
+    final animationController = AnimationController(
+      vsync: this, 
+      duration: Duration(milliseconds: (150 + accumulatedHeight * 0.15).toInt()),
+    );
+    final childAnimationStates = _ChildCollapsingAnimationState(
+      totalHeight: accumulatedHeight,
+      childOffsets: childOffsets,
+      childHeights: childHeights,
+      offScreenChildItems: offScreenChildrenToRemove,
+      controller: animationController
+    );
+    _parentCollapsingAnimationStates[comment] = _ParentCollapsingAnimationState(
+      totalHeight: accumulatedHeight,
+      controller: animationController,
+      bodyHeight: parentBodyHeight,
+      childCollapsingAnimationState: childAnimationStates
+    );
+    for (var item in childOffsets.keys) {
+      _childCollapsingAnimationStates[item] = childAnimationStates;
+    }
+    feedList.updateItems((items) {
+      items.removeWhere((item) => offScreenChildrenToRemove.contains(item));
+    });
+    return animationController
+      .reverse(from: 1)
+      .then((_) {
+        if (!mounted) return;
+        feedList.updateItems((items) {
+          items.removeWhere((item) => childOffsets.containsKey(item));
+          _collapsedCommentIds.add(comment.id);
+        });
+      });
+  }
+
+  //TODO: add initial expansion animation?
+  void _addComment(Comment comment, int index, int depth) {
+    _simpleFeedScreenKey.currentState!.feedList!.updateItems((items) {
+        items.insert(index, comment.copyWith(depth: depth));
       }
     );
   }
@@ -250,6 +331,30 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
       title: title,
       subtitle: subtitle,
       showFeedOptionsSubtitle: false,
+      iconActionsBuilder: (Settings.activeUser, (context) {
+        final activeUser = Settings.activeUser.value;
+        if (activeUser == null) {
+          return [];
+        }
+        return [
+          IconButton(
+            icon: const Icon(Icons.add_comment_rounded),
+            tooltip: 'Add comment',
+            onPressed: () {
+              showAddCommentDialog(
+                context: context,
+                platform: widget.platform,
+                id: _post!.id,
+                replyingToWidget: PostTile(
+                  post: _post!,
+                  isInteractable: false,
+                ),
+                onSubmitted: (comment) => _addComment(comment, 0, 0)
+              );
+            }
+          )
+        ];
+      }),
       popupMenuActions: popupMenuActions,
       slivers: slivers,
       noItemsBuilder: (BuildContext context) {
@@ -270,18 +375,6 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
             depth: item.depth,
             isCollapsed: isCollapsed,
             isInteractable: parentCollapsingAnimationState?.controller.isAnimating != true && childCollapsingAnimationState?.controller.isAnimating != true,
-            optionsBuilder: (context, activeUser) => {
-              if (activeUser != null)
-                'Reply': () {
-                  _showAddCommentDialog(
-                    item.id,
-                    CommentTile(
-                      comment: item,
-                      isInteractable: false,
-                    )
-                  );
-                }
-            },
             bodyBuilder: (context, body) {
               if (parentCollapsingAnimationState != null) {
                 return _CollapseAnimation(
@@ -291,9 +384,12 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                   child: body
                 );
               }
-              return body;
+              return MetaData(
+                metaData: 'commentBody',
+                child: body
+              );
             },
-            onTap: () {
+            onExpandOrCollapse: () {
               final parentItem = item;
               final feedList = _simpleFeedScreenKey.currentState!.feedList!;
               if (isCollapsed) {
@@ -315,91 +411,15 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                   });
                 return;
               }
-              final screenHeight = MediaQuery.of(context).size.height;
-
-              final renderSliverList = context.findRenderObject() as RenderSliverList;
-              RenderBox? parentBox = renderSliverList.firstChild;
-              while (parentBox != null) {
-                final parentData = parentBox.parentData as SliverMultiBoxAdaptorParentData;
-                if (parentData.index == index) {
-                  break;
-                }
-                parentBox = renderSliverList.childAfter(parentBox);
+              _collapseComment(feedList, item, index);
+            },
+            onReply: (comment) => _addComment(comment, index + 1, item.depth + 1),
+            onDelete: () async {
+              final feedList = _simpleFeedScreenKey.currentState!.feedList!;
+              await _collapseComment(feedList, item, index);
+              if (mounted) {
+                feedList.updateItems((items) => items.removeAt(index));
               }
-              
-              RenderFlex? parentColumn;
-              void visitor(RenderObject child) {
-                if (parentColumn != null) return;
-                if (child is RenderFlex && child.direction == Axis.vertical) {
-                  parentColumn = child;
-                  return;
-                }
-                child.visitChildren(visitor);
-              }
-              parentBox!.visitChildren(visitor);
-
-              final parentBody = parentColumn!.lastChild;
-              final parentBodyHeight = parentBody!.size.height;
-              final parentTopY = parentBox.localToGlobal(Offset.zero).dy;
-              final Map<CommentItem, double> childOffsets = {};
-              final Map<CommentItem, double> childHeights = {};
-              double accumulatedHeight = parentBodyHeight;
-              RenderBox? currentChild = renderSliverList.childAfter(parentBox);
-              final items = _simpleFeedScreenKey.currentState!.feedList!.items;
-              final Set<CommentItem> offScreenChildrenToRemove = {};
-              for (var i = index + 1; i < items.length; i++) {
-                final childItem = items[i];
-                if (childItem.depth <= parentItem.depth) {
-                  break;
-                }
-                if (parentTopY + accumulatedHeight > screenHeight) {
-                  // debugPrint('offscreen: ${childItem is Comment ? childItem.text : 'LoadMoreComment'}');
-                  offScreenChildrenToRemove.add(childItem);
-                }
-                else if ((currentChild?.parentData as SliverMultiBoxAdaptorParentData).index == i) {
-                  // debugPrint('collapsing: ${childItem is Comment ? childItem.text : 'LoadMoreComment'}');
-                  final height = currentChild!.size.height;
-                  childHeights[childItem] = height;
-                  childOffsets[childItem] = accumulatedHeight;
-                  accumulatedHeight += height;
-                  currentChild = renderSliverList.childAfter(currentChild);
-                }
-              }
-              // debugPrint("accumulatedHeight=$accumulatedHeight, offScreenChildrenToRemove=${offScreenChildrenToRemove.length}");
-              // debugPrint('offsets=${childOffsets.map((item, value) => MapEntry((item is Comment ? item.id : 'LoadMoreComment'), value))}');
-              // debugPrint('heights=${childHeights.map((item, value) => MapEntry((item is Comment ? item.id : 'LoadMoreComment'), value))}');
-              final animationController = AnimationController(
-                vsync: this, 
-                duration: Duration(milliseconds: (150 + accumulatedHeight * 0.15).toInt()),
-              );
-              final childAnimationStates = _ChildCollapsingAnimationState(
-                totalHeight: accumulatedHeight,
-                childOffsets: childOffsets,
-                childHeights: childHeights,
-                offScreenChildItems: offScreenChildrenToRemove,
-                controller: animationController
-              );
-              _parentCollapsingAnimationStates[parentItem] = _ParentCollapsingAnimationState(
-                totalHeight: accumulatedHeight,
-                controller: animationController,
-                bodyHeight: parentBodyHeight,
-                childCollapsingAnimationState: childAnimationStates
-              );
-              for (var item in childOffsets.keys) {
-                _childCollapsingAnimationStates[item] = childAnimationStates;
-              }
-              feedList.updateItems((items) {
-                items.removeWhere((item) => offScreenChildrenToRemove.contains(item));
-              });
-              animationController
-                .reverse(from: 1)
-                .then((_) {
-                  if (!mounted) return;
-                  feedList.updateItems((items) {
-                    items.removeWhere((item) => childOffsets.containsKey(item));
-                    _collapsedCommentIds.add(parentItem.id);
-                  });
-                });
             }
           );
           if (item.shortId == _contextCommentShortId) {
@@ -746,109 +766,6 @@ class _LoadMoreCommentsText extends StatelessWidget {
           color: Constants.linkTextColor
         ),
       )
-    );
-  }
-
-}
-
-class _AddCommentBottomSheetContent extends StatefulWidget {
-  
-  final Platform platform;
-  final String replyingToId;
-  final Widget replyingToWidget;
-
-  const _AddCommentBottomSheetContent({
-    required this.platform,
-    required this.replyingToId,
-    required this.replyingToWidget
-  });
-
-  @override
-  State<_AddCommentBottomSheetContent> createState() => _AddCommentBottomSheetContentState();
-
-}
-
-class _AddCommentBottomSheetContentState extends State<_AddCommentBottomSheetContent> {
-
-  final _controller = TextEditingController();
-
-  @override void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: SingleChildScrollView(
-        child: Column(
-          spacing: 16,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: 300,
-              ),
-              child: SingleChildScrollView(
-                child: widget.replyingToWidget,
-              )
-              // child: ShaderMask(
-              //   shaderCallback: (Rect bounds) {
-              //     return const LinearGradient(
-              //       begin: Alignment.topCenter,
-              //       end: Alignment.bottomCenter,
-              //       colors: [Colors.black, Colors.transparent],
-              //       stops: [0.75, 1.0],
-              //     ).createShader(bounds);
-              //   },
-              //   blendMode: BlendMode.dstIn,
-              //   child: SingleChildScrollView(
-              //     padding: const EdgeInsets.only(bottom: 24),
-              //     child: CommentTile(comment: item),
-              //   ),
-              // ),
-            ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _controller,
-                    autofocus: true,
-                    minLines: 1,
-                    maxLines: 5,
-                    decoration: const InputDecoration(
-                      hintText: 'Type a reply',
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                  ),
-                ),
-                ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _controller,
-                  builder: (context, value, child) {
-                    final isNotEmpty = value.text.trim().isNotEmpty;
-                    return IconButton(
-                      padding: EdgeInsets.only(right: 16),
-                      onPressed: isNotEmpty
-                        ? () {
-                            context.pop();
-                            widget.platform.api.postComment(widget.replyingToId, _controller.text);
-                          }
-                        : null,
-                      icon: Icon(
-                        Icons.send_rounded,
-                        color: isNotEmpty ? widget.platform.color : Theme.of(context).disabledColor
-                      ),
-                    );
-                  }
-                ),
-              ],
-            )
-          ],
-        ),
-      ),
     );
   }
 

@@ -1,3 +1,7 @@
+/// Copied from Flutter's refresh_indicator.dart
+/// Changed _kDragContainerExtentPercentage from 0.25 to 0.1
+/// Changed some logic in _checkDragOffset because setting the status to RefreshIndicatorStatus.armed seemed to be behaving wrong? Also added HapticFeedback.heavyImpact when status changes to RefreshIndicatorStatus.armed
+
 // Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
@@ -11,6 +15,7 @@ import 'dart:math' as math;
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart' show clampDouble;
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 // The over-scroll distance that moves the indicator to its maximum
 // displacement, as a percentage of the scrollable's container extent.
@@ -517,9 +522,14 @@ class CustomRefreshIndicatorState extends State<CustomRefreshIndicator>
       newValue = math.max(newValue, 1.0 / _kDragSizeFactorLimit);
     }
     _positionController.value = clampDouble(newValue, 0.0, 1.0); // This triggers various rebuilds.
-    if (_status == RefreshIndicatorStatus.drag &&
-        _valueColor.value!.alpha == _effectiveValueColor.alpha) {
+    // if (_status == RefreshIndicatorStatus.drag &&
+    //     _valueColor.value!.alpha == _effectiveValueColor.alpha) {
+    //   _status = RefreshIndicatorStatus.armed;
+    //   widget.onStatusChange?.call(_status);
+    // }
+    if (_status == RefreshIndicatorStatus.drag && newValue >= 1.0) {
       _status = RefreshIndicatorStatus.armed;
+      HapticFeedback.heavyImpact();
       widget.onStatusChange?.call(_status);
     }
   }

@@ -30,7 +30,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
           children: [
             const _Header(text: 'Home page'),
             if (F.appFlavor == Flavor.combined) ...[
-              _ChoiceSettingListTile(
+              _ChoiceChipSettingListTile(
                 setting: Settings.homeCommunityPlatform,
                 choices: Platform.values,
                 choiceLabel: (platform) => platform.name.toTitleCase(),
@@ -41,6 +41,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ],
             ListTile(
+              minVerticalPadding: 0,
               title: ValueListenableBuilder(
                 valueListenable: Settings.homeCommunityPlatform,
                 builder: (context, homeCommunityPlatform, child) {
@@ -65,7 +66,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               ),
             ),
             const _Divider(),
-            _Header(text: 'Content'),
+            _Header(text: 'General'),
             _BoolSettingListTile(
               setting: Settings.showCommentImages,
               label: 'Show comment images'
@@ -74,14 +75,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setting: Settings.autoplayVideos,
               label: 'Autoplay videos'
             ),
-            const _Divider(),
-            const _Header(
-              text: 'Appearance'
-            ),
-            _ColorSettingListTile(
-              setting: Settings.appBarColor,
-              label: 'App bar color',
-            ),
             _BoolSettingListTile(
               setting: Settings.useBottomBar,
               label: 'Bottom bar'
@@ -89,6 +82,29 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _BoolSettingListTile(
               setting: Settings.reverseCommunityList,
               label: 'Reverse community list'
+            ),
+            _ChoiceSettingListTile(
+              setting: Settings.commentTapBehavior,
+              title: 'Comment tap behavior',
+              choices: CommentBehavior.values.toList(),
+              choiceLabel: (choice) => choice.label
+            ),
+            _ChoiceSettingListTile(
+              setting: Settings.commentLongPressBehavior,
+              title: 'Comment long press behavior',
+              choices: CommentBehavior.values.toList(),
+              choiceLabel: (choice) => choice.label
+            ),
+            _BoolSettingListTile(
+              setting: Settings.showCommentVotingEdges,
+              label: 'Show comment voting edges',
+              infoText: 'Tapping the left side of a comment will upvote it and tapping the right side will downvote it.',
+            ),
+            const _Divider(),
+            const _Header(text: 'Colors'),
+            _ColorSettingListTile(
+              setting: Settings.appBarColor,
+              label: 'App bar color',
             ),
             _BoolSettingListTile(
               setting: Settings.showPlatformColorAccents,
@@ -109,9 +125,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const _DiggPostsFetchDepthSetting()
             ],
             const _Divider(),
-            const _Header(
-              text: 'Other'
-            ),
+            const _Header(text: 'Other'),
             if (F.appFlavor == Flavor.reddit) ...[
               const _RedditLinksFromOldRedditSetting(),
               const _RedditClientIdSetting(),
@@ -187,7 +201,7 @@ class _RedditRedirectUriSetting extends StatelessWidget {
     return _TextSettingListTile(
       setting: Settings.redditRedirectUri,
       label: 'Redirect URI',
-      infoText: "Possibly used to spoof another app's login flow? No one knows.",
+      infoText: "Possibly used to spoof another app's login. No one knows.",
     );
   }
 
@@ -201,7 +215,7 @@ class _DiggPostsFetchDepthSetting extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _ChoiceSettingListTile(
+    return _ChoiceChipSettingListTile(
       title: 'Posts fetch depth',
       setting: Settings.diggPostsFetchDepth,
       infoText: "Digg's website and app seems to show fewer posts than what actually might exist for smaller communities (unsure if intentional). This setting causes additional requests in attempt to retrieve more posts (up to ${DiggApi.resultsLimit} posts). When loading popular communties with many posts, this setting should have no effect.\n\nExample (setting value of 3):\nWhen requesting posts from a lesser-known community, Digg might respond with 10 posts but also indicate that there are more posts available. Lurk will do up to 2 more requests to try and get a total of ${DiggApi.resultsLimit} posts.",
@@ -504,18 +518,71 @@ class _BoolSettingListTile extends StatelessWidget {
 
 class _ChoiceSettingListTile<T> extends StatelessWidget {
 
-  final String? title;
   final SettingNotifier<T?> setting;
+  final String title;
+  final List<T> choices;
+  final String? infoText;
+  final String Function(T choice) choiceLabel;
+
+  const _ChoiceSettingListTile({
+    super.key,
+    required this.setting,
+    required this.title,
+    required this.choices,
+    this.infoText,
+    required this.choiceLabel,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return ListTile(
+      onTap: () {
+        showSimpleBottomSheet(
+          context: context,
+          title: title,
+          body: RadioGroup(
+            groupValue: setting.value,
+            onChanged: (value) {
+              context.pop();
+              setting.value = value;
+            },
+            child: Column(
+              children: choices.map((entry) {
+                return RadioListTile(
+                  value: entry,
+                  title: Text(choiceLabel(entry)),
+                );
+              }).toList()
+            )
+          )
+        );
+      },
+      title: Text(title),
+      subtitle: ValueListenableBuilder<T?>(
+        valueListenable: setting,
+        builder: (context, value, child) {
+          return value != null ? Text(choiceLabel(value)) : const SizedBox.shrink();
+        }
+      )
+    );
+  }
+
+}
+
+class _ChoiceChipSettingListTile<T> extends StatelessWidget {
+
+  final SettingNotifier<T?> setting;
+  final String? title;
   final List<T> choices;
   final String? infoText;
   final String Function(T choice)? choiceLabel;
   final Color Function(T choice)? selectedColor;
   final Function(T choice)? onSelected;
 
-  const _ChoiceSettingListTile({
+  const _ChoiceChipSettingListTile({
     super.key,
-    this.title,
     required this.setting,
+    this.title,
     required this.choices,
     this.infoText,
     this.choiceLabel,
@@ -552,6 +619,7 @@ class _ChoiceSettingListTile<T> extends StatelessWidget {
                         labelStyle = null;
                       }
                       return ChoiceChip(
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
                         label: Text(labelString),
                         selected: isSelected,
                         backgroundColor: Constants.lighterBackgroundColor, 

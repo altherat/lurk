@@ -19,6 +19,9 @@ class Settings {
   static late final SettingNotifier<String?> homeCommunityName;
   static late final SettingNotifier<bool> showCommentImages;
   static late final SettingNotifier<bool> autoplayVideos;
+  static late final SettingNotifier<CommentBehavior> commentTapBehavior;
+  static late final SettingNotifier<CommentBehavior> commentLongPressBehavior;
+  static late final SettingNotifier<bool> showCommentVotingEdges;
   static late final SettingNotifier<Color> appBarColor;
   static late final SettingNotifier<bool> useBottomBar;
   static late final SettingNotifier<bool> reverseCommunityList;
@@ -77,6 +80,24 @@ class Settings {
       initialValue: dbSettings.autoplayVideos,
       companionBuilder: (value) => SettingsCompanion(autoplayVideos: Value(value)),
       defaultValue: Constants.defaultAutoplayVideos,
+    );
+
+    commentTapBehavior = SettingNotifier(
+      initialValue: dbSettings.commentTapBehavior,
+      companionBuilder: (value) => SettingsCompanion(commentTapBehavior: Value(value)),
+      defaultValue: Constants.defaultCommentTapBehavior
+    );
+
+    commentLongPressBehavior = SettingNotifier(
+      initialValue: dbSettings.commentLongPressBehavior,
+      companionBuilder: (value) => SettingsCompanion(commentLongPressBehavior: Value(value)),
+      defaultValue: Constants.defaultCommentLongPressBehavior
+    );
+
+    showCommentVotingEdges = SettingNotifier(
+      initialValue: dbSettings.showCommentImages,
+      companionBuilder: (value) => SettingsCompanion(showCommentVotingEdges: Value(value)),
+      defaultValue: Constants.defaultShowCommentVotingEdges,
     );
 
     appBarColor = SettingNotifier(

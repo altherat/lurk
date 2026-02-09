@@ -294,25 +294,50 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
   
 }
 
+Future<void> showSimpleBottomSheet({
+  required BuildContext context,
+  String? title,
+  required Widget body,
+}) {
+  return showModalBottomSheet(
+    context: context,
+    showDragHandle: true,
+    builder: (context) {
+      return SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
+          child: title != null
+            ? Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                spacing: 8,
+                children: [
+                  Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleLarge
+                  ),
+                  body
+                ]
+              )
+            : body
+        )
+      );
+    }
+  );
+}
+
 Future<void> showSimpleTextBottomSheet({
   required BuildContext context,
   String? title,
   required String content
 }) {
-  return showModalBottomSheet(
+  return showSimpleBottomSheet(
     context: context,
-    showDragHandle: true,
-    builder: (dialogContext) {
-      return SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-          child: Text(
-            content,
-            style: TextStyle(fontSize: 18)
-          ),
-        )
-      );
-    }
+    title: title,
+    body: Text(
+      content,
+      style: Theme.of(context).textTheme.bodyLarge
+    )
   );
 }
 

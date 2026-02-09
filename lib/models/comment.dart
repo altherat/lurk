@@ -56,6 +56,46 @@ class Comment extends CommentItem {
     this.communityName,
   });
 
+  Comment copyWith({
+    Platform? platform,
+    int? depth,
+    String? id,
+    String? shortId,
+    String? permalink,
+    bool? isDeleted,
+    String? authorId,
+    String? authorName,
+    bool? isModerator,
+    bool? isSubmitter,
+    int? score,
+    int? timestampMs,
+    String? text,
+    String? textHtml,
+    Map<String, Size>? images,
+    String? postTitle,
+    String? communityName,
+  }) {
+    return Comment(
+      platform: platform ?? this.platform,
+      depth: depth ?? this.depth,
+      id: id ?? this.id,
+      shortId: shortId ?? this.shortId,
+      permalink: permalink ?? this.permalink,
+      isDeleted: isDeleted ?? this.isDeleted,
+      authorId: authorId ?? this.authorId,
+      authorName: authorName ?? this.authorName,
+      isModerator: isModerator ?? this.isModerator,
+      isSubmitter: isSubmitter ?? this.isSubmitter,
+      score: score ?? this.score,
+      timestampMs: timestampMs ?? this.timestampMs,
+      text: text ?? this.text,
+      textHtml: textHtml ?? this.textHtml,
+      images: images ?? this.images,
+      postTitle: postTitle ?? this.postTitle,
+      communityName: communityName ?? this.communityName,
+    );
+  }
+
   String get timeAgoCompact => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgoCompact;
 
   String get timeAgoLong => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgoLong;

@@ -20,6 +20,7 @@ class SimpleFeedScreen<T> extends StatefulWidget {
   final Widget? title;
   final Widget? subtitle;
   final bool showFeedOptionsSubtitle;
+  final (Listenable, List<Widget> Function(BuildContext context))? iconActionsBuilder;
   final Map<String, void Function()>? popupMenuActions;
   final PreferredSizeWidget? flexibleSpaceHeader;
   final List<Widget>? slivers;
@@ -37,6 +38,7 @@ class SimpleFeedScreen<T> extends StatefulWidget {
     required this.title,
     this.subtitle,
     this.showFeedOptionsSubtitle = true,
+    this.iconActionsBuilder,
     this.popupMenuActions,
     this.flexibleSpaceHeader,
     this.slivers,
@@ -52,7 +54,7 @@ class SimpleFeedScreen<T> extends StatefulWidget {
 class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTickerProviderStateMixin {
 
   late List<GlobalKey<FeedListState<T>>> _feedListKeys;
-  late List<GlobalKey<RefreshIndicatorState>> _refreshIndicatorKeys;
+  late List<GlobalKey<CustomRefreshIndicatorState>> _refreshIndicatorKeys;
   late List<ScrollController> _scrollControllers;
   TabController? _tabController;
   late List<Map<FeedOptionType, FeedOption>?> _selectedFeedOptions;
@@ -68,14 +70,14 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
        _selectedFeedOptions = [];
        for (var i = 0; i < widget.feedOptions!.options.length; i++) {
           _feedListKeys.add(GlobalKey<FeedListState<T>>());
-          _refreshIndicatorKeys.add(GlobalKey<RefreshIndicatorState>());
+          _refreshIndicatorKeys.add(GlobalKey<CustomRefreshIndicatorState>());
           _scrollControllers.add(ScrollController());
           _selectedFeedOptions.add(widget.feedOptions?.options[i].subGroup?.defaults);
        }
     }
     else {
       _feedListKeys = [GlobalKey<FeedListState<T>>()];
-      _refreshIndicatorKeys = [GlobalKey<RefreshIndicatorState>()];
+      _refreshIndicatorKeys = [GlobalKey<CustomRefreshIndicatorState>()];
       _scrollControllers = [ScrollController()];
       _selectedFeedOptions = [widget.feedOptions?.defaults];
     }
@@ -132,6 +134,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
                   controller: _scrollControllers[i],
                   interactive: false,
                   child: CustomScrollView(
+                    controller: _scrollControllers[i],
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
                       SliverOverlapInjector(handle: overlapAbsorberHandle),
@@ -182,11 +185,12 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
               )
             : null
         ),
-        iconActionsBuilder: (_tabController!.animation!, (context) {
+        iconActionsBuilder: (Listenable.merge([_tabController!.animation!, widget.iconActionsBuilder?.$1]), (context) {
           final visibleIndex = _tabController!.animation!.value.round();
           final subGroupOptions = widget.feedOptions!.options[visibleIndex].subGroup;
           if (subGroupOptions == null) return [];
           return [
+            ...?widget.iconActionsBuilder?.$2(context),
             FeedFilterIconButton(
               platform: widget.platform,
               feedOptions: subGroupOptions,
@@ -237,6 +241,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
       customScrollViewController: _scrollControllers[0],
       title: widget.title,
       subtitle: widget.subtitle ?? (widget.showFeedOptionsSubtitle && feedOptions != null && selectedFeedOptions != null && !mapEquals(selectedFeedOptions, feedOptions.defaults) ? Text(_getSubtitle(selectedFeedOptions)) : null),
+      iconActionsBuilder: widget.iconActionsBuilder,
       iconActions: [
         FeedFilterIconButton(
           platform: widget.platform,

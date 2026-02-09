@@ -590,9 +590,9 @@ class RedditApi extends Api {
   }
 
   @override
-  Future<void> postComment(String id, String text) {
+  Future<Comment> postComment(String id, String text) async {
     // dev.log('[Reddit] postcomment: id=$id, text=$text');
-    return _post(
+    final response = await _post(
       '/api/comment',
       {
         'api_type': 'json',
@@ -600,6 +600,7 @@ class RedditApi extends Api {
         'text': text
       }
     );
+    return _parseCommentFromJson(jsonDecode(response.body)['json']['data']['things'][0]['data'], -1).$2;
   }
 
   @override

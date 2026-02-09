@@ -341,6 +341,44 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     ),
     defaultValue: const Constant(Constants.defaultAutoplayVideos),
   );
+  @override
+  late final GeneratedColumnWithTypeConverter<CommentBehavior, String>
+  commentTapBehavior = GeneratedColumn<String>(
+    'comment_tap_behavior',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: Constant(Constants.defaultCommentTapBehavior.name),
+  ).withConverter<CommentBehavior>($SettingsTable.$convertercommentTapBehavior);
+  @override
+  late final GeneratedColumnWithTypeConverter<CommentBehavior, String>
+  commentLongPressBehavior =
+      GeneratedColumn<String>(
+        'comment_long_press_behavior',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: Constant(Constants.defaultCommentLongPressBehavior.name),
+      ).withConverter<CommentBehavior>(
+        $SettingsTable.$convertercommentLongPressBehavior,
+      );
+  static const VerificationMeta _showCommentVotingEdgesMeta =
+      const VerificationMeta('showCommentVotingEdges');
+  @override
+  late final GeneratedColumn<bool> showCommentVotingEdges =
+      GeneratedColumn<bool>(
+        'show_comment_voting_edges',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("show_comment_voting_edges" IN (0, 1))',
+        ),
+        defaultValue: const Constant(Constants.defaultShowCommentVotingEdges),
+      );
   static const VerificationMeta _appBarColorMeta = const VerificationMeta(
     'appBarColor',
   );
@@ -511,6 +549,9 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     homeCommunityName,
     showCommentImages,
     autoplayVideos,
+    commentTapBehavior,
+    commentLongPressBehavior,
+    showCommentVotingEdges,
     appBarColor,
     useBottomBar,
     reverseCommunityList,
@@ -564,6 +605,15 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         autoplayVideos.isAcceptableOrUnknown(
           data['autoplay_videos']!,
           _autoplayVideosMeta,
+        ),
+      );
+    }
+    if (data.containsKey('show_comment_voting_edges')) {
+      context.handle(
+        _showCommentVotingEdgesMeta,
+        showCommentVotingEdges.isAcceptableOrUnknown(
+          data['show_comment_voting_edges']!,
+          _showCommentVotingEdgesMeta,
         ),
       );
     }
@@ -704,6 +754,24 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.bool,
         data['${effectivePrefix}autoplay_videos'],
       )!,
+      commentTapBehavior: $SettingsTable.$convertercommentTapBehavior.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}comment_tap_behavior'],
+        )!,
+      ),
+      commentLongPressBehavior: $SettingsTable
+          .$convertercommentLongPressBehavior
+          .fromSql(
+            attachedDatabase.typeMapping.read(
+              DriftSqlType.string,
+              data['${effectivePrefix}comment_long_press_behavior'],
+            )!,
+          ),
+      showCommentVotingEdges: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_comment_voting_edges'],
+      )!,
       appBarColor: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}app_bar_color'],
@@ -774,6 +842,14 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
   $converterhomeCommunityPlatformn = JsonTypeConverter2.asNullable(
     $converterhomeCommunityPlatform,
   );
+  static JsonTypeConverter2<CommentBehavior, String, String>
+  $convertercommentTapBehavior = const EnumNameConverter<CommentBehavior>(
+    CommentBehavior.values,
+  );
+  static JsonTypeConverter2<CommentBehavior, String, String>
+  $convertercommentLongPressBehavior = const EnumNameConverter<CommentBehavior>(
+    CommentBehavior.values,
+  );
   static JsonTypeConverter2<SearchType, String, String> $convertersearchType =
       const EnumNameConverter<SearchType>(SearchType.values);
   static JsonTypeConverter2<SearchType?, String?, String?>
@@ -786,6 +862,9 @@ class Setting extends DataClass implements Insertable<Setting> {
   final String? homeCommunityName;
   final bool showCommentImages;
   final bool autoplayVideos;
+  final CommentBehavior commentTapBehavior;
+  final CommentBehavior commentLongPressBehavior;
+  final bool showCommentVotingEdges;
   final int? appBarColor;
   final bool useBottomBar;
   final bool reverseCommunityList;
@@ -805,6 +884,9 @@ class Setting extends DataClass implements Insertable<Setting> {
     this.homeCommunityName,
     required this.showCommentImages,
     required this.autoplayVideos,
+    required this.commentTapBehavior,
+    required this.commentLongPressBehavior,
+    required this.showCommentVotingEdges,
     this.appBarColor,
     required this.useBottomBar,
     required this.reverseCommunityList,
@@ -835,6 +917,19 @@ class Setting extends DataClass implements Insertable<Setting> {
     }
     map['show_comment_images'] = Variable<bool>(showCommentImages);
     map['autoplay_videos'] = Variable<bool>(autoplayVideos);
+    {
+      map['comment_tap_behavior'] = Variable<String>(
+        $SettingsTable.$convertercommentTapBehavior.toSql(commentTapBehavior),
+      );
+    }
+    {
+      map['comment_long_press_behavior'] = Variable<String>(
+        $SettingsTable.$convertercommentLongPressBehavior.toSql(
+          commentLongPressBehavior,
+        ),
+      );
+    }
+    map['show_comment_voting_edges'] = Variable<bool>(showCommentVotingEdges);
     if (!nullToAbsent || appBarColor != null) {
       map['app_bar_color'] = Variable<int>(appBarColor);
     }
@@ -884,6 +979,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           : Value(homeCommunityName),
       showCommentImages: Value(showCommentImages),
       autoplayVideos: Value(autoplayVideos),
+      commentTapBehavior: Value(commentTapBehavior),
+      commentLongPressBehavior: Value(commentLongPressBehavior),
+      showCommentVotingEdges: Value(showCommentVotingEdges),
       appBarColor: appBarColor == null && nullToAbsent
           ? const Value.absent()
           : Value(appBarColor),
@@ -930,6 +1028,17 @@ class Setting extends DataClass implements Insertable<Setting> {
       ),
       showCommentImages: serializer.fromJson<bool>(json['showCommentImages']),
       autoplayVideos: serializer.fromJson<bool>(json['autoplayVideos']),
+      commentTapBehavior: $SettingsTable.$convertercommentTapBehavior.fromJson(
+        serializer.fromJson<String>(json['commentTapBehavior']),
+      ),
+      commentLongPressBehavior: $SettingsTable
+          .$convertercommentLongPressBehavior
+          .fromJson(
+            serializer.fromJson<String>(json['commentLongPressBehavior']),
+          ),
+      showCommentVotingEdges: serializer.fromJson<bool>(
+        json['showCommentVotingEdges'],
+      ),
       appBarColor: serializer.fromJson<int?>(json['appBarColor']),
       useBottomBar: serializer.fromJson<bool>(json['useBottomBar']),
       reverseCommunityList: serializer.fromJson<bool>(
@@ -972,6 +1081,15 @@ class Setting extends DataClass implements Insertable<Setting> {
       'homeCommunityName': serializer.toJson<String?>(homeCommunityName),
       'showCommentImages': serializer.toJson<bool>(showCommentImages),
       'autoplayVideos': serializer.toJson<bool>(autoplayVideos),
+      'commentTapBehavior': serializer.toJson<String>(
+        $SettingsTable.$convertercommentTapBehavior.toJson(commentTapBehavior),
+      ),
+      'commentLongPressBehavior': serializer.toJson<String>(
+        $SettingsTable.$convertercommentLongPressBehavior.toJson(
+          commentLongPressBehavior,
+        ),
+      ),
+      'showCommentVotingEdges': serializer.toJson<bool>(showCommentVotingEdges),
       'appBarColor': serializer.toJson<int?>(appBarColor),
       'useBottomBar': serializer.toJson<bool>(useBottomBar),
       'reverseCommunityList': serializer.toJson<bool>(reverseCommunityList),
@@ -1002,6 +1120,9 @@ class Setting extends DataClass implements Insertable<Setting> {
     Value<String?> homeCommunityName = const Value.absent(),
     bool? showCommentImages,
     bool? autoplayVideos,
+    CommentBehavior? commentTapBehavior,
+    CommentBehavior? commentLongPressBehavior,
+    bool? showCommentVotingEdges,
     Value<int?> appBarColor = const Value.absent(),
     bool? useBottomBar,
     bool? reverseCommunityList,
@@ -1025,6 +1146,11 @@ class Setting extends DataClass implements Insertable<Setting> {
         : this.homeCommunityName,
     showCommentImages: showCommentImages ?? this.showCommentImages,
     autoplayVideos: autoplayVideos ?? this.autoplayVideos,
+    commentTapBehavior: commentTapBehavior ?? this.commentTapBehavior,
+    commentLongPressBehavior:
+        commentLongPressBehavior ?? this.commentLongPressBehavior,
+    showCommentVotingEdges:
+        showCommentVotingEdges ?? this.showCommentVotingEdges,
     appBarColor: appBarColor.present ? appBarColor.value : this.appBarColor,
     useBottomBar: useBottomBar ?? this.useBottomBar,
     reverseCommunityList: reverseCommunityList ?? this.reverseCommunityList,
@@ -1063,6 +1189,15 @@ class Setting extends DataClass implements Insertable<Setting> {
       autoplayVideos: data.autoplayVideos.present
           ? data.autoplayVideos.value
           : this.autoplayVideos,
+      commentTapBehavior: data.commentTapBehavior.present
+          ? data.commentTapBehavior.value
+          : this.commentTapBehavior,
+      commentLongPressBehavior: data.commentLongPressBehavior.present
+          ? data.commentLongPressBehavior.value
+          : this.commentLongPressBehavior,
+      showCommentVotingEdges: data.showCommentVotingEdges.present
+          ? data.showCommentVotingEdges.value
+          : this.showCommentVotingEdges,
       appBarColor: data.appBarColor.present
           ? data.appBarColor.value
           : this.appBarColor,
@@ -1111,6 +1246,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('homeCommunityName: $homeCommunityName, ')
           ..write('showCommentImages: $showCommentImages, ')
           ..write('autoplayVideos: $autoplayVideos, ')
+          ..write('commentTapBehavior: $commentTapBehavior, ')
+          ..write('commentLongPressBehavior: $commentLongPressBehavior, ')
+          ..write('showCommentVotingEdges: $showCommentVotingEdges, ')
           ..write('appBarColor: $appBarColor, ')
           ..write('useBottomBar: $useBottomBar, ')
           ..write('reverseCommunityList: $reverseCommunityList, ')
@@ -1131,12 +1269,15 @@ class Setting extends DataClass implements Insertable<Setting> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     homeCommunityPlatform,
     homeCommunityName,
     showCommentImages,
     autoplayVideos,
+    commentTapBehavior,
+    commentLongPressBehavior,
+    showCommentVotingEdges,
     appBarColor,
     useBottomBar,
     reverseCommunityList,
@@ -1150,7 +1291,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     userAgent,
     searchType,
     activeUserId,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -1160,6 +1301,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.homeCommunityName == this.homeCommunityName &&
           other.showCommentImages == this.showCommentImages &&
           other.autoplayVideos == this.autoplayVideos &&
+          other.commentTapBehavior == this.commentTapBehavior &&
+          other.commentLongPressBehavior == this.commentLongPressBehavior &&
+          other.showCommentVotingEdges == this.showCommentVotingEdges &&
           other.appBarColor == this.appBarColor &&
           other.useBottomBar == this.useBottomBar &&
           other.reverseCommunityList == this.reverseCommunityList &&
@@ -1182,6 +1326,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<String?> homeCommunityName;
   final Value<bool> showCommentImages;
   final Value<bool> autoplayVideos;
+  final Value<CommentBehavior> commentTapBehavior;
+  final Value<CommentBehavior> commentLongPressBehavior;
+  final Value<bool> showCommentVotingEdges;
   final Value<int?> appBarColor;
   final Value<bool> useBottomBar;
   final Value<bool> reverseCommunityList;
@@ -1201,6 +1348,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.homeCommunityName = const Value.absent(),
     this.showCommentImages = const Value.absent(),
     this.autoplayVideos = const Value.absent(),
+    this.commentTapBehavior = const Value.absent(),
+    this.commentLongPressBehavior = const Value.absent(),
+    this.showCommentVotingEdges = const Value.absent(),
     this.appBarColor = const Value.absent(),
     this.useBottomBar = const Value.absent(),
     this.reverseCommunityList = const Value.absent(),
@@ -1221,6 +1371,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.homeCommunityName = const Value.absent(),
     this.showCommentImages = const Value.absent(),
     this.autoplayVideos = const Value.absent(),
+    this.commentTapBehavior = const Value.absent(),
+    this.commentLongPressBehavior = const Value.absent(),
+    this.showCommentVotingEdges = const Value.absent(),
     this.appBarColor = const Value.absent(),
     this.useBottomBar = const Value.absent(),
     this.reverseCommunityList = const Value.absent(),
@@ -1241,6 +1394,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<String>? homeCommunityName,
     Expression<bool>? showCommentImages,
     Expression<bool>? autoplayVideos,
+    Expression<String>? commentTapBehavior,
+    Expression<String>? commentLongPressBehavior,
+    Expression<bool>? showCommentVotingEdges,
     Expression<int>? appBarColor,
     Expression<bool>? useBottomBar,
     Expression<bool>? reverseCommunityList,
@@ -1262,6 +1418,12 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (homeCommunityName != null) 'home_community_name': homeCommunityName,
       if (showCommentImages != null) 'show_comment_images': showCommentImages,
       if (autoplayVideos != null) 'autoplay_videos': autoplayVideos,
+      if (commentTapBehavior != null)
+        'comment_tap_behavior': commentTapBehavior,
+      if (commentLongPressBehavior != null)
+        'comment_long_press_behavior': commentLongPressBehavior,
+      if (showCommentVotingEdges != null)
+        'show_comment_voting_edges': showCommentVotingEdges,
       if (appBarColor != null) 'app_bar_color': appBarColor,
       if (useBottomBar != null) 'use_bottom_bar': useBottomBar,
       if (reverseCommunityList != null)
@@ -1289,6 +1451,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<String?>? homeCommunityName,
     Value<bool>? showCommentImages,
     Value<bool>? autoplayVideos,
+    Value<CommentBehavior>? commentTapBehavior,
+    Value<CommentBehavior>? commentLongPressBehavior,
+    Value<bool>? showCommentVotingEdges,
     Value<int?>? appBarColor,
     Value<bool>? useBottomBar,
     Value<bool>? reverseCommunityList,
@@ -1310,6 +1475,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       homeCommunityName: homeCommunityName ?? this.homeCommunityName,
       showCommentImages: showCommentImages ?? this.showCommentImages,
       autoplayVideos: autoplayVideos ?? this.autoplayVideos,
+      commentTapBehavior: commentTapBehavior ?? this.commentTapBehavior,
+      commentLongPressBehavior:
+          commentLongPressBehavior ?? this.commentLongPressBehavior,
+      showCommentVotingEdges:
+          showCommentVotingEdges ?? this.showCommentVotingEdges,
       appBarColor: appBarColor ?? this.appBarColor,
       useBottomBar: useBottomBar ?? this.useBottomBar,
       reverseCommunityList: reverseCommunityList ?? this.reverseCommunityList,
@@ -1350,6 +1520,25 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     }
     if (autoplayVideos.present) {
       map['autoplay_videos'] = Variable<bool>(autoplayVideos.value);
+    }
+    if (commentTapBehavior.present) {
+      map['comment_tap_behavior'] = Variable<String>(
+        $SettingsTable.$convertercommentTapBehavior.toSql(
+          commentTapBehavior.value,
+        ),
+      );
+    }
+    if (commentLongPressBehavior.present) {
+      map['comment_long_press_behavior'] = Variable<String>(
+        $SettingsTable.$convertercommentLongPressBehavior.toSql(
+          commentLongPressBehavior.value,
+        ),
+      );
+    }
+    if (showCommentVotingEdges.present) {
+      map['show_comment_voting_edges'] = Variable<bool>(
+        showCommentVotingEdges.value,
+      );
     }
     if (appBarColor.present) {
       map['app_bar_color'] = Variable<int>(appBarColor.value);
@@ -1411,6 +1600,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('homeCommunityName: $homeCommunityName, ')
           ..write('showCommentImages: $showCommentImages, ')
           ..write('autoplayVideos: $autoplayVideos, ')
+          ..write('commentTapBehavior: $commentTapBehavior, ')
+          ..write('commentLongPressBehavior: $commentLongPressBehavior, ')
+          ..write('showCommentVotingEdges: $showCommentVotingEdges, ')
           ..write('appBarColor: $appBarColor, ')
           ..write('useBottomBar: $useBottomBar, ')
           ..write('reverseCommunityList: $reverseCommunityList, ')
@@ -2287,6 +2479,9 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> homeCommunityName,
       Value<bool> showCommentImages,
       Value<bool> autoplayVideos,
+      Value<CommentBehavior> commentTapBehavior,
+      Value<CommentBehavior> commentLongPressBehavior,
+      Value<bool> showCommentVotingEdges,
       Value<int?> appBarColor,
       Value<bool> useBottomBar,
       Value<bool> reverseCommunityList,
@@ -2308,6 +2503,9 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> homeCommunityName,
       Value<bool> showCommentImages,
       Value<bool> autoplayVideos,
+      Value<CommentBehavior> commentTapBehavior,
+      Value<CommentBehavior> commentLongPressBehavior,
+      Value<bool> showCommentVotingEdges,
       Value<int?> appBarColor,
       Value<bool> useBottomBar,
       Value<bool> reverseCommunityList,
@@ -2355,6 +2553,23 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<bool> get autoplayVideos => $composableBuilder(
     column: $table.autoplayVideos,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<CommentBehavior, CommentBehavior, String>
+  get commentTapBehavior => $composableBuilder(
+    column: $table.commentTapBehavior,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<CommentBehavior, CommentBehavior, String>
+  get commentLongPressBehavior => $composableBuilder(
+    column: $table.commentLongPressBehavior,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<bool> get showCommentVotingEdges => $composableBuilder(
+    column: $table.showCommentVotingEdges,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2459,6 +2674,21 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get commentTapBehavior => $composableBuilder(
+    column: $table.commentTapBehavior,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get commentLongPressBehavior => $composableBuilder(
+    column: $table.commentLongPressBehavior,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get showCommentVotingEdges => $composableBuilder(
+    column: $table.showCommentVotingEdges,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get appBarColor => $composableBuilder(
     column: $table.appBarColor,
     builder: (column) => ColumnOrderings(column),
@@ -2555,6 +2785,23 @@ class $$SettingsTableAnnotationComposer
 
   GeneratedColumn<bool> get autoplayVideos => $composableBuilder(
     column: $table.autoplayVideos,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<CommentBehavior, String>
+  get commentTapBehavior => $composableBuilder(
+    column: $table.commentTapBehavior,
+    builder: (column) => column,
+  );
+
+  GeneratedColumnWithTypeConverter<CommentBehavior, String>
+  get commentLongPressBehavior => $composableBuilder(
+    column: $table.commentLongPressBehavior,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get showCommentVotingEdges => $composableBuilder(
+    column: $table.showCommentVotingEdges,
     builder: (column) => column,
   );
 
@@ -2656,6 +2903,11 @@ class $$SettingsTableTableManager
                 Value<String?> homeCommunityName = const Value.absent(),
                 Value<bool> showCommentImages = const Value.absent(),
                 Value<bool> autoplayVideos = const Value.absent(),
+                Value<CommentBehavior> commentTapBehavior =
+                    const Value.absent(),
+                Value<CommentBehavior> commentLongPressBehavior =
+                    const Value.absent(),
+                Value<bool> showCommentVotingEdges = const Value.absent(),
                 Value<int?> appBarColor = const Value.absent(),
                 Value<bool> useBottomBar = const Value.absent(),
                 Value<bool> reverseCommunityList = const Value.absent(),
@@ -2675,6 +2927,9 @@ class $$SettingsTableTableManager
                 homeCommunityName: homeCommunityName,
                 showCommentImages: showCommentImages,
                 autoplayVideos: autoplayVideos,
+                commentTapBehavior: commentTapBehavior,
+                commentLongPressBehavior: commentLongPressBehavior,
+                showCommentVotingEdges: showCommentVotingEdges,
                 appBarColor: appBarColor,
                 useBottomBar: useBottomBar,
                 reverseCommunityList: reverseCommunityList,
@@ -2696,6 +2951,11 @@ class $$SettingsTableTableManager
                 Value<String?> homeCommunityName = const Value.absent(),
                 Value<bool> showCommentImages = const Value.absent(),
                 Value<bool> autoplayVideos = const Value.absent(),
+                Value<CommentBehavior> commentTapBehavior =
+                    const Value.absent(),
+                Value<CommentBehavior> commentLongPressBehavior =
+                    const Value.absent(),
+                Value<bool> showCommentVotingEdges = const Value.absent(),
                 Value<int?> appBarColor = const Value.absent(),
                 Value<bool> useBottomBar = const Value.absent(),
                 Value<bool> reverseCommunityList = const Value.absent(),
@@ -2715,6 +2975,9 @@ class $$SettingsTableTableManager
                 homeCommunityName: homeCommunityName,
                 showCommentImages: showCommentImages,
                 autoplayVideos: autoplayVideos,
+                commentTapBehavior: commentTapBehavior,
+                commentLongPressBehavior: commentLongPressBehavior,
+                showCommentVotingEdges: showCommentVotingEdges,
                 appBarColor: appBarColor,
                 useBottomBar: useBottomBar,
                 reverseCommunityList: reverseCommunityList,

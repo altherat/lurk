@@ -11,6 +11,9 @@ class Settings extends Table {
 
   BoolColumn get showCommentImages => boolean().withDefault(const Constant(Constants.defaultShowCommentImages))();
   BoolColumn get autoplayVideos => boolean().withDefault(const Constant(Constants.defaultAutoplayVideos))();
+  TextColumn get commentTapBehavior => text().map(const EnumNameConverter<CommentBehavior>(CommentBehavior.values)).withDefault(Constant(Constants.defaultCommentTapBehavior.name))();
+  TextColumn get commentLongPressBehavior => text().map(const EnumNameConverter<CommentBehavior>(CommentBehavior.values)).withDefault(Constant(Constants.defaultCommentLongPressBehavior.name))();
+  BoolColumn get showCommentVotingEdges => boolean().withDefault(const Constant(Constants.defaultShowCommentVotingEdges))();
 
   IntColumn get appBarColor => integer().nullable()();
   BoolColumn get useBottomBar => boolean().withDefault(const Constant(Constants.defaultUseBottomBar))();

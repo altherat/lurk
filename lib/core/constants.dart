@@ -43,6 +43,9 @@ class Constants {
   static const defaultPlatform = Platform.reddit;
   static const defaultShowCommentImages = true;
   static const defaultAutoplayVideos = true;
+  static const defaultCommentTapBehavior = CommentBehavior.expandOrCollapse;
+  static const defaultCommentLongPressBehavior = CommentBehavior.showOptions;
+  static const defaultShowCommentVotingEdges = false;
   static const defaultAppBarColor = Color(0xFF000000);
   static const defaultUseBottomBar = false;
   static const defaultReverseCommunityList = false;

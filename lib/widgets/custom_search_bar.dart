@@ -1,5 +1,5 @@
 /// Copied from Flutter's search_anchor.dart
-/// To expose inputFormatters on the SearchBar
+/// Exposed inputFormatters on the TextField
 
 
 import 'dart:ui';

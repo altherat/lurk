@@ -21,10 +21,10 @@ import 'package:lurk/widgets/prefixed_name.dart';
 import 'package:lurk/widgets/custom_search_bar.dart';
 import 'package:lurk/widgets/list_tile_icon.dart';
 
-class MainScaffold<T> extends StatefulWidget {
+class MainScaffold extends StatefulWidget {
 
   final GlobalKey<ScaffoldState>? scaffoldKey;
-  final GlobalKey<RefreshIndicatorState>? refreshIndicatorKey;
+  final GlobalKey<CustomRefreshIndicatorState>? refreshIndicatorKey;
   final Platform platform;
   final String? activeCommunityName;
   final ScrollController? customScrollViewController;
@@ -61,11 +61,11 @@ class MainScaffold<T> extends StatefulWidget {
   });
 
   @override
-  State<MainScaffold<T>> createState() => _MainScaffoldState<T>();
+  State<MainScaffold> createState() => _MainScaffoldState();
 
 }
 
-class _MainScaffoldState<T> extends State<MainScaffold<T>> with SingleTickerProviderStateMixin {
+class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderStateMixin {
 
   final _isBottomBarVisible = ValueNotifier<bool>(true);
   late final ScrollController _scrollController;
@@ -1315,7 +1315,7 @@ class _CommunityListState extends State<_CommunityList> {
             if (activeUser == null) {
               return listView;
             }
-            return RefreshIndicator(
+            return CustomRefreshIndicator(
               edgeOffset: MediaQuery.of(context).padding.top + 56,
               onRefresh: () async {
                 final List<Community> subcscribedCommunities = [];

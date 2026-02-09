@@ -409,3 +409,15 @@ class PostUrlInfo {
   });
 
 }
+
+enum CommentBehavior {
+
+  expandOrCollapse('Expand/collapse'),
+  showToolbar('Show toolbar'),
+  showOptions('Show options');
+
+  final String label;
+
+  const CommentBehavior(this.label);
+
+}

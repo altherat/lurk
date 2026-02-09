@@ -686,7 +686,7 @@ class DiggApi extends Api {
     throw UnimplementedError();
   }
   @override
-  Future<void> postComment(String id, String text) {
+  Future<Comment> postComment(String id, String text) {
     throw UnimplementedError();
   }
   

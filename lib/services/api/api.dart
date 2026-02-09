@@ -61,7 +61,7 @@ abstract class Api {
   Future<LoggedInUser> getLoggedInUser();
   Future<List<String>> getSubscribedCommunityNames();
   Future<void> vote(String id, bool? up);
-  Future<void> postComment(String id, String text);
+  Future<Comment> postComment(String id, String text);
   Future<void> deleteComment(String id);
   Future<void> unsubscribe(String communityName);
 
