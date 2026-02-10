@@ -32,10 +32,10 @@ class DiggApi extends Api {
       commentCount
       createdDate
       deletedDate
+      pm
       slug
       type
       nsfw
-      text
       author {
         _id
         username
@@ -94,7 +94,10 @@ class DiggApi extends Api {
   bool get hasLogin => false;
 
   @override
-  String get defaultUnauthenticatedUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by @altherat)';
+  String? get savedUserAgent => Settings.diggUserAgent.value;
+
+  @override
+  String get defaultUnauthenticatedUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:${Constants.version} (by @altherat)';
 
   @override
   String get baseUrl => _baseUrl;
@@ -102,13 +105,18 @@ class DiggApi extends Api {
   gql.GraphQLClient get _client {
     return _clientInstance ??= gql.GraphQLClient(
       link: gql.Link.function((request, [forward]) {
+        final customHeaders = {
+          'User-Agent': savedOrDefaultUserAgent,
+          ..._defaultHeaders
+        };
+        dev.log('[Digg] Request headers: ${customHeaders.length}');
+        dev.log('[Digg]\tUser-Agent: ${customHeaders['User-Agent']}');
         return forward!(
           request.updateContextEntry<gql.HttpLinkHeaders>(
             (headers) => gql.HttpLinkHeaders(
               headers: {
                 ...?headers?.headers,
-                'User-Agent': super.savedOrDefaultUserAgent,
-                ..._defaultHeaders
+                ...customHeaders
               },
             ),
           )
@@ -766,7 +774,6 @@ class DiggApi extends Api {
 
   static Post _parsePost(Map<String, dynamic> json) {
     final String id = json['_id'];
-    final String? text = json['text'];
     final authorUsername = json['author']['username'];
     final List attachments = json['attachments'];
     final externalContent = json['externalContent'];
@@ -827,7 +834,7 @@ class DiggApi extends Api {
       id: id,
       permalink: permalink,
       title: (json['title'] as String).trim(),
-      textHtml: text != null && text.isNotEmpty ? text : null,
+      textHtml: _parsePmToHtml(json['pm']),
       score: json['score'],
       timestampMs: DateTime.tryParse(json['createdDate'])?.millisecondsSinceEpoch ?? 0,
       commentCount: json['commentCount'],

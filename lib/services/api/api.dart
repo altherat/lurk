@@ -8,13 +8,15 @@ import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
-import 'package:lurk/services/settings.dart';
 
 abstract class Api {
 
   const Api();
 
-  String get savedOrDefaultUserAgent => Settings.customUserAgent.value ?? defaultUnauthenticatedUserAgent;
+  String get savedOrDefaultUserAgent => savedUserAgent ?? defaultUnauthenticatedUserAgent;
+
+  @protected
+  String? get savedUserAgent;
 
   @protected
   String get defaultUnauthenticatedUserAgent;

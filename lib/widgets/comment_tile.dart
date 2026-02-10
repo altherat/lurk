@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
@@ -11,6 +12,9 @@ import 'package:lurk/widgets/collection_listenable_builder.dart';
 import 'package:lurk/widgets/custom_html.dart';
 
 const _expansionAnimationDuration = Duration(milliseconds: 200);
+const _swipeToVoteThreshold = 50.0;
+const _swipeToVoteEndAnimationDuration = Duration(milliseconds: 200);
+const _swipeToVoteTolerance = 0.01;
 
 class CommentTile extends StatefulWidget {
 
@@ -52,7 +56,21 @@ class CommentTile extends StatefulWidget {
 
 class _CommentTileState extends State<CommentTile> {
 
+  int? _score;
   bool _showToolbar = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _score = widget.comment.score;
+  }
+
+  @override void didUpdateWidget(covariant CommentTile oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.comment != widget.comment) {
+      _score = widget.comment.score;
+    }
+  }
   
   void _toggleToolbar() => setState(() => _showToolbar = !_showToolbar);
 
@@ -62,10 +80,13 @@ class _CommentTileState extends State<CommentTile> {
       context: context,
       title: '${widget.comment.authorName == null ? 'Deleted' : widget.comment.authorName!.toPosessive()} comment',
       options: {
-        if (activeUser != null && activeUser.id == widget.comment.authorId)
-          'Delete comment': _onDeleteCommentPressed,
-        if (activeUser != null)
+        if (activeUser != null && activeUser.platform == widget.comment.platform) ...{
+          'Upvote': () => _onVote(true),
+          'Downvote': () => _onVote(false),
           'Reply': _onReplyPressed,
+          if (activeUser.id == widget.comment.authorId)
+            'Delete': _onDeleteCommentPressed,
+        },
         ...?widget.optionsBuilder?.call(context, activeUser),
         if (widget.showViewUserOption && widget.comment.authorName != null)
           'View ${widget.comment.platform.userPrefix}${widget.comment.authorName}': () {
@@ -109,10 +130,15 @@ class _CommentTileState extends State<CommentTile> {
     widget.comment.platform.api.deleteComment(widget.comment.id);
   }
 
-  void _onVotePressed(bool upVote) {
-    final vote = Votes.comments.value(widget.comment.id) == upVote ? null : upVote;
+  void _onVote(bool upvote) {
+    final vote = Votes.comments.value(widget.comment.id) == upvote ? null : upvote;
     widget.comment.platform.api.vote(widget.comment.id, vote);
     Votes.comments.setVote(widget.comment.id, vote);
+    if (_score != null) {
+      setState(() {
+        _score = _score! + (upvote ? 1 : -1);
+      });
+    }
   }
 
   @override
@@ -150,7 +176,7 @@ class _CommentTileState extends State<CommentTile> {
       listenable: Listenable.merge([Settings.activeUser, Settings.commentTapBehavior, Settings.commentLongPressBehavior]),
       builder: (context, child) {
         final activeUser = Settings.activeUser.value;
-        final isUserActive = activeUser != null;
+        final canDoLoginActions = activeUser != null && activeUser.platform == widget.comment.platform;
         final commentTapBehavior = Settings.commentTapBehavior.value;
         final commentLongPressBehavior = Settings.commentLongPressBehavior.value;
         final VoidCallback? onTap;
@@ -174,51 +200,59 @@ class _CommentTileState extends State<CommentTile> {
                 sizeCurve: Curves.easeInOutCubicEmphasized,
                 secondChild: Row(
                   children: [
-                    CollectionListenableBuilder(
-                      id: widget.comment.id,
-                      collectionListenable: Votes.comments,
-                      builder: (context, vote) {
-                        return IconButton(
-                          icon: Icon(Icons.arrow_upward_rounded),
-                          tooltip: 'Upvote',
-                          onPressed: isUserActive ? () => _onVotePressed(true) : null,
-                          color: vote == true ? Constants.upvoteColor : null
-                          // icon: Image.asset(
-                          //   'assets/arrow_drop_up_rounded.png',
-                          //   width: 20,
-                          //   height: 20
-                          // ),
-                        );
-                      }
-                    ),
-                    CollectionListenableBuilder(
-                      id: widget.comment.id,
-                      collectionListenable: Votes.comments,
-                      builder: (context, vote) {
-                        return IconButton(
-                          icon: Icon(Icons.arrow_downward_rounded),
-                          tooltip: 'Downvote',
-                          onPressed: isUserActive ? () => _onVotePressed(false) : null,
-                          color: vote == false ? Constants.downvoteColor : null
-                          // icon: Image.asset(
-                          //   'assets/arrow_drop_down_rounded.png',
-                          //   width: 20,
-                          //   height: 20
-                          // ),
-                        );
-                      }
-                    ),
-                    IconButton(
-                      icon: Icon(Icons.reply_rounded),
-                      tooltip: 'Reply',
-                      onPressed: _onReplyPressed,
-                    ),
-                    if (isUserActive && activeUser.id == widget.comment.authorId)
-                      IconButton(
-                        icon: Icon(Icons.delete_rounded),
-                        tooltip: 'Delete',
-                        onPressed: _onDeleteCommentPressed,
+                    if (canDoLoginActions) ...[
+                      CollectionListenableBuilder(
+                        id: widget.comment.id,
+                        collectionListenable: Votes.comments,
+                        builder: (context, vote) {
+                          return IconButton(
+                            icon: Icon(Icons.arrow_upward_outlined),
+                            tooltip: 'Upvote',
+                            onPressed: () {
+                              HapticFeedback.mediumImpact();
+                              _onVote(true);
+                            },
+                            color: vote == true ? Constants.upvoteColor : null
+                            // icon: Image.asset(
+                            //   'assets/arrow_drop_up_rounded.png',
+                            //   width: 20,
+                            //   height: 20
+                            // ),
+                          );
+                        }
                       ),
+                      CollectionListenableBuilder(
+                        id: widget.comment.id,
+                        collectionListenable: Votes.comments,
+                        builder: (context, vote) {
+                          return IconButton(
+                            icon: Icon(Icons.arrow_downward_rounded),
+                            tooltip: 'Downvote',
+                            onPressed: () {
+                              HapticFeedback.mediumImpact();
+                              _onVote(false);
+                            },
+                            color: vote == false ? Constants.downvoteColor : null
+                            // icon: Image.asset(
+                            //   'assets/arrow_drop_down_rounded.png',
+                            //   width: 20,
+                            //   height: 20
+                            // ),
+                          );
+                        }
+                      ),
+                      IconButton(
+                        icon: Icon(Icons.reply_rounded),
+                        tooltip: 'Reply',
+                        onPressed: _onReplyPressed
+                      ),
+                      if (activeUser.id == widget.comment.authorId)
+                        IconButton(
+                          icon: Icon(Icons.delete_rounded),
+                          tooltip: 'Delete',
+                          onPressed: _onDeleteCommentPressed,
+                        )
+                    ],
                     IconButton(
                       icon: Icon(Icons.more_horiz_rounded),
                       onPressed: _showOptionsBottomSheet,
@@ -284,7 +318,7 @@ class _CommentTileState extends State<CommentTile> {
                           text: ' [$authorTag]',
                           style: TextStyle(color: authorColor)
                         ),
-                      TextSpan(text: ' • ${widget.comment.score?.toPluralString('point') ?? '[~]'} • ${widget.comment.timeAgoLong}${widget.showCommunityName ? ' • ${widget.comment.communityName}' : ''}'),
+                      TextSpan(text: ' • ${_score?.toPluralString('point') ?? '[~]'} • ${widget.comment.timeAgoLong}${widget.showCommunityName ? ' • ${widget.comment.communityName}' : ''}'),
                       if (widget.isCollapsed)
                         const TextSpan(text: ' [+]'),
                     ],
@@ -312,19 +346,26 @@ class _CommentTileState extends State<CommentTile> {
           onLongPress: onLongPress,
           child: tile
         );
-        if (!isUserActive) {
+        if (!canDoLoginActions) {
           return tile;
         }
-        return ValueListenableBuilder(
-          valueListenable: Settings.showCommentVotingEdges,
+        return ListenableBuilder(
+          listenable: Listenable.merge([Settings.swipeCommentsToVote, Settings.showCommentVotingEdges]),
           child: tile,
-          builder: (context, showCommentVotingEdges, child) {
-            if (!showCommentVotingEdges) {
-              return child!;
+          builder: (context, tile) {
+            Widget child = tile!;
+            if (Settings.swipeCommentsToVote.value) {
+              child = _SwipeToVote(
+                onVote: (upvote) => _onVote(upvote),
+                child: child,
+              );
+            }
+            if (!Settings.showCommentVotingEdges.value) {
+              return child;
             }
             return Stack(
               children: [
-                child!,
+                child,
                 if (!_showToolbar) ...[
                   Positioned(
                     left: 0,
@@ -340,7 +381,10 @@ class _CommentTileState extends State<CommentTile> {
                       ),
                       child: InkWell(
                         splashColor: Constants.upvoteColor.withAlpha(100),
-                        onTap: () => _onVotePressed(true)
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          _onVote(true);
+                        },
                       ),
                     )
                   ),
@@ -358,14 +402,17 @@ class _CommentTileState extends State<CommentTile> {
                       ),
                       child: InkWell(
                         splashColor: Constants.downvoteColor.withAlpha(100),
-                        onTap: () => _onVotePressed(false)
+                        onTap: () {
+                          HapticFeedback.mediumImpact();
+                          _onVote(false);
+                        },
                       )
                     )
                   ),
                 ]
               ],
             );
-          }
+          },
         );
       }
     );
@@ -438,6 +485,122 @@ Future<void> showAddCommentDialog({
       );
     }
   );
+
+}
+
+class _SwipeToVote extends StatefulWidget {
+
+  final void Function(bool upvote) onVote;
+  final Widget child;
+
+  const _SwipeToVote({
+    required this.onVote,
+    required this.child,
+  });
+
+  @override
+  State<_SwipeToVote> createState() => _SwipeToVoteState();
+
+}
+
+class _SwipeToVoteState extends State<_SwipeToVote> with SingleTickerProviderStateMixin {
+
+  late final AnimationController _controller;
+  double _dragOffset = 0.0;
+  bool _isArmed = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: _swipeToVoteEndAnimationDuration,
+    )..addListener(() {
+        setState(() {
+          _dragOffset = _controller.value * _dragOffset;
+        });
+      });
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _handleDragUpdate(DragUpdateDetails details) {
+    final newOffset = (_dragOffset + details.delta.dx).clamp(-_swipeToVoteThreshold, _swipeToVoteThreshold);
+    if (newOffset != _dragOffset) {
+      setState(() {
+        _dragOffset = newOffset;
+      });
+    }
+    final offset = _dragOffset.abs();
+    if (offset >= _swipeToVoteThreshold) {
+      if (!_isArmed) {
+        _isArmed = true;
+        HapticFeedback.lightImpact();
+      }
+    }
+    else if (_isArmed && offset < _swipeToVoteThreshold * _swipeToVoteTolerance) {
+      _isArmed = false;
+    }
+  }
+
+  void _handleDragEnd(DragEndDetails details) {
+    if (_isArmed) {
+      widget.onVote(_dragOffset > 0);
+    }
+    _isArmed = false;
+    if (_dragOffset != 0) {
+      _controller.reverse(from: 1.0);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (_dragOffset.abs() / _swipeToVoteThreshold).clamp(0.0, 1.0);
+    return GestureDetector(
+      onHorizontalDragUpdate: _handleDragUpdate,
+      onHorizontalDragEnd: _handleDragEnd,
+      child: Stack(
+        children: [
+          Positioned(
+            left: _dragOffset > 0 ? 0 : null,
+            top: 0,
+            right: _dragOffset < 0 ? 0 : null,
+            bottom: 0,
+            child: Container(
+              width: _dragOffset.abs(),
+              color: _dragOffset > 0 ? Constants.upvoteColor : _dragOffset < 0 ? Constants.downvoteColor : Colors.transparent,
+              alignment: Alignment.center,
+              child: OverflowBox(
+                maxWidth: double.infinity,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        _dragOffset > 0 ? Icons.arrow_upward : Icons.arrow_downward,
+                        size: 16 + 24 * progress,
+                        color: Colors.white.withValues(alpha: progress),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+          Transform.translate(
+            offset: Offset(_dragOffset, 0),
+            child: widget.child,
+          ),
+        ],
+      ),
+    );
+  }
+
 }
 
 class _AddCommentBottomSheetContent extends StatefulWidget {

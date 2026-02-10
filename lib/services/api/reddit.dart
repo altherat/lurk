@@ -56,6 +56,9 @@ class RedditApi extends Api {
   bool get hasLogin => true;
 
   @override
+  String? get savedUserAgent => Settings.redditUserAgent.value;
+
+  @override
   String get defaultUnauthenticatedUserAgent => _defaultUnauthenticatedUserAgent;
   // String get defaultUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by /u/altherat)';
 
@@ -76,6 +79,7 @@ class RedditApi extends Api {
 
   Future<Response> _handleResponse(Future<Response> response) async {
     final awaited = await response;
+    dev.log('[Reddit] Response code: ${awaited.statusCode}');
     dev.log('[Reddit] Rate limit headers:');
     for (var headerEntry in awaited.headers.entries) {
       // dev.log('[Reddit] ${headerEntry.key}: ${headerEntry.value}');
@@ -600,7 +604,9 @@ class RedditApi extends Api {
         'text': text
       }
     );
-    return _parseCommentFromJson(jsonDecode(response.body)['json']['data']['things'][0]['data'], -1).$2;
+    final (vote, comment) = _parseCommentFromJson(jsonDecode(response.body)['json']['data']['things'][0]['data'], -1);
+    Votes.comments.setVote(comment.id, vote);
+    return comment;
   }
 
   @override
@@ -857,20 +863,20 @@ class _HttpClientHelper extends _ClientHelper {
 
   @override
   Future<Response> get(String path, Map<String, dynamic>? params) async {
-    return _request((client) async {
+    return _request((client, headers) async {
       return client.get(
         Uri.https(RedditApi._domain, path, params),
-        headers: await _headers
+        headers: headers
       );
     });
   }
 
   @override
   Future<Response> post(String path, dynamic body) async {
-    return _request((client) async {
+    return _request((client, headers) async {
       return client.post(
         Uri.https(RedditApi._domain, path),
-        headers: await _headers,
+        headers: headers,
         body: body
       );
     });
@@ -886,32 +892,9 @@ class _HttpClientHelper extends _ClientHelper {
     _initCookiesFuture = null;
   }
 
-  Future<Response> _request(Future<Response> Function(http.Client client) request) async {
+  Future<Response> _request(Future<Response> Function(http.Client client, Map<String, String> headers) request) async {
     final client = _clientInstance ??= http.Client();
-    Response response = await request(client);
-    dev.log('[Reddit][HttpClientHelper] response code: ${response.statusCode}');
-    if (response.headers.containsKey('set-cookie')) {
-      await _updateCookiesFromHeaders(response.headers['set-cookie']!);
-      if (response.statusCode == 403) {
-        dev.log('[Reddit][HttpClientHelper] Status code 403 detected. Attempting HTML warm-up...');
-        final warmUp = await client.get(
-          Uri.parse(RedditApi._baseUrl), 
-          headers: {
-            'Upgrade-Insecure-Requests': '1',
-            'User-Agent': RedditApi._defaultUnauthenticatedUserAgent
-          },
-        );
-        if (warmUp.headers.containsKey('set-cookie')) {
-          await _updateCookiesFromHeaders(warmUp.headers['set-cookie']!);
-          dev.log('[Reddit][HttpClientHelper] Warm-up complete. Retrying original request...');
-          response = await request(client);
-        }
-      }
-    }
-    return response;
-  }
 
-  Future<Map<String, String>> get _headers async {
     final headers = Map.of(RedditApi._defaultUnauthenticatedHeaders);
     await (_initCookiesFuture ??= _initCookies());
     if (_cookies!.isNotEmpty) {
@@ -931,8 +914,30 @@ class _HttpClientHelper extends _ClientHelper {
         headers['Cookie'] = _cookies!.values.map((c) => '${c.key}=${c.value}').join('; ');
       }
     }
-    dev.log('[Reddit][HttpClientHelper] Cookie headers: ${_cookies!.length}');
-    return headers;
+    dev.log('[Reddit][HttpClientHelper] Request headers: ${headers.length}');
+    dev.log('[Reddit][HttpClientHelper]\tUser-Agent: ${headers['User-Agent']}');
+    dev.log('[Reddit][HttpClientHelper]\tCookie: ${_cookies!.entries.map((entry) => '${entry.key}=${_debugTruncateLongString(entry.value.value, 6)}').join(', ')}');
+
+    Response response = await request(client, headers);
+    if (response.headers.containsKey('set-cookie')) {
+      await _updateCookiesFromHeaders(response.headers['set-cookie']!);
+      if (response.statusCode == 403) {
+        dev.log('[Reddit][HttpClientHelper] Status code 403 detected. Attempting HTML warm-up...');
+        final warmUp = await client.get(
+          Uri.parse(RedditApi._baseUrl), 
+          headers: {
+            'Upgrade-Insecure-Requests': '1',
+            'User-Agent': RedditApi._defaultUnauthenticatedUserAgent
+          },
+        );
+        if (warmUp.headers.containsKey('set-cookie')) {
+          await _updateCookiesFromHeaders(warmUp.headers['set-cookie']!);
+          dev.log('[Reddit][HttpClientHelper] Warm-up complete. Retrying original request...');
+          response = await request(client, headers);
+        }
+      }
+    }
+    return response;
   }
 
   Future<void> _initCookies() async {
@@ -954,7 +959,7 @@ class _HttpClientHelper extends _ClientHelper {
       );
       _cookies![ioCookie.name] = cookie;
       cookies.add(cookie);
-      dev.log('[Reddit][HttpClientHelper] Added cookie: key=${cookie.key}, value=${cookie.value}, expirationTime=${cookie.expirationTime}');
+      dev.log('[Reddit][HttpClientHelper] Added cookie: ${cookie.key}=${_debugTruncateLongString(cookie.value)}, expirationTime=${cookie.expirationTime}');
     }
     if (cookies.isNotEmpty) {
       await Database.instance.saveCookies(cookies);
@@ -973,26 +978,20 @@ class _AuthClientHelper extends _ClientHelper {
 
   @override
   Future<Response> get(String path, Map<String, dynamic>? params) {
-    return _request(() {
+    return _request((headers) {
       return _oAuthHelper.get(
         Uri.https(RedditApi._oauthDomain, path, params).toString(),
-        headers: {
-          ...RedditApi._defaultAuthenticatedHeaders,
-          'User-Agent': _userAgentProvider()
-        }
+        headers: headers
       );
     });
   }
 
   @override
   Future<Response> post(String path, dynamic body) {
-    return _request(() {
+    return _request((headers) {
       return _oAuthHelper.post(
         Uri.https(RedditApi._oauthDomain, path).toString(),
-        headers: {
-          ...RedditApi._defaultAuthenticatedHeaders,
-          'User-Agent': _userAgentProvider()
-        },
+        headers: headers,
         body: body
       );
     });
@@ -1021,7 +1020,7 @@ class _AuthClientHelper extends _ClientHelper {
   }
 
   Future<void> updateTokenStorageKey(String clientId, String tokenStorageKey) async {
-    dev.log('[Reddit][OAuthHelper] updateTokenStorageKey: clientId=$clientId, tokenStorageKey=$tokenStorageKey, access token=${_debugTokenToString(_cachedToken!.accessToken)}');
+    dev.log('[Reddit][OAuthHelper] updateTokenStorageKey: clientId=$clientId, tokenStorageKey=$tokenStorageKey, access token=${_debugTruncateLongString(_cachedToken!.accessToken)}');
     await _oAuthHelper.tokenStorage.deleteAllTokens();
     final tokenStorage = TokenStorage(tokenStorageKey);
     await tokenStorage.addToken(_cachedToken!);
@@ -1030,7 +1029,7 @@ class _AuthClientHelper extends _ClientHelper {
   
   static OAuth2Helper _createOAuth2Helper(String clientId, TokenStorage? tokenStorage) {
     final (redirectUri, customUriScheme) = _redirectUriAndCustomUriScheme;
-    dev.log('[Redddit] _createOAuth2Helper: clientId=$clientId, tokenStorage key=${tokenStorage?.key}, redirectUri=$redirectUri, customUriScheme=$customUriScheme');
+    dev.log('[Reddit] _createOAuth2Helper: clientId=$clientId, tokenStorage key=${tokenStorage?.key}, redirectUri=$redirectUri, customUriScheme=$customUriScheme');
     return OAuth2Helper(
       OAuth2Client(
         authorizeUrl: 'https://www.reddit.com/api/v1/authorize',
@@ -1053,10 +1052,10 @@ class _AuthClientHelper extends _ClientHelper {
 
   Future<AccessTokenResponse?> _getCachedOrStoredToken() async => _cachedToken ??= await _oAuthHelper.getTokenFromStorage();
 
-  Future<Response> _request(Future<Response> Function() request) async {
+  Future<Response> _request(Future<Response> Function(Map<String, String> headers) request) async {
     final bool cached = _cachedToken != null;
     final tokenResponse = await _getCachedOrStoredToken();
-    dev.log('[Reddit][OAuthHelper] Loaded token: cached=$cached, accessToken=${_debugTokenToString(tokenResponse?.accessToken)}, refreshToken=${_debugTokenToString(tokenResponse?.refreshToken)}');
+    dev.log('[Reddit][OAuthHelper] Loaded token: cached=$cached, accessToken=${_debugTruncateLongString(tokenResponse?.accessToken)}, refreshToken=${_debugTruncateLongString(tokenResponse?.refreshToken)}');
     if (tokenResponse == null || (!tokenResponse.hasRefreshToken() && tokenResponse.isExpired())) {
       dev.log('[Reddit][OAuthHelper] Fetching access token (${tokenResponse == null ? 'new' : 'expired'})');
       if (Settings.redditDeviceId.value == null) {
@@ -1082,22 +1081,21 @@ class _AuthClientHelper extends _ClientHelper {
           'scope': RedditApi._oauthScopes.join(' '),
         })
       );
-      dev.log('[Reddit][OAuthHelper] Fetched: access token=${_debugTokenToString(data['access_token'])}');
+      dev.log('[Reddit][OAuthHelper] Fetched: access token=${_debugTruncateLongString(data['access_token'])}');
     }
-    final response = await request();
-    dev.log('[Reddit][OAuthHelper] Response code: ${response.statusCode}');
-    // dev.log('[Reddit][OAuthHelper] Response: ${response.body}');
+    final headers = {
+      ...RedditApi._defaultAuthenticatedHeaders,
+      'User-Agent': _userAgentProvider()
+    };
+    dev.log('[Reddit][OAuthHelper] Request headers: ${headers.length}');
+    dev.log('[Reddit][OAuthHelper]\tUser-Agent: ${headers['User-Agent']}');
+    final response = await request(headers);
     return response;
   }
 
   static (String, String) get _redirectUriAndCustomUriScheme {
     final redirectUri = Settings.redditRedirectUri.value;
     return redirectUri != null ? (redirectUri, redirectUri.split('://')[0]) : ('', 'com.altherat.lurk');
-  }
-
-  String _debugTokenToString(String? token) {
-    if (token == null) return 'null';
-    return '${token.substring(0, 10)}...${token.substring(token.length - 10)}';
   }
 
   // Future<void> revokeTokens() async {
@@ -1129,4 +1127,9 @@ class _AuthClientHelper extends _ClientHelper {
   //   }
   // }
 
+}
+
+String _debugTruncateLongString(String? longString, [int maxLength = 10]) {
+  if (longString == null) return 'null';
+  return longString.length > maxLength ? '${longString.substring(0, maxLength ~/ 2)}...${longString.substring(longString.length - maxLength ~/ 2)}' : longString;
 }

@@ -11,9 +11,10 @@ class Settings extends Table {
 
   BoolColumn get showCommentImages => boolean().withDefault(const Constant(Constants.defaultShowCommentImages))();
   BoolColumn get autoplayVideos => boolean().withDefault(const Constant(Constants.defaultAutoplayVideos))();
+  BoolColumn get swipeCommentsToVote => boolean().withDefault(const Constant(Constants.defaultSwipeCommentsToVote))();
+  BoolColumn get showCommentVotingEdges => boolean().withDefault(const Constant(Constants.defaultShowCommentVotingEdges))();
   TextColumn get commentTapBehavior => text().map(const EnumNameConverter<CommentBehavior>(CommentBehavior.values)).withDefault(Constant(Constants.defaultCommentTapBehavior.name))();
   TextColumn get commentLongPressBehavior => text().map(const EnumNameConverter<CommentBehavior>(CommentBehavior.values)).withDefault(Constant(Constants.defaultCommentLongPressBehavior.name))();
-  BoolColumn get showCommentVotingEdges => boolean().withDefault(const Constant(Constants.defaultShowCommentVotingEdges))();
 
   IntColumn get appBarColor => integer().nullable()();
   BoolColumn get useBottomBar => boolean().withDefault(const Constant(Constants.defaultUseBottomBar))();
@@ -25,10 +26,10 @@ class Settings extends Table {
   TextColumn get redditClientId => text().nullable()();
   TextColumn get redditRedirectUri => text().nullable()();
   TextColumn get redditDeviceId => text().nullable()();
+  TextColumn get redditUserAgent => text().nullable()();
   
   IntColumn get diggPostsFetchDepth => integer().withDefault(const Constant(Constants.diggPostsFetchDepth))();
-  
-  TextColumn get userAgent => text().nullable()();
+  TextColumn get diggUserAgent => text().nullable()();
 
   TextColumn get searchType => text().map(const EnumNameConverter<SearchType>(SearchType.values)).nullable()();
   

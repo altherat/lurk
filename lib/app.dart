@@ -69,17 +69,18 @@ class _AppState extends State<App> {
         scrollbarTheme: ScrollbarThemeData(
           thumbColor: WidgetStateProperty.all(Constants.scrollbarColor)
         ),
+        tooltipTheme: const TooltipThemeData(
+          decoration: BoxDecoration(color: Constants.lighterBackgroundColor),
+          textStyle: TextStyle(color: Colors.white)
+        ),
         snackBarTheme: const SnackBarThemeData(
+          behavior: SnackBarBehavior.floating,
           backgroundColor: Colors.black,
-          contentTextStyle: TextStyle(
-            fontSize: 18,
-            color: Colors.white,
-            fontWeight: FontWeight.w500,
-          ),
+          contentTextStyle: TextStyle(color: Colors.white),
           actionTextColor: Constants.primaryColor,
           actionBackgroundColor: Constants.lighterBackgroundColor,
         ),
-        dialogTheme: DialogThemeData(
+        dialogTheme: const DialogThemeData(
           backgroundColor: Constants.dialogBackgroundColor
         ),
       ),

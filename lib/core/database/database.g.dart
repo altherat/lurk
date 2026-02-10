@@ -341,6 +341,35 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     ),
     defaultValue: const Constant(Constants.defaultAutoplayVideos),
   );
+  static const VerificationMeta _swipeCommentsToVoteMeta =
+      const VerificationMeta('swipeCommentsToVote');
+  @override
+  late final GeneratedColumn<bool> swipeCommentsToVote = GeneratedColumn<bool>(
+    'swipe_comments_to_vote',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("swipe_comments_to_vote" IN (0, 1))',
+    ),
+    defaultValue: const Constant(Constants.defaultSwipeCommentsToVote),
+  );
+  static const VerificationMeta _showCommentVotingEdgesMeta =
+      const VerificationMeta('showCommentVotingEdges');
+  @override
+  late final GeneratedColumn<bool> showCommentVotingEdges =
+      GeneratedColumn<bool>(
+        'show_comment_voting_edges',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("show_comment_voting_edges" IN (0, 1))',
+        ),
+        defaultValue: const Constant(Constants.defaultShowCommentVotingEdges),
+      );
   @override
   late final GeneratedColumnWithTypeConverter<CommentBehavior, String>
   commentTapBehavior = GeneratedColumn<String>(
@@ -363,21 +392,6 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         defaultValue: Constant(Constants.defaultCommentLongPressBehavior.name),
       ).withConverter<CommentBehavior>(
         $SettingsTable.$convertercommentLongPressBehavior,
-      );
-  static const VerificationMeta _showCommentVotingEdgesMeta =
-      const VerificationMeta('showCommentVotingEdges');
-  @override
-  late final GeneratedColumn<bool> showCommentVotingEdges =
-      GeneratedColumn<bool>(
-        'show_comment_voting_edges',
-        aliasedName,
-        false,
-        type: DriftSqlType.bool,
-        requiredDuringInsert: false,
-        defaultConstraints: GeneratedColumn.constraintIsAlways(
-          'CHECK ("show_comment_voting_edges" IN (0, 1))',
-        ),
-        defaultValue: const Constant(Constants.defaultShowCommentVotingEdges),
       );
   static const VerificationMeta _appBarColorMeta = const VerificationMeta(
     'appBarColor',
@@ -500,6 +514,17 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _redditUserAgentMeta = const VerificationMeta(
+    'redditUserAgent',
+  );
+  @override
+  late final GeneratedColumn<String> redditUserAgent = GeneratedColumn<String>(
+    'reddit_user_agent',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _diggPostsFetchDepthMeta =
       const VerificationMeta('diggPostsFetchDepth');
   @override
@@ -511,12 +536,12 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     requiredDuringInsert: false,
     defaultValue: const Constant(Constants.diggPostsFetchDepth),
   );
-  static const VerificationMeta _userAgentMeta = const VerificationMeta(
-    'userAgent',
+  static const VerificationMeta _diggUserAgentMeta = const VerificationMeta(
+    'diggUserAgent',
   );
   @override
-  late final GeneratedColumn<String> userAgent = GeneratedColumn<String>(
-    'user_agent',
+  late final GeneratedColumn<String> diggUserAgent = GeneratedColumn<String>(
+    'digg_user_agent',
     aliasedName,
     true,
     type: DriftSqlType.string,
@@ -549,9 +574,10 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     homeCommunityName,
     showCommentImages,
     autoplayVideos,
+    swipeCommentsToVote,
+    showCommentVotingEdges,
     commentTapBehavior,
     commentLongPressBehavior,
-    showCommentVotingEdges,
     appBarColor,
     useBottomBar,
     reverseCommunityList,
@@ -561,8 +587,9 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     redditClientId,
     redditRedirectUri,
     redditDeviceId,
+    redditUserAgent,
     diggPostsFetchDepth,
-    userAgent,
+    diggUserAgent,
     searchType,
     activeUserId,
   ];
@@ -605,6 +632,15 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         autoplayVideos.isAcceptableOrUnknown(
           data['autoplay_videos']!,
           _autoplayVideosMeta,
+        ),
+      );
+    }
+    if (data.containsKey('swipe_comments_to_vote')) {
+      context.handle(
+        _swipeCommentsToVoteMeta,
+        swipeCommentsToVote.isAcceptableOrUnknown(
+          data['swipe_comments_to_vote']!,
+          _swipeCommentsToVoteMeta,
         ),
       );
     }
@@ -698,6 +734,15 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         ),
       );
     }
+    if (data.containsKey('reddit_user_agent')) {
+      context.handle(
+        _redditUserAgentMeta,
+        redditUserAgent.isAcceptableOrUnknown(
+          data['reddit_user_agent']!,
+          _redditUserAgentMeta,
+        ),
+      );
+    }
     if (data.containsKey('digg_posts_fetch_depth')) {
       context.handle(
         _diggPostsFetchDepthMeta,
@@ -707,10 +752,13 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         ),
       );
     }
-    if (data.containsKey('user_agent')) {
+    if (data.containsKey('digg_user_agent')) {
       context.handle(
-        _userAgentMeta,
-        userAgent.isAcceptableOrUnknown(data['user_agent']!, _userAgentMeta),
+        _diggUserAgentMeta,
+        diggUserAgent.isAcceptableOrUnknown(
+          data['digg_user_agent']!,
+          _diggUserAgentMeta,
+        ),
       );
     }
     if (data.containsKey('active_user_id')) {
@@ -754,6 +802,14 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.bool,
         data['${effectivePrefix}autoplay_videos'],
       )!,
+      swipeCommentsToVote: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}swipe_comments_to_vote'],
+      )!,
+      showCommentVotingEdges: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}show_comment_voting_edges'],
+      )!,
       commentTapBehavior: $SettingsTable.$convertercommentTapBehavior.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -768,10 +824,6 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
               data['${effectivePrefix}comment_long_press_behavior'],
             )!,
           ),
-      showCommentVotingEdges: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}show_comment_voting_edges'],
-      )!,
       appBarColor: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}app_bar_color'],
@@ -808,13 +860,17 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.string,
         data['${effectivePrefix}reddit_device_id'],
       ),
+      redditUserAgent: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}reddit_user_agent'],
+      ),
       diggPostsFetchDepth: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}digg_posts_fetch_depth'],
       )!,
-      userAgent: attachedDatabase.typeMapping.read(
+      diggUserAgent: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}user_agent'],
+        data['${effectivePrefix}digg_user_agent'],
       ),
       searchType: $SettingsTable.$convertersearchTypen.fromSql(
         attachedDatabase.typeMapping.read(
@@ -862,9 +918,10 @@ class Setting extends DataClass implements Insertable<Setting> {
   final String? homeCommunityName;
   final bool showCommentImages;
   final bool autoplayVideos;
+  final bool swipeCommentsToVote;
+  final bool showCommentVotingEdges;
   final CommentBehavior commentTapBehavior;
   final CommentBehavior commentLongPressBehavior;
-  final bool showCommentVotingEdges;
   final int? appBarColor;
   final bool useBottomBar;
   final bool reverseCommunityList;
@@ -874,8 +931,9 @@ class Setting extends DataClass implements Insertable<Setting> {
   final String? redditClientId;
   final String? redditRedirectUri;
   final String? redditDeviceId;
+  final String? redditUserAgent;
   final int diggPostsFetchDepth;
-  final String? userAgent;
+  final String? diggUserAgent;
   final SearchType? searchType;
   final String? activeUserId;
   const Setting({
@@ -884,9 +942,10 @@ class Setting extends DataClass implements Insertable<Setting> {
     this.homeCommunityName,
     required this.showCommentImages,
     required this.autoplayVideos,
+    required this.swipeCommentsToVote,
+    required this.showCommentVotingEdges,
     required this.commentTapBehavior,
     required this.commentLongPressBehavior,
-    required this.showCommentVotingEdges,
     this.appBarColor,
     required this.useBottomBar,
     required this.reverseCommunityList,
@@ -896,8 +955,9 @@ class Setting extends DataClass implements Insertable<Setting> {
     this.redditClientId,
     this.redditRedirectUri,
     this.redditDeviceId,
+    this.redditUserAgent,
     required this.diggPostsFetchDepth,
-    this.userAgent,
+    this.diggUserAgent,
     this.searchType,
     this.activeUserId,
   });
@@ -917,6 +977,8 @@ class Setting extends DataClass implements Insertable<Setting> {
     }
     map['show_comment_images'] = Variable<bool>(showCommentImages);
     map['autoplay_videos'] = Variable<bool>(autoplayVideos);
+    map['swipe_comments_to_vote'] = Variable<bool>(swipeCommentsToVote);
+    map['show_comment_voting_edges'] = Variable<bool>(showCommentVotingEdges);
     {
       map['comment_tap_behavior'] = Variable<String>(
         $SettingsTable.$convertercommentTapBehavior.toSql(commentTapBehavior),
@@ -929,7 +991,6 @@ class Setting extends DataClass implements Insertable<Setting> {
         ),
       );
     }
-    map['show_comment_voting_edges'] = Variable<bool>(showCommentVotingEdges);
     if (!nullToAbsent || appBarColor != null) {
       map['app_bar_color'] = Variable<int>(appBarColor);
     }
@@ -953,9 +1014,12 @@ class Setting extends DataClass implements Insertable<Setting> {
     if (!nullToAbsent || redditDeviceId != null) {
       map['reddit_device_id'] = Variable<String>(redditDeviceId);
     }
+    if (!nullToAbsent || redditUserAgent != null) {
+      map['reddit_user_agent'] = Variable<String>(redditUserAgent);
+    }
     map['digg_posts_fetch_depth'] = Variable<int>(diggPostsFetchDepth);
-    if (!nullToAbsent || userAgent != null) {
-      map['user_agent'] = Variable<String>(userAgent);
+    if (!nullToAbsent || diggUserAgent != null) {
+      map['digg_user_agent'] = Variable<String>(diggUserAgent);
     }
     if (!nullToAbsent || searchType != null) {
       map['search_type'] = Variable<String>(
@@ -979,9 +1043,10 @@ class Setting extends DataClass implements Insertable<Setting> {
           : Value(homeCommunityName),
       showCommentImages: Value(showCommentImages),
       autoplayVideos: Value(autoplayVideos),
+      swipeCommentsToVote: Value(swipeCommentsToVote),
+      showCommentVotingEdges: Value(showCommentVotingEdges),
       commentTapBehavior: Value(commentTapBehavior),
       commentLongPressBehavior: Value(commentLongPressBehavior),
-      showCommentVotingEdges: Value(showCommentVotingEdges),
       appBarColor: appBarColor == null && nullToAbsent
           ? const Value.absent()
           : Value(appBarColor),
@@ -999,10 +1064,13 @@ class Setting extends DataClass implements Insertable<Setting> {
       redditDeviceId: redditDeviceId == null && nullToAbsent
           ? const Value.absent()
           : Value(redditDeviceId),
-      diggPostsFetchDepth: Value(diggPostsFetchDepth),
-      userAgent: userAgent == null && nullToAbsent
+      redditUserAgent: redditUserAgent == null && nullToAbsent
           ? const Value.absent()
-          : Value(userAgent),
+          : Value(redditUserAgent),
+      diggPostsFetchDepth: Value(diggPostsFetchDepth),
+      diggUserAgent: diggUserAgent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(diggUserAgent),
       searchType: searchType == null && nullToAbsent
           ? const Value.absent()
           : Value(searchType),
@@ -1028,6 +1096,12 @@ class Setting extends DataClass implements Insertable<Setting> {
       ),
       showCommentImages: serializer.fromJson<bool>(json['showCommentImages']),
       autoplayVideos: serializer.fromJson<bool>(json['autoplayVideos']),
+      swipeCommentsToVote: serializer.fromJson<bool>(
+        json['swipeCommentsToVote'],
+      ),
+      showCommentVotingEdges: serializer.fromJson<bool>(
+        json['showCommentVotingEdges'],
+      ),
       commentTapBehavior: $SettingsTable.$convertercommentTapBehavior.fromJson(
         serializer.fromJson<String>(json['commentTapBehavior']),
       ),
@@ -1036,9 +1110,6 @@ class Setting extends DataClass implements Insertable<Setting> {
           .fromJson(
             serializer.fromJson<String>(json['commentLongPressBehavior']),
           ),
-      showCommentVotingEdges: serializer.fromJson<bool>(
-        json['showCommentVotingEdges'],
-      ),
       appBarColor: serializer.fromJson<int?>(json['appBarColor']),
       useBottomBar: serializer.fromJson<bool>(json['useBottomBar']),
       reverseCommunityList: serializer.fromJson<bool>(
@@ -1058,10 +1129,11 @@ class Setting extends DataClass implements Insertable<Setting> {
         json['redditRedirectUri'],
       ),
       redditDeviceId: serializer.fromJson<String?>(json['redditDeviceId']),
+      redditUserAgent: serializer.fromJson<String?>(json['redditUserAgent']),
       diggPostsFetchDepth: serializer.fromJson<int>(
         json['diggPostsFetchDepth'],
       ),
-      userAgent: serializer.fromJson<String?>(json['userAgent']),
+      diggUserAgent: serializer.fromJson<String?>(json['diggUserAgent']),
       searchType: $SettingsTable.$convertersearchTypen.fromJson(
         serializer.fromJson<String?>(json['searchType']),
       ),
@@ -1081,6 +1153,8 @@ class Setting extends DataClass implements Insertable<Setting> {
       'homeCommunityName': serializer.toJson<String?>(homeCommunityName),
       'showCommentImages': serializer.toJson<bool>(showCommentImages),
       'autoplayVideos': serializer.toJson<bool>(autoplayVideos),
+      'swipeCommentsToVote': serializer.toJson<bool>(swipeCommentsToVote),
+      'showCommentVotingEdges': serializer.toJson<bool>(showCommentVotingEdges),
       'commentTapBehavior': serializer.toJson<String>(
         $SettingsTable.$convertercommentTapBehavior.toJson(commentTapBehavior),
       ),
@@ -1089,7 +1163,6 @@ class Setting extends DataClass implements Insertable<Setting> {
           commentLongPressBehavior,
         ),
       ),
-      'showCommentVotingEdges': serializer.toJson<bool>(showCommentVotingEdges),
       'appBarColor': serializer.toJson<int?>(appBarColor),
       'useBottomBar': serializer.toJson<bool>(useBottomBar),
       'reverseCommunityList': serializer.toJson<bool>(reverseCommunityList),
@@ -1105,8 +1178,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       'redditClientId': serializer.toJson<String?>(redditClientId),
       'redditRedirectUri': serializer.toJson<String?>(redditRedirectUri),
       'redditDeviceId': serializer.toJson<String?>(redditDeviceId),
+      'redditUserAgent': serializer.toJson<String?>(redditUserAgent),
       'diggPostsFetchDepth': serializer.toJson<int>(diggPostsFetchDepth),
-      'userAgent': serializer.toJson<String?>(userAgent),
+      'diggUserAgent': serializer.toJson<String?>(diggUserAgent),
       'searchType': serializer.toJson<String?>(
         $SettingsTable.$convertersearchTypen.toJson(searchType),
       ),
@@ -1120,9 +1194,10 @@ class Setting extends DataClass implements Insertable<Setting> {
     Value<String?> homeCommunityName = const Value.absent(),
     bool? showCommentImages,
     bool? autoplayVideos,
+    bool? swipeCommentsToVote,
+    bool? showCommentVotingEdges,
     CommentBehavior? commentTapBehavior,
     CommentBehavior? commentLongPressBehavior,
-    bool? showCommentVotingEdges,
     Value<int?> appBarColor = const Value.absent(),
     bool? useBottomBar,
     bool? reverseCommunityList,
@@ -1132,8 +1207,9 @@ class Setting extends DataClass implements Insertable<Setting> {
     Value<String?> redditClientId = const Value.absent(),
     Value<String?> redditRedirectUri = const Value.absent(),
     Value<String?> redditDeviceId = const Value.absent(),
+    Value<String?> redditUserAgent = const Value.absent(),
     int? diggPostsFetchDepth,
-    Value<String?> userAgent = const Value.absent(),
+    Value<String?> diggUserAgent = const Value.absent(),
     Value<SearchType?> searchType = const Value.absent(),
     Value<String?> activeUserId = const Value.absent(),
   }) => Setting(
@@ -1146,11 +1222,12 @@ class Setting extends DataClass implements Insertable<Setting> {
         : this.homeCommunityName,
     showCommentImages: showCommentImages ?? this.showCommentImages,
     autoplayVideos: autoplayVideos ?? this.autoplayVideos,
+    swipeCommentsToVote: swipeCommentsToVote ?? this.swipeCommentsToVote,
+    showCommentVotingEdges:
+        showCommentVotingEdges ?? this.showCommentVotingEdges,
     commentTapBehavior: commentTapBehavior ?? this.commentTapBehavior,
     commentLongPressBehavior:
         commentLongPressBehavior ?? this.commentLongPressBehavior,
-    showCommentVotingEdges:
-        showCommentVotingEdges ?? this.showCommentVotingEdges,
     appBarColor: appBarColor.present ? appBarColor.value : this.appBarColor,
     useBottomBar: useBottomBar ?? this.useBottomBar,
     reverseCommunityList: reverseCommunityList ?? this.reverseCommunityList,
@@ -1169,8 +1246,13 @@ class Setting extends DataClass implements Insertable<Setting> {
     redditDeviceId: redditDeviceId.present
         ? redditDeviceId.value
         : this.redditDeviceId,
+    redditUserAgent: redditUserAgent.present
+        ? redditUserAgent.value
+        : this.redditUserAgent,
     diggPostsFetchDepth: diggPostsFetchDepth ?? this.diggPostsFetchDepth,
-    userAgent: userAgent.present ? userAgent.value : this.userAgent,
+    diggUserAgent: diggUserAgent.present
+        ? diggUserAgent.value
+        : this.diggUserAgent,
     searchType: searchType.present ? searchType.value : this.searchType,
     activeUserId: activeUserId.present ? activeUserId.value : this.activeUserId,
   );
@@ -1189,15 +1271,18 @@ class Setting extends DataClass implements Insertable<Setting> {
       autoplayVideos: data.autoplayVideos.present
           ? data.autoplayVideos.value
           : this.autoplayVideos,
+      swipeCommentsToVote: data.swipeCommentsToVote.present
+          ? data.swipeCommentsToVote.value
+          : this.swipeCommentsToVote,
+      showCommentVotingEdges: data.showCommentVotingEdges.present
+          ? data.showCommentVotingEdges.value
+          : this.showCommentVotingEdges,
       commentTapBehavior: data.commentTapBehavior.present
           ? data.commentTapBehavior.value
           : this.commentTapBehavior,
       commentLongPressBehavior: data.commentLongPressBehavior.present
           ? data.commentLongPressBehavior.value
           : this.commentLongPressBehavior,
-      showCommentVotingEdges: data.showCommentVotingEdges.present
-          ? data.showCommentVotingEdges.value
-          : this.showCommentVotingEdges,
       appBarColor: data.appBarColor.present
           ? data.appBarColor.value
           : this.appBarColor,
@@ -1225,10 +1310,15 @@ class Setting extends DataClass implements Insertable<Setting> {
       redditDeviceId: data.redditDeviceId.present
           ? data.redditDeviceId.value
           : this.redditDeviceId,
+      redditUserAgent: data.redditUserAgent.present
+          ? data.redditUserAgent.value
+          : this.redditUserAgent,
       diggPostsFetchDepth: data.diggPostsFetchDepth.present
           ? data.diggPostsFetchDepth.value
           : this.diggPostsFetchDepth,
-      userAgent: data.userAgent.present ? data.userAgent.value : this.userAgent,
+      diggUserAgent: data.diggUserAgent.present
+          ? data.diggUserAgent.value
+          : this.diggUserAgent,
       searchType: data.searchType.present
           ? data.searchType.value
           : this.searchType,
@@ -1246,9 +1336,10 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('homeCommunityName: $homeCommunityName, ')
           ..write('showCommentImages: $showCommentImages, ')
           ..write('autoplayVideos: $autoplayVideos, ')
+          ..write('swipeCommentsToVote: $swipeCommentsToVote, ')
+          ..write('showCommentVotingEdges: $showCommentVotingEdges, ')
           ..write('commentTapBehavior: $commentTapBehavior, ')
           ..write('commentLongPressBehavior: $commentLongPressBehavior, ')
-          ..write('showCommentVotingEdges: $showCommentVotingEdges, ')
           ..write('appBarColor: $appBarColor, ')
           ..write('useBottomBar: $useBottomBar, ')
           ..write('reverseCommunityList: $reverseCommunityList, ')
@@ -1260,8 +1351,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('redditClientId: $redditClientId, ')
           ..write('redditRedirectUri: $redditRedirectUri, ')
           ..write('redditDeviceId: $redditDeviceId, ')
+          ..write('redditUserAgent: $redditUserAgent, ')
           ..write('diggPostsFetchDepth: $diggPostsFetchDepth, ')
-          ..write('userAgent: $userAgent, ')
+          ..write('diggUserAgent: $diggUserAgent, ')
           ..write('searchType: $searchType, ')
           ..write('activeUserId: $activeUserId')
           ..write(')'))
@@ -1275,9 +1367,10 @@ class Setting extends DataClass implements Insertable<Setting> {
     homeCommunityName,
     showCommentImages,
     autoplayVideos,
+    swipeCommentsToVote,
+    showCommentVotingEdges,
     commentTapBehavior,
     commentLongPressBehavior,
-    showCommentVotingEdges,
     appBarColor,
     useBottomBar,
     reverseCommunityList,
@@ -1287,8 +1380,9 @@ class Setting extends DataClass implements Insertable<Setting> {
     redditClientId,
     redditRedirectUri,
     redditDeviceId,
+    redditUserAgent,
     diggPostsFetchDepth,
-    userAgent,
+    diggUserAgent,
     searchType,
     activeUserId,
   ]);
@@ -1301,9 +1395,10 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.homeCommunityName == this.homeCommunityName &&
           other.showCommentImages == this.showCommentImages &&
           other.autoplayVideos == this.autoplayVideos &&
+          other.swipeCommentsToVote == this.swipeCommentsToVote &&
+          other.showCommentVotingEdges == this.showCommentVotingEdges &&
           other.commentTapBehavior == this.commentTapBehavior &&
           other.commentLongPressBehavior == this.commentLongPressBehavior &&
-          other.showCommentVotingEdges == this.showCommentVotingEdges &&
           other.appBarColor == this.appBarColor &&
           other.useBottomBar == this.useBottomBar &&
           other.reverseCommunityList == this.reverseCommunityList &&
@@ -1314,8 +1409,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.redditClientId == this.redditClientId &&
           other.redditRedirectUri == this.redditRedirectUri &&
           other.redditDeviceId == this.redditDeviceId &&
+          other.redditUserAgent == this.redditUserAgent &&
           other.diggPostsFetchDepth == this.diggPostsFetchDepth &&
-          other.userAgent == this.userAgent &&
+          other.diggUserAgent == this.diggUserAgent &&
           other.searchType == this.searchType &&
           other.activeUserId == this.activeUserId);
 }
@@ -1326,9 +1422,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<String?> homeCommunityName;
   final Value<bool> showCommentImages;
   final Value<bool> autoplayVideos;
+  final Value<bool> swipeCommentsToVote;
+  final Value<bool> showCommentVotingEdges;
   final Value<CommentBehavior> commentTapBehavior;
   final Value<CommentBehavior> commentLongPressBehavior;
-  final Value<bool> showCommentVotingEdges;
   final Value<int?> appBarColor;
   final Value<bool> useBottomBar;
   final Value<bool> reverseCommunityList;
@@ -1338,8 +1435,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<String?> redditClientId;
   final Value<String?> redditRedirectUri;
   final Value<String?> redditDeviceId;
+  final Value<String?> redditUserAgent;
   final Value<int> diggPostsFetchDepth;
-  final Value<String?> userAgent;
+  final Value<String?> diggUserAgent;
   final Value<SearchType?> searchType;
   final Value<String?> activeUserId;
   const SettingsCompanion({
@@ -1348,9 +1446,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.homeCommunityName = const Value.absent(),
     this.showCommentImages = const Value.absent(),
     this.autoplayVideos = const Value.absent(),
+    this.swipeCommentsToVote = const Value.absent(),
+    this.showCommentVotingEdges = const Value.absent(),
     this.commentTapBehavior = const Value.absent(),
     this.commentLongPressBehavior = const Value.absent(),
-    this.showCommentVotingEdges = const Value.absent(),
     this.appBarColor = const Value.absent(),
     this.useBottomBar = const Value.absent(),
     this.reverseCommunityList = const Value.absent(),
@@ -1360,8 +1459,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.redditClientId = const Value.absent(),
     this.redditRedirectUri = const Value.absent(),
     this.redditDeviceId = const Value.absent(),
+    this.redditUserAgent = const Value.absent(),
     this.diggPostsFetchDepth = const Value.absent(),
-    this.userAgent = const Value.absent(),
+    this.diggUserAgent = const Value.absent(),
     this.searchType = const Value.absent(),
     this.activeUserId = const Value.absent(),
   });
@@ -1371,9 +1471,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.homeCommunityName = const Value.absent(),
     this.showCommentImages = const Value.absent(),
     this.autoplayVideos = const Value.absent(),
+    this.swipeCommentsToVote = const Value.absent(),
+    this.showCommentVotingEdges = const Value.absent(),
     this.commentTapBehavior = const Value.absent(),
     this.commentLongPressBehavior = const Value.absent(),
-    this.showCommentVotingEdges = const Value.absent(),
     this.appBarColor = const Value.absent(),
     this.useBottomBar = const Value.absent(),
     this.reverseCommunityList = const Value.absent(),
@@ -1383,8 +1484,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.redditClientId = const Value.absent(),
     this.redditRedirectUri = const Value.absent(),
     this.redditDeviceId = const Value.absent(),
+    this.redditUserAgent = const Value.absent(),
     this.diggPostsFetchDepth = const Value.absent(),
-    this.userAgent = const Value.absent(),
+    this.diggUserAgent = const Value.absent(),
     this.searchType = const Value.absent(),
     this.activeUserId = const Value.absent(),
   });
@@ -1394,9 +1496,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<String>? homeCommunityName,
     Expression<bool>? showCommentImages,
     Expression<bool>? autoplayVideos,
+    Expression<bool>? swipeCommentsToVote,
+    Expression<bool>? showCommentVotingEdges,
     Expression<String>? commentTapBehavior,
     Expression<String>? commentLongPressBehavior,
-    Expression<bool>? showCommentVotingEdges,
     Expression<int>? appBarColor,
     Expression<bool>? useBottomBar,
     Expression<bool>? reverseCommunityList,
@@ -1406,8 +1509,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<String>? redditClientId,
     Expression<String>? redditRedirectUri,
     Expression<String>? redditDeviceId,
+    Expression<String>? redditUserAgent,
     Expression<int>? diggPostsFetchDepth,
-    Expression<String>? userAgent,
+    Expression<String>? diggUserAgent,
     Expression<String>? searchType,
     Expression<String>? activeUserId,
   }) {
@@ -1418,12 +1522,14 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (homeCommunityName != null) 'home_community_name': homeCommunityName,
       if (showCommentImages != null) 'show_comment_images': showCommentImages,
       if (autoplayVideos != null) 'autoplay_videos': autoplayVideos,
+      if (swipeCommentsToVote != null)
+        'swipe_comments_to_vote': swipeCommentsToVote,
+      if (showCommentVotingEdges != null)
+        'show_comment_voting_edges': showCommentVotingEdges,
       if (commentTapBehavior != null)
         'comment_tap_behavior': commentTapBehavior,
       if (commentLongPressBehavior != null)
         'comment_long_press_behavior': commentLongPressBehavior,
-      if (showCommentVotingEdges != null)
-        'show_comment_voting_edges': showCommentVotingEdges,
       if (appBarColor != null) 'app_bar_color': appBarColor,
       if (useBottomBar != null) 'use_bottom_bar': useBottomBar,
       if (reverseCommunityList != null)
@@ -1437,9 +1543,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (redditClientId != null) 'reddit_client_id': redditClientId,
       if (redditRedirectUri != null) 'reddit_redirect_uri': redditRedirectUri,
       if (redditDeviceId != null) 'reddit_device_id': redditDeviceId,
+      if (redditUserAgent != null) 'reddit_user_agent': redditUserAgent,
       if (diggPostsFetchDepth != null)
         'digg_posts_fetch_depth': diggPostsFetchDepth,
-      if (userAgent != null) 'user_agent': userAgent,
+      if (diggUserAgent != null) 'digg_user_agent': diggUserAgent,
       if (searchType != null) 'search_type': searchType,
       if (activeUserId != null) 'active_user_id': activeUserId,
     });
@@ -1451,9 +1558,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<String?>? homeCommunityName,
     Value<bool>? showCommentImages,
     Value<bool>? autoplayVideos,
+    Value<bool>? swipeCommentsToVote,
+    Value<bool>? showCommentVotingEdges,
     Value<CommentBehavior>? commentTapBehavior,
     Value<CommentBehavior>? commentLongPressBehavior,
-    Value<bool>? showCommentVotingEdges,
     Value<int?>? appBarColor,
     Value<bool>? useBottomBar,
     Value<bool>? reverseCommunityList,
@@ -1463,8 +1571,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<String?>? redditClientId,
     Value<String?>? redditRedirectUri,
     Value<String?>? redditDeviceId,
+    Value<String?>? redditUserAgent,
     Value<int>? diggPostsFetchDepth,
-    Value<String?>? userAgent,
+    Value<String?>? diggUserAgent,
     Value<SearchType?>? searchType,
     Value<String?>? activeUserId,
   }) {
@@ -1475,11 +1584,12 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       homeCommunityName: homeCommunityName ?? this.homeCommunityName,
       showCommentImages: showCommentImages ?? this.showCommentImages,
       autoplayVideos: autoplayVideos ?? this.autoplayVideos,
+      swipeCommentsToVote: swipeCommentsToVote ?? this.swipeCommentsToVote,
+      showCommentVotingEdges:
+          showCommentVotingEdges ?? this.showCommentVotingEdges,
       commentTapBehavior: commentTapBehavior ?? this.commentTapBehavior,
       commentLongPressBehavior:
           commentLongPressBehavior ?? this.commentLongPressBehavior,
-      showCommentVotingEdges:
-          showCommentVotingEdges ?? this.showCommentVotingEdges,
       appBarColor: appBarColor ?? this.appBarColor,
       useBottomBar: useBottomBar ?? this.useBottomBar,
       reverseCommunityList: reverseCommunityList ?? this.reverseCommunityList,
@@ -1492,8 +1602,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       redditClientId: redditClientId ?? this.redditClientId,
       redditRedirectUri: redditRedirectUri ?? this.redditRedirectUri,
       redditDeviceId: redditDeviceId ?? this.redditDeviceId,
+      redditUserAgent: redditUserAgent ?? this.redditUserAgent,
       diggPostsFetchDepth: diggPostsFetchDepth ?? this.diggPostsFetchDepth,
-      userAgent: userAgent ?? this.userAgent,
+      diggUserAgent: diggUserAgent ?? this.diggUserAgent,
       searchType: searchType ?? this.searchType,
       activeUserId: activeUserId ?? this.activeUserId,
     );
@@ -1521,6 +1632,14 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     if (autoplayVideos.present) {
       map['autoplay_videos'] = Variable<bool>(autoplayVideos.value);
     }
+    if (swipeCommentsToVote.present) {
+      map['swipe_comments_to_vote'] = Variable<bool>(swipeCommentsToVote.value);
+    }
+    if (showCommentVotingEdges.present) {
+      map['show_comment_voting_edges'] = Variable<bool>(
+        showCommentVotingEdges.value,
+      );
+    }
     if (commentTapBehavior.present) {
       map['comment_tap_behavior'] = Variable<String>(
         $SettingsTable.$convertercommentTapBehavior.toSql(
@@ -1533,11 +1652,6 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
         $SettingsTable.$convertercommentLongPressBehavior.toSql(
           commentLongPressBehavior.value,
         ),
-      );
-    }
-    if (showCommentVotingEdges.present) {
-      map['show_comment_voting_edges'] = Variable<bool>(
-        showCommentVotingEdges.value,
       );
     }
     if (appBarColor.present) {
@@ -1575,11 +1689,14 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     if (redditDeviceId.present) {
       map['reddit_device_id'] = Variable<String>(redditDeviceId.value);
     }
+    if (redditUserAgent.present) {
+      map['reddit_user_agent'] = Variable<String>(redditUserAgent.value);
+    }
     if (diggPostsFetchDepth.present) {
       map['digg_posts_fetch_depth'] = Variable<int>(diggPostsFetchDepth.value);
     }
-    if (userAgent.present) {
-      map['user_agent'] = Variable<String>(userAgent.value);
+    if (diggUserAgent.present) {
+      map['digg_user_agent'] = Variable<String>(diggUserAgent.value);
     }
     if (searchType.present) {
       map['search_type'] = Variable<String>(
@@ -1600,9 +1717,10 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('homeCommunityName: $homeCommunityName, ')
           ..write('showCommentImages: $showCommentImages, ')
           ..write('autoplayVideos: $autoplayVideos, ')
+          ..write('swipeCommentsToVote: $swipeCommentsToVote, ')
+          ..write('showCommentVotingEdges: $showCommentVotingEdges, ')
           ..write('commentTapBehavior: $commentTapBehavior, ')
           ..write('commentLongPressBehavior: $commentLongPressBehavior, ')
-          ..write('showCommentVotingEdges: $showCommentVotingEdges, ')
           ..write('appBarColor: $appBarColor, ')
           ..write('useBottomBar: $useBottomBar, ')
           ..write('reverseCommunityList: $reverseCommunityList, ')
@@ -1614,8 +1732,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('redditClientId: $redditClientId, ')
           ..write('redditRedirectUri: $redditRedirectUri, ')
           ..write('redditDeviceId: $redditDeviceId, ')
+          ..write('redditUserAgent: $redditUserAgent, ')
           ..write('diggPostsFetchDepth: $diggPostsFetchDepth, ')
-          ..write('userAgent: $userAgent, ')
+          ..write('diggUserAgent: $diggUserAgent, ')
           ..write('searchType: $searchType, ')
           ..write('activeUserId: $activeUserId')
           ..write(')'))
@@ -2479,9 +2598,10 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> homeCommunityName,
       Value<bool> showCommentImages,
       Value<bool> autoplayVideos,
+      Value<bool> swipeCommentsToVote,
+      Value<bool> showCommentVotingEdges,
       Value<CommentBehavior> commentTapBehavior,
       Value<CommentBehavior> commentLongPressBehavior,
-      Value<bool> showCommentVotingEdges,
       Value<int?> appBarColor,
       Value<bool> useBottomBar,
       Value<bool> reverseCommunityList,
@@ -2491,8 +2611,9 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> redditClientId,
       Value<String?> redditRedirectUri,
       Value<String?> redditDeviceId,
+      Value<String?> redditUserAgent,
       Value<int> diggPostsFetchDepth,
-      Value<String?> userAgent,
+      Value<String?> diggUserAgent,
       Value<SearchType?> searchType,
       Value<String?> activeUserId,
     });
@@ -2503,9 +2624,10 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> homeCommunityName,
       Value<bool> showCommentImages,
       Value<bool> autoplayVideos,
+      Value<bool> swipeCommentsToVote,
+      Value<bool> showCommentVotingEdges,
       Value<CommentBehavior> commentTapBehavior,
       Value<CommentBehavior> commentLongPressBehavior,
-      Value<bool> showCommentVotingEdges,
       Value<int?> appBarColor,
       Value<bool> useBottomBar,
       Value<bool> reverseCommunityList,
@@ -2515,8 +2637,9 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> redditClientId,
       Value<String?> redditRedirectUri,
       Value<String?> redditDeviceId,
+      Value<String?> redditUserAgent,
       Value<int> diggPostsFetchDepth,
-      Value<String?> userAgent,
+      Value<String?> diggUserAgent,
       Value<SearchType?> searchType,
       Value<String?> activeUserId,
     });
@@ -2556,6 +2679,16 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get swipeCommentsToVote => $composableBuilder(
+    column: $table.swipeCommentsToVote,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get showCommentVotingEdges => $composableBuilder(
+    column: $table.showCommentVotingEdges,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnWithTypeConverterFilters<CommentBehavior, CommentBehavior, String>
   get commentTapBehavior => $composableBuilder(
     column: $table.commentTapBehavior,
@@ -2566,11 +2699,6 @@ class $$SettingsTableFilterComposer
   get commentLongPressBehavior => $composableBuilder(
     column: $table.commentLongPressBehavior,
     builder: (column) => ColumnWithTypeConverterFilters(column),
-  );
-
-  ColumnFilters<bool> get showCommentVotingEdges => $composableBuilder(
-    column: $table.showCommentVotingEdges,
-    builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<int> get appBarColor => $composableBuilder(
@@ -2618,13 +2746,18 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get redditUserAgent => $composableBuilder(
+    column: $table.redditUserAgent,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get diggPostsFetchDepth => $composableBuilder(
     column: $table.diggPostsFetchDepth,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get userAgent => $composableBuilder(
-    column: $table.userAgent,
+  ColumnFilters<String> get diggUserAgent => $composableBuilder(
+    column: $table.diggUserAgent,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2674,6 +2807,16 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get swipeCommentsToVote => $composableBuilder(
+    column: $table.swipeCommentsToVote,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get showCommentVotingEdges => $composableBuilder(
+    column: $table.showCommentVotingEdges,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get commentTapBehavior => $composableBuilder(
     column: $table.commentTapBehavior,
     builder: (column) => ColumnOrderings(column),
@@ -2681,11 +2824,6 @@ class $$SettingsTableOrderingComposer
 
   ColumnOrderings<String> get commentLongPressBehavior => $composableBuilder(
     column: $table.commentLongPressBehavior,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get showCommentVotingEdges => $composableBuilder(
-    column: $table.showCommentVotingEdges,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2734,13 +2872,18 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get redditUserAgent => $composableBuilder(
+    column: $table.redditUserAgent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get diggPostsFetchDepth => $composableBuilder(
     column: $table.diggPostsFetchDepth,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get userAgent => $composableBuilder(
-    column: $table.userAgent,
+  ColumnOrderings<String> get diggUserAgent => $composableBuilder(
+    column: $table.diggUserAgent,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -2788,6 +2931,16 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get swipeCommentsToVote => $composableBuilder(
+    column: $table.swipeCommentsToVote,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get showCommentVotingEdges => $composableBuilder(
+    column: $table.showCommentVotingEdges,
+    builder: (column) => column,
+  );
+
   GeneratedColumnWithTypeConverter<CommentBehavior, String>
   get commentTapBehavior => $composableBuilder(
     column: $table.commentTapBehavior,
@@ -2797,11 +2950,6 @@ class $$SettingsTableAnnotationComposer
   GeneratedColumnWithTypeConverter<CommentBehavior, String>
   get commentLongPressBehavior => $composableBuilder(
     column: $table.commentLongPressBehavior,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<bool> get showCommentVotingEdges => $composableBuilder(
-    column: $table.showCommentVotingEdges,
     builder: (column) => column,
   );
 
@@ -2850,13 +2998,20 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get redditUserAgent => $composableBuilder(
+    column: $table.redditUserAgent,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get diggPostsFetchDepth => $composableBuilder(
     column: $table.diggPostsFetchDepth,
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get userAgent =>
-      $composableBuilder(column: $table.userAgent, builder: (column) => column);
+  GeneratedColumn<String> get diggUserAgent => $composableBuilder(
+    column: $table.diggUserAgent,
+    builder: (column) => column,
+  );
 
   GeneratedColumnWithTypeConverter<SearchType?, String> get searchType =>
       $composableBuilder(
@@ -2903,11 +3058,12 @@ class $$SettingsTableTableManager
                 Value<String?> homeCommunityName = const Value.absent(),
                 Value<bool> showCommentImages = const Value.absent(),
                 Value<bool> autoplayVideos = const Value.absent(),
+                Value<bool> swipeCommentsToVote = const Value.absent(),
+                Value<bool> showCommentVotingEdges = const Value.absent(),
                 Value<CommentBehavior> commentTapBehavior =
                     const Value.absent(),
                 Value<CommentBehavior> commentLongPressBehavior =
                     const Value.absent(),
-                Value<bool> showCommentVotingEdges = const Value.absent(),
                 Value<int?> appBarColor = const Value.absent(),
                 Value<bool> useBottomBar = const Value.absent(),
                 Value<bool> reverseCommunityList = const Value.absent(),
@@ -2917,8 +3073,9 @@ class $$SettingsTableTableManager
                 Value<String?> redditClientId = const Value.absent(),
                 Value<String?> redditRedirectUri = const Value.absent(),
                 Value<String?> redditDeviceId = const Value.absent(),
+                Value<String?> redditUserAgent = const Value.absent(),
                 Value<int> diggPostsFetchDepth = const Value.absent(),
-                Value<String?> userAgent = const Value.absent(),
+                Value<String?> diggUserAgent = const Value.absent(),
                 Value<SearchType?> searchType = const Value.absent(),
                 Value<String?> activeUserId = const Value.absent(),
               }) => SettingsCompanion(
@@ -2927,9 +3084,10 @@ class $$SettingsTableTableManager
                 homeCommunityName: homeCommunityName,
                 showCommentImages: showCommentImages,
                 autoplayVideos: autoplayVideos,
+                swipeCommentsToVote: swipeCommentsToVote,
+                showCommentVotingEdges: showCommentVotingEdges,
                 commentTapBehavior: commentTapBehavior,
                 commentLongPressBehavior: commentLongPressBehavior,
-                showCommentVotingEdges: showCommentVotingEdges,
                 appBarColor: appBarColor,
                 useBottomBar: useBottomBar,
                 reverseCommunityList: reverseCommunityList,
@@ -2939,8 +3097,9 @@ class $$SettingsTableTableManager
                 redditClientId: redditClientId,
                 redditRedirectUri: redditRedirectUri,
                 redditDeviceId: redditDeviceId,
+                redditUserAgent: redditUserAgent,
                 diggPostsFetchDepth: diggPostsFetchDepth,
-                userAgent: userAgent,
+                diggUserAgent: diggUserAgent,
                 searchType: searchType,
                 activeUserId: activeUserId,
               ),
@@ -2951,11 +3110,12 @@ class $$SettingsTableTableManager
                 Value<String?> homeCommunityName = const Value.absent(),
                 Value<bool> showCommentImages = const Value.absent(),
                 Value<bool> autoplayVideos = const Value.absent(),
+                Value<bool> swipeCommentsToVote = const Value.absent(),
+                Value<bool> showCommentVotingEdges = const Value.absent(),
                 Value<CommentBehavior> commentTapBehavior =
                     const Value.absent(),
                 Value<CommentBehavior> commentLongPressBehavior =
                     const Value.absent(),
-                Value<bool> showCommentVotingEdges = const Value.absent(),
                 Value<int?> appBarColor = const Value.absent(),
                 Value<bool> useBottomBar = const Value.absent(),
                 Value<bool> reverseCommunityList = const Value.absent(),
@@ -2965,8 +3125,9 @@ class $$SettingsTableTableManager
                 Value<String?> redditClientId = const Value.absent(),
                 Value<String?> redditRedirectUri = const Value.absent(),
                 Value<String?> redditDeviceId = const Value.absent(),
+                Value<String?> redditUserAgent = const Value.absent(),
                 Value<int> diggPostsFetchDepth = const Value.absent(),
-                Value<String?> userAgent = const Value.absent(),
+                Value<String?> diggUserAgent = const Value.absent(),
                 Value<SearchType?> searchType = const Value.absent(),
                 Value<String?> activeUserId = const Value.absent(),
               }) => SettingsCompanion.insert(
@@ -2975,9 +3136,10 @@ class $$SettingsTableTableManager
                 homeCommunityName: homeCommunityName,
                 showCommentImages: showCommentImages,
                 autoplayVideos: autoplayVideos,
+                swipeCommentsToVote: swipeCommentsToVote,
+                showCommentVotingEdges: showCommentVotingEdges,
                 commentTapBehavior: commentTapBehavior,
                 commentLongPressBehavior: commentLongPressBehavior,
-                showCommentVotingEdges: showCommentVotingEdges,
                 appBarColor: appBarColor,
                 useBottomBar: useBottomBar,
                 reverseCommunityList: reverseCommunityList,
@@ -2987,8 +3149,9 @@ class $$SettingsTableTableManager
                 redditClientId: redditClientId,
                 redditRedirectUri: redditRedirectUri,
                 redditDeviceId: redditDeviceId,
+                redditUserAgent: redditUserAgent,
                 diggPostsFetchDepth: diggPostsFetchDepth,
-                userAgent: userAgent,
+                diggUserAgent: diggUserAgent,
                 searchType: searchType,
                 activeUserId: activeUserId,
               ),

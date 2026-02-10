@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 
-const _indicatorSize = 40.0;
+const _indicatorSize = 32.0;
 
 class SnackBarProgressContent extends StatefulWidget {
 

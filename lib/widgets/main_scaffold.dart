@@ -144,24 +144,7 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
     if (username != null) {
       _getSubscribedCommunityNames();
       if (mounted) {
-        context.showSnackBar(
-          content: Text.rich(
-            TextSpan(
-              children: [
-                TextSpan(
-                  text: 'Logged in to ${widget.platform.name.toTitleCase()} as '
-                ),
-                TextSpan(
-                  text: username,
-                  style: TextStyle(
-                    color: widget.platform.color,
-                    fontWeight: FontWeight.bold
-                  )
-                )
-              ]
-            )
-          )
-        );
+        context.showSnackBarMessage('Logged in to ${widget.platform.name.toTitleCase()} as "$username"');
       }
     }
   }
@@ -596,7 +579,7 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
                     selectionHandleColor: widget.platform.color,
                   ),
                   snackBarTheme: theme.snackBarTheme.copyWith(
-                    actionBackgroundColor: widget.platform.color
+                    actionTextColor: widget.platform.color
                   ),
                 ),
                 child: scaffold
@@ -687,12 +670,15 @@ class _UserListState extends State<_UserList> {
             );
           });
         },
-        'Logout': () {
+        'Logout': () async {
           Settings.loggedInUsers.remove(user);
           if (isActiveUser) {
             Settings.activeUser.value = Settings.loggedInUsers.value.firstOrNull;
           }
-         user.platform.api.logout(user.id);
+         await user.platform.api.logout(user.id);
+         if (mounted) {
+          context.showSnackBarMessage('Logged out of ${user.name}');
+         }
         }
       }
     );
@@ -1063,7 +1049,7 @@ class _CommunityListState extends State<_CommunityList> {
                     height: 40,
                     alignment: leadingAlignment,
                     decoration: BoxDecoration(
-                      color: primaryColor,
+                      color: _searchPlatform.color,
                       borderRadius: BorderRadius.horizontal(
                         left: const Radius.circular(20),
                         right: Radius.circular(leadingRightCornerRadius),
@@ -1071,161 +1057,170 @@ class _CommunityListState extends State<_CommunityList> {
                     ),
                     child: leadingChild
                   );
-                  final searchBar = SearchBar(
-                    controller: _searchController,
-                    keyboardType: TextInputType.url,
-                    textInputAction: TextInputAction.go,
-                    padding: const WidgetStatePropertyAll<EdgeInsets>(EdgeInsets.only(right: 8)),
-                    hintText: _searchBarHint,
-                    hintStyle: WidgetStatePropertyAll(TextStyle(color: Colors.white60)),
-                    inputFormatters: _searchType != SearchType.all ? [FilteringTextInputFormatter.allow(_searchNameAllowedRegex)] : null,
-                    backgroundColor: WidgetStateProperty.all(Constants.lighterBackgroundColor),
-                    side: _isSearchValid && _isSearchBarFocused ? WidgetStatePropertyAll(BorderSide(color: primaryColor),) : null,
-                    leading: Container(
-                      width: 52,
-                      height: 40,
-                      alignment: Alignment.centerLeft,
-                      margin: EdgeInsets.only(left: 8),
-                      child: isCombinedFlavor
-                        ? GestureDetector(
-                            onTap: _cyclePlatform,
-                            child: leadingIcon
-                          )
-                        : leadingIcon
+                  final searchBar = Theme(
+                    data: theme.copyWith(
+                      textSelectionTheme: TextSelectionThemeData(
+                        cursorColor: _searchPlatform.color.withAlpha(200),
+                        selectionColor: _searchPlatform.color.withAlpha(75),
+                        selectionHandleColor: _searchPlatform.color,
+                      )
                     ),
-                    trailing: _isSearchBarFocused
-                      ? [
-                          IconButton(
-                            icon: Icon(
-                              _searchType.icon,
-                              color: Colors.white54
-                            ),
-                            onPressed: _cycleSearchType,
-                          )
-                        ]
-                      : null,
-                    onChanged: (value) {
-            
-                      var cleanValue = value;
-                      var lowerCase = value.toLowerCase();
-            
-                      bool handledPrefix = false;
-                      for (Platform platform in F.appFlavor.platforms) {
-                        if (lowerCase.startsWith(platform.communityPrefix)) {
-                          cleanValue = cleanValue.substring(platform.communityPrefix.length);
-                          _updateSearchType(SearchType.community);
-                          _searchPlatform = platform;
-                          _searchBarPrefixText = platform.communityPrefix;
-                          _searchBarHint = platform.communityLabel;
-                          handledPrefix = true;
-                          break;
-                        }
-                        else if (lowerCase.startsWith(platform.userPrefix)) {
-                          cleanValue = cleanValue.substring(platform.userPrefix.length);
-                          _updateSearchType(SearchType.user);
-                          _searchPlatform = platform;
-                          _searchBarPrefixText = platform.userPrefix;
-                          _searchBarHint = 'username';
-                          handledPrefix = true;
-                          break;
-                        }
-                      }
-            
-                      if (cleanValue.isNotEmpty) {
-                        if (_searchType == SearchType.community) {
-                          cleanValue = _cleanName(cleanValue, _searchPlatform.communityNameAllowedChars);
-                        }
-                        else if (_searchType == SearchType.user) {
-                          cleanValue = _cleanName(cleanValue, _searchPlatform.userNameAllowedChars);
-                        }
-                      }
-            
-                      if (cleanValue != value) {
-                        _searchController.text = cleanValue;
-                        _searchController.selection = TextSelection.fromPosition(TextPosition(offset: cleanValue.length));
-                      }
-                      
-                      if (handledPrefix || cleanValue != _searchQuery) {
-                        setState(() {
-                          _searchQuery = cleanValue;
-                          _updateVisibleCommunities();
-                          if (cleanValue.isEmpty) {
-                            _sortVisibleCommunities();
+                    child: SearchBar(
+                      controller: _searchController,
+                      keyboardType: TextInputType.url,
+                      textInputAction: TextInputAction.go,
+                      padding: const WidgetStatePropertyAll<EdgeInsets>(EdgeInsets.only(right: 8)),
+                      hintText: _searchBarHint,
+                      hintStyle: WidgetStatePropertyAll(TextStyle(color: Colors.white60)),
+                      inputFormatters: _searchType != SearchType.all ? [FilteringTextInputFormatter.allow(_searchNameAllowedRegex)] : null,
+                      backgroundColor: WidgetStateProperty.all(Constants.lighterBackgroundColor),
+                      side: _isSearchValid && _isSearchBarFocused ? WidgetStatePropertyAll(BorderSide(color: _searchPlatform.color),) : null,
+                      leading: Container(
+                        width: 52,
+                        height: 40,
+                        alignment: Alignment.centerLeft,
+                        margin: EdgeInsets.only(left: 8),
+                        child: isCombinedFlavor
+                          ? GestureDetector(
+                              onTap: _cyclePlatform,
+                              child: leadingIcon
+                            )
+                          : leadingIcon
+                      ),
+                      trailing: _isSearchBarFocused
+                        ? [
+                            IconButton(
+                              icon: Icon(
+                                _searchType.icon,
+                                color: Colors.white54
+                              ),
+                              onPressed: _cycleSearchType,
+                            )
+                          ]
+                        : null,
+                      onChanged: (value) {
+                                
+                        var cleanValue = value;
+                        var lowerCase = value.toLowerCase();
+                                
+                        bool handledPrefix = false;
+                        for (Platform platform in F.appFlavor.platforms) {
+                          if (lowerCase.startsWith(platform.communityPrefix)) {
+                            cleanValue = cleanValue.substring(platform.communityPrefix.length);
+                            _updateSearchType(SearchType.community);
+                            _searchPlatform = platform;
+                            _searchBarPrefixText = platform.communityPrefix;
+                            _searchBarHint = platform.communityLabel;
+                            handledPrefix = true;
+                            break;
                           }
-                          else {
-                            _visibleCommunities.sort((c1, c2) {
-                              if (c1.isFavorite != c2.isFavorite) {
-                                return c1.isFavorite ? -1 : 1;
-                              }
-                              final name1 = (c1.name ?? '').toLowerCase();
-                              final name2 = (c2.name ?? '').toLowerCase();
-                              final startsWith1 = name1.startsWith(cleanValue);
-                              final startsWith2 = name2.startsWith(cleanValue);
-                              if (startsWith1 != startsWith2) {
-                                return startsWith1 ? -1 : 1;
-                              }
-                              return (c1.name ?? '').compareTo((c2.name ?? ''));
-                            });
+                          else if (lowerCase.startsWith(platform.userPrefix)) {
+                            cleanValue = cleanValue.substring(platform.userPrefix.length);
+                            _updateSearchType(SearchType.user);
+                            _searchPlatform = platform;
+                            _searchBarPrefixText = platform.userPrefix;
+                            _searchBarHint = 'username';
+                            handledPrefix = true;
+                            break;
                           }
-                          _updateIsSearchValid();
-                        });
-                      }
-                    },
-                    onSubmitted: (value) {
-                      switch (_searchType) {
-                        case SearchType.community:
-                          if (!RegExp(_searchPlatform.communityNameValidation).hasMatch(value)) {
-                            return;
+                        }
+                                
+                        if (cleanValue.isNotEmpty) {
+                          if (_searchType == SearchType.community) {
+                            cleanValue = _cleanName(cleanValue, _searchPlatform.communityNameAllowedChars);
                           }
-                          String? query = value;
-                          if (query.isEmpty) {
-                            if (_searchPlatform.homeCommunityName != null) {
+                          else if (_searchType == SearchType.user) {
+                            cleanValue = _cleanName(cleanValue, _searchPlatform.userNameAllowedChars);
+                          }
+                        }
+                                
+                        if (cleanValue != value) {
+                          _searchController.text = cleanValue;
+                          _searchController.selection = TextSelection.fromPosition(TextPosition(offset: cleanValue.length));
+                        }
+                        
+                        if (handledPrefix || cleanValue != _searchQuery) {
+                          setState(() {
+                            _searchQuery = cleanValue;
+                            _updateVisibleCommunities();
+                            if (cleanValue.isEmpty) {
+                              _sortVisibleCommunities();
+                            }
+                            else {
+                              _visibleCommunities.sort((c1, c2) {
+                                if (c1.isFavorite != c2.isFavorite) {
+                                  return c1.isFavorite ? -1 : 1;
+                                }
+                                final name1 = (c1.name ?? '').toLowerCase();
+                                final name2 = (c2.name ?? '').toLowerCase();
+                                final startsWith1 = name1.startsWith(cleanValue);
+                                final startsWith2 = name2.startsWith(cleanValue);
+                                if (startsWith1 != startsWith2) {
+                                  return startsWith1 ? -1 : 1;
+                                }
+                                return (c1.name ?? '').compareTo((c2.name ?? ''));
+                              });
+                            }
+                            _updateIsSearchValid();
+                          });
+                        }
+                      },
+                      onSubmitted: (value) {
+                        switch (_searchType) {
+                          case SearchType.community:
+                            if (!RegExp(_searchPlatform.communityNameValidation).hasMatch(value)) {
                               return;
                             }
-                            query = null;
-                          }
-                          final community = Community(
-                            platform: _searchPlatform,
-                            name: query
-                          );
-                          context.pop();
-                          _navigateToCommunity(community);
-                          Settings.communities.add(community);
-                        case SearchType.user:
-                          if (!RegExp(_searchPlatform.userNameValidation).hasMatch(value)) {
+                            String? query = value;
+                            if (query.isEmpty) {
+                              if (_searchPlatform.homeCommunityName != null) {
+                                return;
+                              }
+                              query = null;
+                            }
+                            final community = Community(
+                              platform: _searchPlatform,
+                              name: query
+                            );
+                            context.pop();
+                            _navigateToCommunity(community);
+                            Settings.communities.add(community);
+                          case SearchType.user:
+                            if (!RegExp(_searchPlatform.userNameValidation).hasMatch(value)) {
+                              return;
+                            }
+                            context.pop();
+                            context.push(() {
+                              return UserDetailsScreen(
+                                platform: _searchPlatform,
+                                username: value
+                              );
+                            });
+                          case SearchType.withinCommunity:
+                            final query = value.trim();
+                            if (query.isEmpty) return;
+                            context.pop();
+                            context.push(() {
+                              return SearchScreen(
+                                platform: _searchPlatform,
+                                query: query,
+                                communityName: widget.activeCommunityName,
+                              );
+                            });
                             return;
-                          }
-                          context.pop();
-                          context.push(() {
-                            return UserDetailsScreen(
-                              platform: _searchPlatform,
-                              username: value
-                            );
-                          });
-                        case SearchType.withinCommunity:
-                          final query = value.trim();
-                          if (query.isEmpty) return;
-                          context.pop();
-                          context.push(() {
-                            return SearchScreen(
-                              platform: _searchPlatform,
-                              query: query,
-                              communityName: widget.activeCommunityName,
-                            );
-                          });
-                          return;
-                        case SearchType.all:
-                          final query = value.trim();
-                          if (query.isEmpty) return;
-                          context.pop();
-                          context.push(() {
-                            return SearchScreen(
-                              platform: _searchPlatform,
-                              query: query
-                            );
-                          });
-                      }
-                    },
+                          case SearchType.all:
+                            final query = value.trim();
+                            if (query.isEmpty) return;
+                            context.pop();
+                            context.push(() {
+                              return SearchScreen(
+                                platform: _searchPlatform,
+                                query: query
+                              );
+                            });
+                        }
+                      },
+                    ),
                   );
             
                   return ListTile(

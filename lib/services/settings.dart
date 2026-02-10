@@ -19,9 +19,10 @@ class Settings {
   static late final SettingNotifier<String?> homeCommunityName;
   static late final SettingNotifier<bool> showCommentImages;
   static late final SettingNotifier<bool> autoplayVideos;
+  static late final SettingNotifier<bool> swipeCommentsToVote;
+  static late final SettingNotifier<bool> showCommentVotingEdges;
   static late final SettingNotifier<CommentBehavior> commentTapBehavior;
   static late final SettingNotifier<CommentBehavior> commentLongPressBehavior;
-  static late final SettingNotifier<bool> showCommentVotingEdges;
   static late final SettingNotifier<Color> appBarColor;
   static late final SettingNotifier<bool> useBottomBar;
   static late final SettingNotifier<bool> reverseCommunityList;
@@ -31,11 +32,11 @@ class Settings {
   static late final SettingNotifier<bool> redditCopyOldRedditLinks;
   static late final SettingNotifier<String?> redditClientId;
   static late final SettingNotifier<String?> redditRedirectUri;
+  static late final SettingNotifier<String?> redditUserAgent;
   static late final Setting<String?> redditDeviceId;
   
   static late final SettingNotifier<int> diggPostsFetchDepth;
-
-  static late final SettingNotifier<String?> customUserAgent;
+  static late final SettingNotifier<String?> diggUserAgent;
 
   static late final Setting<SearchType?> searchType;
 
@@ -82,6 +83,18 @@ class Settings {
       defaultValue: Constants.defaultAutoplayVideos,
     );
 
+    swipeCommentsToVote = SettingNotifier(
+      initialValue: dbSettings.swipeCommentsToVote,
+      companionBuilder: (value) => SettingsCompanion(swipeCommentsToVote: Value(value)),
+      defaultValue: Constants.defaultSwipeCommentsToVote,
+    );
+
+    showCommentVotingEdges = SettingNotifier(
+      initialValue: dbSettings.showCommentVotingEdges,
+      companionBuilder: (value) => SettingsCompanion(showCommentVotingEdges: Value(value)),
+      defaultValue: Constants.defaultShowCommentVotingEdges,
+    );
+
     commentTapBehavior = SettingNotifier(
       initialValue: dbSettings.commentTapBehavior,
       companionBuilder: (value) => SettingsCompanion(commentTapBehavior: Value(value)),
@@ -92,12 +105,6 @@ class Settings {
       initialValue: dbSettings.commentLongPressBehavior,
       companionBuilder: (value) => SettingsCompanion(commentLongPressBehavior: Value(value)),
       defaultValue: Constants.defaultCommentLongPressBehavior
-    );
-
-    showCommentVotingEdges = SettingNotifier(
-      initialValue: dbSettings.showCommentImages,
-      companionBuilder: (value) => SettingsCompanion(showCommentVotingEdges: Value(value)),
-      defaultValue: Constants.defaultShowCommentVotingEdges,
     );
 
     appBarColor = SettingNotifier(
@@ -146,6 +153,11 @@ class Settings {
       companionBuilder: (value) => SettingsCompanion(redditRedirectUri: Value(value)),
     );
 
+    redditUserAgent = SettingNotifier(
+      initialValue: dbSettings.redditUserAgent,
+      companionBuilder: (value) => SettingsCompanion(redditUserAgent: Value(value)),
+    );
+
     redditDeviceId = Setting(
       initialValue: dbSettings.redditDeviceId,
       companionBuilder: (value) => SettingsCompanion(redditDeviceId: Value(value)),
@@ -157,9 +169,9 @@ class Settings {
       defaultValue: Constants.defaultDiggPostsFetchDepth,
     );
 
-    customUserAgent = SettingNotifier(
-      initialValue: dbSettings.userAgent,
-      companionBuilder: (value) => SettingsCompanion(userAgent: Value(value)),
+    diggUserAgent = SettingNotifier(
+      initialValue: dbSettings.diggUserAgent,
+      companionBuilder: (value) => SettingsCompanion(diggUserAgent: Value(value)),
     );
 
     searchType = Setting(
@@ -237,7 +249,7 @@ class SettingNotifier<T> extends ValueNotifier<T> {
     final SettingsCompanion companion;
     if (newValue == null) {
       hasSavedValue = false;
-      companion = nullableCompanionBuilder!(null);
+      companion = nullableCompanionBuilder?.call(null) ?? companionBuilder!(newValue as T);
     }
     else {
       hasSavedValue = true;

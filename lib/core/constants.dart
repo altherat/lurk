@@ -3,10 +3,12 @@ import 'package:lurk/core/enums.dart';
 
 class Constants {
 
+  static const version = '0.1.2';
+
   static const screenTransitionDuration = Duration(milliseconds: 250);
   static const reverseScreenTransitionDuration = Duration(milliseconds: 100);
   static const feedLoadAnimationDuration = Duration(milliseconds: 500);
-  static const postTextContentExpansionAnimationDuration = Duration(milliseconds: 400);
+
   static const thumbnailSize = 70.0;
   static const scrimAlpha = 125;
   static const secondaryTextColorAlpha = 179;
@@ -14,6 +16,7 @@ class Constants {
   static const namePrefixAlpha = 125;
   static const refreshIndicatorDisplacement = 15.0;
   static const choiceChipGapSize = 14.0;
+  
   static const primaryColor = Color(0xFFAADFF1);
   static const splashColor = Color(0x30AADFF1);
   static const highlightColor = Color(0x30AADFF1);
@@ -45,6 +48,7 @@ class Constants {
   static const defaultAutoplayVideos = true;
   static const defaultCommentTapBehavior = CommentBehavior.expandOrCollapse;
   static const defaultCommentLongPressBehavior = CommentBehavior.showOptions;
+  static const defaultSwipeCommentsToVote = false;
   static const defaultShowCommentVotingEdges = false;
   static const defaultAppBarColor = Color(0xFF000000);
   static const defaultUseBottomBar = false;

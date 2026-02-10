@@ -144,7 +144,6 @@ extension BuildContextExtension on BuildContext {
     return ScaffoldMessenger.of(this).showSnackBar(
       SnackBar(
         duration: duration,
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 32),
         content: content,
         action: action
       )

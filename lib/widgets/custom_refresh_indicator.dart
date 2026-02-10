@@ -1,6 +1,6 @@
 /// Copied from Flutter's refresh_indicator.dart
 /// Changed _kDragContainerExtentPercentage from 0.25 to 0.1
-/// Changed some logic in _checkDragOffset because setting the status to RefreshIndicatorStatus.armed seemed to be behaving wrong? Also added HapticFeedback.heavyImpact when status changes to RefreshIndicatorStatus.armed
+/// Changed some logic in _checkDragOffset because setting the status to RefreshIndicatorStatus.armed seemed to be behaving wrong? Also added HapticFeedback.mediumImpact when status changes to RefreshIndicatorStatus.armed
 
 // Copyright 2014 The Flutter Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style license that can be
@@ -529,7 +529,7 @@ class CustomRefreshIndicatorState extends State<CustomRefreshIndicator>
     // }
     if (_status == RefreshIndicatorStatus.drag && newValue >= 1.0) {
       _status = RefreshIndicatorStatus.armed;
-      HapticFeedback.heavyImpact();
+      HapticFeedback.mediumImpact();
       widget.onStatusChange?.call(_status);
     }
   }

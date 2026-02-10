@@ -69,7 +69,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             _Header(text: 'General'),
             _BoolSettingListTile(
               setting: Settings.showCommentImages,
-              label: 'Show comment images'
+              label: 'Comment images'
             ),
             _BoolSettingListTile(
               setting: Settings.autoplayVideos,
@@ -83,6 +83,15 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setting: Settings.reverseCommunityList,
               label: 'Reverse community list'
             ),
+            _BoolSettingListTile(
+              setting: Settings.swipeCommentsToVote,
+              label: 'Swipe comments to vote',
+            ),
+            _BoolSettingListTile(
+              setting: Settings.showCommentVotingEdges,
+              label: 'Comment voting edges',
+              infoText: 'Tapping the left side of a comment will upvote it and tapping the right side will downvote it.',
+            ),
             _ChoiceSettingListTile(
               setting: Settings.commentTapBehavior,
               title: 'Comment tap behavior',
@@ -94,11 +103,6 @@ class _SettingsScreenState extends State<SettingsScreen> {
               title: 'Comment long press behavior',
               choices: CommentBehavior.values.toList(),
               choiceLabel: (choice) => choice.label
-            ),
-            _BoolSettingListTile(
-              setting: Settings.showCommentVotingEdges,
-              label: 'Show comment voting edges',
-              infoText: 'Tapping the left side of a comment will upvote it and tapping the right side will downvote it.',
             ),
             const _Divider(),
             const _Header(text: 'Colors'),
@@ -120,25 +124,22 @@ class _SettingsScreenState extends State<SettingsScreen> {
               const _RedditLinksFromOldRedditSetting(),
               const _RedditClientIdSetting(),
               const _RedditRedirectUriSetting(),
+              const _RedditUserAgentSetting(),
               const _Divider(),
               const _Header(text: 'Digg'),
-              const _DiggPostsFetchDepthSetting()
-            ],
-            const _Divider(),
-            const _Header(text: 'Other'),
-            if (F.appFlavor == Flavor.reddit) ...[
+              const _DiggPostsFetchDepthSetting(),
+              const _DiggUserAgentSetting()
+            ]
+            else if (F.appFlavor == Flavor.reddit) ...[
               const _RedditLinksFromOldRedditSetting(),
               const _RedditClientIdSetting(),
               const _RedditRedirectUriSetting(),
+              const _RedditUserAgentSetting(),
             ]
             else if (F.appFlavor == Flavor.digg) ...[
-              const _DiggPostsFetchDepthSetting()
+              const _DiggPostsFetchDepthSetting(),
+              const _DiggUserAgentSetting()
             ],
-            _TextSettingListTile(
-              setting: Settings.customUserAgent,
-              label: 'User agent',
-              floatingLabelBehavior: FloatingLabelBehavior.auto,
-            ),
           ],
         ),
       )
@@ -207,6 +208,21 @@ class _RedditRedirectUriSetting extends StatelessWidget {
 
 }
 
+class _RedditUserAgentSetting extends StatelessWidget {
+  
+  const _RedditUserAgentSetting();
+
+  @override
+  Widget build(BuildContext context) {
+    return _TextSettingListTile(
+      setting: Settings.redditUserAgent,
+      label: 'User agent',
+      floatingLabelBehavior: FloatingLabelBehavior.auto,
+    );
+  }
+
+}
+
 class _DiggPostsFetchDepthSetting extends StatelessWidget {
 
   final _maxDepth = 5;
@@ -220,6 +236,21 @@ class _DiggPostsFetchDepthSetting extends StatelessWidget {
       setting: Settings.diggPostsFetchDepth,
       infoText: "Digg's website and app seems to show fewer posts than what actually might exist for smaller communities (unsure if intentional). This setting causes additional requests in attempt to retrieve more posts (up to ${DiggApi.resultsLimit} posts). When loading popular communties with many posts, this setting should have no effect.\n\nExample (setting value of 3):\nWhen requesting posts from a lesser-known community, Digg might respond with 10 posts but also indicate that there are more posts available. Lurk will do up to 2 more requests to try and get a total of ${DiggApi.resultsLimit} posts.",
       choices: List.generate(_maxDepth, (index) => index + 1),
+    );
+  }
+
+}
+
+class _DiggUserAgentSetting extends StatelessWidget {
+  
+  const _DiggUserAgentSetting();
+
+  @override
+  Widget build(BuildContext context) {
+    return _TextSettingListTile(
+      setting: Settings.diggUserAgent,
+      label: 'User agent',
+      floatingLabelBehavior: FloatingLabelBehavior.auto,
     );
   }
 
