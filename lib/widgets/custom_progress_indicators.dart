@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:lurk/core/enums.dart';
 
 const _largeSize = 64.0;
 const _largeStrokeWidth = 6.0;
 
 class CustomCircularProgressIndicator extends StatelessWidget {
 
-  final Platform? platform;
   final EdgeInsetsGeometry? padding;
   final Alignment? alignment;
   final double? size;
@@ -15,7 +13,6 @@ class CustomCircularProgressIndicator extends StatelessWidget {
 
   const CustomCircularProgressIndicator({
     super.key,
-    this.platform,
     this.padding,
     this.alignment = Alignment.center,
     this.size,
@@ -56,19 +53,16 @@ class CustomCircularProgressIndicator extends StatelessWidget {
 
 class LargeCenteredCircularProgressIndicator extends StatelessWidget {
 
-  final Platform? platform;
   final EdgeInsetsGeometry padding;
   
   const LargeCenteredCircularProgressIndicator({
     super.key,
-    this.platform,
     this.padding = const EdgeInsetsGeometry.all(8),
   });
 
   @override
   Widget build(BuildContext context) {
     return CustomCircularProgressIndicator(
-      platform: platform,
       alignment: Alignment.center,
       padding: padding,
       size: _largeSize,

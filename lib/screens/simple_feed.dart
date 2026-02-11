@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/models/community.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
@@ -13,7 +14,7 @@ class SimpleFeedScreen<T> extends StatefulWidget {
 
   final GlobalKey<ScaffoldState>? scaffoldKey;
   final Platform platform;
-  final String? activeCommunityName;
+  final Community? activeCommunity;
   final FeedOptionsGroup? feedOptions;
   final Future<PagedItems<T>>? initialItems;
   final Future<PagedItems<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) getItems;
@@ -24,6 +25,7 @@ class SimpleFeedScreen<T> extends StatefulWidget {
   final Map<String, void Function()>? popupMenuActions;
   final PreferredSizeWidget? flexibleSpaceHeader;
   final List<Widget>? slivers;
+  final Widget? Function(BuildContext context)? bottomSheetBuilder;
   final Widget Function(BuildContext context) noItemsBuilder;
   final Widget? Function(BuildContext context, int index, T item) itemBuilder;
 
@@ -31,7 +33,7 @@ class SimpleFeedScreen<T> extends StatefulWidget {
     super.key,
     this.scaffoldKey,
     required this.platform,
-    this.activeCommunityName,
+    this.activeCommunity,
     this.feedOptions,
     this.initialItems,
     required this.getItems,
@@ -42,6 +44,7 @@ class SimpleFeedScreen<T> extends StatefulWidget {
     this.popupMenuActions,
     this.flexibleSpaceHeader,
     this.slivers,
+    this.bottomSheetBuilder,
     required this.noItemsBuilder,
     required this.itemBuilder,
   });
@@ -94,7 +97,9 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
 
   FeedListState<T>? get feedList => _feedListKeys[_tabController?.index ?? 0].currentState;
 
-  Future<void> reload() => _callOnFeedListState(_tabController?.index ?? 0, (state) => state.reload());
+  void reload() => _callOnFeedListState(_tabController?.index ?? 0, (state) => state.reload());
+
+  void refresh() => _refreshIndicatorKeys[_tabController?.index ?? 0].currentState?.show();
 
   Future<void> _refresh(int index) => _callOnFeedListState(index, (state) => state.refresh());
 
@@ -165,7 +170,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
       return MainScaffold(
         scaffoldKey: widget.scaffoldKey,
         platform: widget.platform,
-        activeCommunityName: widget.activeCommunityName,
+        activeCommunity: widget.activeCommunity,
         title: widget.title,
         subtitle: widget.subtitle ?? (
           widget.showFeedOptionsSubtitle
@@ -220,6 +225,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
         ),
         sliverAppBarFlexibleBackground: widget.flexibleSpaceHeader,
         slivers: widget.slivers,
+        bottomSheetBuilder: widget.bottomSheetBuilder,
         body: TabBarView(
           controller: _tabController,
           children: pages,
@@ -237,7 +243,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
       scaffoldKey: widget.scaffoldKey,
       refreshIndicatorKey: _refreshIndicatorKeys[0],
       platform: widget.platform,
-      activeCommunityName: widget.activeCommunityName,
+      activeCommunity: widget.activeCommunity,
       customScrollViewController: _scrollControllers[0],
       title: widget.title,
       subtitle: widget.subtitle ?? (widget.showFeedOptionsSubtitle && feedOptions != null && selectedFeedOptions != null && !mapEquals(selectedFeedOptions, feedOptions.defaults) ? Text(_getSubtitle(selectedFeedOptions)) : null),
@@ -263,6 +269,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
           itemBuilder: widget.itemBuilder
         )
       ],
+      bottomSheetBuilder: widget.bottomSheetBuilder,
       onPullRefresh: () => _refresh(0),
       onOtherRefresh: () {
         _refreshIndicatorKeys[0].currentState?.show();

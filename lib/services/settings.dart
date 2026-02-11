@@ -19,6 +19,7 @@ class Settings {
   static late final SettingNotifier<String?> homeCommunityName;
   static late final SettingNotifier<bool> showCommentImages;
   static late final SettingNotifier<bool> autoplayVideos;
+  static late final SettingNotifier<bool> swipePostsToVote;
   static late final SettingNotifier<bool> swipeCommentsToVote;
   static late final SettingNotifier<bool> showCommentVotingEdges;
   static late final SettingNotifier<CommentBehavior> commentTapBehavior;
@@ -81,6 +82,12 @@ class Settings {
       initialValue: dbSettings.autoplayVideos,
       companionBuilder: (value) => SettingsCompanion(autoplayVideos: Value(value)),
       defaultValue: Constants.defaultAutoplayVideos,
+    );
+
+    swipePostsToVote = SettingNotifier(
+      initialValue: dbSettings.swipePostsToVote,
+      companionBuilder: (value) => SettingsCompanion(swipePostsToVote: Value(value)),
+      defaultValue: Constants.defaultSwipePostsToVote,
     );
 
     swipeCommentsToVote = SettingNotifier(

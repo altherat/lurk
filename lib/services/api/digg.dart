@@ -992,7 +992,7 @@ class DiggApi extends Api {
   }
 
   // ProseMirror
-  static String _parsePmToHtml(Map<String, dynamic> pm) {
+  static String? _parsePmToHtml(Map<String, dynamic> pm) {
     final html = StringBuffer();
     for (var block in pm['content']) {
       if (block['type'] == 'diggTextBlock') {
@@ -1032,7 +1032,7 @@ class DiggApi extends Api {
         }
       }
     }
-    return html.toString();
+    return html.isEmpty ? null : html.toString();
   }
 
   static List<UserStat> _parseAllUserStats(Map<String, dynamic> data) {

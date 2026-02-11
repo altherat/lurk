@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lurk/app.dart' as App;
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/services/settings.dart';
@@ -6,28 +7,30 @@ import 'package:lurk/widgets/prefixed_name.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
 
-class PostsScreen extends StatefulWidget {
+class CommunityScreen extends StatefulWidget {
+
 
   final Community community;
   final GlobalKey<ScaffoldState>? scaffoldKey;
 
-  const PostsScreen({
+  const CommunityScreen({
     super.key,
     required this.community,
     this.scaffoldKey,
   });
 
   @override
-  State<PostsScreen> createState() => _PostsScreenState();
+  State<CommunityScreen> createState() => _CommunityScreenState();
 
 }
 
-class _PostsScreenState extends State<PostsScreen> {
+class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
 
   final _feedKey = GlobalKey<SimpleFeedScreenState>();
   bool _isSingleCommunity = false;
 
-  @override initState() {
+  @override
+  initState() {
     super.initState();
     Settings.activeUser.addListener(_onActiveUserChanged);
   }
@@ -35,11 +38,32 @@ class _PostsScreenState extends State<PostsScreen> {
   @override
   void dispose() {
     Settings.activeUser.removeListener(_onActiveUserChanged);
+    App.routeObserver.unsubscribe(this);
     super.dispose();
   }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    App.routeObserver.subscribe(this, ModalRoute.of(context)!);
+  }
+
+  @override
+  void didPopNext() {
+    final route = ModalRoute.of(context);
+    if (App.routeObserver.staleRoutes.contains(route)) {
+      _feedKey.currentState?.refresh();
+      App.routeObserver.staleRoutes.remove(route);
+    }
+  }
+
   void _onActiveUserChanged() {
-    _feedKey.currentState?.reload();
+    if (widget.community.name == null && widget.community.platform == Settings.activeUser.value?.platform) {
+      _feedKey.currentState?.reload();
+    }
+    else {
+      _feedKey.currentState?.refresh();
+    }
   }
 
   @override
@@ -58,7 +82,7 @@ class _PostsScreenState extends State<PostsScreen> {
         return result;
       },
       title: widget.community.name == null && widget.community.platform.rootCommunityName.isNotEmpty ? Text(widget.community.platform.rootCommunityName) : PrefixedCommunityName(community: widget.community),
-      activeCommunityName: widget.community.name,
+      activeCommunity: widget.community,
       feedOptions: (widget.community.name == null ? widget.community.platform.rootPostsFeedOptions : null) ?? widget.community.platform.postsFeedOptions,
       itemBuilder: (context, index, post) {
         return PostTile(

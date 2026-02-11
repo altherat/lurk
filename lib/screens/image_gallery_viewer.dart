@@ -85,7 +85,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
     final Widget body;
     if (_isLoadingPost) {
       onSave = null;
-      body = LargeCenteredCircularProgressIndicator(platform: widget.platform);
+      body = const LargeCenteredCircularProgressIndicator();
     }
     else {
       onSave = () {
@@ -147,7 +147,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                           alignment: Alignment.topCenter,
                           child: AspectRatio(
                             aspectRatio: image.size.width / image.size.height,
-                            child: LargeCenteredCircularProgressIndicator(platform: widget.platform),
+                            child: const LargeCenteredCircularProgressIndicator(),
                           ),
                         );
                       case LoadState.completed:
@@ -181,7 +181,18 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                             post: widget.post,
                           )
                         );
-                      }
+                      },
+                      onLongPress: () {
+                        showSimpleTextOptionsBottomSheet(
+                          context: context,
+                          options: MediaScaffold.getOptions(
+                            context: context,
+                            type: 'image',
+                            url: image.url,
+                            onSave: onSave
+                          )
+                        );
+                      },
                     ),
                   ),
                 )

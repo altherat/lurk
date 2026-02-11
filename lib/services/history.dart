@@ -14,8 +14,7 @@ class History extends CollectionListenable<String, bool> {
   History._(this._type) : _db = Database.instance;
 
   static Future<void> init() async {
-    await posts._init();
-    await postDetails._init();
+    await Future.wait([posts._init(), postDetails._init()]);
   }
 
   Future<void> _init() async {

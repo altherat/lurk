@@ -23,7 +23,6 @@ class Constants {
   static const lighterBackgroundColor = Color(0xFF1F1F1F);
   static const refreshIndicatorBackgroundColor = Color(0xFF000000);
   static const popupMenuColor = Color(0xFF212121);
-  static const dialogBackgroundColor = Color(0xFF212121);
   static const textFieldHintColor = Color(0xAAFFFFFF);
   static const scrollbarColor = Color(0x60FFFFFF);
   static const secondaryTextColor = Color(0xFFB3B3B3);
@@ -42,12 +41,12 @@ class Constants {
   static const htmlLinkColor = Color(0xFF66CCDD);
   static const htmlQuoteLineColor = Color(0xFF3388CC);
 
-  static const databaseName = 'lurk';
   static const defaultPlatform = Platform.reddit;
   static const defaultShowCommentImages = true;
   static const defaultAutoplayVideos = true;
   static const defaultCommentTapBehavior = CommentBehavior.expandOrCollapse;
   static const defaultCommentLongPressBehavior = CommentBehavior.showOptions;
+  static const defaultSwipePostsToVote = false;
   static const defaultSwipeCommentsToVote = false;
   static const defaultShowCommentVotingEdges = false;
   static const defaultAppBarColor = Color(0xFF000000);

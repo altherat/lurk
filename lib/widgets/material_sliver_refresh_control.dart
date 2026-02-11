@@ -27,7 +27,6 @@ class MaterialSliverRefreshControl extends StatelessWidget {
             child: Opacity(
               opacity: (pulledExtent / refreshIndicatorExtent).clamp(0.0, 1.0),
               child: CustomCircularProgressIndicator(
-                platform: platform,
                 size: 28,
                 strokeWidth: 3.5,
                 value: refreshState == RefreshIndicatorMode.drag || refreshState == RefreshIndicatorMode.done ? (pulledExtent / refreshTriggerPullDistance).clamp(0.0, 1.0) : null

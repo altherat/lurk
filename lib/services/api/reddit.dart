@@ -79,6 +79,7 @@ class RedditApi extends Api {
 
   Future<Response> _handleResponse(Future<Response> response) async {
     final awaited = await response;
+    // dev.log('[Reddit] Response: ${awaited.body}');
     dev.log('[Reddit] Response code: ${awaited.statusCode}');
     dev.log('[Reddit] Rate limit headers:');
     for (var headerEntry in awaited.headers.entries) {
@@ -800,7 +801,9 @@ class RedditApi extends Api {
     if (mediaMetadata != null) {
       for (var entry in mediaMetadata.values) {
         final source = entry['s'];
-        images[((source['u'] ?? source['gif']) as String).replaceAll('&amp;', '&')] = Size((source['x'] as num).toDouble(), (source['y'] as num).toDouble());
+        if (source != null) {
+          images[((source['u'] ?? source['gif']) as String).replaceAll('&amp;', '&')] = Size((source['x'] as num).toDouble(), (source['y'] as num).toDouble());
+        }
       }
     }
 

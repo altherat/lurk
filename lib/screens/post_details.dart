@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/flavors.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post.dart';
@@ -17,6 +18,9 @@ import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/custom_html.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
+
+const _postBodyCollapsedHeightRatio = 0.4;
+const _postBodyCollapsedFadingEdgeRatio = 0.9;
 
 class PostDetailsScreen extends StatefulWidget {
 
@@ -94,7 +98,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
     super.initState();
     _post = widget.post;
     _feedOptionsNotifier = ValueNotifier(null);
-    _initialItemsFuture = _getItems(null, null);
+    _initialItemsFuture = _getItems(widget.platform.postCommentsFeedOptions.defaults, null);
   }
 
   @override
@@ -124,7 +128,6 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
     return PagedItems(items: postDetails.comments);
   }
 
-  //TODO: add initial expansion animation?
   void _addComment(Comment comment, int index, int depth) {
     _simpleFeedScreenKey.currentState!.feedList!.updateItems((items) {
         items.insert(index, comment.copyWith(depth: depth));
@@ -161,32 +164,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                 )
               ),
               if (_post!.textHtml != null)
-                Container(
-                  margin: const EdgeInsets.all(8),
-                  width: double.infinity,
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Constants.postTextHtmlBorderColor),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: _TextContent(
-                    child: CustomHtml(
-                      platform: _post!.community.platform,
-                      html: _post!.textHtml!
-                    )
-                  )
-                // Container(
-                //   margin: const EdgeInsets.all(8),
-                //   padding: const EdgeInsets.all(8),
-                //   width: double.infinity,
-                //   decoration: BoxDecoration(
-                //     border: Border.all(color: Constants.postTextHtmlBorderColor),
-                //     borderRadius: BorderRadius.circular(4),
-                //   ),
-                //   child: CustomHtml(
-                //     platform: _post!.community.platform,
-                //     html: _post!.textHtml!
-                //   )
-                )
+                _PostBodyContainer(child: _PostBody(post: _post!))
               else
                 const SizedBox(height: 8),
               Container(
@@ -259,18 +237,32 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
       iconActionsBuilder: (Settings.activeUser, (context) {
         final activeUser = Settings.activeUser.value;
         return [
-          if (activeUser != null && activeUser.platform == _post!.community.platform)
+          if (activeUser != null && activeUser.platform == _post?.community.platform)
             IconButton(
               icon: const Icon(Icons.add_comment_rounded),
               tooltip: 'Add comment',
               onPressed: () {
-                showAddCommentDialog(
+                showAddCommentBottomSheet(
                   context: context,
                   platform: widget.platform,
                   id: _post!.id,
-                  replyingToWidget: PostTile(
-                    post: _post!,
-                    isInteractable: false,
+                  replyingToWidget: Column(
+                    children: [
+                      PostTile(
+                        post: _post!,
+                        isInteractable: false,
+                      ),
+                      if (_post!.textHtml != null)
+                        _PostBodyContainer(
+                          child: Padding(
+                            padding: const EdgeInsets.all(8),
+                            child: CustomHtml(
+                              platform: _post!.community.platform,
+                              html: _post!.textHtml!
+                            )
+                          )
+                        )
+                    ],
                   ),
                   onSubmitted: (comment) => _addComment(comment, 0, 0)
                 );
@@ -387,7 +379,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
               // debugPrint('heights=${childHeights.map((item, value) => MapEntry((item is Comment ? item.id : 'LoadMoreComment'), value))}');
               final animationController = AnimationController(
                 vsync: this, 
-                duration: Duration(milliseconds: (200 + accumulatedHeight * 0.15).toInt()),
+                duration: Duration(milliseconds: (225 + accumulatedHeight * 0.1).round()),
               );
               final childAnimationStates = _ChildCollapsingAnimationState(
                 totalHeight: accumulatedHeight,
@@ -553,25 +545,50 @@ class _ChildCollapsingAnimationState extends _CollapsingAnimationState {
 
 }
 
-class _TextContent extends StatefulWidget {
-
+class _PostBodyContainer extends StatelessWidget {
+  
   final Widget child;
 
-  const _TextContent({
-    required this.child,
+  const _PostBodyContainer({
+    required this.child
   });
 
   @override
-  State<_TextContent> createState() => _TextContentState();
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.all(8),
+      width: double.infinity,
+      decoration: BoxDecoration(
+        border: Border.all(color: Constants.postTextHtmlBorderColor),
+        borderRadius: BorderRadius.circular(4),
+      ),
+      child: child
+    );
+  }
 
 }
 
-class _TextContentState extends State<_TextContent> with SingleTickerProviderStateMixin {
+class _PostBody extends StatefulWidget {
+
+  final Post post;
+
+  const _PostBody({
+    required this.post,
+  });
+
+  @override
+  State<_PostBody> createState() => _PostBodyState();
+
+}
+
+class _PostBodyState extends State<_PostBody> with SingleTickerProviderStateMixin {
 
   final _scrollController = ScrollController();
   late final AnimationController _animationController;
   late final Animation _animation;
   double? _expandedHeight;
+  bool _canExpand = false;
+  double _fadingEdgeVisibility = 0;
 
   @override
   void initState() {
@@ -582,29 +599,65 @@ class _TextContentState extends State<_TextContent> with SingleTickerProviderSta
       curve: Curves.easeInOutCubicEmphasized,
       reverseCurve: Curves.easeInExpo
     );
+    _scrollController.addListener(_onScrollChanged);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (_scrollController.hasClients && _scrollController.position.maxScrollExtent > 0) {
+        setState(() {
+          _canExpand = true;
+          _fadingEdgeVisibility = 1;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _scrollController.removeListener(_onScrollChanged);
     _scrollController.dispose();
     _animationController.dispose();
     super.dispose();
   }
 
+  void _onScrollChanged() {
+    if (!_scrollController.hasClients) {
+      return;
+    }
+    final position = _scrollController.position;
+    final newVisibility = ((position.maxScrollExtent - position.pixels) / (_scrollController.position.viewportDimension * _postBodyCollapsedFadingEdgeRatio)).clamp(0.0, 1.0);
+    if (newVisibility != _fadingEdgeVisibility) {
+      setState(() {
+        _fadingEdgeVisibility = newVisibility;
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final collapsedHeight = MediaQuery.of(context).size.height * 0.4;
+    final collapsedHeight = MediaQuery.of(context).size.height * _postBodyCollapsedHeightRatio;
     return InkWell(
-      onTap: () => setState(() {
-        _expandedHeight = min(_scrollController.position.maxScrollExtent + _scrollController.position.viewportDimension, MediaQuery.of(context).size.height - (context.findRenderObject() as RenderBox).localToGlobal(Offset.zero).dy);
-        _animationController.duration = Duration(milliseconds: (200 + _expandedHeight! * 0.15).toInt());
-        if (_animation.value == 0) {
-          _animationController.forward();
-        }
-        else {
-          _animationController.reverse();
-        }
-      }),
+      onTap: _canExpand
+        ? () {
+            if (!_scrollController.hasClients) {
+              return;
+            }
+            setState(() {
+              _expandedHeight = min(_scrollController.position.maxScrollExtent + _scrollController.position.viewportDimension, MediaQuery.of(context).size.height - (context.findRenderObject() as RenderBox).localToGlobal(Offset.zero).dy);
+              final duration = Duration(milliseconds: (200 + _expandedHeight! * 0.15).toInt());
+              _animationController.duration = duration;
+              if (_animation.value == 0) {
+                _scrollController.animateTo(
+                  0,
+                  duration: duration,
+                  curve: Curves.easeInOutCubicEmphasized
+                );
+                _animationController.forward();
+              }
+              else {
+                _animationController.reverse();
+              }
+            });
+          }
+        : null,
       child: RawScrollbar(
         controller: _scrollController,
         padding: EdgeInsets.zero,
@@ -618,17 +671,20 @@ class _TextContentState extends State<_TextContent> with SingleTickerProviderSta
               ),
               child: ShaderMask(
                 shaderCallback: (Rect bounds) {
-                  final strength = 1.0 - _animation.value;
+                  if (!_canExpand) {
+                    return const LinearGradient(colors: [Colors.transparent, Colors.transparent]).createShader(bounds);
+                  }
+                  final strength = (1.0 - _animation.value) * _fadingEdgeVisibility;
                   return LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [Colors.transparent, Theme.of(context).colorScheme.surface.withAlpha((255 * strength).toInt())],
-                    stops: [0.9, 0.9 + (0.1 * strength)],
+                    stops: [_postBodyCollapsedFadingEdgeRatio, _postBodyCollapsedFadingEdgeRatio + ((1 - _postBodyCollapsedFadingEdgeRatio) * strength)],
                   ).createShader(bounds);
                 },
                 blendMode: BlendMode.dstOut,
                 child: SingleChildScrollView(
-                  physics: _animation.value == 0 ? const AlwaysScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
+                  physics: _canExpand && _animation.value == 0 ? const AlwaysScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
                   controller: _scrollController,
                   child: Padding(
                     padding: const EdgeInsets.all(8),
@@ -638,7 +694,12 @@ class _TextContentState extends State<_TextContent> with SingleTickerProviderSta
               )
             );
           },
-          child: RepaintBoundary(child: widget.child)
+          child: RepaintBoundary(
+            child: CustomHtml(
+              platform: widget.post.community.platform,
+              html: widget.post.textHtml!
+            )
+          )
         )
       )
     );
@@ -671,9 +732,7 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
     final Widget child;
     if (_isLoading) {
       onTap = null;
-      child = CustomCircularProgressIndicator(
-        platform: widget.comment.platform,
-        padding: EdgeInsets.symmetric(vertical: 8),
+      child = const CustomCircularProgressIndicator(
         alignment: Alignment.topLeft,
         size: 20,
         strokeWidth: 2.5
@@ -687,35 +746,23 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
             setState(() => _isLoading = false);
           }
         : null;
-      child = _LoadMoreCommentsText(comment: widget.comment);
+      child = Text(
+        'load ${widget.comment.count.toPluralString('more comment')}',
+        style: const TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Constants.linkTextColor
+        ),
+      );
     }
     return InkWell(
       onTap: onTap,
       child: CommentIndent(
         depth: widget.comment.depth,
-        child: child
-      ),
-    );
-  }
-
-}
-
-class _LoadMoreCommentsText extends StatelessWidget {
-
-  final LoadMoreComment comment;
-
-  const _LoadMoreCommentsText({
-    required this.comment,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      'load ${comment.count.toPluralString('more comment')}',
-      style: const TextStyle(
-        fontSize: 12,
-        fontWeight: FontWeight.bold,
-        color: Constants.linkTextColor
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: child,
+        )
       ),
     );
   }

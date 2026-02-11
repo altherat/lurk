@@ -6,6 +6,7 @@ import 'dart:math';
 import 'package:ffmpeg_kit_flutter_new_min/ffmpeg_kit.dart';
 import 'package:ffmpeg_kit_flutter_new_min/return_code.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
@@ -137,6 +138,70 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
     return "${twoDigits(duration.inMinutes)}:${twoDigits(duration.inSeconds.remainder(60))}";
   }
 
+  void _onSave() async {
+    if (_dashManifest != null) {
+      saveMedia(
+        context: context,
+        platform: widget.platform,
+        snackbarMediaTypeMessage: 'video',
+        save: () async {
+
+          String getBestUrl(String setContent) {
+            final reps = RegExp(r'<Representation [^>]*bandwidth="(\d+)"[^>]*>.*?<BaseURL>(.*?)<\/BaseURL>', dotAll: true).allMatches(setContent);
+            int maxBandwidth = -1;
+            String? bestSegment;
+            for (final match in reps) {
+              final bandwidth = int.parse(match.group(1)!);
+              if (bandwidth > maxBandwidth) {
+                maxBandwidth = bandwidth;
+                bestSegment = match.group(2);
+              }
+            }
+            return '${widget.url}/$bestSegment';
+          }
+
+          final videoSet = RegExp(r'<AdaptationSet [^>]*contentType="video".*?<\/AdaptationSet>', dotAll: true).firstMatch(_dashManifest!)!.group(0)!;
+          final audioSet = RegExp(r'<AdaptationSet [^>]*contentType="audio".*?<\/AdaptationSet>', dotAll: true).firstMatch(_dashManifest!)!.group(0)!;
+          final bestVideoUrl = getBestUrl(videoSet);
+          final bestAudioUrl = getBestUrl(audioSet);
+          final userAgent = widget.platform.api.savedOrDefaultUserAgent;
+          final videoPath = await downloadMediaToTemp(bestVideoUrl, userAgent);
+          final audioPath = await downloadMediaToTemp(bestAudioUrl, userAgent);
+          final tempDir = await getTemporaryDirectory();
+          final outputPath = '${tempDir.path}/${_uri.pathSegments.last}.mp4';
+          final session = await FFmpegKit.executeWithArguments([
+            '-y', 
+            '-i', videoPath, 
+            '-i', audioPath, 
+            '-c', 'copy', 
+            '-map', '0:v:0', 
+            '-map', '1:a:0', 
+            outputPath
+          ]);
+          final returnCode = await session.getReturnCode();
+          if (ReturnCode.isSuccess(returnCode)) {
+            Gal.putVideo(outputPath);
+          }
+          else {
+            final stackTrace = await session.getFailStackTrace();
+            // final logs = await session.getLogs();
+            // final errorLog = logs.isNotEmpty ? logs.map((l) => l.getMessage()).join('\n') : "Unknown FFmpeg error";
+            // dev.log('FFmpeg error Log:\n$errorLog');
+            // dev.log(stackTrace.toString());
+            throw Exception(stackTrace);
+          }
+        }
+      );
+    }
+    else {
+      saveVideo(
+        context: context,
+        platform: widget.platform,
+        url: widget.url,
+      );
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     return MediaScaffold(
@@ -144,69 +209,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
       url: widget.url,
       type: 'video',
       post: widget.post,
-      onSave: () async {
-        if (_dashManifest != null) {
-          saveMedia(
-            context: context,
-            platform: widget.platform,
-            snackbarMediaTypeMessage: 'video',
-            save: () async {
-
-              String getBestUrl(String setContent) {
-                final reps = RegExp(r'<Representation [^>]*bandwidth="(\d+)"[^>]*>.*?<BaseURL>(.*?)<\/BaseURL>', dotAll: true).allMatches(setContent);
-                int maxBandwidth = -1;
-                String? bestSegment;
-                for (final match in reps) {
-                  final bandwidth = int.parse(match.group(1)!);
-                  if (bandwidth > maxBandwidth) {
-                    maxBandwidth = bandwidth;
-                    bestSegment = match.group(2);
-                  }
-                }
-                return '${widget.url}/$bestSegment';
-              }
-
-              final videoSet = RegExp(r'<AdaptationSet [^>]*contentType="video".*?<\/AdaptationSet>', dotAll: true).firstMatch(_dashManifest!)!.group(0)!;
-              final audioSet = RegExp(r'<AdaptationSet [^>]*contentType="audio".*?<\/AdaptationSet>', dotAll: true).firstMatch(_dashManifest!)!.group(0)!;
-              final bestVideoUrl = getBestUrl(videoSet);
-              final bestAudioUrl = getBestUrl(audioSet);
-              final userAgent = widget.platform.api.savedOrDefaultUserAgent;
-              final videoPath = await downloadMediaToTemp(bestVideoUrl, userAgent);
-              final audioPath = await downloadMediaToTemp(bestAudioUrl, userAgent);
-              final tempDir = await getTemporaryDirectory();
-              final outputPath = '${tempDir.path}/${_uri.pathSegments.last}.mp4';
-              final session = await FFmpegKit.executeWithArguments([
-                '-y', 
-                '-i', videoPath, 
-                '-i', audioPath, 
-                '-c', 'copy', 
-                '-map', '0:v:0', 
-                '-map', '1:a:0', 
-                outputPath
-              ]);
-              final returnCode = await session.getReturnCode();
-              if (ReturnCode.isSuccess(returnCode)) {
-                Gal.putVideo(outputPath);
-              }
-              else {
-                final stackTrace = await session.getFailStackTrace();
-                // final logs = await session.getLogs();
-                // final errorLog = logs.isNotEmpty ? logs.map((l) => l.getMessage()).join('\n') : "Unknown FFmpeg error";
-                // dev.log('FFmpeg error Log:\n$errorLog');
-                // dev.log(stackTrace.toString());
-                throw Exception(stackTrace);
-              }
-            }
-          );
-        }
-        else {
-          saveVideo(
-            context: context,
-            platform: widget.platform,
-            url: widget.url,
-          );
-        }
-      },
+      onSave: _onSave,
       body: Stack(
         children: [
           if (!_isInitialized)
@@ -221,12 +224,26 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
                   _onControlsChanged(() => setState(() => _showControls = !_showControls));
                 }
               },
-              child: CustomInteractiveViewer(
-                child: Align(
-                  alignment: Alignment.topCenter,
-                  child: AspectRatio(
-                    aspectRatio: _videoController.value.aspectRatio,
-                    child: VideoPlayer(_videoController)
+              child: GestureDetector(
+                onLongPress: () {
+                  HapticFeedback.mediumImpact();
+                  showSimpleTextOptionsBottomSheet(
+                    context: context,
+                    options: MediaScaffold.getOptions(
+                      context: context,
+                      type: 'video',
+                      url: widget.url,
+                      onSave: _onSave
+                    )
+                  );
+                },
+                child: CustomInteractiveViewer(
+                  child: Align(
+                    alignment: Alignment.topCenter,
+                    child: AspectRatio(
+                      aspectRatio: _videoController.value.aspectRatio,
+                      child: VideoPlayer(_videoController)
+                    ),
                   ),
                 ),
               ),
@@ -380,7 +397,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
                       )
                     : const SizedBox.shrink();
               },
-            )
+            ),
           ]
         ],
       )
@@ -401,7 +418,7 @@ class _ProgressIndicator extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final progressIndicator = LargeCenteredCircularProgressIndicator(platform: platform);
+    final progressIndicator = const LargeCenteredCircularProgressIndicator();
     if (size != null) {
       return AspectRatio(
         aspectRatio: size!.width / size!.height,

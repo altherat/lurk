@@ -50,18 +50,6 @@ class Post {
     required this.galleryImages,
   }) : shortId = shortId ?? id;
 
-  String get compactScore {
-    if (score < 1000) {
-      return score.toString();
-    }
-    final double reduced = score / 1000;
-    String formatted = reduced.toStringAsFixed(1);
-    if (reduced >= 9.95) {
-      formatted = reduced.toStringAsFixed(0);
-    }
-    return '${formatted.replaceAll(RegExp(r'\.0$'), '')}K';
-  }
-
   String get timeAgoCompact => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgoCompact;
 
   String get timeAgoLong => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgoLong;

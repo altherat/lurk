@@ -1,5 +1,6 @@
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
@@ -23,6 +24,14 @@ class ImageViewerScreen extends StatelessWidget {
     this.size
   });
 
+  void _onSave(BuildContext context) {
+    saveImage(
+      context: context,
+      platform: platform,
+      url: url,
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return MediaScaffold(
@@ -30,49 +39,57 @@ class ImageViewerScreen extends StatelessWidget {
       url: url,
       type: 'image',
       post: post,
-      onSave: () {
-        saveImage(
-          context: context,
-          platform: platform,
-          url: url,
-        );
-      },
+      onSave: () => _onSave(context),
       body: Hero(
         tag: 'media_$url',
         // transitionOnUserGestures: true,
         child: SizedBox.expand(
-          child: CustomInteractiveViewer(
-            child: ExtendedImage.network(
-              url,
-              headers: {'User-Agent': platform.api.savedOrDefaultUserAgent},
-              fit: BoxFit.contain, 
-              alignment: Alignment.topCenter,
-              loadStateChanged: (state) {
-                switch (state.extendedImageLoadState) {
-                  case LoadState.loading:
-                    final progressIndicator = LargeCenteredCircularProgressIndicator(platform: platform);
-                    final size = this.size ?? post?.mediaSize;
-                    if (size != null) {
-                      return Align(
-                        alignment: Alignment.topCenter,
-                        child: AspectRatio(
-                          aspectRatio: size.width / size.height,
-                          child: progressIndicator,
-                        ),
-                      );
-                    }
-                    return progressIndicator;
-                case LoadState.completed:
-                  return state.completedWidget;
-                case LoadState.failed:
-                  return const Center(
-                    child: LargeVerticalIconMessage(
-                      icon: Icons.broken_image_rounded,
-                      message: 'Something went wrong'
-                    )
-                  );
-                }
-              },
+          child: GestureDetector(
+            onLongPress:() {
+              HapticFeedback.mediumImpact();
+              showSimpleTextOptionsBottomSheet(
+                context: context,
+                options: MediaScaffold.getOptions(
+                  context: context,
+                  type: 'image',
+                  url: url,
+                  onSave: () => _onSave(context)
+                )
+              );
+            },
+            child: CustomInteractiveViewer(
+              child: ExtendedImage.network(
+                url,
+                headers: {'User-Agent': platform.api.savedOrDefaultUserAgent},
+                fit: BoxFit.contain, 
+                alignment: Alignment.topCenter,
+                loadStateChanged: (state) {
+                  switch (state.extendedImageLoadState) {
+                    case LoadState.loading:
+                      final progressIndicator = const LargeCenteredCircularProgressIndicator();
+                      final size = this.size ?? post?.mediaSize;
+                      if (size != null) {
+                        return Align(
+                          alignment: Alignment.topCenter,
+                          child: AspectRatio(
+                            aspectRatio: size.width / size.height,
+                            child: progressIndicator,
+                          ),
+                        );
+                      }
+                      return progressIndicator;
+                  case LoadState.completed:
+                    return state.completedWidget;
+                  case LoadState.failed:
+                    return const Center(
+                      child: LargeVerticalIconMessage(
+                        icon: Icons.broken_image_rounded,
+                        message: 'Something went wrong'
+                      )
+                    );
+                  }
+                },
+              ),
             ),
           ),
         ),

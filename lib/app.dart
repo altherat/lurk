@@ -5,7 +5,7 @@ import 'package:lurk/services/history.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 
-final RouteObserver<ModalRoute<void>> routeObserver = RouteObserver<ModalRoute<void>>();
+final routeObserver = _RouteObserver();
 
 class App extends StatefulWidget {
 
@@ -75,13 +75,13 @@ class _AppState extends State<App> {
         ),
         snackBarTheme: const SnackBarThemeData(
           behavior: SnackBarBehavior.floating,
-          backgroundColor: Colors.black,
+          backgroundColor: Constants.lighterBackgroundColor,
           contentTextStyle: TextStyle(color: Colors.white),
           actionTextColor: Constants.primaryColor,
           actionBackgroundColor: Constants.lighterBackgroundColor,
         ),
         dialogTheme: const DialogThemeData(
-          backgroundColor: Constants.dialogBackgroundColor
+          backgroundColor: Constants.lighterBackgroundColor
         ),
       ),
       home: FutureBuilder(
@@ -105,6 +105,33 @@ class _AppState extends State<App> {
         },
       )
     );
+  }
+
+}
+
+class _RouteObserver extends RouteObserver {
+
+  final List<Route> routes = [];
+  final Set<Route> staleRoutes = {};
+
+  @override
+  void didPush(Route route, Route? previousRoute) {
+    routes.add(route);
+    super.didPush(route, previousRoute);
+  }
+
+  @override
+  void didPop(Route route, Route? previousRoute) {
+    routes.remove(route);
+    staleRoutes.remove(route);
+    super.didPop(route, previousRoute);
+  }
+
+  @override
+  void didRemove(Route route, Route? previousRoute) {
+    routes.remove(route);
+    staleRoutes.remove(route);
+    super.didRemove(route, previousRoute);
   }
 
 }

@@ -10,11 +10,10 @@ import 'package:lurk/services/settings.dart';
 import 'package:lurk/services/votes.dart';
 import 'package:lurk/widgets/collection_listenable_builder.dart';
 import 'package:lurk/widgets/custom_html.dart';
+import 'package:lurk/widgets/custom_progress_indicators.dart';
+import 'package:lurk/widgets/swipe_to_vote.dart';
 
 const _expansionAnimationDuration = Duration(milliseconds: 200);
-const _swipeToVoteThreshold = 50.0;
-const _swipeToVoteEndAnimationDuration = Duration(milliseconds: 200);
-const _swipeToVoteTolerance = 0.01;
 
 class CommentTile extends StatefulWidget {
 
@@ -56,20 +55,11 @@ class CommentTile extends StatefulWidget {
 
 class _CommentTileState extends State<CommentTile> {
 
-  int? _score;
   bool _showToolbar = false;
 
   @override
   void initState() {
     super.initState();
-    _score = widget.comment.score;
-  }
-
-  @override void didUpdateWidget(covariant CommentTile oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.comment != widget.comment) {
-      _score = widget.comment.score;
-    }
   }
   
   void _toggleToolbar() => setState(() => _showToolbar = !_showToolbar);
@@ -113,7 +103,7 @@ class _CommentTileState extends State<CommentTile> {
   }
 
   void _onReplyPressed() {
-    showAddCommentDialog(
+    showAddCommentBottomSheet(
       context: context,
       platform: widget.comment.platform,
       id: widget.comment.id,
@@ -132,13 +122,8 @@ class _CommentTileState extends State<CommentTile> {
 
   void _onVote(bool upvote) {
     final vote = Votes.comments.value(widget.comment.id) == upvote ? null : upvote;
-    widget.comment.platform.api.vote(widget.comment.id, vote);
     Votes.comments.setVote(widget.comment.id, vote);
-    if (_score != null) {
-      setState(() {
-        _score = _score! + (upvote ? 1 : -1);
-      });
-    }
+    widget.comment.platform.api.vote(widget.comment.id, vote);
   }
 
   @override
@@ -318,7 +303,7 @@ class _CommentTileState extends State<CommentTile> {
                           text: ' [$authorTag]',
                           style: TextStyle(color: authorColor)
                         ),
-                      TextSpan(text: ' • ${_score?.toPluralString('point') ?? '[~]'} • ${widget.comment.timeAgoLong}${widget.showCommunityName ? ' • ${widget.comment.communityName}' : ''}'),
+                      TextSpan(text: ' • ${widget.comment.score != null ? (widget.comment.score! + (vote == null ? 0 : vote ? 1 : -1)).toPluralString('point') : '[~]'} • ${widget.comment.timeAgoLong}${widget.showCommunityName ? ' • ${widget.comment.communityName}' : ''}'),
                       if (widget.isCollapsed)
                         const TextSpan(text: ' [+]'),
                     ],
@@ -355,7 +340,7 @@ class _CommentTileState extends State<CommentTile> {
           builder: (context, tile) {
             Widget child = tile!;
             if (Settings.swipeCommentsToVote.value) {
-              child = _SwipeToVote(
+              child = SwipeToVote(
                 onVote: (upvote) => _onVote(upvote),
                 child: child,
               );
@@ -464,7 +449,7 @@ class CommentIndent extends StatelessWidget {
 
 }
 
-Future<void> showAddCommentDialog({
+Future<void> showAddCommentBottomSheet({
   required BuildContext context,
   required Platform platform,
   required String id,
@@ -476,6 +461,11 @@ Future<void> showAddCommentDialog({
     showDragHandle: true,
     isScrollControlled: true,
     useSafeArea: true,
+    constraints: BoxConstraints(
+      maxWidth: MediaQuery.of(context).size.width,
+      minHeight: MediaQuery.of(context).size.height * 0.5,
+      maxHeight: MediaQuery.of(context).size.height * 0.75
+    ),
     builder: (context) {
       return _AddCommentBottomSheetContent(
         platform: platform,
@@ -485,121 +475,6 @@ Future<void> showAddCommentDialog({
       );
     }
   );
-
-}
-
-class _SwipeToVote extends StatefulWidget {
-
-  final void Function(bool upvote) onVote;
-  final Widget child;
-
-  const _SwipeToVote({
-    required this.onVote,
-    required this.child,
-  });
-
-  @override
-  State<_SwipeToVote> createState() => _SwipeToVoteState();
-
-}
-
-class _SwipeToVoteState extends State<_SwipeToVote> with SingleTickerProviderStateMixin {
-
-  late final AnimationController _controller;
-  double _dragOffset = 0.0;
-  bool _isArmed = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      vsync: this,
-      duration: _swipeToVoteEndAnimationDuration,
-    )..addListener(() {
-        setState(() {
-          _dragOffset = _controller.value * _dragOffset;
-        });
-      });
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  void _handleDragUpdate(DragUpdateDetails details) {
-    final newOffset = (_dragOffset + details.delta.dx).clamp(-_swipeToVoteThreshold, _swipeToVoteThreshold);
-    if (newOffset != _dragOffset) {
-      setState(() {
-        _dragOffset = newOffset;
-      });
-    }
-    final offset = _dragOffset.abs();
-    if (offset >= _swipeToVoteThreshold) {
-      if (!_isArmed) {
-        _isArmed = true;
-        HapticFeedback.lightImpact();
-      }
-    }
-    else if (_isArmed && offset < _swipeToVoteThreshold * _swipeToVoteTolerance) {
-      _isArmed = false;
-    }
-  }
-
-  void _handleDragEnd(DragEndDetails details) {
-    if (_isArmed) {
-      widget.onVote(_dragOffset > 0);
-    }
-    _isArmed = false;
-    if (_dragOffset != 0) {
-      _controller.reverse(from: 1.0);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = (_dragOffset.abs() / _swipeToVoteThreshold).clamp(0.0, 1.0);
-    return GestureDetector(
-      onHorizontalDragUpdate: _handleDragUpdate,
-      onHorizontalDragEnd: _handleDragEnd,
-      child: Stack(
-        children: [
-          Positioned(
-            left: _dragOffset > 0 ? 0 : null,
-            top: 0,
-            right: _dragOffset < 0 ? 0 : null,
-            bottom: 0,
-            child: Container(
-              width: _dragOffset.abs(),
-              color: _dragOffset > 0 ? Constants.upvoteColor : _dragOffset < 0 ? Constants.downvoteColor : Colors.transparent,
-              alignment: Alignment.center,
-              child: OverflowBox(
-                maxWidth: double.infinity,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        _dragOffset > 0 ? Icons.arrow_upward : Icons.arrow_downward,
-                        size: 16 + 24 * progress,
-                        color: Colors.white.withValues(alpha: progress),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-          ),
-          Transform.translate(
-            offset: Offset(_dragOffset, 0),
-            child: widget.child,
-          ),
-        ],
-      ),
-    );
-  }
 
 }
 
@@ -634,60 +509,42 @@ class _AddCommentBottomSheetContentState extends State<_AddCommentBottomSheetCon
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.of(context).viewInsets.bottom),
-      child: SingleChildScrollView(
-        child: Column(
-          spacing: 16,
-          mainAxisSize: MainAxisSize.min,
+    final mediaQuery = MediaQuery.of(context);
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Flexible(
+          child: SingleChildScrollView(
+            child: widget.replyingToWidget,
+          )
+        ),
+        const SizedBox(height: 16),
+        Row(
           children: [
-            ConstrainedBox(
-              constraints: BoxConstraints(
-                maxHeight: 300,
-              ),
-              child: SingleChildScrollView(
-                child: widget.replyingToWidget,
-              )
-              // child: ShaderMask(
-              //   shaderCallback: (Rect bounds) {
-              //     return const LinearGradient(
-              //       begin: Alignment.topCenter,
-              //       end: Alignment.bottomCenter,
-              //       colors: [Colors.black, Colors.transparent],
-              //       stops: [0.75, 1.0],
-              //     ).createShader(bounds);
-              //   },
-              //   blendMode: BlendMode.dstIn,
-              //   child: SingleChildScrollView(
-              //     padding: const EdgeInsets.only(bottom: 24),
-              //     child: CommentTile(comment: item),
-              //   ),
-              // ),
-            ),
-            Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: TextFormField(
-                    controller: _controller,
-                    autofocus: true,
-                    minLines: 1,
-                    maxLines: 5,
-                    decoration: const InputDecoration(
-                      hintText: 'Type a reply',
-                      border: InputBorder.none,
-                      contentPadding: EdgeInsets.symmetric(horizontal: 12),
-                    ),
-                  ),
+            Expanded(
+              child: TextFormField(
+                controller: _controller,
+                autofocus: true,
+                minLines: 1,
+                maxLines: 5,
+                decoration: const InputDecoration(
+                  hintText: 'Type a reply',
+                  border: InputBorder.none,
                 ),
-                ValueListenableBuilder<TextEditingValue>(
-                  valueListenable: _controller,
-                  builder: (context, value, child) {
-                    final text = _controller.text.trim();
-                    return _isSubmitting
-                      ? const CircularProgressIndicator()
+              ),
+            ),
+            ValueListenableBuilder(
+              valueListenable: _controller,
+              builder: (context, value, child) {
+                final text = _controller.text.trim();
+                return SizedBox(
+                  width: 48,
+                  height: 48,
+                  child: AnimatedSwitcher(
+                    duration: const Duration(milliseconds: 200),
+                    child: _isSubmitting
+                      ? const CustomCircularProgressIndicator(size: 28)
                       : IconButton(
-                          padding: EdgeInsets.only(right: 16),
                           onPressed: text.isNotEmpty
                             ? () async {
                                 setState(() => _isSubmitting = true);
@@ -698,18 +555,29 @@ class _AddCommentBottomSheetContentState extends State<_AddCommentBottomSheetCon
                                 }
                               }
                             : null,
-                          icon: Icon(
-                            Icons.send_rounded,
-                            color: text.isNotEmpty ? Theme.of(context).colorScheme.primary : Theme.of(context).disabledColor
-                          ),
-                        );
-                  }
-                ),
-              ],
-            )
+                          icon: TweenAnimationBuilder(
+                            duration: const Duration(milliseconds: 200),
+                            tween: ColorTween(
+                              begin: Theme.of(context).disabledColor,
+                              end: text.isNotEmpty ? Theme.of(context).colorScheme.primary : Theme.of(context).disabledColor,
+                            ),
+                            builder: (context, color, child) {
+                              return Icon(
+                                Icons.send_rounded,
+                                size: 32,
+                                color: color
+                              );
+                            }
+                          )
+                        )
+                  ),
+                );
+              }
+            ),
           ],
         ),
-      ),
+        SizedBox(height: mediaQuery.viewInsets.bottom)
+      ],
     );
   }
 

@@ -4,7 +4,7 @@ import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
-import 'package:lurk/screens/posts.dart';
+import 'package:lurk/screens/community.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/widgets/icon_message.dart';
@@ -44,7 +44,6 @@ class SearchScreen extends StatelessWidget {
     }
     return SimpleFeedScreen(
       platform: platform,
-      activeCommunityName: communityName,
       feedOptions: feedOptions,
       getItems: (options, pageToken) => platform.api.search(query, communityName, options: options, pageToken: pageToken),
       title: title,
@@ -89,7 +88,7 @@ class SearchScreen extends StatelessWidget {
                 ),
               ],
             ),
-            onTap: () => context.push(() => PostsScreen(community: item)),
+            onTap: () => context.push(() => CommunityScreen(community: item)),
             subtitle: item.description != null
               ? Padding(
                   padding: const EdgeInsets.only(top: 8),

@@ -8,7 +8,7 @@ import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/image_viewer.dart';
-import 'package:lurk/screens/posts.dart';
+import 'package:lurk/screens/community.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
@@ -143,7 +143,7 @@ class CustomHtml extends StatelessWidget {
             final communityName = platform.getCommunityNameFromPath(url);
             if (communityName != null) {
               context.push(
-                () => PostsScreen(
+                () => CommunityScreen(
                   community: Community(
                     platform: platform,
                     name: communityName.toLowerCase(),
@@ -268,7 +268,6 @@ class _Image extends StatelessWidget {
             if (state.extendedImageLoadState == LoadState.loading) {
               return UnconstrainedBox(
                 child: CustomCircularProgressIndicator(
-                  platform: platform,
                   padding: EdgeInsets.symmetric(horizontal: 2, vertical: 8),
                 ),
               );

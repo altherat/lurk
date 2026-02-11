@@ -31,7 +31,7 @@ class Community {
     );
   }
 
-  String get prefixedName => platform.communityPrefix + (name ?? '');
+  String get prefixedName => platform.getPrefixedCommunityName(name ?? '');
 
   @override
   bool operator ==(Object other) {

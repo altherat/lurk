@@ -4,7 +4,7 @@ import 'package:flutter/services.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/screens/image_gallery_viewer.dart';
 import 'package:lurk/screens/post_details.dart';
-import 'package:lurk/screens/posts.dart';
+import 'package:lurk/screens/community.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/core/constants.dart';
@@ -12,6 +12,7 @@ import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/services/votes.dart';
 import 'package:lurk/widgets/collection_listenable_builder.dart';
+import 'package:lurk/widgets/swipe_to_vote.dart';
 
 const _voteWidth = 45.0;
 const _voteHeight = 70.0;
@@ -43,7 +44,7 @@ class PostTile extends StatelessWidget {
       title: post.title,
       options: {
         if (showViewCommunityOption)
-          'View ${post.community.prefixedName}': () => context.push(() => PostsScreen(community: post.community)),
+          'View ${post.community.prefixedName}': () => context.push(() => CommunityScreen(community: post.community)),
         if (showViewUserOption && post.author != null)
           'View ${post.community.platform.userPrefix}${post.author}': () {
             context.push(
@@ -61,7 +62,8 @@ class PostTile extends StatelessWidget {
     );
   }
 
-  void _updateVote(bool? vote) {
+  void _onVote(bool upvote) {
+    final vote = Votes.posts.value(post.id) == upvote ? null : upvote;
     Votes.posts.setVote(post.id, vote);
     post.community.platform.api.vote(post.id, vote);
   }
@@ -85,7 +87,7 @@ class PostTile extends StatelessWidget {
       onTap = null;
       onLongPress = null;
     }
-    return InkWell(
+    final tile = InkWell(
       onTap: onTap,
       onLongPress: onLongPress,
       child: Row(
@@ -97,11 +99,24 @@ class PostTile extends StatelessWidget {
             child: ValueListenableBuilder(
               valueListenable: Settings.activeUser,
               builder: (context, activeUser, child) {
-                final canVote = activeUser != null;
+                final canVote = activeUser != null && activeUser.platform == post.community.platform;
                 return CollectionListenableBuilder(
                   id: post.id,
                   collectionListenable: Votes.posts,
                   builder: (context, vote) {
+                    final String scoreText;
+                    final score = post.score + (vote == null ? 0 : vote ? 1 : -1);
+                    if (score < 1000) {
+                      scoreText = score.toString();
+                    }
+                    else {
+                      final double reduced = score / 1000;
+                      String formatted = reduced.toStringAsFixed(1);
+                      if (reduced >= 9.95) {
+                        formatted = reduced.toStringAsFixed(0);
+                      }
+                      scoreText = '${formatted.replaceAll(RegExp(r'\.0$'), '')}K';
+                    }
                     return Stack(
                       children: [
                         Align(
@@ -111,17 +126,18 @@ class PostTile extends StatelessWidget {
                             isActive: vote == true,
                             alignment: Alignment.topCenter,
                             activeColor: Constants.upvoteColor,
-                            onPressed: () {
-                              if (!canVote) return;
-                              HapticFeedback.mediumImpact();
-                              _updateVote(vote == true ? null : true);
-                            }
+                            onPressed: canVote
+                              ? () {
+                                  HapticFeedback.mediumImpact();
+                                  _onVote(true);
+                                }
+                              : null
                           ),
                         ),
                         IgnorePointer(
                           child: Center(
                             child: Text(
-                              post.compactScore,
+                              scoreText,
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
@@ -137,11 +153,12 @@ class PostTile extends StatelessWidget {
                             isActive: vote == false,
                             alignment: Alignment.bottomCenter,
                             activeColor: Constants.downvoteColor,
-                            onPressed: () {
-                              if (!canVote) return;
-                              HapticFeedback.mediumImpact();
-                              _updateVote(vote == false ? null : false);
-                            }
+                            onPressed: canVote
+                              ? () {
+                                  HapticFeedback.mediumImpact();
+                                  _onVote(false);
+                                }
+                              : null
                           ),
                         ),
                       ],
@@ -244,8 +261,29 @@ class PostTile extends StatelessWidget {
         ],
       ),
     );
+    return ValueListenableBuilder(
+      valueListenable: Settings.swipePostsToVote,
+      child: tile,
+      builder: (context, swipePostsToVote, child) {
+        if (swipePostsToVote) {
+          return ValueListenableBuilder(
+            valueListenable: Settings.activeUser,
+            child: child,
+            builder: (context, activeUser, child) {
+              if (activeUser != null && activeUser.platform == post.community.platform) {
+                return SwipeToVote(
+                  onVote: _onVote,
+                  child: child!
+                );
+              }
+              return child!;
+            }
+          );
+        }
+        return child!;
+      }
+    );
   }
-
 }
 
 class PostTileCommentHistorySubtitle extends StatelessWidget {

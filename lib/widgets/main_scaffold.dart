@@ -1,16 +1,16 @@
 import 'dart:math';
 
-import 'package:flutter/cupertino.dart' hide RefreshCallback;
 import 'package:flutter/material.dart' hide SearchBar, RefreshCallback;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
+import 'package:lurk/app.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/enums.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/core/flavors.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/user.dart';
-import 'package:lurk/screens/posts.dart';
+import 'package:lurk/screens/community.dart';
 import 'package:lurk/screens/search.dart';
 import 'package:lurk/screens/settings.dart';
 import 'package:lurk/screens/user_details.dart';
@@ -26,7 +26,7 @@ class MainScaffold extends StatefulWidget {
   final GlobalKey<ScaffoldState>? scaffoldKey;
   final GlobalKey<CustomRefreshIndicatorState>? refreshIndicatorKey;
   final Platform platform;
-  final String? activeCommunityName;
+  final Community? activeCommunity;
   final ScrollController? customScrollViewController;
   final Widget? title;
   final Widget? subtitle;
@@ -37,6 +37,7 @@ class MainScaffold extends StatefulWidget {
   final List<Widget>? slivers;
   final Widget? body;
   final (Listenable, List<Widget> Function(BuildContext context))? iconActionsBuilder;
+  final Widget? Function(BuildContext context)? bottomSheetBuilder;
   final RefreshCallback? onPullRefresh;
   final ScrollController? Function()? onOtherRefresh;
 
@@ -45,7 +46,7 @@ class MainScaffold extends StatefulWidget {
     this.scaffoldKey,
     this.refreshIndicatorKey,
     required this.platform,
-    this.activeCommunityName,
+    this.activeCommunity,
     this.customScrollViewController,
     required this.title,
     this.subtitle,
@@ -56,6 +57,7 @@ class MainScaffold extends StatefulWidget {
     this.slivers,
     this.body,
     this.iconActionsBuilder,
+    this.bottomSheetBuilder,
     this.onPullRefresh,
     this.onOtherRefresh
   });
@@ -162,7 +164,7 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
           children: [
             if (widget.title != null)
               DefaultTextStyle.merge(
-                style: const TextStyle(height: 1),
+                style: const TextStyle(height: 1.1),
                 child: widget.title!
               ),
             if (widget.subtitle != null)
@@ -270,9 +272,8 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
                                                           height: (screenHeight - viewInsetsBottom) * 0.4,
                                                           child: _CommunityList(
                                                             platform: widget.platform,
-                                                            activeCommunityName: widget.activeCommunityName,
+                                                            activeCommunity: widget.activeCommunity,
                                                             reverse: Settings.reverseCommunityList.value,
-                                                            scaffoldKey: _scaffoldKey,
                                                             onActiveCommunitySelected: _scrollToTopAndRefresh
                                                           )
                                                         )
@@ -313,9 +314,8 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
           final communityList = Expanded(
             child: _CommunityList(
               platform: widget.platform,
-              activeCommunityName: widget.activeCommunityName,
+              activeCommunity: widget.activeCommunity,
               reverse: reverse,
-              scaffoldKey: _scaffoldKey,
               onActiveCommunitySelected: _scrollToTopAndRefresh
             )
           );
@@ -559,7 +559,8 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
               drawerEdgeDragWidth: drawerEdgeDragWidth,
               bottomNavigationBar: bottomBar,
               appBar: scaffoldAppBar,
-              body: body
+              body: body,
+              bottomSheet: widget.bottomSheetBuilder?.call(context)
             );
             if (showPlatformColorAccents) {
               return Theme(
@@ -825,16 +826,14 @@ class _UserIcon extends StatelessWidget {
 class _CommunityList extends StatefulWidget {
 
   final Platform platform;
-  final String? activeCommunityName;
+  final Community? activeCommunity;
   final bool reverse;
-  final GlobalKey<ScaffoldState> scaffoldKey;
   final VoidCallback? onActiveCommunitySelected;
 
   const _CommunityList({
     required this.platform,
-    required this.activeCommunityName,
+    required this.activeCommunity,
     required this.reverse,
-    required this.scaffoldKey,
     required this.onActiveCommunitySelected
   });
 
@@ -871,7 +870,7 @@ class _CommunityListState extends State<_CommunityList> {
     _visibleCommunities = Settings.communities.value.toList();
     _searchPlatform = widget.platform;
     final savedSearchType = Settings.searchType.value;
-    _searchType = savedSearchType == null || (savedSearchType == SearchType.withinCommunity && (widget.activeCommunityName == null || !_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames.contains(widget.activeCommunityName))) ? SearchType.community : savedSearchType;
+    _searchType = savedSearchType == null || (savedSearchType == SearchType.withinCommunity && (widget.activeCommunity == null || !_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames.contains(widget.activeCommunity))) ? SearchType.community : savedSearchType;
     _updateSearchBarTexts();
     _searchBarFocusNode.addListener(_onSearchBarFocusChanged);
     Settings.communities.addListener(_onCommunitiesSettingChanged);
@@ -915,24 +914,49 @@ class _CommunityListState extends State<_CommunityList> {
   }
 
   void _navigateToCommunity(Community community) {
+    context.pop();
+    if (community == widget.activeCommunity) {
+      widget.onActiveCommunitySelected?.call();
+      return;
+    }
+    if (community.platform == Settings.homeCommunityPlatform.value && community.name == Settings.homeCommunityName.value) {
+      routeObserver.staleRoutes.add(routeObserver.routes.first);
+      Navigator.popUntil(context, (route) => route.isFirst);
+      return;
+    }
+    final routeName = '${community.platform.name}/community/${community.name}';
+    final existingRoute = routeObserver.routes.where((route) => route.settings.name == routeName).firstOrNull;
+    if (existingRoute != null) {
+      routeObserver.staleRoutes.add(existingRoute);
+      Navigator.of(context).popUntil((route) => route.settings.name == routeName);
+      return;
+    }
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => PostsScreen(community: community)),
+      MaterialPageRoute(
+        settings: RouteSettings(name: routeName, arguments: <String, dynamic>{}),
+        builder: (context) => CommunityScreen(community: community)
+      ),
       (route) => route.isFirst
     );
   }
 
-  void _onCommunityTap(Community community, bool isRoot) {
-    if (community.platform == widget.platform && ((community.name == null && isRoot) || community.name == (widget.activeCommunityName ?? widget.platform.homeCommunityName))) {
-      context.pop();
-      widget.onActiveCommunitySelected?.call();
-      return;
-    }
-    if ((widget.scaffoldKey.currentState?.isDrawerOpen ?? false)) {
-      context.pop();
-    }
-    _navigateToCommunity(community);
-  }
+  // void _navigateToCommunity(Community community) {
+  //   context.pop();
+  //   if (community.platform == Settings.homeCommunityPlatform.value && community.name == Settings.homeCommunityName.value) {
+  //     Navigator.popUntil(context, (route) => route.isFirst);
+  //     return;
+  //   }
+  //   if (community == widget.activeCommunity) {
+  //     widget.onActiveCommunitySelected?.call();
+  //     return;
+  //   }
+  //   Navigator.pushAndRemoveUntil(
+  //     context,
+  //     MaterialPageRoute(builder: (context) => CommunityScreen(community: community)),
+  //     (route) => route.isFirst
+  //   );
+  // }
 
   void _cyclePlatform() {
     setState(() {
@@ -947,7 +971,7 @@ class _CommunityListState extends State<_CommunityList> {
 
   void _cycleSearchType() {
     setState(() {
-      final searchTypes = widget.activeCommunityName == null || !_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames.contains(widget.activeCommunityName) ? SearchType.values.where((type) => type != SearchType.withinCommunity).toList() : SearchType.values;
+      final searchTypes = widget.activeCommunity == null || !_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames.contains(widget.activeCommunity) ? SearchType.values.where((type) => type != SearchType.withinCommunity).toList() : SearchType.values;
       _updateSearchType(searchTypes[(searchTypes.indexOf(_searchType) + 1) % searchTypes.length]);
       _updateSearchBarTexts();
       _updateIsSearchValid();
@@ -971,7 +995,7 @@ class _CommunityListState extends State<_CommunityList> {
         _searchBarHint = _searchBarFocusNode.hasFocus ? 'username' : 'Username';
       case SearchType.withinCommunity:
         _searchBarPrefixText = null;
-        _searchBarHint = 'Search ${_searchPlatform.getPrefixedCommunityName(widget.activeCommunityName!)}';
+        _searchBarHint = 'Search ${widget.activeCommunity!.prefixedName}';
       case SearchType.all:
         _searchBarPrefixText = null;
         _searchBarHint = 'Search ${_searchPlatform.name.toTitleCase()}';
@@ -1072,7 +1096,7 @@ class _CommunityListState extends State<_CommunityList> {
                       padding: const WidgetStatePropertyAll<EdgeInsets>(EdgeInsets.only(right: 8)),
                       hintText: _searchBarHint,
                       hintStyle: WidgetStatePropertyAll(TextStyle(color: Colors.white60)),
-                      inputFormatters: _searchType != SearchType.all ? [FilteringTextInputFormatter.allow(_searchNameAllowedRegex)] : null,
+                      inputFormatters: _searchType != SearchType.all && _searchType != SearchType.withinCommunity ? [FilteringTextInputFormatter.allow(_searchNameAllowedRegex)] : null,
                       backgroundColor: WidgetStateProperty.all(Constants.lighterBackgroundColor),
                       side: _isSearchValid && _isSearchBarFocused ? WidgetStatePropertyAll(BorderSide(color: _searchPlatform.color),) : null,
                       leading: Container(
@@ -1182,7 +1206,6 @@ class _CommunityListState extends State<_CommunityList> {
                               platform: _searchPlatform,
                               name: query
                             );
-                            context.pop();
                             _navigateToCommunity(community);
                             Settings.communities.add(community);
                           case SearchType.user:
@@ -1204,7 +1227,7 @@ class _CommunityListState extends State<_CommunityList> {
                               return SearchScreen(
                                 platform: _searchPlatform,
                                 query: query,
-                                communityName: widget.activeCommunityName,
+                                communityName: widget.activeCommunity?.name,
                               );
                             });
                             return;
@@ -1250,7 +1273,7 @@ class _CommunityListState extends State<_CommunityList> {
                   return _CommunityNameListTile(
                     platform: widget.platform,
                     community: Community(platform: activeUser!.platform),
-                    activeCommunityName: widget.activeCommunityName,
+                    activeCommunity: widget.activeCommunity,
                     leading: IconButton(
                       onPressed: () {},
                       icon: Stack(
@@ -1273,7 +1296,7 @@ class _CommunityListState extends State<_CommunityList> {
                       )
                     ),
                     title: Text(activeUser.platform.rootCommunityName),
-                    onTap: (community) => _onCommunityTap(community, true),
+                    onTap: _navigateToCommunity
                   );
                 }
             
@@ -1291,7 +1314,7 @@ class _CommunityListState extends State<_CommunityList> {
                 return _CommunityNameListTile(
                   platform: widget.platform,
                   community: community,
-                  activeCommunityName: widget.activeCommunityName,
+                  activeCommunity: widget.activeCommunity,
                   leading: IconButton(
                     icon: Icon(
                       icon,
@@ -1303,7 +1326,7 @@ class _CommunityListState extends State<_CommunityList> {
                     }
                   ),
                   title: F.appFlavor == Flavor.combined || community.platform.homeCommunityName == null ? PrefixedCommunityName(community: community) : Text(community.name!),
-                  onTap: (community) => _onCommunityTap(community, false),
+                  onTap: _navigateToCommunity
                 );
               }
             );
@@ -1342,7 +1365,7 @@ class _CommunityNameListTile extends StatelessWidget {
   
   final Platform platform;
   final Community community;
-  final String? activeCommunityName;
+  final Community? activeCommunity;
   final Widget? leading;
   final Widget title;
   final void Function(Community community) onTap;
@@ -1350,7 +1373,7 @@ class _CommunityNameListTile extends StatelessWidget {
   const _CommunityNameListTile({
     required this.platform,
     required this.community,
-    required this.activeCommunityName,
+    required this.activeCommunity,
     required this.leading,
     required this.title,
     required this.onTap,
@@ -1380,7 +1403,7 @@ class _CommunityNameListTile extends StatelessWidget {
               }
             : null
         ),
-        if (community.platform == platform && community.name == activeCommunityName)
+        if (community == activeCommunity)
           Positioned(
             left: 0,
             top: 8,

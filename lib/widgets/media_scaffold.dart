@@ -24,30 +24,34 @@ class MediaScaffold extends StatelessWidget {
     required this.onSave
   });
 
+  static Map<String, void Function()> getOptions({
+    required BuildContext context,
+    required String type,
+    required String url,
+    Post? post,
+    VoidCallback? onSave,
+  }) => {
+    'Save $type': ?onSave,
+    if (post != null)
+      'View comments': () => context.push(() => PostDetailsScreen.fromPost(post: post!)),
+    'View in browser': () => openInBrowser(url),
+    'Copy link': () => copyToClipboard(url)
+  };
+
   @override
   Widget build(BuildContext context) {
-    final options = {
-      if (onSave != null)
-        'Save $type': onSave!,
-      if (post != null)
-        'View comments': () => context.push(() => PostDetailsScreen.fromPost(post: post!)),
-      'View in browser': () => openInBrowser(url),
-      'Copy link': () => copyToClipboard(url)
-    };
     return MainScaffold(
       platform: platform,
       title: post != null ? Text(post!.title) : null,
       subtitle: Text(post != null ? post!.community.prefixedName : url),
-      popupMenuActions: options,
-      body: GestureDetector(
-        onLongPress: () {
-          showSimpleTextOptionsBottomSheet(
-            context: context,
-            options: options
-          );
-        },
-        child: body
-      )
+      popupMenuActions: getOptions(
+        context: context,
+        type: type,
+        url: url,
+        post: post,
+        onSave: onSave
+      ),
+      body: body
     );
   }
 

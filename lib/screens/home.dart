@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lurk/app.dart' as App;
 import 'package:lurk/models/community.dart';
-import 'package:lurk/screens/posts.dart';
+import 'package:lurk/screens/community.dart';
 import 'package:lurk/services/settings.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -75,7 +75,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
-    return PostsScreen(
+    return CommunityScreen(
       key: ValueKey('home-${_homeCommunity.platform.name}-${_homeCommunity.name}'),
       community: _homeCommunity,
       scaffoldKey: widget.scaffoldKey

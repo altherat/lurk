@@ -11,7 +11,7 @@ import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/image_gallery_viewer.dart';
 import 'package:lurk/screens/image_viewer.dart';
 import 'package:lurk/screens/post_details.dart';
-import 'package:lurk/screens/posts.dart';
+import 'package:lurk/screens/community.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/screens/video_viewer.dart';
 import 'package:lurk/screens/web_viewer.dart';
@@ -105,7 +105,7 @@ extension ColorExtension on Color {
 
 extension BuildContextExtension on BuildContext {
 
-  void pop() => Navigator.pop(this);
+  void pop<T>([T? result]) => Navigator.pop<T>(this, result);
 
   Future<T?> push<T>(Widget Function() builder) {
     return Navigator.push<T>(
@@ -232,7 +232,7 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
     final communityName = resolvedPlatform.getCommunityNameFromPath(path);
     if (communityName != null) {
       return context.push(
-        () => PostsScreen(
+        () => CommunityScreen(
           community: Community(
             platform: resolvedPlatform,
             name: communityName

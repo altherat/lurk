@@ -62,8 +62,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
           future: _userStatsFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return CustomCircularProgressIndicator(
-                platform: widget.platform,
+              return const CustomCircularProgressIndicator(
                 padding: const EdgeInsets.all(16),
               );
             }

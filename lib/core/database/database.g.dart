@@ -341,6 +341,21 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     ),
     defaultValue: const Constant(Constants.defaultAutoplayVideos),
   );
+  static const VerificationMeta _swipePostsToVoteMeta = const VerificationMeta(
+    'swipePostsToVote',
+  );
+  @override
+  late final GeneratedColumn<bool> swipePostsToVote = GeneratedColumn<bool>(
+    'swipe_posts_to_vote',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("swipe_posts_to_vote" IN (0, 1))',
+    ),
+    defaultValue: const Constant(Constants.defaultSwipePostsToVote),
+  );
   static const VerificationMeta _swipeCommentsToVoteMeta =
       const VerificationMeta('swipeCommentsToVote');
   @override
@@ -574,6 +589,7 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     homeCommunityName,
     showCommentImages,
     autoplayVideos,
+    swipePostsToVote,
     swipeCommentsToVote,
     showCommentVotingEdges,
     commentTapBehavior,
@@ -632,6 +648,15 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         autoplayVideos.isAcceptableOrUnknown(
           data['autoplay_videos']!,
           _autoplayVideosMeta,
+        ),
+      );
+    }
+    if (data.containsKey('swipe_posts_to_vote')) {
+      context.handle(
+        _swipePostsToVoteMeta,
+        swipePostsToVote.isAcceptableOrUnknown(
+          data['swipe_posts_to_vote']!,
+          _swipePostsToVoteMeta,
         ),
       );
     }
@@ -802,6 +827,10 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.bool,
         data['${effectivePrefix}autoplay_videos'],
       )!,
+      swipePostsToVote: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}swipe_posts_to_vote'],
+      )!,
       swipeCommentsToVote: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}swipe_comments_to_vote'],
@@ -918,6 +947,7 @@ class Setting extends DataClass implements Insertable<Setting> {
   final String? homeCommunityName;
   final bool showCommentImages;
   final bool autoplayVideos;
+  final bool swipePostsToVote;
   final bool swipeCommentsToVote;
   final bool showCommentVotingEdges;
   final CommentBehavior commentTapBehavior;
@@ -942,6 +972,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     this.homeCommunityName,
     required this.showCommentImages,
     required this.autoplayVideos,
+    required this.swipePostsToVote,
     required this.swipeCommentsToVote,
     required this.showCommentVotingEdges,
     required this.commentTapBehavior,
@@ -977,6 +1008,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     }
     map['show_comment_images'] = Variable<bool>(showCommentImages);
     map['autoplay_videos'] = Variable<bool>(autoplayVideos);
+    map['swipe_posts_to_vote'] = Variable<bool>(swipePostsToVote);
     map['swipe_comments_to_vote'] = Variable<bool>(swipeCommentsToVote);
     map['show_comment_voting_edges'] = Variable<bool>(showCommentVotingEdges);
     {
@@ -1043,6 +1075,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           : Value(homeCommunityName),
       showCommentImages: Value(showCommentImages),
       autoplayVideos: Value(autoplayVideos),
+      swipePostsToVote: Value(swipePostsToVote),
       swipeCommentsToVote: Value(swipeCommentsToVote),
       showCommentVotingEdges: Value(showCommentVotingEdges),
       commentTapBehavior: Value(commentTapBehavior),
@@ -1096,6 +1129,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       ),
       showCommentImages: serializer.fromJson<bool>(json['showCommentImages']),
       autoplayVideos: serializer.fromJson<bool>(json['autoplayVideos']),
+      swipePostsToVote: serializer.fromJson<bool>(json['swipePostsToVote']),
       swipeCommentsToVote: serializer.fromJson<bool>(
         json['swipeCommentsToVote'],
       ),
@@ -1153,6 +1187,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       'homeCommunityName': serializer.toJson<String?>(homeCommunityName),
       'showCommentImages': serializer.toJson<bool>(showCommentImages),
       'autoplayVideos': serializer.toJson<bool>(autoplayVideos),
+      'swipePostsToVote': serializer.toJson<bool>(swipePostsToVote),
       'swipeCommentsToVote': serializer.toJson<bool>(swipeCommentsToVote),
       'showCommentVotingEdges': serializer.toJson<bool>(showCommentVotingEdges),
       'commentTapBehavior': serializer.toJson<String>(
@@ -1194,6 +1229,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     Value<String?> homeCommunityName = const Value.absent(),
     bool? showCommentImages,
     bool? autoplayVideos,
+    bool? swipePostsToVote,
     bool? swipeCommentsToVote,
     bool? showCommentVotingEdges,
     CommentBehavior? commentTapBehavior,
@@ -1222,6 +1258,7 @@ class Setting extends DataClass implements Insertable<Setting> {
         : this.homeCommunityName,
     showCommentImages: showCommentImages ?? this.showCommentImages,
     autoplayVideos: autoplayVideos ?? this.autoplayVideos,
+    swipePostsToVote: swipePostsToVote ?? this.swipePostsToVote,
     swipeCommentsToVote: swipeCommentsToVote ?? this.swipeCommentsToVote,
     showCommentVotingEdges:
         showCommentVotingEdges ?? this.showCommentVotingEdges,
@@ -1271,6 +1308,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       autoplayVideos: data.autoplayVideos.present
           ? data.autoplayVideos.value
           : this.autoplayVideos,
+      swipePostsToVote: data.swipePostsToVote.present
+          ? data.swipePostsToVote.value
+          : this.swipePostsToVote,
       swipeCommentsToVote: data.swipeCommentsToVote.present
           ? data.swipeCommentsToVote.value
           : this.swipeCommentsToVote,
@@ -1336,6 +1376,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('homeCommunityName: $homeCommunityName, ')
           ..write('showCommentImages: $showCommentImages, ')
           ..write('autoplayVideos: $autoplayVideos, ')
+          ..write('swipePostsToVote: $swipePostsToVote, ')
           ..write('swipeCommentsToVote: $swipeCommentsToVote, ')
           ..write('showCommentVotingEdges: $showCommentVotingEdges, ')
           ..write('commentTapBehavior: $commentTapBehavior, ')
@@ -1367,6 +1408,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     homeCommunityName,
     showCommentImages,
     autoplayVideos,
+    swipePostsToVote,
     swipeCommentsToVote,
     showCommentVotingEdges,
     commentTapBehavior,
@@ -1395,6 +1437,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.homeCommunityName == this.homeCommunityName &&
           other.showCommentImages == this.showCommentImages &&
           other.autoplayVideos == this.autoplayVideos &&
+          other.swipePostsToVote == this.swipePostsToVote &&
           other.swipeCommentsToVote == this.swipeCommentsToVote &&
           other.showCommentVotingEdges == this.showCommentVotingEdges &&
           other.commentTapBehavior == this.commentTapBehavior &&
@@ -1422,6 +1465,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<String?> homeCommunityName;
   final Value<bool> showCommentImages;
   final Value<bool> autoplayVideos;
+  final Value<bool> swipePostsToVote;
   final Value<bool> swipeCommentsToVote;
   final Value<bool> showCommentVotingEdges;
   final Value<CommentBehavior> commentTapBehavior;
@@ -1446,6 +1490,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.homeCommunityName = const Value.absent(),
     this.showCommentImages = const Value.absent(),
     this.autoplayVideos = const Value.absent(),
+    this.swipePostsToVote = const Value.absent(),
     this.swipeCommentsToVote = const Value.absent(),
     this.showCommentVotingEdges = const Value.absent(),
     this.commentTapBehavior = const Value.absent(),
@@ -1471,6 +1516,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.homeCommunityName = const Value.absent(),
     this.showCommentImages = const Value.absent(),
     this.autoplayVideos = const Value.absent(),
+    this.swipePostsToVote = const Value.absent(),
     this.swipeCommentsToVote = const Value.absent(),
     this.showCommentVotingEdges = const Value.absent(),
     this.commentTapBehavior = const Value.absent(),
@@ -1496,6 +1542,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<String>? homeCommunityName,
     Expression<bool>? showCommentImages,
     Expression<bool>? autoplayVideos,
+    Expression<bool>? swipePostsToVote,
     Expression<bool>? swipeCommentsToVote,
     Expression<bool>? showCommentVotingEdges,
     Expression<String>? commentTapBehavior,
@@ -1522,6 +1569,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (homeCommunityName != null) 'home_community_name': homeCommunityName,
       if (showCommentImages != null) 'show_comment_images': showCommentImages,
       if (autoplayVideos != null) 'autoplay_videos': autoplayVideos,
+      if (swipePostsToVote != null) 'swipe_posts_to_vote': swipePostsToVote,
       if (swipeCommentsToVote != null)
         'swipe_comments_to_vote': swipeCommentsToVote,
       if (showCommentVotingEdges != null)
@@ -1558,6 +1606,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<String?>? homeCommunityName,
     Value<bool>? showCommentImages,
     Value<bool>? autoplayVideos,
+    Value<bool>? swipePostsToVote,
     Value<bool>? swipeCommentsToVote,
     Value<bool>? showCommentVotingEdges,
     Value<CommentBehavior>? commentTapBehavior,
@@ -1584,6 +1633,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       homeCommunityName: homeCommunityName ?? this.homeCommunityName,
       showCommentImages: showCommentImages ?? this.showCommentImages,
       autoplayVideos: autoplayVideos ?? this.autoplayVideos,
+      swipePostsToVote: swipePostsToVote ?? this.swipePostsToVote,
       swipeCommentsToVote: swipeCommentsToVote ?? this.swipeCommentsToVote,
       showCommentVotingEdges:
           showCommentVotingEdges ?? this.showCommentVotingEdges,
@@ -1631,6 +1681,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     }
     if (autoplayVideos.present) {
       map['autoplay_videos'] = Variable<bool>(autoplayVideos.value);
+    }
+    if (swipePostsToVote.present) {
+      map['swipe_posts_to_vote'] = Variable<bool>(swipePostsToVote.value);
     }
     if (swipeCommentsToVote.present) {
       map['swipe_comments_to_vote'] = Variable<bool>(swipeCommentsToVote.value);
@@ -1717,6 +1770,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('homeCommunityName: $homeCommunityName, ')
           ..write('showCommentImages: $showCommentImages, ')
           ..write('autoplayVideos: $autoplayVideos, ')
+          ..write('swipePostsToVote: $swipePostsToVote, ')
           ..write('swipeCommentsToVote: $swipeCommentsToVote, ')
           ..write('showCommentVotingEdges: $showCommentVotingEdges, ')
           ..write('commentTapBehavior: $commentTapBehavior, ')
@@ -2598,6 +2652,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> homeCommunityName,
       Value<bool> showCommentImages,
       Value<bool> autoplayVideos,
+      Value<bool> swipePostsToVote,
       Value<bool> swipeCommentsToVote,
       Value<bool> showCommentVotingEdges,
       Value<CommentBehavior> commentTapBehavior,
@@ -2624,6 +2679,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> homeCommunityName,
       Value<bool> showCommentImages,
       Value<bool> autoplayVideos,
+      Value<bool> swipePostsToVote,
       Value<bool> swipeCommentsToVote,
       Value<bool> showCommentVotingEdges,
       Value<CommentBehavior> commentTapBehavior,
@@ -2676,6 +2732,11 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<bool> get autoplayVideos => $composableBuilder(
     column: $table.autoplayVideos,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get swipePostsToVote => $composableBuilder(
+    column: $table.swipePostsToVote,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -2807,6 +2868,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get swipePostsToVote => $composableBuilder(
+    column: $table.swipePostsToVote,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get swipeCommentsToVote => $composableBuilder(
     column: $table.swipeCommentsToVote,
     builder: (column) => ColumnOrderings(column),
@@ -2928,6 +2994,11 @@ class $$SettingsTableAnnotationComposer
 
   GeneratedColumn<bool> get autoplayVideos => $composableBuilder(
     column: $table.autoplayVideos,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get swipePostsToVote => $composableBuilder(
+    column: $table.swipePostsToVote,
     builder: (column) => column,
   );
 
@@ -3058,6 +3129,7 @@ class $$SettingsTableTableManager
                 Value<String?> homeCommunityName = const Value.absent(),
                 Value<bool> showCommentImages = const Value.absent(),
                 Value<bool> autoplayVideos = const Value.absent(),
+                Value<bool> swipePostsToVote = const Value.absent(),
                 Value<bool> swipeCommentsToVote = const Value.absent(),
                 Value<bool> showCommentVotingEdges = const Value.absent(),
                 Value<CommentBehavior> commentTapBehavior =
@@ -3084,6 +3156,7 @@ class $$SettingsTableTableManager
                 homeCommunityName: homeCommunityName,
                 showCommentImages: showCommentImages,
                 autoplayVideos: autoplayVideos,
+                swipePostsToVote: swipePostsToVote,
                 swipeCommentsToVote: swipeCommentsToVote,
                 showCommentVotingEdges: showCommentVotingEdges,
                 commentTapBehavior: commentTapBehavior,
@@ -3110,6 +3183,7 @@ class $$SettingsTableTableManager
                 Value<String?> homeCommunityName = const Value.absent(),
                 Value<bool> showCommentImages = const Value.absent(),
                 Value<bool> autoplayVideos = const Value.absent(),
+                Value<bool> swipePostsToVote = const Value.absent(),
                 Value<bool> swipeCommentsToVote = const Value.absent(),
                 Value<bool> showCommentVotingEdges = const Value.absent(),
                 Value<CommentBehavior> commentTapBehavior =
@@ -3136,6 +3210,7 @@ class $$SettingsTableTableManager
                 homeCommunityName: homeCommunityName,
                 showCommentImages: showCommentImages,
                 autoplayVideos: autoplayVideos,
+                swipePostsToVote: swipePostsToVote,
                 swipeCommentsToVote: swipeCommentsToVote,
                 showCommentVotingEdges: showCommentVotingEdges,
                 commentTapBehavior: commentTapBehavior,

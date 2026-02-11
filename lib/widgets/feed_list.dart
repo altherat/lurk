@@ -103,9 +103,9 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
     super.build(context);
     if (items.isEmpty) {
       if (_loadingState == LoadingState.loading) {
-        return SliverFillRemaining(
+        return const SliverFillRemaining(
           hasScrollBody: false,
-          child: LargeCenteredCircularProgressIndicator(platform: widget.platform)
+          child: LargeCenteredCircularProgressIndicator()
         );
       }
       final Widget child;
@@ -143,7 +143,6 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
                     });
                   }
                   return CustomCircularProgressIndicator(
-                    platform: widget.platform,
                     padding: EdgeInsets.all(16),
                     alignment: Alignment.center,
                     size: 24,

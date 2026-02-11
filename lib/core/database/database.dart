@@ -1,9 +1,8 @@
 
 import 'dart:io' as io;
 
+import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
-import 'package:drift_flutter/drift_flutter.dart';
-import 'package:flutter/foundation.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/database/tables/communities.dart';
 import 'package:lurk/core/database/tables/cookies.dart';
@@ -16,7 +15,8 @@ import 'package:lurk/core/enums.dart';
 import 'package:lurk/models/user.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
-import 'package:drift/drift.dart';
+import 'package:sqlite3/sqlite3.dart';
+import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
 part 'database.g.dart';
 
@@ -50,17 +50,19 @@ class Database extends _$Database {
   }
 
   static QueryExecutor _openConnection() {
-    if (kDebugMode) {
-      return LazyDatabase(() async {
-        final dbFolder = await getApplicationSupportDirectory();
-        final file = io.File(p.join(dbFolder.path, '${Constants.databaseName}.sqlite'));
-        return NativeDatabase(file);
-      });
-    }
-    return driftDatabase(
-      name: Constants.databaseName,
-      native: const DriftNativeOptions(databaseDirectory: getApplicationSupportDirectory),
-    );
+    return LazyDatabase(() async {
+      final dbFolder = await getApplicationSupportDirectory();
+      final file = io.File(p.join(dbFolder.path, 'db.sqlite'));
+
+      if (io.Platform.isAndroid) {
+        await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
+      }
+
+      final cachebase = (await getTemporaryDirectory()).path;
+      sqlite3.tempDirectory = cachebase;
+
+      return NativeDatabase.createInBackground(file);
+    });
   }
 
   Future<List<Cookie>> getAllValidCookies() {
@@ -88,7 +90,7 @@ class Database extends _$Database {
 
   Future<void> deleteCookies(Iterable<String> keys) => (delete(cookies)..where((c) => c.key.isIn(keys))).go();
 
-  Future<Setting> getAllSettings() => select(settings).getSingle();
+  Future<Setting?> getAllSettings() => select(settings).getSingleOrNull();
 
   Future<int> updateSettings(SettingsCompanion companion) => (update(settings)..where((t) => t.id.equals(1))).write(companion);
   

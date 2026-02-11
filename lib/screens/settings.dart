@@ -83,15 +83,21 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setting: Settings.reverseCommunityList,
               label: 'Reverse community list'
             ),
-            _BoolSettingListTile(
-              setting: Settings.swipeCommentsToVote,
-              label: 'Swipe comments to vote',
-            ),
-            _BoolSettingListTile(
-              setting: Settings.showCommentVotingEdges,
-              label: 'Comment voting edges',
-              infoText: 'Tapping the left side of a comment will upvote it and tapping the right side will downvote it.',
-            ),
+            if (F.appFlavor.platforms.any((platform) => platform.api.hasLogin)) ...[
+              _BoolSettingListTile(
+                setting: Settings.swipePostsToVote,
+                label: 'Swipe posts to vote',
+              ),
+              _BoolSettingListTile(
+                setting: Settings.swipeCommentsToVote,
+                label: 'Swipe comments to vote',
+              ),
+              _BoolSettingListTile(
+                setting: Settings.showCommentVotingEdges,
+                label: 'Comment voting edges',
+                infoText: 'Tapping the left side of a comment will upvote it and tapping the right side will downvote it.',
+              ),
+            ],
             _ChoiceSettingListTile(
               setting: Settings.commentTapBehavior,
               title: 'Comment tap behavior',
@@ -406,6 +412,7 @@ class _InfoIconButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
+      visualDensity: VisualDensity.compact,
       icon: const Icon(Icons.info_outline_rounded),
       color: Theme.of(context).inputDecorationTheme.suffixIconColor,
       onPressed: () {
