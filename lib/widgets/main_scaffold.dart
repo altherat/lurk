@@ -1305,7 +1305,7 @@ class _CommunityListState extends State<_CommunityList> {
                 final Color? color;
                 if (community.isFavorite) {
                   icon = Icons.star_rounded;
-                  color = community.platform.color;
+                  color = theme.colorScheme.onSurface;
                 }
                 else {
                   icon = Icons.star_border_rounded;

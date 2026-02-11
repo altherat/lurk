@@ -3,7 +3,7 @@ import 'package:lurk/core/enums.dart';
 
 class Constants {
 
-  static const version = '0.1.2';
+  static const version = '1.0.0';
 
   static const screenTransitionDuration = Duration(milliseconds: 250);
   static const reverseScreenTransitionDuration = Duration(milliseconds: 100);
