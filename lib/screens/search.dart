@@ -36,6 +36,7 @@ class SearchScreen extends StatelessWidget {
         before: TextSpan(text: '"$query" in '),
         prefix: platform.communityPrefix,
         name: communityName!,
+        applyAppBarAlpha: true,
       );
     }
     else {

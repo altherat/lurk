@@ -3,6 +3,7 @@ import 'package:lurk/app.dart' as App;
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/services/settings.dart';
+import 'package:lurk/widgets/main_scaffold.dart';
 import 'package:lurk/widgets/prefixed_name.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
@@ -11,7 +12,7 @@ class CommunityScreen extends StatefulWidget {
 
 
   final Community community;
-  final GlobalKey<ScaffoldState>? scaffoldKey;
+  final GlobalKey<MainScaffoldState>? scaffoldKey;
 
   const CommunityScreen({
     super.key,
@@ -50,15 +51,14 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
 
   @override
   void didPopNext() {
-    final route = ModalRoute.of(context);
-    if (App.routeObserver.staleRoutes.contains(route)) {
-      _feedKey.currentState?.refresh();
-      App.routeObserver.staleRoutes.remove(route);
+    if (App.routeObserver.staleRoutes.remove(ModalRoute.of(context))) {
+      _feedKey.currentState?.reload();
     }
   }
 
   void _onActiveUserChanged() {
-    if (widget.community.name == null && widget.community.platform == Settings.activeUser.value?.platform) {
+    debugPrint('_onActiveUserChanged: ${Settings.activeUser.value?.name}');
+    if (widget.community.platform == Settings.activeUser.value?.platform && widget.community.name == null) {
       _feedKey.currentState?.reload();
     }
     else {
@@ -81,7 +81,19 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
         }
         return result;
       },
-      title: widget.community.name == null && widget.community.platform.rootCommunityName.isNotEmpty ? Text(widget.community.platform.rootCommunityName) : PrefixedCommunityName(community: widget.community),
+      title: widget.community.name == null && widget.community.platform.rootCommunityName.isNotEmpty
+        ? Text(widget.community.platform.rootCommunityName)
+        : ValueListenableBuilder(
+            valueListenable: Settings.showPlatformColorTextAccents,
+            builder: (context, showPlatformColorTextAccents, child) {
+              return PrefixedName(
+                prefix: widget.community.platform.communityPrefix,
+                name: widget.community.name,
+                prefixColor: showPlatformColorTextAccents ? widget.community.platform.color : null,
+                applyAppBarAlpha: true,
+              );
+            }
+          ),
       activeCommunity: widget.community,
       feedOptions: (widget.community.name == null ? widget.community.platform.rootPostsFeedOptions : null) ?? widget.community.platform.postsFeedOptions,
       itemBuilder: (context, index, post) {

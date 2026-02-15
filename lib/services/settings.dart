@@ -27,6 +27,7 @@ class Settings {
   static late final SettingNotifier<Color> appBarColor;
   static late final SettingNotifier<bool> useBottomBar;
   static late final SettingNotifier<bool> reverseCommunityList;
+  static late final SettingNotifier<bool> backOnHomeScreenShowCommunityList;
   static late final SettingNotifier<bool> showPlatformColorAccents;
   static late final SettingNotifier<bool> showPlatformColorTextAccents;
 
@@ -130,6 +131,12 @@ class Settings {
       initialValue: dbSettings.reverseCommunityList,
       companionBuilder: (value) => SettingsCompanion(reverseCommunityList: Value(value)),
       defaultValue: Constants.defaultReverseCommunityList,
+    );
+
+    backOnHomeScreenShowCommunityList = SettingNotifier(
+      initialValue: dbSettings.backOnHomeScreenShowCommunityList,
+      companionBuilder: (value) => SettingsCompanion(backOnHomeScreenShowCommunityList: Value(value)),
+      defaultValue: Constants.defaultBackOnHomeScreenShowCommunityList,
     );
 
     showPlatformColorAccents = SettingNotifier(

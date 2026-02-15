@@ -97,27 +97,15 @@ class CustomHtml extends StatelessWidget {
                 color: Constants.commentIndentColor,
               );
             }
-            if (showImages) {
-              if (element.localName == 'img') {
-                final String url = element.attributes['src']!;
+            if (element.localName == 'img') {
+              final String url = element.attributes['src']!;
+              if (showImages) {
                 return _Image(
                   platform: platform,
                   url: url,
                   size: imageSizes?[url]
                 );
               }
-              else if (element.localName == 'a') {
-                final String url = element.attributes['href']!;
-                if (Uri.tryParse(url)?.host == 'preview.redd.it') {
-                  return _Image(
-                    platform: platform,
-                    url: url,
-                    size: imageSizes?[url]
-                  );
-                }
-              }
-            }
-            else if (element.localName == 'img') {
               return _HtmlLink(
                 platform: platform,
                 url: element.attributes['src']!,
@@ -127,11 +115,37 @@ class CustomHtml extends StatelessWidget {
             }
             else if (element.localName == 'a') {
               final String url = element.attributes['href']!;
-              if (Uri.tryParse(url)?.host == 'preview.redd.it') {
+              final uri = Uri.tryParse(url)!;
+              final host = uri.host;
+              if (host == 'preview.redd.it') {
+                if (showImages) {
+                  return _Image(
+                    platform: platform,
+                    url: url,
+                    size: imageSizes?[url]
+                  );
+                }
                 return _HtmlLink(
                   platform: platform,
                   url: url,
                   placeholder: '[image]',
+                  textStyle: textStyle
+                );
+              }
+              if (host == 'giphy.com' || host == 'www.giphy.com') {
+                if (showImages) {
+                  final directGiphyUrl = getGiphyDirectUrl(url);
+                  if (directGiphyUrl != null) {
+                    return _Image(
+                      platform: platform,
+                      url: directGiphyUrl,
+                    );
+                  }
+                }
+                return _HtmlLink(
+                  platform: platform,
+                  url: url,
+                  placeholder: '[gif]',
                   textStyle: textStyle
                 );
               }
@@ -226,7 +240,7 @@ class _Image extends StatelessWidget {
   const _Image({
     required this.platform,
     required this.url,
-    required this.size
+    this.size
   });
 
   @override
@@ -280,9 +294,9 @@ class _Image extends StatelessWidget {
               );
             }
             else {
-              child = const Icon(
+              child = Icon(
                 Icons.broken_image_rounded,
-                color: Constants.secondaryTextColor,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
                 size: 32
               );
             }

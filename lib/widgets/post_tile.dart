@@ -70,6 +70,7 @@ class PostTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final onSurfaceVariantColor = Theme.of(context).colorScheme.onSurfaceVariant;
     final VoidCallback? onTap;
     final VoidCallback? onLongPress;
     if (isInteractable) {
@@ -141,7 +142,7 @@ class PostTile extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
-                                color: vote == true ? Constants.upvoteColor : vote == false ? Constants.downvoteColor : Constants.secondaryTextColor,
+                                color: vote == true ? Constants.upvoteColor : vote == false ? Constants.downvoteColor : onSurfaceVariantColor,
                               ),
                             ),
                           ),
@@ -193,7 +194,7 @@ class PostTile extends StatelessWidget {
                               text: ' (${post.domain})',
                               style: TextStyle(
                                 fontSize: 12,
-                                color: Constants.secondaryTextColor
+                                color: onSurfaceVariantColor
                               )
                             ),
                           ],
@@ -307,7 +308,7 @@ class PostTileCommentHistorySubtitle extends StatelessWidget {
           TextSpan(
             style: TextStyle(
               fontSize: 12,
-              color: Constants.secondaryTextColor,
+              color: Theme.of(context).colorScheme.onSurfaceVariant,
             ),
             children: [
               TextSpan(
@@ -315,7 +316,7 @@ class PostTileCommentHistorySubtitle extends StatelessWidget {
                 style: TextStyle(color: isVisited ? Constants.visitedTextColor : null)
               ),
               if (extraTexts != null)
-                TextSpan(text: ' • ${extraTexts!.join(' • ')}')
+                TextSpan(text: '${Constants.separator}${extraTexts!.join(Constants.separator)}')
             ]
           )
         );
@@ -346,12 +347,12 @@ class _VoteArrow extends StatelessWidget {
     final Color splashColor;
     final Color arrowColor;
     if (isActive) {
-      splashColor = Constants.secondaryTextColor;
+      splashColor = Theme.of(context).colorScheme.onSurfaceVariant;
       arrowColor = activeColor;
     }
     else {
       splashColor = activeColor;
-      arrowColor = Constants.secondaryTextColor;
+      arrowColor = Theme.of(context).colorScheme.onSurfaceVariant;
     }
     return SizedBox(
       height: _voteHeight / 2,

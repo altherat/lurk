@@ -17,13 +17,11 @@ import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_app_bar.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
-import 'package:lurk/widgets/prefixed_name.dart';
 import 'package:lurk/widgets/custom_search_bar.dart';
 import 'package:lurk/widgets/list_tile_icon.dart';
 
 class MainScaffold extends StatefulWidget {
 
-  final GlobalKey<ScaffoldState>? scaffoldKey;
   final GlobalKey<CustomRefreshIndicatorState>? refreshIndicatorKey;
   final Platform platform;
   final Community? activeCommunity;
@@ -43,7 +41,6 @@ class MainScaffold extends StatefulWidget {
 
   const MainScaffold({
     super.key,
-    this.scaffoldKey,
     this.refreshIndicatorKey,
     required this.platform,
     this.activeCommunity,
@@ -63,16 +60,16 @@ class MainScaffold extends StatefulWidget {
   });
 
   @override
-  State<MainScaffold> createState() => _MainScaffoldState();
+  State<MainScaffold> createState() => MainScaffoldState();
 
 }
 
-class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderStateMixin {
+class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderStateMixin {
 
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   final _isBottomBarVisible = ValueNotifier<bool>(true);
   late final ScrollController _scrollController;
   ScrollController? _managedScrollController;
-  late final GlobalKey<ScaffoldState> _scaffoldKey;
 
   @override
   void initState() {
@@ -84,13 +81,21 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
       _managedScrollController = ScrollController();
       _scrollController = _managedScrollController!;
     }
-    _scaffoldKey = widget.scaffoldKey ?? GlobalKey<ScaffoldState>();
   }
 
   @override
   void dispose() {
     _managedScrollController?.dispose();
     super.dispose();
+  }
+
+  void showCommunityList() {
+    if (Settings.useBottomBar.value) {
+      _showCommunitiesBottomSheet(_scaffoldKey.currentContext!);
+    }
+    else {
+      _scaffoldKey.currentState?.openDrawer();
+    }
   }
 
   void _scrollToTopAndRefresh() {
@@ -104,7 +109,7 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
     }
   }
 
-  void _showUsersBottomSheet() {
+  void _showUsersBottomSheet(BuildContext context) {
     final loggedInUsers = Settings.loggedInUsers.value;
     final activeUser = Settings.activeUser.value;
     showModalBottomSheet(
@@ -116,15 +121,43 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
           child: loggedInUsers.isEmpty
             ? ListTile(
                 title: Text('Login to Reddit'),
-                onTap: _onLoginPressed
+                onTap: () => _onLoginPressed(context),
               )
             : _UserList(
                 loggedInUsers: loggedInUsers,
                 activeUser: activeUser!,
-                onLoginPressed: _onLoginPressed,
+                onLoginPressed: () => _onLoginPressed(context),
               )
         );
       }
+    );
+  }
+
+  void _showCommunitiesBottomSheet(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      showDragHandle: true,
+      isScrollControlled: true,
+      builder: (context) {
+        final screenHeight = MediaQuery.of(context).size.height;
+        final viewInsetsBottom = MediaQuery.of(context).viewInsets.bottom;
+        return Padding(
+          padding: EdgeInsets.only(bottom: viewInsetsBottom),
+          child: GestureDetector(
+            behavior: HitTestBehavior.opaque,
+            onTap: () => Navigator.of(context).pop(),
+            child: SizedBox(
+              height: (screenHeight - viewInsetsBottom) * 0.4,
+              child: _CommunityList(
+                platform: widget.platform,
+                activeCommunity: widget.activeCommunity,
+                reverse: Settings.reverseCommunityList.value,
+                onActiveCommunitySelected: _scrollToTopAndRefresh
+              )
+            )
+          ),
+        );
+      },
     );
   }
 
@@ -140,12 +173,12 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
     );
   }
 
-  Future<void> _onLoginPressed() async {
+  Future<void> _onLoginPressed(BuildContext context) async {
     context.pop();
     final username = await widget.platform.api.login();
     if (username != null) {
       _getSubscribedCommunityNames();
-      if (mounted) {
+      if (context.mounted) {
         context.showSnackBarMessage('Logged in to ${widget.platform.name.toTitleCase()} as "$username"');
       }
     }
@@ -153,443 +186,410 @@ class _MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSt
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return ValueListenableBuilder(
-      valueListenable: Settings.useBottomBar,
-      builder: (context, useBottomBar, child) {
-        final List<Widget> iconActions = widget.iconActions.toList();
-        final List<PopupMenuItem> popupMenuItems = [];
-        final titleWidget = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            if (widget.title != null)
-              DefaultTextStyle.merge(
-                style: const TextStyle(height: 1.1),
-                child: widget.title!
-              ),
-            if (widget.subtitle != null)
-              ValueListenableBuilder(
-                valueListenable: Settings.appBarColor,
-                builder: (context, appBarColor, child) {
-                  return Builder(
-                    builder: (context) {
-                      final parentAlpha = (DefaultTextStyle.of(context).style.color!.a * 255).toInt();
-                      return DefaultTextStyle.merge(
-                        style: Theme.of(context).textTheme.bodySmall!.copyWith(
-                          color: appBarColor.contrast.withAlpha(min(parentAlpha, Constants.appBarSubtitleAlpha)),
-                        ),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        child: widget.subtitle!
-                      );
-                    },
-                  );
-                }
+      valueListenable: Settings.showPlatformColorAccents,
+      builder: (context, showPlatformColorAccents, child) {
+        final theme = Theme.of(context);
+        return Theme(
+          data: showPlatformColorAccents
+            ? theme.copyWith(
+                colorScheme: theme.colorScheme.copyWith(
+                  primary: widget.platform.color,
+                  onPrimary: Colors.white,
+                  secondaryContainer: widget.platform.color,
+                  onSecondaryContainer: Colors.white,
+                ),
+                bottomNavigationBarTheme: theme.bottomNavigationBarTheme.copyWith(
+                  selectedItemColor: widget.platform.color,
+                ),
+                textSelectionTheme: TextSelectionThemeData(
+                  cursorColor: widget.platform.color.withAlpha(200),
+                  selectionColor: widget.platform.color.withAlpha(75),
+                  selectionHandleColor: widget.platform.color,
+                ),
+                snackBarTheme: theme.snackBarTheme.copyWith(
+                  actionTextColor: widget.platform.color
+                ),
               )
-          ],
-        );
-        final bool extendBody;
-        final Drawer? drawer;
-        final double drawerEdgeDragWidth;
-        final Widget? appBarDrawerIcon;
-        final Widget? bottomBar;
-        if (useBottomBar) {
-          extendBody = true;
-          final paddingBottom = MediaQuery.of(context).padding.bottom;
-          drawer = null;
-          drawerEdgeDragWidth = 20;
-          appBarDrawerIcon = null;
-          popupMenuItems.add(
-            PopupMenuItem<VoidCallback>(
-              value: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen())),
-              child: const Text('Settings'),
-            )
-          );
-          bottomBar = ValueListenableBuilder(
-            valueListenable: _isBottomBarVisible,
-            builder: (context, isBottomBarVisible, child) {
-              return AnimatedSlide(
-                offset: isBottomBarVisible ? Offset.zero : const Offset(0, 1),
-                duration: const Duration(milliseconds: 300),
-                curve: Curves.easeInOutCubicEmphasized,
-                child: SingleChildScrollView(
-                  physics: const NeverScrollableScrollPhysics(),
-                  child: ValueListenableBuilder(
-                    valueListenable: Settings.appBarColor,
-                    builder: (context, appBarColor, child) {
-                      return Material(
-                        color: appBarColor,
-                        child: Padding(
-                          padding: EdgeInsets.only(bottom: paddingBottom),
-                          child: SizedBox(
-                            height: kBottomNavigationBarHeight,
+            : theme,
+          child: Builder(
+            builder: (context) {
+              final theme = Theme.of(context);
+              return ValueListenableBuilder(
+                valueListenable: Settings.useBottomBar,
+                builder: (context, useBottomBar, child) {
+                  final List<Widget> iconActions = widget.iconActions.toList();
+                  final List<PopupMenuItem> popupMenuItems = [];
+                  final titleWidget = Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      if (widget.title != null)
+                        DefaultTextStyle.merge(
+                          style: const TextStyle(height: 1.1),
+                          child: widget.title!
+                        ),
+                      if (widget.subtitle != null)
+                        ValueListenableBuilder(
+                          valueListenable: Settings.appBarColor,
+                          builder: (context, appBarColor, child) {
+                            return Builder(
+                              builder: (context) {
+                                return DefaultTextStyle.merge(
+                                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                                    color: appBarColor.contrast.withAlpha(min((DefaultTextStyle.of(context).style.color!.a * 255).toInt(), Constants.onSurfaceVariantAlpha)),
+                                  ),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  child: widget.subtitle!
+                                );
+                              },
+                            );
+                          }
+                        )
+                    ],
+                  );
+                  final bool extendBody;
+                  final Widget? drawer;
+                  final double drawerEdgeDragWidth;
+                  final Widget? appBarDrawerIcon;
+                  final Widget? bottomBar;
+                  if (useBottomBar) {
+                    extendBody = true;
+                    final paddingBottom = MediaQuery.of(context).padding.bottom;
+                    drawer = null;
+                    drawerEdgeDragWidth = 20;
+                    appBarDrawerIcon = null;
+                    popupMenuItems.add(
+                      PopupMenuItem<VoidCallback>(
+                        value: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen())),
+                        child: const Text('Settings'),
+                      )
+                    );
+                    bottomBar = ValueListenableBuilder(
+                      valueListenable: _isBottomBarVisible,
+                      builder: (context, isBottomBarVisible, child) {
+                        return AnimatedSlide(
+                          offset: isBottomBarVisible ? Offset.zero : const Offset(0, 1),
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.easeInOutCubicEmphasized,
+                          child: SingleChildScrollView(
+                            physics: const NeverScrollableScrollPhysics(),
                             child: ValueListenableBuilder(
-                              valueListenable: Settings.activeUser,
-                              builder: (context, activeUser, child) {
-                                return ValueListenableBuilder(
-                                  valueListenable: Settings.redditClientId,
-                                  builder: (context, redditClientId, child) {
-                                    return ValueListenableBuilder(
-                                      valueListenable: Settings.redditRedirectUri,
-                                      builder: (context, redditRedirectUri, child) {
-                                        return Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceAround,
-                                          children: [
-                                            if (activeUser != null)
+                              valueListenable: Settings.appBarColor,
+                              builder: (context, appBarColor, child) {
+                                return Material(
+                                  color: appBarColor,
+                                  child: Padding(
+                                    padding: EdgeInsets.only(bottom: paddingBottom),
+                                    child: SizedBox(
+                                      height: kBottomNavigationBarHeight,
+                                      child: ListenableBuilder(
+                                        listenable: Listenable.merge([Settings.activeUser, Settings.redditClientId, Settings.redditRedirectUri]),
+                                        builder: (context, child) {
+                                          final activeUser = Settings.activeUser.value;
+                                          return Row(
+                                            mainAxisAlignment: MainAxisAlignment.spaceAround,
+                                            children: [
+                                              if (activeUser != null)
+                                                  IconButton(
+                                                    icon: _UserIcon(user: activeUser),
+                                                    tooltip: activeUser.name,
+                                                    iconSize: 26,
+                                                    onPressed: () => _showUsersBottomSheet(context)
+                                                  )
+                                              else if (Settings.redditClientId.value != null && Settings.redditRedirectUri.value != null)
                                                 IconButton(
-                                                  icon: _UserIcon(user: activeUser),
-                                                  tooltip: activeUser.name,
+                                                  icon: const Icon(Icons.reddit_rounded),
+                                                  tooltip: 'Login',
                                                   iconSize: 26,
-                                                  onPressed: _showUsersBottomSheet
-                                                )
-                                            else if (redditClientId != null && redditRedirectUri != null)
+                                                  color: appBarColor.contrast,
+                                                  onPressed: () => _showUsersBottomSheet(context)
+                                                ),
                                               IconButton(
-                                                icon: const Icon(Icons.reddit_rounded),
-                                                tooltip: 'Login',
+                                                icon: const Icon(Icons.groups_rounded),
+                                                tooltip: 'Communities',
                                                 iconSize: 26,
                                                 color: appBarColor.contrast,
-                                                onPressed: _showUsersBottomSheet
+                                                onPressed: () => _showCommunitiesBottomSheet(context)
                                               ),
-                                            IconButton(
-                                              icon: const Icon(Icons.groups_rounded),
-                                              tooltip: 'Communities',
-                                              iconSize: 26,
-                                              color: appBarColor.contrast,
-                                              onPressed: () {
-                                                showModalBottomSheet(
-                                                  context: context,
-                                                  showDragHandle: true,
-                                                  isScrollControlled: true,
-                                                  builder: (context) {
-                                                    final screenHeight = MediaQuery.of(context).size.height;
-                                                    final viewInsetsBottom = MediaQuery.of(context).viewInsets.bottom;
-                                                    return Padding(
-                                                      padding: EdgeInsets.only(bottom: viewInsetsBottom),
-                                                      child: GestureDetector(
-                                                        behavior: HitTestBehavior.opaque,
-                                                        onTap: () => Navigator.of(context).pop(),
-                                                        child: SizedBox(
-                                                          height: (screenHeight - viewInsetsBottom) * 0.4,
-                                                          child: _CommunityList(
-                                                            platform: widget.platform,
-                                                            activeCommunity: widget.activeCommunity,
-                                                            reverse: Settings.reverseCommunityList.value,
-                                                            onActiveCommunitySelected: _scrollToTopAndRefresh
-                                                          )
-                                                        )
-                                                      ),
-                                                    );
-                                                  },
-                                                );
-                                              }
-                                            ),
-                                            IconButton(
-                                              icon: const Icon(Icons.refresh_rounded),
-                                              tooltip: 'Refresh',
-                                              iconSize: 26,
-                                              color: appBarColor.contrast,
-                                              onPressed: _scrollToTopAndRefresh
-                                            ),
-                                          ]
-                                        );
-                                      }
-                                    );
-                                  }
+                                              IconButton(
+                                                icon: const Icon(Icons.refresh_rounded),
+                                                tooltip: 'Refresh',
+                                                iconSize: 26,
+                                                color: appBarColor.contrast,
+                                                onPressed: _scrollToTopAndRefresh
+                                              ),
+                                            ]
+                                          );
+                                        }
+                                      ),
+                                    ),
+                                  )
                                 );
                               }
                             ),
                           ),
+                        );
+                      }
+                    );
+                  }
+                  else {
+                    final reverse = Settings.reverseCommunityList.value;
+                    final divider = const Divider(height: 1, color: Constants.lighterBackgroundColor);
+                    final communityList = Expanded(
+                      child: _CommunityList(
+                        platform: widget.platform,
+                        activeCommunity: widget.activeCommunity,
+                        reverse: reverse,
+                        onActiveCommunitySelected: _scrollToTopAndRefresh
+                      )
+                    );
+                    final userList = ValueListenableBuilder(
+                      valueListenable: Settings.loggedInUsers,
+                      builder: (context, loggedInUsers, child) {
+                        if (loggedInUsers.isEmpty) {
+                          if (widget.platform.api.hasLogin) {
+                            return ValueListenableBuilder(
+                              valueListenable: Settings.redditClientId,
+                              builder: (context, redditClientId, child) {
+                                return ValueListenableBuilder(
+                                  valueListenable: Settings.redditRedirectUri,
+                                  builder: (context, redditRedirectUri, child) {
+                                    if (redditClientId == null || redditRedirectUri == null) {
+                                      return const ListTile(leading: _SettingsIconButton());
+                                    }
+                                    return ListTile(
+                                      title: Text('Login to Reddit'),
+                                      onTap: () => _onLoginPressed(context),
+                                      trailing: const _SettingsIconButton(),
+                                    );
+                                  }
+                                );
+                              }
+                            );
+                          }
+                          return const ListTile(leading: _SettingsIconButton());
+                        }
+                        return ValueListenableBuilder(
+                          valueListenable: Settings.activeUser,
+                          builder: (context, activeUser, child) {
+                            return _UserList(
+                              loggedInUsers: loggedInUsers,
+                              activeUser: activeUser!,
+                              addUserTileTrailing: const _SettingsIconButton(),
+                              reverse: reverse,
+                              onLoginPressed: () => _onLoginPressed(context),
+                            );
+                          }
+                        );
+                      }
+                    );
+                    extendBody = false;
+                    drawer = Drawer(
+                      child: AnnotatedRegion<SystemUiOverlayStyle>(
+                        value: const SystemUiOverlayStyle(
+                          statusBarColor: Colors.transparent,
+                          statusBarIconBrightness: Brightness.light, 
+                          statusBarBrightness: Brightness.dark,      
+                        ),
+                        child: SafeArea(
+                          top: reverse,
+                          bottom: !reverse,
+                          child: Stack(
+                            children: [
+                              Column(
+                                children: reverse
+                                  ? [
+                                      userList,
+                                      divider,
+                                      communityList,
+                                      SizedBox(height: MediaQuery.of(context).viewInsets.bottom)
+                                    ]
+                                  : [
+                                      communityList,
+                                      divider,
+                                      userList
+                                    ]
+                              ),
+                              _Scrim(color: (theme.drawerTheme.backgroundColor ?? theme.canvasColor).withAlpha(Constants.scrimAlpha)),
+                            ],
+                          ),
+                        ),
+                      )
+                    );
+                    drawerEdgeDragWidth = MediaQuery.of(context).size.width / 6;
+                    appBarDrawerIcon = IconButton(
+                      icon: const Icon(Icons.menu_rounded),
+                      onPressed: () => _scaffoldKey.currentState?.openDrawer(),
+                    );
+                    bottomBar = null;
+                  }
+                  if (widget.popupMenuActions != null) {
+                    popupMenuItems.insertAll(
+                      0,
+                      widget.popupMenuActions!.entries.map((entry) {
+                        return PopupMenuItem<VoidCallback>(
+                          value: entry.value,
+                          child: Text(entry.key),
+                        );
+                      })
+                    );
+                  }
+                  if (popupMenuItems.isNotEmpty) {
+                    iconActions.add(
+                      PopupMenuButton(
+                        onSelected: (callback) => callback(),
+                        itemBuilder: (context) => popupMenuItems
+                      )
+                    );
+                  }
+
+                  PreferredSizeWidget? scaffoldAppBar;
+                  Widget body;
+                  if (widget.slivers != null || widget.sliverAppBarBottom != null || widget.sliverAppBarFlexibleBackground != null) {
+                    scaffoldAppBar = null;
+                    final paddingTop = MediaQuery.of(context).padding.top;
+                    final appBarBottomHeight = widget.sliverAppBarBottom?.preferredSize.height ?? 0;
+                    final appBarOffset = paddingTop + kToolbarHeight + appBarBottomHeight;
+                    final double? appBarExpandedHeight;
+                    final Widget? appBarFlexibleSpaceBar;
+                    if (widget.sliverAppBarFlexibleBackground != null) {
+                      final flexibleBackgroundWidgetHeight = widget.sliverAppBarFlexibleBackground!.preferredSize.height;
+                      appBarExpandedHeight = kToolbarHeight + flexibleBackgroundWidgetHeight + appBarBottomHeight;
+                      appBarFlexibleSpaceBar = FlexibleSpaceBar(
+                        collapseMode: CollapseMode.parallax,
+                        background: Container(
+                          alignment: Alignment.bottomCenter,
+                          padding: EdgeInsets.only(bottom: appBarBottomHeight),
+                          child: SizedBox(
+                            height: flexibleBackgroundWidgetHeight,
+                            child: widget.sliverAppBarFlexibleBackground
+                          )
+                        ),
+                      );
+                    }
+                    else {
+                      appBarExpandedHeight = null;
+                      appBarFlexibleSpaceBar = null;
+                    }
+                    final sliverAppBar = ListenableBuilder(
+                      listenable: Listenable.merge([Settings.appBarColor, widget.iconActionsBuilder?.$1]),
+                      builder: (context, child) {
+                      final appBarColor = Settings.appBarColor.value;
+                        return SliverAppBar(
+                          pinned: widget.sliverAppBarBottom != null,
+                          floating: true,
+                          snap: true,
+                          title: titleWidget,
+                          bottom: widget.sliverAppBarBottom,
+                          expandedHeight: appBarExpandedHeight,
+                          actions: widget.iconActionsBuilder != null ? [...widget.iconActionsBuilder!.$2(context), ...iconActions] : iconActions,
+                          backgroundColor: appBarColor,
+                          surfaceTintColor: appBarColor,
+                          foregroundColor: appBarColor.contrast,
+                          leading: appBarDrawerIcon,
+                          flexibleSpace: appBarFlexibleSpaceBar
+                        );
+                      }
+                    );
+
+                    if (widget.body != null) {
+                      body = NestedScrollView(
+                        controller: _scrollController,
+                        headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
+                          return [
+                            SliverOverlapAbsorber(
+                              handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
+                              sliver: sliverAppBar,
+                            ),
+                            ...?widget.slivers
+                          ];
+                        },
+                        body: widget.body!
+                      );
+                    }
+                    else {
+                      body = CustomRefreshIndicator(
+                        key: widget.refreshIndicatorKey,
+                        edgeOffset: appBarOffset,
+                        onRefresh: () async {
+                          await widget.onPullRefresh?.call();
+                        },
+                        child: RawScrollbar(
+                      // body = RawScrollbar(
+                          controller: _scrollController,
+                          interactive: false,
+                          radius: const Radius.circular(8),
+                          padding: EdgeInsets.only(top: appBarOffset),
+                          child: CustomScrollView(
+                            controller: _scrollController,
+                            physics: const AlwaysScrollableScrollPhysics(),
+                            slivers: [
+                              sliverAppBar,
+                              // if (widget.onPullRefresh != null)
+                              //   MaterialSliverRefreshControl(
+                              //     platform: widget.platform,
+                              //     onRefresh: widget.onPullRefresh!,
+                              //   ),
+                              ...widget.slivers!,
+                            ]
+                          ),
                         )
                       );
                     }
-                  ),
-                ),
-              );
-            }
-          );
-        }
-        else {
-          final reverse = Settings.reverseCommunityList.value;
-          final divider = const Divider(height: 1, color: Constants.lighterBackgroundColor);
-          final communityList = Expanded(
-            child: _CommunityList(
-              platform: widget.platform,
-              activeCommunity: widget.activeCommunity,
-              reverse: reverse,
-              onActiveCommunitySelected: _scrollToTopAndRefresh
-            )
-          );
-          final userList = ValueListenableBuilder(
-            valueListenable: Settings.loggedInUsers,
-            builder: (context, loggedInUsers, child) {
-              if (loggedInUsers.isEmpty) {
-                if (widget.platform.api.hasLogin) {
-                  return ValueListenableBuilder(
-                    valueListenable: Settings.redditClientId,
-                    builder: (context, redditClientId, child) {
-                      return ValueListenableBuilder(
-                        valueListenable: Settings.redditRedirectUri,
-                        builder: (context, redditRedirectUri, child) {
-                          if (redditClientId == null || redditRedirectUri == null) {
-                            return const ListTile(leading: _SettingsIconButton());
+                    body = Stack(
+                      children: [
+                        body,
+                        ValueListenableBuilder(
+                          valueListenable: Settings.appBarColor,
+                          builder: (context, appBarColor, child) {
+                            return _Scrim(color: appBarColor.withAlpha(Constants.scrimAlpha));
                           }
-                          return ListTile(
-                            title: Text('Login to Reddit'),
-                            onTap: _onLoginPressed,
-                            trailing: const _SettingsIconButton(),
-                          );
+                        )
+                      ],
+                    );
+                  }
+                  else {
+                    scaffoldAppBar = CustomAppBar(
+                      title: titleWidget,
+                      leading: appBarDrawerIcon,
+                      actions: iconActions,
+                    );
+                    body = widget.body!;
+                  }
+
+                  if (useBottomBar) {
+                    body = NotificationListener<UserScrollNotification>(
+                      onNotification: (notification) {
+                        final ScrollDirection direction = notification.direction;
+                        if (direction == ScrollDirection.reverse && _isBottomBarVisible.value) {
+                          _isBottomBarVisible.value = false;
                         }
-                      );
-                    }
+                        else if (direction == ScrollDirection.forward && !_isBottomBarVisible.value) {
+                          _isBottomBarVisible.value = true;
+                        }
+                        return true;
+                      },
+                      child: body
+                    );
+                  }
+
+                  return Scaffold(
+                    key: _scaffoldKey,
+                    extendBody: extendBody,
+                    drawer: drawer,
+                    drawerEdgeDragWidth: drawerEdgeDragWidth,
+                    bottomNavigationBar: bottomBar,
+                    appBar: scaffoldAppBar,
+                    body: body,
+                    bottomSheet: widget.bottomSheetBuilder?.call(context)
                   );
                 }
-                return const ListTile(leading: _SettingsIconButton());
-              }
-              return ValueListenableBuilder(
-                valueListenable: Settings.activeUser,
-                builder: (context, activeUser, child) {
-                  return _UserList(
-                    loggedInUsers: loggedInUsers,
-                    activeUser: activeUser!,
-                    addUserTileTrailing: const _SettingsIconButton(),
-                    reverse: reverse,
-                    onLoginPressed: _onLoginPressed,
-                  );
-                }
               );
-            }
-          );
-          extendBody = false;
-          drawer = Drawer(
-            child: AnnotatedRegion<SystemUiOverlayStyle>(
-              value: const SystemUiOverlayStyle(
-                statusBarColor: Colors.transparent,
-                statusBarIconBrightness: Brightness.light, 
-                statusBarBrightness: Brightness.dark,      
-              ),
-              child: SafeArea(
-                top: reverse,
-                bottom: !reverse,
-                child: Stack(
-                  children: [
-                    Column(
-                      children: reverse
-                        ? [
-                            userList,
-                            divider,
-                            communityList,
-                            SizedBox(height: MediaQuery.of(context).viewInsets.bottom)
-                          ]
-                        : [
-                            communityList,
-                            divider,
-                            userList
-                          ]
-                    ),
-                    _Scrim(color: (theme.drawerTheme.backgroundColor ?? theme.canvasColor).withAlpha(Constants.scrimAlpha)),
-                  ],
-                ),
-              ),
-            )
-          );
-          drawerEdgeDragWidth = MediaQuery.of(context).size.width / 6;
-          appBarDrawerIcon = IconButton(
-            icon: const Icon(Icons.menu_rounded),
-            onPressed: () => _scaffoldKey.currentState?.openDrawer(),
-          );
-          bottomBar = null;
-        }
-        if (widget.popupMenuActions != null) {
-          popupMenuItems.insertAll(
-            0,
-            widget.popupMenuActions!.entries.map((entry) {
-              return PopupMenuItem<VoidCallback>(
-                value: entry.value,
-                child: Text(entry.key),
-              );
-            })
-          );
-        }
-        if (popupMenuItems.isNotEmpty) {
-          iconActions.add(
-            PopupMenuButton(
-              onSelected: (callback) => callback(),
-              itemBuilder: (context) => popupMenuItems
-            )
-          );
-        }
-
-        PreferredSizeWidget? scaffoldAppBar;
-        Widget body;
-        if (widget.slivers != null || widget.sliverAppBarBottom != null || widget.sliverAppBarFlexibleBackground != null) {
-          scaffoldAppBar = null;
-          final paddingTop = MediaQuery.of(context).padding.top;
-          final appBarBottomHeight = widget.sliverAppBarBottom?.preferredSize.height ?? 0;
-          final appBarOffset = paddingTop + kToolbarHeight + appBarBottomHeight;
-          final double? appBarExpandedHeight;
-          final Widget? appBarFlexibleSpaceBar;
-          if (widget.sliverAppBarFlexibleBackground != null) {
-            final flexibleBackgroundWidgetHeight = widget.sliverAppBarFlexibleBackground!.preferredSize.height;
-            appBarExpandedHeight = kToolbarHeight + flexibleBackgroundWidgetHeight + appBarBottomHeight;
-            appBarFlexibleSpaceBar = FlexibleSpaceBar(
-              collapseMode: CollapseMode.parallax,
-              background: Container(
-                alignment: Alignment.bottomCenter,
-                padding: EdgeInsets.only(bottom: appBarBottomHeight),
-                child: SizedBox(
-                  height: flexibleBackgroundWidgetHeight,
-                  child: widget.sliverAppBarFlexibleBackground
-                )
-              ),
-            );
-          }
-          else {
-            appBarExpandedHeight = null;
-            appBarFlexibleSpaceBar = null;
-          }
-          final sliverAppBar = ListenableBuilder(
-            listenable: Listenable.merge([Settings.appBarColor, widget.iconActionsBuilder?.$1]),
-            builder: (context, child) {
-            final appBarColor = Settings.appBarColor.value;
-              return SliverAppBar(
-                pinned: widget.sliverAppBarBottom != null,
-                floating: true,
-                snap: true,
-                title: titleWidget,
-                bottom: widget.sliverAppBarBottom,
-                expandedHeight: appBarExpandedHeight,
-                actions: widget.iconActionsBuilder != null ? [...widget.iconActionsBuilder!.$2(context), ...iconActions] : iconActions,
-                backgroundColor: appBarColor,
-                surfaceTintColor: appBarColor,
-                foregroundColor: appBarColor.contrast,
-                leading: appBarDrawerIcon,
-                flexibleSpace: appBarFlexibleSpaceBar
-              );
-            }
-          );
-
-          if (widget.body != null) {
-            body = NestedScrollView(
-              controller: _scrollController,
-              headerSliverBuilder: (BuildContext context, bool innerBoxIsScrolled) {
-                return [
-                  SliverOverlapAbsorber(
-                    handle: NestedScrollView.sliverOverlapAbsorberHandleFor(context),
-                    sliver: sliverAppBar,
-                  ),
-                  ...?widget.slivers
-                ];
-              },
-              body: widget.body!
-            );
-          }
-          else {
-            body = CustomRefreshIndicator(
-              key: widget.refreshIndicatorKey,
-              edgeOffset: appBarOffset,
-              onRefresh: () async {
-                await widget.onPullRefresh?.call();
-              },
-              child: RawScrollbar(
-            // body = RawScrollbar(
-                controller: _scrollController,
-                interactive: false,
-                radius: const Radius.circular(8),
-                padding: EdgeInsets.only(top: appBarOffset),
-                child: CustomScrollView(
-                  controller: _scrollController,
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  slivers: [
-                    sliverAppBar,
-                    // if (widget.onPullRefresh != null)
-                    //   MaterialSliverRefreshControl(
-                    //     platform: widget.platform,
-                    //     onRefresh: widget.onPullRefresh!,
-                    //   ),
-                    ...widget.slivers!,
-                  ]
-                ),
-              )
-            );
-          }
-          body = Stack(
-            children: [
-              body,
-              ValueListenableBuilder(
-                valueListenable: Settings.appBarColor,
-                builder: (context, appBarColor, child) {
-                  return _Scrim(color: appBarColor.withAlpha(Constants.scrimAlpha));
-                }
-              )
-            ],
-          );
-        }
-        else {
-          scaffoldAppBar = CustomAppBar(
-            title: titleWidget,
-            leading: appBarDrawerIcon,
-            actions: iconActions,
-          );
-          body = widget.body!;
-        }
-
-        if (useBottomBar) {
-          body = NotificationListener<UserScrollNotification>(
-            onNotification: (notification) {
-              final ScrollDirection direction = notification.direction;
-              if (direction == ScrollDirection.reverse && _isBottomBarVisible.value) {
-                _isBottomBarVisible.value = false;
-              }
-              else if (direction == ScrollDirection.forward && !_isBottomBarVisible.value) {
-                _isBottomBarVisible.value = true;
-              }
-              return true;
             },
-            child: body
-          );
-        }
-
-        return ValueListenableBuilder(
-          valueListenable: Settings.showPlatformColorAccents,
-          builder: (context, showPlatformColorAccents, child) {
-            final scaffold = Scaffold(
-              key: _scaffoldKey,
-              extendBody: extendBody,
-              drawer: drawer,
-              drawerEdgeDragWidth: drawerEdgeDragWidth,
-              bottomNavigationBar: bottomBar,
-              appBar: scaffoldAppBar,
-              body: body,
-              bottomSheet: widget.bottomSheetBuilder?.call(context)
-            );
-            if (showPlatformColorAccents) {
-              return Theme(
-                data: theme.copyWith(
-                  colorScheme: theme.colorScheme.copyWith(
-                    primary: widget.platform.color,
-                    onPrimary: Colors.white,
-                    secondaryContainer: widget.platform.color,
-                    onSecondaryContainer: Colors.white,
-                  ),
-                  bottomNavigationBarTheme: theme.bottomNavigationBarTheme.copyWith(
-                    selectedItemColor: widget.platform.color,
-                  ),
-                  textSelectionTheme: TextSelectionThemeData(
-                    cursorColor: widget.platform.color.withAlpha(200),
-                    selectionColor: widget.platform.color.withAlpha(75),
-                    selectionHandleColor: widget.platform.color,
-                  ),
-                  snackBarTheme: theme.snackBarTheme.copyWith(
-                    actionTextColor: widget.platform.color
-                  ),
-                ),
-                child: scaffold
-              );
-            }
-            return scaffold;
-          }
+          )
         );
-      }
+      },
     );
   }
 
@@ -1303,13 +1303,19 @@ class _CommunityListState extends State<_CommunityList> {
                 final community = _visibleCommunities[index - headerCount];
                 final IconData icon;
                 final Color? color;
+                final Color communityPrefixColor;
+                final Color communityNameColor;
                 if (community.isFavorite) {
                   icon = Icons.star_rounded;
                   color = theme.colorScheme.onSurface;
+                  communityPrefixColor  = theme.colorScheme.onSurfaceVariant;
+                  communityNameColor = theme.colorScheme.onSurface;
                 }
                 else {
                   icon = Icons.star_border_rounded;
-                  color = null;
+                  color = theme.colorScheme.onSurfaceVariant;
+                  communityPrefixColor  = theme.colorScheme.onSurfaceVariant;
+                  communityNameColor = theme.colorScheme.onSurfaceVariant;
                 }
                 return _CommunityNameListTile(
                   platform: widget.platform,
@@ -1325,7 +1331,25 @@ class _CommunityListState extends State<_CommunityList> {
                       Settings.communities.update(community.copyWith(isFavorite: !community.isFavorite));
                     }
                   ),
-                  title: F.appFlavor == Flavor.combined || community.platform.homeCommunityName == null ? PrefixedCommunityName(community: community) : Text(community.name!),
+                  title: ValueListenableBuilder(
+                    valueListenable: Settings.showPlatformColorTextAccents,
+                    builder: (context, showPlatformColorTextAccents, child) {
+                      return Text.rich(
+                        TextSpan(
+                          children: [
+                            TextSpan(
+                              text: community.platform.communityPrefix,
+                              style: TextStyle(color: showPlatformColorTextAccents ? community.platform.color : communityPrefixColor),
+                            ),
+                            TextSpan(
+                              text: community.name,
+                              style: TextStyle(color: communityNameColor),
+                            ),
+                          ],
+                        )
+                      );
+                    }
+                  ),
                   onTap: _navigateToCommunity
                 );
               }

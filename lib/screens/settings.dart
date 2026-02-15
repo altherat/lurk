@@ -83,6 +83,11 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setting: Settings.reverseCommunityList,
               label: 'Reverse community list'
             ),
+            _BoolSettingListTile(
+              setting: Settings.backOnHomeScreenShowCommunityList,
+              label: 'Override back navigation',
+              infoText: 'When enabled and on the home screen, navigating back will show the community list rather than exit the app.',
+            ),
             if (F.appFlavor.platforms.any((platform) => platform.api.hasLogin)) ...[
               _BoolSettingListTile(
                 setting: Settings.swipePostsToVote,

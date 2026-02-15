@@ -160,7 +160,10 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                 showThumbnail: !_post!.isSelf,
                 subtitle: Text(
                   'posted to ${_post!.community.name}\n${_post!.timeAgoLong} ago by ${_post!.author}',
-                  style: const TextStyle(color: Constants.secondaryTextColor, fontSize: 12)
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    fontSize: 12
+                  )
                 )
               ),
               if (_post!.textHtml != null)
@@ -182,7 +185,10 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                       builder: (context, feedOptions, child) {
                         return Text(
                           'sorted by${feedOptions != null ? ': ${feedOptions.values.map((option) => option.label.toLowerCase()).join(' / ')}' : ' ${_post!.community.platform.postCommentsFeedOptions.options.first.label.toLowerCase()}'}',
-                          style: const TextStyle(color: Constants.secondaryTextColor, fontSize: 11),
+                          style: TextStyle(
+                            color: Theme.of(context).colorScheme.onSurfaceVariant,
+                            fontSize: 11
+                          ),
                         );
                       }
                     )
@@ -559,7 +565,7 @@ class _PostBodyContainer extends StatelessWidget {
       margin: const EdgeInsets.all(8),
       width: double.infinity,
       decoration: BoxDecoration(
-        border: Border.all(color: Constants.postTextHtmlBorderColor),
+        border: Border.all(color: Constants.postBodyBorderColor),
         borderRadius: BorderRadius.circular(4),
       ),
       child: child
@@ -751,7 +757,7 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
         style: const TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.bold,
-          color: Constants.linkTextColor
+          color: Constants.loadMoreCommentsTextColor
         ),
       );
     }

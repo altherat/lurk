@@ -4,6 +4,7 @@ import 'package:lurk/screens/home.dart';
 import 'package:lurk/services/history.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
+import 'package:lurk/widgets/main_scaffold.dart';
 
 final routeObserver = _RouteObserver();
 
@@ -20,7 +21,7 @@ class App extends StatefulWidget {
 
 class _AppState extends State<App> {
 
-  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  final _scaffoldKey = GlobalKey<MainScaffoldState>();
   late final Future<void> _servicesInitFuture;
 
   @override
@@ -54,7 +55,7 @@ class _AppState extends State<App> {
           dividerColor: Colors.transparent,
         ),
         popupMenuTheme: const PopupMenuThemeData(
-          color: Constants.popupMenuColor
+          color: Constants.lighterBackgroundColor
         ),
         chipTheme: const ChipThemeData(
           showCheckmark: false,
@@ -88,17 +89,20 @@ class _AppState extends State<App> {
         future: _servicesInitFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
-            return PopScope(
-              canPop: false,
-              onPopInvokedWithResult: (bool didPop, dynamic result) {
-                if (didPop) {
-                  return;
-                }
-                if (!(_scaffoldKey.currentState?.isDrawerOpen ?? false)) {
-                  _scaffoldKey.currentState?.openDrawer();
-                }
-              },
-              child: HomeScreen(scaffoldKey: _scaffoldKey)
+            return ValueListenableBuilder(
+              valueListenable: Settings.backOnHomeScreenShowCommunityList,
+              builder: (context, backOnHomeScreenShowCommunityList, child) {
+                return PopScope(
+                  canPop: !backOnHomeScreenShowCommunityList,
+                  onPopInvokedWithResult: (bool didPop, dynamic result) {
+                    if (didPop) {
+                      return;
+                    }
+                    _scaffoldKey.currentState?.showCommunityList();
+                  },
+                  child: HomeScreen(scaffoldKey: _scaffoldKey)
+                );
+              }
             );
           }
           return const LargeCenteredCircularProgressIndicator();

@@ -128,7 +128,6 @@ class _CommentTileState extends State<CommentTile> {
 
   @override
   Widget build(BuildContext context) {
-
     final String? authorTag;
     final Color authorColor;
     if (widget.comment.isModerator) {
@@ -270,7 +269,7 @@ class _CommentTileState extends State<CommentTile> {
                   TextSpan(
                     style: TextStyle(
                       fontSize: 12,
-                      color: Constants.secondaryTextColor,
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
                       fontStyle: widget.isCollapsed ? FontStyle.italic : null
                     ),
                     children: [
@@ -303,7 +302,7 @@ class _CommentTileState extends State<CommentTile> {
                           text: ' [$authorTag]',
                           style: TextStyle(color: authorColor)
                         ),
-                      TextSpan(text: ' • ${widget.comment.score != null ? (widget.comment.score! + (vote == null ? 0 : vote ? 1 : -1)).toPluralString('point') : '[~]'} • ${widget.comment.timeAgoLong}${widget.showCommunityName ? ' • ${widget.comment.communityName}' : ''}'),
+                      TextSpan(text: '${Constants.separator}${widget.comment.score != null ? (widget.comment.score! + (vote == null ? 0 : vote ? 1 : -1)).toPluralString('point') : '[~]'}${Constants.separator}${widget.comment.timeAgoLong}${widget.showCommunityName ? '${Constants.separator}${widget.comment.communityName}' : ''}'),
                       if (widget.isCollapsed)
                         const TextSpan(text: ' [+]'),
                     ],

@@ -56,7 +56,7 @@ class UserStats extends StatelessWidget {
                   stat.label,
                   style: TextStyle(
                     fontSize: labelFontSize,
-                    color: color?.withAlpha(Constants.secondaryTextColorAlpha)
+                    color: color?.withAlpha(Constants.onSurfaceVariantAlpha)
                   ),
                 ),
               ],

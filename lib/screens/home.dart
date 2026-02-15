@@ -3,10 +3,11 @@ import 'package:lurk/app.dart' as App;
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/community.dart';
 import 'package:lurk/services/settings.dart';
+import 'package:lurk/widgets/main_scaffold.dart';
 
 class HomeScreen extends StatefulWidget {
 
-  final GlobalKey<ScaffoldState> scaffoldKey;
+  final GlobalKey<MainScaffoldState> scaffoldKey;
 
   const HomeScreen({
     super.key,
@@ -53,6 +54,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   void didPopNext() {
     _isActive = true;
     if (Settings.homeCommunityPlatform.value != _homeCommunity.platform || Settings.homeCommunityName.value != _homeCommunity.name) {
+      debugPrint('Home communityChanged: ${_homeCommunity.platform} -> ${Settings.homeCommunityPlatform.value}, ${_homeCommunity.name} -> ${Settings.homeCommunityName.value}');
       setState(() {
         _homeCommunity = _getHomeCommunity();
       });

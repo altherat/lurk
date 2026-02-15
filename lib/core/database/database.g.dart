@@ -448,6 +448,23 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     ),
     defaultValue: const Constant(Constants.defaultReverseCommunityList),
   );
+  static const VerificationMeta _backOnHomeScreenShowCommunityListMeta =
+      const VerificationMeta('backOnHomeScreenShowCommunityList');
+  @override
+  late final GeneratedColumn<bool> backOnHomeScreenShowCommunityList =
+      GeneratedColumn<bool>(
+        'back_on_home_screen_show_community_list',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("back_on_home_screen_show_community_list" IN (0, 1))',
+        ),
+        defaultValue: const Constant(
+          Constants.defaultBackOnHomeScreenShowCommunityList,
+        ),
+      );
   static const VerificationMeta _showPlatformColorAccentsMeta =
       const VerificationMeta('showPlatformColorAccents');
   @override
@@ -597,6 +614,7 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     appBarColor,
     useBottomBar,
     reverseCommunityList,
+    backOnHomeScreenShowCommunityList,
     showPlatformColorAccents,
     showPlatformColorTextAccents,
     redditCopyOldRedditLinks,
@@ -702,6 +720,15 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         reverseCommunityList.isAcceptableOrUnknown(
           data['reverse_community_list']!,
           _reverseCommunityListMeta,
+        ),
+      );
+    }
+    if (data.containsKey('back_on_home_screen_show_community_list')) {
+      context.handle(
+        _backOnHomeScreenShowCommunityListMeta,
+        backOnHomeScreenShowCommunityList.isAcceptableOrUnknown(
+          data['back_on_home_screen_show_community_list']!,
+          _backOnHomeScreenShowCommunityListMeta,
         ),
       );
     }
@@ -865,6 +892,10 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.bool,
         data['${effectivePrefix}reverse_community_list'],
       )!,
+      backOnHomeScreenShowCommunityList: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}back_on_home_screen_show_community_list'],
+      )!,
       showPlatformColorAccents: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}show_platform_color_accents'],
@@ -955,6 +986,7 @@ class Setting extends DataClass implements Insertable<Setting> {
   final int? appBarColor;
   final bool useBottomBar;
   final bool reverseCommunityList;
+  final bool backOnHomeScreenShowCommunityList;
   final bool showPlatformColorAccents;
   final bool showPlatformColorTextAccents;
   final bool redditCopyOldRedditLinks;
@@ -980,6 +1012,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     this.appBarColor,
     required this.useBottomBar,
     required this.reverseCommunityList,
+    required this.backOnHomeScreenShowCommunityList,
     required this.showPlatformColorAccents,
     required this.showPlatformColorTextAccents,
     required this.redditCopyOldRedditLinks,
@@ -1028,6 +1061,9 @@ class Setting extends DataClass implements Insertable<Setting> {
     }
     map['use_bottom_bar'] = Variable<bool>(useBottomBar);
     map['reverse_community_list'] = Variable<bool>(reverseCommunityList);
+    map['back_on_home_screen_show_community_list'] = Variable<bool>(
+      backOnHomeScreenShowCommunityList,
+    );
     map['show_platform_color_accents'] = Variable<bool>(
       showPlatformColorAccents,
     );
@@ -1085,6 +1121,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           : Value(appBarColor),
       useBottomBar: Value(useBottomBar),
       reverseCommunityList: Value(reverseCommunityList),
+      backOnHomeScreenShowCommunityList: Value(
+        backOnHomeScreenShowCommunityList,
+      ),
       showPlatformColorAccents: Value(showPlatformColorAccents),
       showPlatformColorTextAccents: Value(showPlatformColorTextAccents),
       redditCopyOldRedditLinks: Value(redditCopyOldRedditLinks),
@@ -1149,6 +1188,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       reverseCommunityList: serializer.fromJson<bool>(
         json['reverseCommunityList'],
       ),
+      backOnHomeScreenShowCommunityList: serializer.fromJson<bool>(
+        json['backOnHomeScreenShowCommunityList'],
+      ),
       showPlatformColorAccents: serializer.fromJson<bool>(
         json['showPlatformColorAccents'],
       ),
@@ -1201,6 +1243,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       'appBarColor': serializer.toJson<int?>(appBarColor),
       'useBottomBar': serializer.toJson<bool>(useBottomBar),
       'reverseCommunityList': serializer.toJson<bool>(reverseCommunityList),
+      'backOnHomeScreenShowCommunityList': serializer.toJson<bool>(
+        backOnHomeScreenShowCommunityList,
+      ),
       'showPlatformColorAccents': serializer.toJson<bool>(
         showPlatformColorAccents,
       ),
@@ -1237,6 +1282,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     Value<int?> appBarColor = const Value.absent(),
     bool? useBottomBar,
     bool? reverseCommunityList,
+    bool? backOnHomeScreenShowCommunityList,
     bool? showPlatformColorAccents,
     bool? showPlatformColorTextAccents,
     bool? redditCopyOldRedditLinks,
@@ -1268,6 +1314,9 @@ class Setting extends DataClass implements Insertable<Setting> {
     appBarColor: appBarColor.present ? appBarColor.value : this.appBarColor,
     useBottomBar: useBottomBar ?? this.useBottomBar,
     reverseCommunityList: reverseCommunityList ?? this.reverseCommunityList,
+    backOnHomeScreenShowCommunityList:
+        backOnHomeScreenShowCommunityList ??
+        this.backOnHomeScreenShowCommunityList,
     showPlatformColorAccents:
         showPlatformColorAccents ?? this.showPlatformColorAccents,
     showPlatformColorTextAccents:
@@ -1332,6 +1381,10 @@ class Setting extends DataClass implements Insertable<Setting> {
       reverseCommunityList: data.reverseCommunityList.present
           ? data.reverseCommunityList.value
           : this.reverseCommunityList,
+      backOnHomeScreenShowCommunityList:
+          data.backOnHomeScreenShowCommunityList.present
+          ? data.backOnHomeScreenShowCommunityList.value
+          : this.backOnHomeScreenShowCommunityList,
       showPlatformColorAccents: data.showPlatformColorAccents.present
           ? data.showPlatformColorAccents.value
           : this.showPlatformColorAccents,
@@ -1384,6 +1437,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('appBarColor: $appBarColor, ')
           ..write('useBottomBar: $useBottomBar, ')
           ..write('reverseCommunityList: $reverseCommunityList, ')
+          ..write(
+            'backOnHomeScreenShowCommunityList: $backOnHomeScreenShowCommunityList, ',
+          )
           ..write('showPlatformColorAccents: $showPlatformColorAccents, ')
           ..write(
             'showPlatformColorTextAccents: $showPlatformColorTextAccents, ',
@@ -1416,6 +1472,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     appBarColor,
     useBottomBar,
     reverseCommunityList,
+    backOnHomeScreenShowCommunityList,
     showPlatformColorAccents,
     showPlatformColorTextAccents,
     redditCopyOldRedditLinks,
@@ -1445,6 +1502,8 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.appBarColor == this.appBarColor &&
           other.useBottomBar == this.useBottomBar &&
           other.reverseCommunityList == this.reverseCommunityList &&
+          other.backOnHomeScreenShowCommunityList ==
+              this.backOnHomeScreenShowCommunityList &&
           other.showPlatformColorAccents == this.showPlatformColorAccents &&
           other.showPlatformColorTextAccents ==
               this.showPlatformColorTextAccents &&
@@ -1473,6 +1532,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<int?> appBarColor;
   final Value<bool> useBottomBar;
   final Value<bool> reverseCommunityList;
+  final Value<bool> backOnHomeScreenShowCommunityList;
   final Value<bool> showPlatformColorAccents;
   final Value<bool> showPlatformColorTextAccents;
   final Value<bool> redditCopyOldRedditLinks;
@@ -1498,6 +1558,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.appBarColor = const Value.absent(),
     this.useBottomBar = const Value.absent(),
     this.reverseCommunityList = const Value.absent(),
+    this.backOnHomeScreenShowCommunityList = const Value.absent(),
     this.showPlatformColorAccents = const Value.absent(),
     this.showPlatformColorTextAccents = const Value.absent(),
     this.redditCopyOldRedditLinks = const Value.absent(),
@@ -1524,6 +1585,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.appBarColor = const Value.absent(),
     this.useBottomBar = const Value.absent(),
     this.reverseCommunityList = const Value.absent(),
+    this.backOnHomeScreenShowCommunityList = const Value.absent(),
     this.showPlatformColorAccents = const Value.absent(),
     this.showPlatformColorTextAccents = const Value.absent(),
     this.redditCopyOldRedditLinks = const Value.absent(),
@@ -1550,6 +1612,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<int>? appBarColor,
     Expression<bool>? useBottomBar,
     Expression<bool>? reverseCommunityList,
+    Expression<bool>? backOnHomeScreenShowCommunityList,
     Expression<bool>? showPlatformColorAccents,
     Expression<bool>? showPlatformColorTextAccents,
     Expression<bool>? redditCopyOldRedditLinks,
@@ -1582,6 +1645,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (useBottomBar != null) 'use_bottom_bar': useBottomBar,
       if (reverseCommunityList != null)
         'reverse_community_list': reverseCommunityList,
+      if (backOnHomeScreenShowCommunityList != null)
+        'back_on_home_screen_show_community_list':
+            backOnHomeScreenShowCommunityList,
       if (showPlatformColorAccents != null)
         'show_platform_color_accents': showPlatformColorAccents,
       if (showPlatformColorTextAccents != null)
@@ -1614,6 +1680,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<int?>? appBarColor,
     Value<bool>? useBottomBar,
     Value<bool>? reverseCommunityList,
+    Value<bool>? backOnHomeScreenShowCommunityList,
     Value<bool>? showPlatformColorAccents,
     Value<bool>? showPlatformColorTextAccents,
     Value<bool>? redditCopyOldRedditLinks,
@@ -1643,6 +1710,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       appBarColor: appBarColor ?? this.appBarColor,
       useBottomBar: useBottomBar ?? this.useBottomBar,
       reverseCommunityList: reverseCommunityList ?? this.reverseCommunityList,
+      backOnHomeScreenShowCommunityList:
+          backOnHomeScreenShowCommunityList ??
+          this.backOnHomeScreenShowCommunityList,
       showPlatformColorAccents:
           showPlatformColorAccents ?? this.showPlatformColorAccents,
       showPlatformColorTextAccents:
@@ -1718,6 +1788,11 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
         reverseCommunityList.value,
       );
     }
+    if (backOnHomeScreenShowCommunityList.present) {
+      map['back_on_home_screen_show_community_list'] = Variable<bool>(
+        backOnHomeScreenShowCommunityList.value,
+      );
+    }
     if (showPlatformColorAccents.present) {
       map['show_platform_color_accents'] = Variable<bool>(
         showPlatformColorAccents.value,
@@ -1778,6 +1853,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('appBarColor: $appBarColor, ')
           ..write('useBottomBar: $useBottomBar, ')
           ..write('reverseCommunityList: $reverseCommunityList, ')
+          ..write(
+            'backOnHomeScreenShowCommunityList: $backOnHomeScreenShowCommunityList, ',
+          )
           ..write('showPlatformColorAccents: $showPlatformColorAccents, ')
           ..write(
             'showPlatformColorTextAccents: $showPlatformColorTextAccents, ',
@@ -2660,6 +2738,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<int?> appBarColor,
       Value<bool> useBottomBar,
       Value<bool> reverseCommunityList,
+      Value<bool> backOnHomeScreenShowCommunityList,
       Value<bool> showPlatformColorAccents,
       Value<bool> showPlatformColorTextAccents,
       Value<bool> redditCopyOldRedditLinks,
@@ -2687,6 +2766,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<int?> appBarColor,
       Value<bool> useBottomBar,
       Value<bool> reverseCommunityList,
+      Value<bool> backOnHomeScreenShowCommunityList,
       Value<bool> showPlatformColorAccents,
       Value<bool> showPlatformColorTextAccents,
       Value<bool> redditCopyOldRedditLinks,
@@ -2776,6 +2856,12 @@ class $$SettingsTableFilterComposer
     column: $table.reverseCommunityList,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<bool> get backOnHomeScreenShowCommunityList =>
+      $composableBuilder(
+        column: $table.backOnHomeScreenShowCommunityList,
+        builder: (column) => ColumnFilters(column),
+      );
 
   ColumnFilters<bool> get showPlatformColorAccents => $composableBuilder(
     column: $table.showPlatformColorAccents,
@@ -2908,6 +2994,12 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get backOnHomeScreenShowCommunityList =>
+      $composableBuilder(
+        column: $table.backOnHomeScreenShowCommunityList,
+        builder: (column) => ColumnOrderings(column),
+      );
+
   ColumnOrderings<bool> get showPlatformColorAccents => $composableBuilder(
     column: $table.showPlatformColorAccents,
     builder: (column) => ColumnOrderings(column),
@@ -3039,6 +3131,12 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get backOnHomeScreenShowCommunityList =>
+      $composableBuilder(
+        column: $table.backOnHomeScreenShowCommunityList,
+        builder: (column) => column,
+      );
+
   GeneratedColumn<bool> get showPlatformColorAccents => $composableBuilder(
     column: $table.showPlatformColorAccents,
     builder: (column) => column,
@@ -3139,6 +3237,8 @@ class $$SettingsTableTableManager
                 Value<int?> appBarColor = const Value.absent(),
                 Value<bool> useBottomBar = const Value.absent(),
                 Value<bool> reverseCommunityList = const Value.absent(),
+                Value<bool> backOnHomeScreenShowCommunityList =
+                    const Value.absent(),
                 Value<bool> showPlatformColorAccents = const Value.absent(),
                 Value<bool> showPlatformColorTextAccents = const Value.absent(),
                 Value<bool> redditCopyOldRedditLinks = const Value.absent(),
@@ -3164,6 +3264,8 @@ class $$SettingsTableTableManager
                 appBarColor: appBarColor,
                 useBottomBar: useBottomBar,
                 reverseCommunityList: reverseCommunityList,
+                backOnHomeScreenShowCommunityList:
+                    backOnHomeScreenShowCommunityList,
                 showPlatformColorAccents: showPlatformColorAccents,
                 showPlatformColorTextAccents: showPlatformColorTextAccents,
                 redditCopyOldRedditLinks: redditCopyOldRedditLinks,
@@ -3193,6 +3295,8 @@ class $$SettingsTableTableManager
                 Value<int?> appBarColor = const Value.absent(),
                 Value<bool> useBottomBar = const Value.absent(),
                 Value<bool> reverseCommunityList = const Value.absent(),
+                Value<bool> backOnHomeScreenShowCommunityList =
+                    const Value.absent(),
                 Value<bool> showPlatformColorAccents = const Value.absent(),
                 Value<bool> showPlatformColorTextAccents = const Value.absent(),
                 Value<bool> redditCopyOldRedditLinks = const Value.absent(),
@@ -3218,6 +3322,8 @@ class $$SettingsTableTableManager
                 appBarColor: appBarColor,
                 useBottomBar: useBottomBar,
                 reverseCommunityList: reverseCommunityList,
+                backOnHomeScreenShowCommunityList:
+                    backOnHomeScreenShowCommunityList,
                 showPlatformColorAccents: showPlatformColorAccents,
                 showPlatformColorTextAccents: showPlatformColorTextAccents,
                 redditCopyOldRedditLinks: redditCopyOldRedditLinks,

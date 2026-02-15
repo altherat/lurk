@@ -6,8 +6,6 @@ import 'core/flavors.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  F.appFlavor = Flavor.values.firstWhere(
-    (element) => element.name == appFlavor,
-  );
+  F.appFlavor = Flavor.values.firstWhere((element) => element.name == appFlavor);
   runApp(const App());
 }

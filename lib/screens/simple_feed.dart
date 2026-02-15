@@ -12,7 +12,7 @@ import 'package:lurk/widgets/main_scaffold.dart';
 
 class SimpleFeedScreen<T> extends StatefulWidget {
 
-  final GlobalKey<ScaffoldState>? scaffoldKey;
+  final GlobalKey<MainScaffoldState>? scaffoldKey;
   final Platform platform;
   final Community? activeCommunity;
   final FeedOptionsGroup? feedOptions;
@@ -139,7 +139,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
                   controller: _scrollControllers[i],
                   interactive: false,
                   child: CustomScrollView(
-                    controller: _scrollControllers[i],
+                    // controller: _scrollControllers[i],
                     physics: const AlwaysScrollableScrollPhysics(),
                     slivers: [
                       SliverOverlapInjector(handle: overlapAbsorberHandle),
@@ -168,7 +168,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
         );
       }
       return MainScaffold(
-        scaffoldKey: widget.scaffoldKey,
+        key: widget.scaffoldKey,
         platform: widget.platform,
         activeCommunity: widget.activeCommunity,
         title: widget.title,
@@ -240,7 +240,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
     final feedOptions = widget.feedOptions;
     final selectedFeedOptions = _selectedFeedOptions[0];
     return MainScaffold(
-      scaffoldKey: widget.scaffoldKey,
+      key: widget.scaffoldKey,
       refreshIndicatorKey: _refreshIndicatorKeys[0],
       platform: widget.platform,
       activeCommunity: widget.activeCommunity,

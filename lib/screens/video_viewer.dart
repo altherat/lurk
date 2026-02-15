@@ -330,7 +330,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
                                     color: Colors.white,
                                     size: 34
                                   ),
-                                  onSelected: (value) => _onControlsChanged(() => _videoController.setPlaybackSpeed(value)),
+                                  onSelected: (value) => _onControlsChanged(() => setState(() => _videoController.setPlaybackSpeed(value))),
                                   itemBuilder: (context) => playbackSpeeds.map((speed) {
                                     return PopupMenuItem<double>(
                                       value: speed,

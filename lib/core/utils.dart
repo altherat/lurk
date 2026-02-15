@@ -204,12 +204,12 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
   }
 
   if (host == 'giphy.com' || host == 'www.giphy.com') {
-    final match = RegExp(r'gifs\/(?:.*-)?([a-zA-Z0-9]{5,})').firstMatch(url);
-    if (match != null) {
+    final directGiphyUrl = getGiphyDirectUrl(url);
+    if (directGiphyUrl != null) {
       return context.push(
         () => ImageViewerScreen(
           platform: platform,
-          url: 'https://media.giphy.com/media/${match.group(1)}/giphy.webp',
+          url: directGiphyUrl,
           post: post,
         )
       );
@@ -291,6 +291,11 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
     )
   );
   
+}
+
+String? getGiphyDirectUrl(String url) {
+  final match = RegExp(r'gifs\/(?:.*-)?([a-zA-Z0-9]{5,})').firstMatch(url);
+  return match != null ? 'https://media.giphy.com/media/${match.group(1)}/giphy.webp' : null;
 }
 
 Future<void> showSimpleBottomSheet({

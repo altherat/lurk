@@ -116,10 +116,10 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                 children: [
                   Text(_post.title),
                   Text(
-                    'by ${_post.author ?? '[deleted]'} • ${_post.timeAgoLong}',
-                    style: const TextStyle(
+                    'by ${_post.author ?? '[deleted]'}${Constants.separator}${_post.timeAgoLong}',
+                    style: TextStyle(
                       fontSize: 12,
-                      color: Constants.secondaryTextColor
+                      color: Theme.of(context).colorScheme.onSurfaceVariant
                     ),
                   ),
                   const SizedBox(height: 16),

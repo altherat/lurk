@@ -55,6 +55,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
       title: PrefixedName(
         prefix: widget.platform.userPrefix,
         name: widget.username,
+        applyAppBarAlpha: true,
       ),
       flexibleSpaceHeader: PreferredSize(
         preferredSize: Size.fromHeight(80),
@@ -124,7 +125,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
               item.postTitle!,
               maxLines: 2,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(color: Constants.secondaryTextColor),
+              style: TextStyle(color: Theme.of(context).colorScheme.onSurfaceVariant),
             )
           );
         }
