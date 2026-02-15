@@ -52,6 +52,7 @@ dependencies:
   webview_flutter_android: ^4.10.11
   gal: ^2.3.2
   sqlite3_flutter_libs: ^0.5.41
+  html: ^0.15.6
 
 dev_dependencies:
   flutter_test:

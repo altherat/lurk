@@ -79,8 +79,8 @@ class RedditApi extends Api {
 
   Future<Response> _handleResponse(Future<Response> response) async {
     final awaited = await response;
-    // dev.log('[Reddit] Response: ${awaited.body}');
     dev.log('[Reddit] Response code: ${awaited.statusCode}');
+    // dev.log('[Reddit] Response: ${awaited.body}');
     dev.log('[Reddit] Rate limit headers:');
     for (var headerEntry in awaited.headers.entries) {
       // dev.log('[Reddit] ${headerEntry.key}: ${headerEntry.value}');
@@ -106,6 +106,8 @@ class RedditApi extends Api {
     final activeUserId = Settings.activeUser.value?.id;
     return _authClientHelpers[activeUserId] ??= _AuthClientHelper(clientId, activeUserId, () => savedOrDefaultUserAgent);
   }
+
+  String _replaceHtmlEscapedCharacters(String html) => html.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&');
 
   @override
   String get baseUrl => Settings.redditCopyOldRedditLinks.value ? _baseUrlOld : _baseUrl;
@@ -304,6 +306,12 @@ class RedditApi extends Api {
     final (votes, items) = await compute(parseFn, (await response).body);
     votes.forEach((commentId, vote) => Votes.comments.setVote(commentId, vote));
     return items;
+  }
+
+  @override
+  Future<Community> getCommunityDetails(String name) async {
+    final response = await _get('/r/$name/about.json');
+    return compute(_parseCommunity, jsonDecode(response.body)['data'] as Map<String, dynamic>);
   }
 
   @override
@@ -550,31 +558,25 @@ class RedditApi extends Api {
   Future<LoggedInUser> getLoggedInUser() async => compute(_parseLoggedInUser, (await _get('/api/v1/me')).body);
   
   @override
-  Future<List<String>> getSubscribedCommunityNames() async {
-    List<String> communityNames = [];
+  Future<List<Community>> getSubscribedCommunities() async {
+    List<Community> communities = [];
     String? after;
-    try {
-      do {
-        final response = await _get(
-          '/subreddits/mine/subscriber.json',
-            params: {
-              'limit': '100',
-              if (after != null)
-                'after': after,
-            }
-        );
-        final data = jsonDecode(response.body)['data'];
-        for (var child in data['children']) {
-          communityNames.add((child['data']['display_name'] as String).toLowerCase());
-        }
-        after = data['after'];
+    do {
+      final response = await _get(
+        '/subreddits/mine/subscriber.json',
+          params: {
+            'limit': '100',
+            'after': ?after,
+          }
+      );
+      final data = jsonDecode(response.body)['data'];
+      for (var child in data['children']) {
+        communities.add(_parseCommunity(child['data']));
       }
-      while (after != null);
+      after = data['after'];
     }
-    catch (e) {
-      dev.log('Error fetching subscriptions: $e');
-    }
-    return communityNames;
+    while (after != null);
+    return communities;
   }
 
   @override
@@ -622,12 +624,25 @@ class RedditApi extends Api {
   }
 
   @override
+  Future<void> subscribe(String id) {
+    // dev.log('[Reddit] subscribe: id=$id');
+    return _post(
+      '/api/subscribe',
+      {
+        'action': 'sub',
+        'sr': id,
+      }
+    );
+  }
+
+  @override
   Future<void> unsubscribe(String id) {
     // dev.log('[Reddit] unsubscribe: id=$id');
     return _post(
-      '/api/subscribe?action=unsub',
+      '/api/subscribe',
       {
-        'id': id,
+        'action': 'unsub',
+        'sr': id,
       }
     );
   }
@@ -823,7 +838,7 @@ class RedditApi extends Api {
         score: data['score_hidden'] ? null : data['score'],
         timestampMs: (data['created_utc'] as num).toInt() * 1000,
         text: data['body'],
-        textHtml: (data['body_html'] as String).replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&'),
+        textHtml: _replaceHtmlEscapedCharacters(data['body_html']),
         images: images,
         postTitle: data['link_title'],
         communityName: (data['subreddit'] as String).toLowerCase()
@@ -844,6 +859,25 @@ class RedditApi extends Api {
     );
   }
 
+}
+
+Community _parseCommunity(Map<String, dynamic> data) {
+  final String description = data['public_description'];
+  final String? iconUrl = data['community_icon'];
+  final String? bannerUrl = data['banner_background_image'];
+
+  return Community(
+    platform: Platform.reddit,
+    name: (data['display_name'] as String).toLowerCase(),
+    id: data['name'],
+    createdDate: DateTime.fromMillisecondsSinceEpoch((data['created_utc'] as num).toInt() * 1000, isUtc: true),
+    title: data['title'],
+    description: description.isNotEmpty ? description : null,
+    iconUrl: iconUrl == null || iconUrl.isEmpty ? data['icon_img'] : iconUrl.replaceAll('&amp;', '&'),
+    bannerUrl: bannerUrl == null || bannerUrl.isEmpty ? data['mobile_banner_image'] : bannerUrl.replaceAll('&amp;', '&'),
+    subscriberCount: data['subscribers'],
+    isSubscribed: data['user_is_subscriber'],
+  );
 }
 
 abstract class _ClientHelper {

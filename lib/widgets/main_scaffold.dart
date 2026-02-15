@@ -28,7 +28,7 @@ class MainScaffold extends StatefulWidget {
   final ScrollController? customScrollViewController;
   final Widget? title;
   final Widget? subtitle;
-  final List<Widget> iconActions;
+  final List<Widget>? iconActions;
   final Map<String, VoidCallback>? popupMenuActions;
   final PreferredSizeWidget? sliverAppBarFlexibleBackground;
   final PreferredSizeWidget? sliverAppBarBottom;
@@ -47,7 +47,7 @@ class MainScaffold extends StatefulWidget {
     this.customScrollViewController,
     required this.title,
     this.subtitle,
-    this.iconActions = const [],
+    this.iconActions,
     this.popupMenuActions,
     this.sliverAppBarFlexibleBackground,
     this.sliverAppBarBottom,
@@ -161,23 +161,11 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
     );
   }
 
-  Future<void> _getSubscribedCommunityNames() async {
-    final subscribedCommunityNames = await widget.platform.api.getSubscribedCommunityNames();
-    Settings.communities.addAll(
-      subscribedCommunityNames.map((name) {
-        return Community(
-          platform: Platform.reddit,
-          name: name
-        );
-      })
-    );
-  }
-
   Future<void> _onLoginPressed(BuildContext context) async {
     context.pop();
     final username = await widget.platform.api.login();
     if (username != null) {
-      _getSubscribedCommunityNames();
+      Settings.communities.addAll(await widget.platform.api.getSubscribedCommunities());
       if (context.mounted) {
         context.showSnackBarMessage('Logged in to ${widget.platform.name.toTitleCase()} as "$username"');
       }
@@ -218,7 +206,7 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
               return ValueListenableBuilder(
                 valueListenable: Settings.useBottomBar,
                 builder: (context, useBottomBar, child) {
-                  final List<Widget> iconActions = widget.iconActions.toList();
+                  final List<Widget> iconActions = widget.iconActions?.toList() ?? [];
                   final List<PopupMenuItem> popupMenuItems = [];
                   final titleWidget = Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,7 +223,7 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
                             return Builder(
                               builder: (context) {
                                 return DefaultTextStyle.merge(
-                                  style: Theme.of(context).textTheme.bodySmall!.copyWith(
+                                  style: theme.textTheme.bodySmall!.copyWith(
                                     color: appBarColor.contrast.withAlpha(min((DefaultTextStyle.of(context).style.color!.a * 255).toInt(), Constants.onSurfaceVariantAlpha)),
                                   ),
                                   maxLines: 1,
@@ -1360,20 +1348,15 @@ class _CommunityListState extends State<_CommunityList> {
             return CustomRefreshIndicator(
               edgeOffset: MediaQuery.of(context).padding.top + 56,
               onRefresh: () async {
-                final List<Community> subcscribedCommunities = [];
+                final Map<Community, Community> subscribedCommunities = {};
                 for (final platform in F.appFlavor.platforms) {
                   if (platform.api.hasLogin) {
-                    for (final communityName in (await widget.platform.api.getSubscribedCommunityNames())) {
-                      subcscribedCommunities.add(
-                        Community(
-                          platform: platform,
-                          name: communityName
-                        )
-                      );
+                    for (final community in await platform.api.getSubscribedCommunities()) {
+                      subscribedCommunities[community] = community;
                     }
                   }
                 }
-                Settings.communities.addAll(subcscribedCommunities);
+                Settings.communities.updateEach((community) => subscribedCommunities[community] ?? community.copyWith(isSubscribed: false));
               },
               child: listView
             );
@@ -1414,13 +1397,22 @@ class _CommunityNameListTile extends StatelessWidget {
           onTap: () => onTap(community),
           onLongPress: community.name != null
             ? () {
-                // final activeUser = Settings.activeUser.value;
+              final activeUser = Settings.activeUser.value;
                 showSimpleOptionsDialog(
                   context: context,
                   title: community.prefixedName,
                   options: {
-                    // if (community.name != null && activeUser != null)
-                    //   'Unsubscribe': () => activeUser.platform.api.unsubscribe(community.name!),
+                    if (activeUser != null && community.isSubscribed != null)
+                      if (community.isSubscribed!)
+                        'Unsubscribe': () {
+                          activeUser.platform.api.unsubscribe(community.name!);
+                          Settings.communities.update(community.copyWith(isSubscribed: false));
+                        }
+                      else
+                        'Subscribe': () {
+                          activeUser.platform.api.subscribe(community.name!);
+                          Settings.communities.update(community.copyWith(isSubscribed: true));
+                        },
                     'Remove': () => Settings.communities.remove(community)
                   },
                 );

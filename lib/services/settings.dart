@@ -330,10 +330,30 @@ class RelationalListSettingNotifier<T> extends ChangeNotifier implements ValueLi
     final index = _value.indexOf(item);
     if (index != -1) {
       final newList = List<T>.from(_value);
+      final bool changedIdentity = newList[index] != item;
       newList[index] = item;
       _value = List.unmodifiable(newList);
       notifyListeners();
-      await _save(item);
+      if (changedIdentity) {
+        await _save(item);
+      }
+    }
+  }
+
+  Future<void> updateEach(T Function(T item) updateFn) async {
+    final valueList = List<T>.from(_value);
+    bool changedIdentity = false;
+    for (var i = 0; i < valueList.length; i++) {
+      final updated = updateFn(valueList[i]);
+      valueList[i] = updated;
+      if (updated != valueList[i]) {
+        changedIdentity = true;
+      }
+    }
+    _value = List.unmodifiable(valueList);
+    notifyListeners();
+    if (changedIdentity) {
+      await _saveAll?.call(valueList);
     }
   }
 

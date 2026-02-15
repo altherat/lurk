@@ -86,7 +86,7 @@ enum Platform {
     communityPrefix: '/',
     homeCommunityName: null,
     rootCommunityName: '',
-    aggregateCommunityNames: {},
+    aggregateCommunityNames: {null},
     canSearchWithinCommunities: false,
     userPrefix: '@',
     communityPath: r'^\/(?![d@]\/|@)([^\/]+)\/?$',

@@ -7,6 +7,7 @@ import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
+import 'package:lurk/models/community.dart';
 import 'package:lurk/models/user.dart';
 
 abstract class Api {
@@ -54,6 +55,7 @@ abstract class Api {
   Future<PostDetails> getPostDetailsFromUrl(String url, {Map<FeedOptionType, FeedOption>? options});
   Future<PostDetails> getPostDetailsFromId(String id, {String? shortCommentId, Map<FeedOptionType, FeedOption>? options});
   Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? depth, Map<FeedOptionType, FeedOption>? options});
+  Future<Community> getCommunityDetails(String name);
   MultiPartFeedResponse<dynamic, List<UserStat>> getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options});
   Future<PagedItems<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
   Future<PagedItems<dynamic>> search(String query, String? communityName, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
@@ -61,11 +63,12 @@ abstract class Api {
   Future<String?> login();
   Future<void> logout(String id);
   Future<LoggedInUser> getLoggedInUser();
-  Future<List<String>> getSubscribedCommunityNames();
+  Future<List<Community>> getSubscribedCommunities();
   Future<void> vote(String id, bool? up);
   Future<Comment> postComment(String id, String text);
   Future<void> deleteComment(String id);
-  Future<void> unsubscribe(String communityName);
+  Future<void> subscribe(String id);
+  Future<void> unsubscribe(String id);
 
 }
 

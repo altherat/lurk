@@ -120,7 +120,14 @@ class DiggApi extends Api {
               },
             ),
           )
-        );
+        ).map((response) {
+          final responseContext = response.context.entry<gql.HttpLinkResponseContext>();
+          if (responseContext != null) {
+            dev.log('[Digg] Response code: ${responseContext.statusCode}');
+          }
+          // dev.log('[Digg] Response: ${response.data}');
+          return response;
+        });
       }).concat(gql.HttpLink(_baseUrlGraphQl)),
       cache: gql.GraphQLCache(),
       defaultPolicies: gql.DefaultPolicies(
@@ -295,6 +302,54 @@ class DiggApi extends Api {
         return comments;
       },
       response.data!
+    );
+  }
+
+  @override
+  Future<Community> getCommunityDetails(String name) async {
+    // dev.log('[Digg] getCommunityDetails: name=${community.name}');
+    final gql.QueryOptions queryOptions = gql.QueryOptions(
+      document: gql.gql(r'''
+        query CommunityQuery($slug: String!) {
+
+          community(where: { slug_EQ: $slug }) {
+            _id
+            createdDate
+            name
+            description
+            descriptionPM
+            iconUrl
+            bannerMobileImage {
+              url
+            }
+            memberCount
+            postCount
+          }
+        }
+
+      '''),
+      variables: {
+        'slug': name
+      },
+    );
+
+    final response = await _client.query(queryOptions);
+    final data = response.data!['community'];
+    final descriptionPm = data['descriptionPM'];
+    final bannerImage = data['bannerMobileImage'];
+    final iconUrl = data['iconUrl'];
+    return Community(
+      id: data['_id'],
+      platform: Platform.digg,
+      name: name,
+      createdDate: DateTime.parse(data['createdDate']),
+      title: data['name'],
+      description: data['description'],
+      descriptionHtml: descriptionPm != null ? _parsePmToHtml(descriptionPm) : null,
+      iconUrl: iconUrl != null ? _getThumbnailUrl(Uri.parse(iconUrl)) : null,
+      bannerUrl: bannerImage != null ? bannerImage['url'] : null,
+      subscriberCount: data['memberCount'],
+      postCount: data['postCount'],
     );
   }
 
@@ -685,7 +740,7 @@ class DiggApi extends Api {
   }
   
   @override
-  Future<List<String>> getSubscribedCommunityNames() {
+  Future<List<Community>> getSubscribedCommunities() {
     throw UnimplementedError();
   }
 
@@ -700,6 +755,11 @@ class DiggApi extends Api {
   
   @override
   Future<void> deleteComment(String id) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<void> subscribe(String id) {
     throw UnimplementedError();
   }
 

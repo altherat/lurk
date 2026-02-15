@@ -54,7 +54,6 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   void didPopNext() {
     _isActive = true;
     if (Settings.homeCommunityPlatform.value != _homeCommunity.platform || Settings.homeCommunityName.value != _homeCommunity.name) {
-      debugPrint('Home communityChanged: ${_homeCommunity.platform} -> ${Settings.homeCommunityPlatform.value}, ${_homeCommunity.name} -> ${Settings.homeCommunityName.value}');
       setState(() {
         _homeCommunity = _getHomeCommunity();
       });
