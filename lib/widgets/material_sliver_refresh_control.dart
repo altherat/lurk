@@ -1,5 +1,5 @@
 import 'package:flutter/cupertino.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 
 class MaterialSliverRefreshControl extends StatelessWidget {

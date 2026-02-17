@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lurk/core/collection_listenable.dart';
+import 'package:lurk/core/collection_listenable/collection_listenable.dart';
 
 class CollectionListenableBuilder<T, R> extends StatefulWidget {
 

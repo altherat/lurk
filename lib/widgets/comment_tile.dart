@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/constants.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/user.dart';
+import 'package:lurk/repositories/comments.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
-import 'package:lurk/services/votes.dart';
 import 'package:lurk/widgets/collection_listenable_builder.dart';
 import 'package:lurk/widgets/custom_html.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
@@ -24,7 +24,7 @@ class CommentTile extends StatefulWidget {
   final bool showViewUserOption;
   final bool isCollapsed;
   final bool isInteractable;
-  final Map<String, Function()> Function(BuildContext context, LoggedInUser? activeUser)? optionsBuilder;
+  final Map<Widget, void Function(BuildContext context)?> Function(BuildContext context, LoggedInUser? activeUser)? optionsBuilder;
   final Widget? header;
   final Widget Function(BuildContext context, Widget body)? bodyBuilder;
   final VoidCallback? onExpandOrCollapse;
@@ -66,20 +66,20 @@ class _CommentTileState extends State<CommentTile> {
 
   void _showOptionsBottomSheet() {
     final activeUser = Settings.activeUser.value;
-    showSimpleTextOptionsBottomSheet(
+    showSimpleOptionsBottomSheet(
       context: context,
       title: '${widget.comment.authorName == null ? 'Deleted' : widget.comment.authorName!.toPosessive()} comment',
       options: {
         if (activeUser != null && activeUser.platform == widget.comment.platform) ...{
-          'Upvote': () => _onVote(true),
-          'Downvote': () => _onVote(false),
-          'Reply': _onReplyPressed,
+          Text('Upvote'): (context) => _updateVote(activeUser.id, true),
+          Text('Downvote'): (context) => _updateVote(activeUser.id, false),
+          Text('Reply'): (context) => _onReplyPressed(context, activeUser.id),
           if (activeUser.id == widget.comment.authorId)
-            'Delete': _onDeleteCommentPressed,
+            Text('Delete'): (context) => _deleteComment(activeUser.id),
         },
         ...?widget.optionsBuilder?.call(context, activeUser),
         if (widget.showViewUserOption && widget.comment.authorName != null)
-          'View ${widget.comment.platform.userPrefix}${widget.comment.authorName}': () {
+          Text('View ${widget.comment.platform.userPrefix}${widget.comment.authorName}'): (context) {
             context.push(
               () => UserDetailsScreen(
                 platform: widget.comment.platform,
@@ -88,8 +88,8 @@ class _CommentTileState extends State<CommentTile> {
             );
           },
         if (widget.comment.text != null)
-          'Copy text': () => copyToClipboard(widget.comment.text!),
-        'Copy link': () => copyToClipboard(widget.comment.platform.api.getCommentUrl(widget.comment)),
+          Text('Copy text'): (context) => copyToClipboard(widget.comment.text!),
+        Text('Copy link'): (context) => copyToClipboard(widget.comment.platform.getCommentUrl(widget.comment)),
       }
     );
   }
@@ -102,11 +102,12 @@ class _CommentTileState extends State<CommentTile> {
     };
   }
 
-  void _onReplyPressed() {
+  void _onReplyPressed(BuildContext context, String activeUserId) {
     showAddCommentBottomSheet(
       context: context,
       platform: widget.comment.platform,
       id: widget.comment.id,
+      activeUserId: activeUserId,
       replyingToWidget: CommentTile(
         comment: widget.comment,
         isInteractable: false,
@@ -115,15 +116,13 @@ class _CommentTileState extends State<CommentTile> {
     );
   }
 
-  void _onDeleteCommentPressed() {
+  void _deleteComment(String activeUserId) {
     widget.onDelete?.call();
-    widget.comment.platform.api.deleteComment(widget.comment.id);
+    widget.comment.platform.getApi(activeUserId).deleteComment(widget.comment.id);
   }
 
-  void _onVote(bool upvote) {
-    final vote = Votes.comments.value(widget.comment.id) == upvote ? null : upvote;
-    Votes.comments.setVote(widget.comment.id, vote);
-    widget.comment.platform.api.vote(widget.comment.id, vote);
+  void _updateVote(String activeUserId, bool up) {
+    widget.comment.platform.getApi(activeUserId).voteComment(widget.comment.id, up);
   }
 
   @override
@@ -186,17 +185,17 @@ class _CommentTileState extends State<CommentTile> {
                   children: [
                     if (canDoLoginActions) ...[
                       CollectionListenableBuilder(
-                        id: widget.comment.id,
-                        collectionListenable: Votes.comments,
-                        builder: (context, vote) {
+                        id: (activeUser.id, widget.comment.id),
+                        collectionListenable: Comments.interactionStates,
+                        builder: (context, interactionState) {
                           return IconButton(
                             icon: Icon(Icons.arrow_upward_outlined),
                             tooltip: 'Upvote',
                             onPressed: () {
                               HapticFeedback.mediumImpact();
-                              _onVote(true);
+                              _updateVote(activeUser.id, true);
                             },
-                            color: vote == true ? Constants.upvoteColor : null
+                            color: interactionState?.vote == true ? Constants.upvoteColor : null
                             // icon: Image.asset(
                             //   'assets/arrow_drop_up_rounded.png',
                             //   width: 20,
@@ -206,17 +205,17 @@ class _CommentTileState extends State<CommentTile> {
                         }
                       ),
                       CollectionListenableBuilder(
-                        id: widget.comment.id,
-                        collectionListenable: Votes.comments,
-                        builder: (context, vote) {
+                        id: (activeUser.id, widget.comment.id),
+                        collectionListenable: Comments.interactionStates,
+                        builder: (context, interactionState) {
                           return IconButton(
                             icon: Icon(Icons.arrow_downward_rounded),
                             tooltip: 'Downvote',
                             onPressed: () {
                               HapticFeedback.mediumImpact();
-                              _onVote(false);
+                              _updateVote(activeUser.id, false);
                             },
-                            color: vote == false ? Constants.downvoteColor : null
+                            color: interactionState?.vote == false ? Constants.downvoteColor : null
                             // icon: Image.asset(
                             //   'assets/arrow_drop_down_rounded.png',
                             //   width: 20,
@@ -228,13 +227,13 @@ class _CommentTileState extends State<CommentTile> {
                       IconButton(
                         icon: Icon(Icons.reply_rounded),
                         tooltip: 'Reply',
-                        onPressed: _onReplyPressed
+                        onPressed: () => _onReplyPressed(context, activeUser.id)
                       ),
                       if (activeUser.id == widget.comment.authorId)
                         IconButton(
                           icon: Icon(Icons.delete_rounded),
                           tooltip: 'Delete',
-                          onPressed: _onDeleteCommentPressed,
+                          onPressed: () => _deleteComment(activeUser.id),
                         )
                     ],
                     IconButton(
@@ -262,9 +261,9 @@ class _CommentTileState extends State<CommentTile> {
           children: [
             ?widget.header,
             CollectionListenableBuilder(
-              id: widget.comment.id,
-              collectionListenable: Votes.comments,
-              builder: (context, vote) {
+              id: (activeUser?.id, widget.comment.id),
+              collectionListenable: Comments.interactionStates,
+              builder: (context, interactionState) {
                 return Text.rich(
                   TextSpan(
                     style: TextStyle(
@@ -273,7 +272,7 @@ class _CommentTileState extends State<CommentTile> {
                       fontStyle: widget.isCollapsed ? FontStyle.italic : null
                     ),
                     children: [
-                      if (vote != null)
+                      if (interactionState?.vote != null)
                         WidgetSpan(
                           alignment: PlaceholderAlignment.middle,
                           child: SizedBox(
@@ -283,9 +282,9 @@ class _CommentTileState extends State<CommentTile> {
                               maxWidth: 28,
                               maxHeight: 28,
                               child: Icon(
-                                vote ? Icons.arrow_drop_up_rounded : Icons.arrow_drop_down_rounded,
+                                interactionState?.vote == true ? Icons.arrow_drop_up_rounded : Icons.arrow_drop_down_rounded,
                                 size: 28, 
-                                color: vote ? Constants.upvoteColor : Constants.downvoteColor,
+                                color: interactionState?.vote == true ? Constants.upvoteColor : Constants.downvoteColor,
                               ),
                             ),
                           ),
@@ -302,7 +301,7 @@ class _CommentTileState extends State<CommentTile> {
                           text: ' [$authorTag]',
                           style: TextStyle(color: authorColor)
                         ),
-                      TextSpan(text: '${Constants.separator}${widget.comment.score != null ? (widget.comment.score! + (vote == null ? 0 : vote ? 1 : -1)).toPluralString('point') : '[~]'}${Constants.separator}${widget.comment.timeAgoLong}${widget.showCommunityName ? '${Constants.separator}${widget.comment.communityName}' : ''}'),
+                      TextSpan(text: '${Constants.separator}${widget.comment.score != null ? interactionState?.score?.toPluralString('point') : '[~]'}${Constants.separator}${widget.comment.timeAgoLong}${widget.showCommunityName ? '${Constants.separator}${widget.comment.communityName}' : ''}'),
                       if (widget.isCollapsed)
                         const TextSpan(text: ' [+]'),
                     ],
@@ -340,7 +339,7 @@ class _CommentTileState extends State<CommentTile> {
             Widget child = tile!;
             if (Settings.swipeCommentsToVote.value) {
               child = SwipeToVote(
-                onVote: (upvote) => _onVote(upvote),
+                onVote: (upvote) => _updateVote(activeUser.id, upvote),
                 child: child,
               );
             }
@@ -367,7 +366,7 @@ class _CommentTileState extends State<CommentTile> {
                         splashColor: Constants.upvoteColor.withAlpha(100),
                         onTap: () {
                           HapticFeedback.mediumImpact();
-                          _onVote(true);
+                          _updateVote(activeUser.id, true);
                         },
                       ),
                     )
@@ -388,7 +387,7 @@ class _CommentTileState extends State<CommentTile> {
                         splashColor: Constants.downvoteColor.withAlpha(100),
                         onTap: () {
                           HapticFeedback.mediumImpact();
-                          _onVote(false);
+                          _updateVote(activeUser.id, false);
                         },
                       )
                     )
@@ -452,6 +451,7 @@ Future<void> showAddCommentBottomSheet({
   required BuildContext context,
   required Platform platform,
   required String id,
+  required String activeUserId,
   required Widget replyingToWidget,
   required void Function(Comment comment) onSubmitted
 }) {
@@ -469,6 +469,7 @@ Future<void> showAddCommentBottomSheet({
       return _AddCommentBottomSheetContent(
         platform: platform,
         replyingToId: id,
+        activeUserId: activeUserId,
         replyingToWidget: replyingToWidget,
         onSubmitted: onSubmitted
       );
@@ -480,12 +481,14 @@ Future<void> showAddCommentBottomSheet({
 class _AddCommentBottomSheetContent extends StatefulWidget {
   
   final Platform platform;
+  final String activeUserId;
   final String replyingToId;
   final Widget replyingToWidget;
   final void Function(Comment comment) onSubmitted;
 
   const _AddCommentBottomSheetContent({
     required this.platform,
+    required this.activeUserId,
     required this.replyingToId,
     required this.replyingToWidget,
     required this.onSubmitted
@@ -547,7 +550,7 @@ class _AddCommentBottomSheetContentState extends State<_AddCommentBottomSheetCon
                           onPressed: text.isNotEmpty
                             ? () async {
                                 setState(() => _isSubmitting = true);
-                                final comment = await widget.platform.api.postComment(widget.replyingToId, text);
+                                final comment = await widget.platform.getApi(widget.activeUserId).postComment(widget.replyingToId, text);
                                 if (context.mounted) {
                                   widget.onSubmitted(comment);
                                   context.pop();

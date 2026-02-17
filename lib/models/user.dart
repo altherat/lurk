@@ -1,4 +1,4 @@
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 
 class LookedUpUser {
 

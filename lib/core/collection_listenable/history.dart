@@ -1,23 +1,16 @@
 import 'package:lurk/core/database/database.dart';
 import 'package:lurk/core/database/tables/history.dart';
-import 'package:lurk/core/collection_listenable.dart';
+import 'package:lurk/core/collection_listenable/collection_listenable.dart';
 
-class History extends CollectionListenable<String, bool> {
-
-  static final History posts = History._(HistoryType.post);
-  static final History postDetails = History._(HistoryType.comment);
+class HistoryCollectionListenable extends CollectionListenable<String, bool> {
 
   final Database _db;
   final HistoryType _type;
   late final Set<String> _ids;
 
-  History._(this._type) : _db = Database.instance;
+  HistoryCollectionListenable(this._type) : _db = Database.instance;
 
-  static Future<void> init() async {
-    await Future.wait([posts._init(), postDetails._init()]);
-  }
-
-  Future<void> _init() async {
+  Future<void> init() async {
     _ids = (await _db.getHistoryIds(_type)).toSet();
   }
   

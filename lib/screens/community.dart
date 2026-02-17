@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:lurk/app.dart' as App;
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
+import 'package:lurk/models/community_details.dart';
+import 'package:lurk/repositories/communities.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_html.dart';
@@ -60,8 +62,6 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   void _onActiveUserChanged() {
     if (widget.community.platform == Settings.activeUser.value?.platform && widget.community.name == null) {
       _feedKey.currentState?.reload();
-    } else {
-      _feedKey.currentState?.refresh();
     }
   }
 
@@ -71,8 +71,8 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
       key: _feedKey,
       scaffoldKey: widget.scaffoldKey,
       platform: widget.community.platform,
-      getItems: (options, pageToken) async {
-        final result = await widget.community.platform.api.getPosts(
+      fetchItems: (options, pageToken) async {
+        final result = await widget.community.platform.getApi(Settings.activeUser.value?.id).fetchCommunityPosts(
           widget.community.name,
           options: options,
           pageToken: pageToken,
@@ -86,9 +86,8 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
         }
         return result;
       },
-      title: widget.community.name == null && widget.community.platform.rootCommunityName.isNotEmpty
-        ? Text(widget.community.platform.rootCommunityName)
-        : ValueListenableBuilder(
+      title: widget.community.name != null
+        ? ValueListenableBuilder(
             valueListenable: Settings.showPlatformColorTextAccents,
             builder: (context, showPlatformColorTextAccents, child) {
               return PrefixedName(
@@ -100,25 +99,22 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                 applyAppBarAlpha: true,
               );
             },
-          ),
-      iconActions: !widget.community.platform.aggregateCommunityNames.contains(widget.community.name)
-        ? [
-            Builder(
+          )
+        : Text(widget.community.platform.rootCommunityName ?? ''),
+      popupMenuActions: !widget.community.platform.aggregateCommunityNames.contains(widget.community.name)
+        ? {
+            Text('Info'): (context) => showModalBottomSheet(
+              context: context,
+              showDragHandle: true,
+              isScrollControlled: true,
               builder: (context) {
-                return IconButton(
-                  icon: const Icon(Icons.info_outline),
-                  onPressed: () {
-                    showModalBottomSheet(
-                      context: context,
-                      showDragHandle: true,
-                      isScrollControlled: true,
-                      builder: (context) => _CommunityInfoBottomSheet(community: widget.community)
-                    );
-                  },
+                return _CommunityInfoBottomSheet(
+                  community: widget.community,
+                  activeUserId: Settings.activeUser.value?.id,
                 );
               }
             ),
-          ]
+          }
         : null,
       activeCommunity: widget.community,
       feedOptions:(widget.community.name == null ? widget.community.platform.rootPostsFeedOptions : null) ?? widget.community.platform.postsFeedOptions,
@@ -130,7 +126,8 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
             post: post,
             extraTexts: [
               post.timeAgoCompact,
-              if (!_isSingleCommunity) post.community.name!,
+              if (!_isSingleCommunity)
+                post.community.name!,
             ],
           ),
         );
@@ -149,9 +146,11 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
 class _CommunityInfoBottomSheet extends StatefulWidget {
 
   final Community community;
+  final String? activeUserId;
 
   const _CommunityInfoBottomSheet({
-    required this.community
+    required this.community,
+    required this.activeUserId,
   });
 
   @override
@@ -161,39 +160,39 @@ class _CommunityInfoBottomSheet extends StatefulWidget {
 
 class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
 
-  late Future<Community> _detailsFuture;
+  late Future<CommunityDetails> _detailsFuture;
   bool? _isSubscribed;
 
   @override
   void initState() {
     super.initState();
-    _detailsFuture = widget.community.platform.api.getCommunityDetails(widget.community.name!);
-    _detailsFuture.then((community) {
-      if (mounted) {
+    _detailsFuture = widget.community.platform.getApi(widget.activeUserId).fetchCommunityDetails(widget.community.name!);
+    _detailsFuture.then((details) {
+      if (widget.activeUserId != null && mounted) {
         setState(() {
-          _isSubscribed = community.isSubscribed;
+          _isSubscribed = Communities.isSubscribed(widget.community.platform, widget.activeUserId!, widget.community.name!);
         });
       }
     });
   }
 
-  Future<void> _toggleSubscription() async {
+  Future<void> _toggleSubscription(String userId, String communityId) async {
     try {
-      if (_isSubscribed == true) {
-        await widget.community.platform.api.unsubscribe(widget.community.id!);
+      if (_isSubscribed!) {
         setState(() {
           _isSubscribed = false;
         });
+        await widget.community.platform.getApi(userId).unsubscribeFromCommunity(widget.community.name!, communityId);
       }
       else {
-        await widget.community.platform.api.subscribe(widget.community.id!);
         setState(() {
           _isSubscribed = true;
         });
+        await widget.community.platform.getApi(userId).subscribeToCommunity(widget.community.name!, communityId);
       }
     }
-    catch (e) {
-      dev.log('Error toggling subscription: $e');
+    catch (e, stackTrace) {
+      dev.log('Error updating subscription: $e, $stackTrace');
     }
   }
 
@@ -204,7 +203,7 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
       constraints: BoxConstraints(
         maxHeight: MediaQuery.of(context).size.height * 0.9,
       ),
-      child: FutureBuilder<Community>(
+      child: FutureBuilder(
         future: _detailsFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -223,16 +222,16 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
             );
           }
       
-          final community = snapshot.data!;
+          final details = snapshot.data!;
           final theme = Theme.of(context);
       
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              if (community.bannerUrl != null)
+              if (details.bannerUrl != null)
                 ExtendedImage.network(
-                  community.bannerUrl!,
+                  details.bannerUrl!,
                   height: 150,
                   width: double.infinity,
                   fit: BoxFit.cover,
@@ -244,13 +243,13 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
                   children: [
                     Row(
                       children: [
-                        if (community.iconUrl != null)
+                        if (details.iconUrl != null)
                           Padding(
                             padding: const EdgeInsets.only(right: 16.0),
                             child: CircleAvatar(
                               radius: 32,
                               backgroundImage: NetworkImage(
-                                community.iconUrl!,
+                                details.iconUrl!,
                               ),
                             ),
                           ),
@@ -259,22 +258,22 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                community.title!,
+                                details.title!,
                                 style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
                               ),
                               PrefixedName(
-                                prefix: community.platform.communityPrefix,
-                                name: community.name,
+                                prefix: details.community.platform.communityPrefix,
+                                name: details.community.name,
                               ),
                             ],
                           ),
                         ),
                       ],
                     ),
-                    if (Settings.activeUser.value != null && community.platform.api.hasLogin) ...[
+                    if (widget.activeUserId != null && details.community.platform.hasLogin) ...[
                       const SizedBox(height: 24),
                       InkWell(
-                        onTap: _toggleSubscription,
+                        onTap: () => _toggleSubscription(widget.activeUserId!, details.id!),
                         child: AnimatedContainer(
                           duration: const Duration(milliseconds: 200),
                           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -294,36 +293,31 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
                     Row(
                       children: [
                         Stat(
-                          value: community.subscriberCount!.toCommaString(),
+                          value: details.subscriberCount!.toCommaString(),
                           label: 'Subscribers',
                         ),
-                        if (community.postCount != null) ...[
+                        if (details.postCount != null) ...[
                           const SizedBox(width: 24),
                           Stat(
-                            value: community.postCount!.toCommaString(),
+                            value: details.postCount!.toCommaString(),
                             label: 'Posts',
                           ),
                         ],
                         const SizedBox(width: 24),
                         Stat(
-                          value: community.createdDate!.timeAgoLong,
+                          value: details.createdDate!.timeAgoLong,
                           label: 'Created',
                         ),
                       ],
                     ),
-                    if (community.description != null) ...[
+                    if (details.description != null) ...[
                       const SizedBox(height: 24),
                       Text(
-                        'About',
-                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      Text(
-                        community.description!,
+                        details.description!,
                         style: theme.textTheme.bodyMedium,
                       ),
                     ],
-                    if (community.descriptionHtml != null) ...[
+                    if (details.descriptionHtml != null) ...[
                       const SizedBox(height: 24),
                       Text(
                         'Description',
@@ -331,8 +325,8 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
                       ),
                       const SizedBox(height: 8),
                       CustomHtml(
-                        platform: community.platform,
-                        html: community.descriptionHtml!,
+                        platform: details.community.platform,
+                        html: details.descriptionHtml!,
                       ),
                     ],
                   ],

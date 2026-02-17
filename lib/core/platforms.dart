@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lurk/models/comment.dart';
+import 'package:lurk/models/post.dart';
+import 'package:lurk/services/api.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/api/digg.dart';
 import 'package:lurk/services/api/reddit.dart';
@@ -14,7 +17,7 @@ enum Platform {
     communityPrefix: 'r/',
     homeCommunityName: 'popular',
     rootCommunityName: 'Front page',
-    aggregateCommunityNames: {'all', 'popular'},
+    aggregateCommunityNames: {null, 'all', 'popular'},
     canSearchWithinCommunities: true,
     userPrefix: 'u/',
     communityPath: r'^\/r\/([^\/]+)\/?$',
@@ -85,7 +88,7 @@ enum Platform {
     communityLabel: 'community',
     communityPrefix: '/',
     homeCommunityName: null,
-    rootCommunityName: '',
+    rootCommunityName: null,
     aggregateCommunityNames: {null},
     canSearchWithinCommunities: false,
     userPrefix: '@',
@@ -155,13 +158,16 @@ enum Platform {
   
   );
 
-  final Api api;
+
+  static final Map<(Platform, String?), ApiService> _apiServices = {};
+
+  final Api _api;
   final List<String> domains;
   final Color color;
   final String communityLabel;
   final String communityPrefix;
   final String? homeCommunityName;
-  final String rootCommunityName;
+  final String? rootCommunityName;
   final Set<String?> aggregateCommunityNames;
   final bool canSearchWithinCommunities;
   final String userPrefix;
@@ -181,7 +187,7 @@ enum Platform {
   final FeedOptionsGroup searchFeedOptions;
 
   const Platform({
-    required this.api,
+    required Api api,
     required this.domains,
     required this.color,
     required this.communityPrefix,
@@ -205,7 +211,7 @@ enum Platform {
     required this.postCommentsFeedOptions,
     required this.userFeedOptions,
     required this.searchFeedOptions
-  });
+  })  : _api = api;
 
   static Platform? forHost(String host) {
     for (var platform in Platform.values) {
@@ -217,6 +223,42 @@ enum Platform {
     }
     return null;
   }
+
+  ApiService getApi(String? userId) {
+    final key = (this, userId);
+    final existing = _apiServices[key];
+    if (existing != null) {
+      if (existing.isValid) {
+        return existing;
+      }
+      _apiServices.remove(key)?.dispose();
+    }
+    final api = ApiService(_api, userId);
+    _apiServices[key] = api;
+    return api;
+  }
+
+  void destroySession(String? userId) {
+    _apiServices.remove((this, userId))?.dispose();
+  }
+
+  void destroyAllSessions() {
+    _apiServices.removeWhere((key, service) {
+      if (key.$1 == this) {
+        service.dispose();
+        return true;
+      }
+      return false;
+    });
+  }
+
+  bool get hasLogin => _api.hasLogin;
+
+  String get savedOrDefaultUserAgent => _api.savedOrDefaultUserAgent;
+
+  String getPostDetailsUrl(Post post) => _api.getPostDetailsUrl(post);
+
+  String getCommentUrl(Comment comment) => _api.getCommentUrl(comment);
 
   String getPrefixedCommunityName(String communityName) => '$communityPrefix$communityName';
 

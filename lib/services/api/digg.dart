@@ -1,22 +1,24 @@
-import 'dart:developer' as dev;
 import 'dart:io' as io;
 import 'dart:ui';
 
 import 'package:flutter/foundation.dart';
 import 'package:graphql_flutter/graphql_flutter.dart' as gql;
 import 'package:lurk/core/constants.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/community.dart';
+import 'package:lurk/models/community_details.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/services/api/api.dart';
+import 'package:lurk/services/api/client_helpers.dart';
 import 'package:lurk/services/settings.dart';
 
-class DiggApi extends Api {
+class DiggApi extends Api<GraphQlClientHelper> {
 
+  static const resultsLimit = 30;
   static const _baseUrl = 'https://digg.com';
   static const _baseUrlGraphQl = 'https://apineapple-prod.digg.com/graphql';
   static const _defaultHeaders = {
@@ -84,11 +86,10 @@ class DiggApi extends Api {
     }
   ''';
 
-  static const resultsLimit = 30;
-
-  static gql.GraphQLClient? _clientInstance;
-
   const DiggApi();
+
+  @override
+  Platform get platform => Platform.digg;
 
   @override
   bool get hasLogin => false;
@@ -102,72 +103,87 @@ class DiggApi extends Api {
   @override
   String get baseUrl => _baseUrl;
 
-  gql.GraphQLClient get _client {
-    return _clientInstance ??= gql.GraphQLClient(
-      link: gql.Link.function((request, [forward]) {
-        final customHeaders = {
-          'User-Agent': savedOrDefaultUserAgent,
-          ..._defaultHeaders
-        };
-        dev.log('[Digg] Request headers: ${customHeaders.length}');
-        dev.log('[Digg]\tUser-Agent: ${customHeaders['User-Agent']}');
-        return forward!(
-          request.updateContextEntry<gql.HttpLinkHeaders>(
-            (headers) => gql.HttpLinkHeaders(
-              headers: {
-                ...?headers?.headers,
-                ...customHeaders
-              },
-            ),
-          )
-        ).map((response) {
-          final responseContext = response.context.entry<gql.HttpLinkResponseContext>();
-          if (responseContext != null) {
-            dev.log('[Digg] Response code: ${responseContext.statusCode}');
+  @override
+  ClientHelper getClientHelper(String? userId) => GraphQlClientHelper(_baseUrlGraphQl, () => {'User-Agent': savedOrDefaultUserAgent, ..._defaultHeaders});
+
+  @override
+  Future<CommunityDetails> getCommunityDetails(GraphQlClientHelper clientHelper, String name) async {
+    final gql.QueryOptions queryOptions = gql.QueryOptions(
+      document: gql.gql(r'''
+        query CommunityQuery($slug: String!) {
+
+          community(where: { slug_EQ: $slug }) {
+            _id
+            createdDate
+            name
+            description
+            descriptionPM
+            iconUrl
+            bannerMobileImage {
+              url
+            }
+            memberCount
+            postCount
           }
-          // dev.log('[Digg] Response: ${response.data}');
-          return response;
-        });
-      }).concat(gql.HttpLink(_baseUrlGraphQl)),
-      cache: gql.GraphQLCache(),
-      defaultPolicies: gql.DefaultPolicies(
-        query: gql.Policies(
-          fetch: gql.FetchPolicy.networkOnly,
-        )
-      )
+        }
+
+      '''),
+      variables: {
+        'slug': name
+      },
+    );
+
+    final response = await clientHelper.request(queryOptions);
+    final data = response.data!['community'];
+    final descriptionPm = data['descriptionPM'];
+    final bannerImage = data['bannerMobileImage'];
+    final iconUrl = data['iconUrl'];
+    return CommunityDetails(
+      community: Community(
+        platform: Platform.digg,
+        name: name,
+      ),
+      id: data['_id'],
+      createdDate: DateTime.parse(data['createdDate']),
+      title: data['name'],
+      description: data['description'],
+      descriptionHtml: descriptionPm != null ? _parsePmToHtml(descriptionPm) : null,
+      iconUrl: iconUrl != null ? _getThumbnailUrl(Uri.parse(iconUrl)) : null,
+      bannerUrl: bannerImage != null ? bannerImage['url'] : null,
+      subscriberCount: data['memberCount'],
+      postCount: data['postCount'],
     );
   }
 
   @override
-  Future<PagedItems<Post>> getPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    // dev.log('[Digg] getPosts: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
+  Future<PagedItems<Post>> getCommunityPosts(GraphQlClientHelper clientHelper, String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     final sort = options?[FeedOptionType.sort];
-    return _getPostsRecursive({
-      'first': resultsLimit,
-      'where': {
-        'isPersonalized': false,
-        if (id != null)
-          'community': {'slug_EQ': id},
-        if (sort?.id == 'MOST_DUGG')
-          'publishedDate_GT': DateTime.now().toUtc().subtract(const Duration(days: 1)).toIso8601String(), // Current functionality of Digg website/app is to only return most dugg posts in past day
-      },
-      'sort': (sort ?? Platform.digg.postsFeedOptions.options.first).id,
-      if (pageToken != null)
-        'after': pageToken
-    });
+    return _getPostsRecursive(
+      clientHelper,
+      {
+        'first': resultsLimit,
+        'where': {
+          'isPersonalized': false,
+          if (id != null)
+            'community': {'slug_EQ': id},
+          if (sort?.id == 'MOST_DUGG')
+            'publishedDate_GT': DateTime.now().toUtc().subtract(const Duration(days: 1)).toIso8601String(), // Current functionality of Digg website/app is to only return most dugg posts in past day
+        },
+        'sort': (sort ?? Platform.digg.postsFeedOptions.options.first).id,
+        'after': ?pageToken
+      }
+    );
   }
 
   @override
-  Future<PostDetails> getPostDetailsFromUrl(String url, {Map<FeedOptionType, FeedOption>? options}) {
-    // dev.log('[Digg] getPostDetailsFromUrl: url=$url, options=[${options?.values.map((option) => option.id).join(', ')}]');
+  Future<PostDetails> getPostDetailsFromUrl(GraphQlClientHelper clientHelper, String url, {Map<FeedOptionType, FeedOption>? options}) {
     final pathSegments = Uri.parse(url).pathSegments;
     final String postId = '${pathSegments[0]}-${pathSegments[1]}';
-    return getPostDetailsFromId(postId, shortCommentId: pathSegments.length > 3 ? pathSegments[3] : null, options: options);
+    return getPostDetailsFromId(clientHelper, postId, shortCommentId: pathSegments.length > 3 ? pathSegments[3] : null, options: options);
   }
 
   @override
-  Future<PostDetails> getPostDetailsFromId(String id, {String? shortCommentId, Map<FeedOptionType, FeedOption>? options}) async {
-    // dev.log('[Digg] getPostDetailsFromId: id=$id, commentId=$commentId, options=[${options?.values.map((option) => option.id).join(', ')}]');
+  Future<PostDetails> getPostDetailsFromId(GraphQlClientHelper clientHelper, String id, {String? shortCommentId, Map<FeedOptionType, FeedOption>? options}) async {
     final sort = options?[FeedOptionType.sort];
     final gql.QueryOptions queryOptions = gql.QueryOptions(
       document: gql.gql(r'''
@@ -223,13 +239,12 @@ class DiggApi extends Api {
         'sort': (sort ?? Platform.digg.postCommentsFeedOptions.options.first).id
       }
     );
-    final response = await _client.query(queryOptions);
+    final response = await clientHelper.request(queryOptions);
     return compute(_parsePostDetails, (response.data!, shortCommentId));
   }
 
   @override
-  Future<List<CommentItem>> getMoreComments(String id, String pageToken, {int? depth, Map<FeedOptionType, FeedOption>? options}) async {
-    // dev.log('[Digg] getMoreComments: id=$id, pageToken=$pageToken, options=[${options?.values.map((option) => option.id).join(', ')}]');
+  Future<List<CommentItem>> getMoreComments(ClientHelper clientHelper, String id, String pageToken, {int? depth, Map<FeedOptionType, FeedOption>? options}) async {
     final sort = options?[FeedOptionType.sort];
     final gql.QueryOptions queryOptions = gql.QueryOptions(
       document: gql.gql(r'''
@@ -283,7 +298,7 @@ class DiggApi extends Api {
       },
     );
 
-    final response = await _client.query(queryOptions);
+    final response = await clientHelper.request(queryOptions);
     return compute(
       (data) {
         final List edges = data['comments']['edges'];
@@ -306,56 +321,7 @@ class DiggApi extends Api {
   }
 
   @override
-  Future<Community> getCommunityDetails(String name) async {
-    // dev.log('[Digg] getCommunityDetails: name=${community.name}');
-    final gql.QueryOptions queryOptions = gql.QueryOptions(
-      document: gql.gql(r'''
-        query CommunityQuery($slug: String!) {
-
-          community(where: { slug_EQ: $slug }) {
-            _id
-            createdDate
-            name
-            description
-            descriptionPM
-            iconUrl
-            bannerMobileImage {
-              url
-            }
-            memberCount
-            postCount
-          }
-        }
-
-      '''),
-      variables: {
-        'slug': name
-      },
-    );
-
-    final response = await _client.query(queryOptions);
-    final data = response.data!['community'];
-    final descriptionPm = data['descriptionPM'];
-    final bannerImage = data['bannerMobileImage'];
-    final iconUrl = data['iconUrl'];
-    return Community(
-      id: data['_id'],
-      platform: Platform.digg,
-      name: name,
-      createdDate: DateTime.parse(data['createdDate']),
-      title: data['name'],
-      description: data['description'],
-      descriptionHtml: descriptionPm != null ? _parsePmToHtml(descriptionPm) : null,
-      iconUrl: iconUrl != null ? _getThumbnailUrl(Uri.parse(iconUrl)) : null,
-      bannerUrl: bannerImage != null ? bannerImage['url'] : null,
-      subscriberCount: data['memberCount'],
-      postCount: data['postCount'],
-    );
-  }
-
-  @override
-  MultiPartFeedResponse<dynamic, List<UserStat>> getUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
-    // dev.log('[Digg] getUserDetails: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}]');
+  MultiPartFeedResponse<dynamic, List<UserStat>> getUserDetails(GraphQlClientHelper clientHelper, String id, {Map<FeedOptionType, FeedOption>? options}) {
     final UserFeedType type = options?[FeedOptionType.category]?.id ?? Platform.digg.userFeedOptions.options.first.id;
     final FeedOption? sort = options?[FeedOptionType.sort];
     switch (type) {
@@ -407,7 +373,7 @@ class DiggApi extends Api {
           }
         );
         
-        final responseFuture = _client.query(queryOptions);
+        final responseFuture = clientHelper.request(queryOptions);
         return MultiPartFeedResponse(
           items: responseFuture.then((response) => _parsePostsResult(response.data!)),
           other: responseFuture.then((response) => _parseAllUserStats(response.data!['accounts']['edges'].first['node'])),
@@ -465,7 +431,7 @@ class DiggApi extends Api {
           },
         );
         
-        final responseFuture = _client.query(queryOptions);
+        final responseFuture = clientHelper.request(queryOptions);
         return MultiPartFeedResponse(
           items: responseFuture.then((response) {
             final comments = response.data!['comments'];
@@ -483,8 +449,7 @@ class DiggApi extends Api {
   }
 
   @override
-  Future<PagedItems<dynamic>> getUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    dev.log('[Digg] getUserItems: id=$id, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
+  Future<PagedItems<dynamic>> getUserItems(GraphQlClientHelper clientHelper, String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     final UserFeedType type = options?[FeedOptionType.category]?.id ?? Platform.digg.userFeedOptions.options.first.id;
     final FeedOption? sort = options?[FeedOptionType.sort];
     switch (type) {
@@ -519,11 +484,10 @@ class DiggApi extends Api {
             },
             if (sort != null)
               'sort': sort.id,
-            if (pageToken != null)
-              'after': pageToken
+            'after': ?pageToken
           }
         );
-        final response = await _client.query(queryOptions);
+        final response = await clientHelper.request(queryOptions);
         return compute(_parsePostsResult, response.data!);
       case UserFeedType.comments:
         final gql.QueryOptions queryOptions = gql.QueryOptions(
@@ -560,11 +524,10 @@ class DiggApi extends Api {
             },
             if (sort != null)
               'sort': sort.id,
-            if (pageToken != null)
-              'after': pageToken
+            'after': ?pageToken
           },
         );
-        final response = await _client.query(queryOptions);
+        final response = await clientHelper.request(queryOptions);
         return compute(_parseCommentsResult, response.data!);
       case _:
         throw UnimplementedError();
@@ -572,8 +535,7 @@ class DiggApi extends Api {
   }
 
   @override
-  Future<PagedItems<dynamic>> search(String query, String? communityName, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    // dev.log('[Digg] search: query=$query, options=[${options?.values.map((option) => option.id).join(', ')}], pageToken=$pageToken');
+  Future<PagedItems<dynamic>> getSearchResults(GraphQlClientHelper clientHelper, String query, String? communityName, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     final type = options?[FeedOptionType.category]?.id ?? SearchFeedType.posts;
     final gql.QueryOptions queryOptions;
     final PagedItems<dynamic> Function(Map<String, dynamic>) parseFn;
@@ -602,8 +564,7 @@ class DiggApi extends Api {
         variables: {
           'first': resultsLimit,
           'where': {'query': query},
-          if (pageToken != null)
-            'after': pageToken,
+          'after': ?pageToken,
         },
       );
       parseFn = (data) {
@@ -614,9 +575,11 @@ class DiggApi extends Api {
           items: edges.map((edge) {
             final Map<String, dynamic> node = edge['node'];
             final String? iconUrl = node['iconUrl'];
-            return Community(
-              platform: Platform.digg,
-              name: node['slug'],
+            return CommunityDetails(
+              community: Community(
+                platform: Platform.digg,
+                name: node['slug'],
+              ),
               description: node['description'],
               iconUrl: iconUrl != null ? _getThumbnailUrl(Uri.parse(iconUrl)) : null,
               subscriberCount: node['memberCount'],
@@ -651,8 +614,7 @@ class DiggApi extends Api {
         variables: {
           'first': resultsLimit,
           'where': {'username_CONTAINS': query},
-          if (pageToken != null)
-            'after': pageToken,
+          'after': ?pageToken,
         },
       );
       parseFn = (data) {
@@ -714,62 +676,56 @@ class DiggApi extends Api {
               }
           },
           'sort': sort?.id ?? 'TRENDING',
-          if (pageToken != null)
-            'after': pageToken,
+          'after': ?pageToken,
         },
       );
       parseFn = _parsePostsResult;
     }
-    final response = await _client.query(queryOptions);
+    final response = await clientHelper.request(queryOptions);
     return compute(parseFn, response.data!);
   }
 
   @override
-  Future<String?> login() async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<void> logout(String id) async {
-    throw UnimplementedError();
-  }
-
-  @override
-  Future<LoggedInUser> getLoggedInUser() {
+  Future<LoggedInUser> getLoggedInUser(GraphQlClientHelper clientHelper) {
     throw UnimplementedError();
   }
   
   @override
-  Future<List<Community>> getSubscribedCommunities() {
+  Future<List<Community>> getSubscribedCommunities(GraphQlClientHelper clientHelper) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> vote(String id, bool? up) {
+  Future<void> votePost(GraphQlClientHelper clientHelper, String id, bool? up) {
     throw UnimplementedError();
   }
+
   @override
-  Future<Comment> postComment(String id, String text) {
+  Future<void> voteComment(GraphQlClientHelper clientHelper, String id, bool? up) {
+    throw UnimplementedError();
+  }
+
+  @override
+  Future<Comment> postComment(GraphQlClientHelper clientHelper, String parentId, String text) {
     throw UnimplementedError();
   }
   
   @override
-  Future<void> deleteComment(String id) {
+  Future<void> deleteComment(GraphQlClientHelper clientHelper, String id) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> subscribe(String id) {
+  Future<void> subscribeToCommunity(GraphQlClientHelper clientHelper, String id) {
     throw UnimplementedError();
   }
 
   @override
-  Future<void> unsubscribe(String id) {
+  Future<void> unsubscribeFromCommunity(GraphQlClientHelper clientHelper, String id) {
     throw UnimplementedError();
   }
 
-  Future<PagedItems<Post>> _getPostsRecursive(Map<String, dynamic> variables, {List<Post>? accumulatedPosts, int depth = 0}) async {
-    // dev.log('[Digg] _getPostsRecursive: variables=[${variables.entries.map((entry) => '${entry.key}=${entry.value}').join(', ')}], posts=${accumulatedPosts?.length}, depth=$depth');
+  Future<PagedItems<Post>> _getPostsRecursive(GraphQlClientHelper clientHelper, Map<String, dynamic> variables, {List<Post>? accumulatedPosts, int depth = 0}) async {
     final gql.QueryOptions queryOptions = gql.QueryOptions(
       document: gql.gql(r'''
         query PostsQuery($first: Int, $where: PostWhere, $sort: PostSort, $after: String) {
@@ -792,12 +748,13 @@ class DiggApi extends Api {
       ),
       variables: variables
     );
-    final response = await _client.query(queryOptions);
+    final response = await clientHelper.request(queryOptions);
     final postsData = response.data!['posts'];
     final Map<String, dynamic> pageInfo = postsData['pageInfo'];
     final List<Post> allPosts = [...?accumulatedPosts, ...postsData['edges'].map((edge) => _parsePost(edge['node']))];
     if (allPosts.length < resultsLimit && pageInfo['hasNextPage'] == true && pageInfo['endCursor'] != null && depth < Settings.diggPostsFetchDepth.value + 1) {
       return _getPostsRecursive(
+        clientHelper,
         {
           ...variables,
           'after': pageInfo['endCursor'],
@@ -908,11 +865,11 @@ class DiggApi extends Api {
       isDeleted: json['deletedDate'] != null,
       mediaSize: mediaSize,
       galleryImages: galleryImages,
+      vote: null
     );
   }
 
   static String _getThumbnailUrl(Uri uri) {
-    // dev.log('[Digg] _getThumbnailUrl: uri=$uri');
     final width = Constants.thumbnailSize * 3;
     final params = Map<String, dynamic>.from(uri.queryParameters);
     params['w'] = width.toString();
@@ -1048,6 +1005,7 @@ class DiggApi extends Api {
       images: images,
       postTitle: postTitle,
       communityName: communityName,
+      vote: null
     );
   }
 

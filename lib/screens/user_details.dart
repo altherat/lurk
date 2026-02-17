@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lurk/core/constants.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/paged_items.dart';
@@ -40,7 +39,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    final response = widget.platform.api.getUserDetails(widget.username);
+    final response = widget.platform.getApi(Settings.activeUser.value?.id).fetchUserDetails(widget.username);
     _initialItemsFuture = response.items;
     _userStatsFuture = response.other;
   }
@@ -51,7 +50,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
       platform: widget.platform,
       feedOptions: widget.platform.userFeedOptions,
       initialItems: _initialItemsFuture,
-      getItems: (options, pageToken) => widget.platform.api.getUserItems(widget.username, options: options, pageToken: pageToken),
+      fetchItems: (options, pageToken) => widget.platform.getApi(Settings.activeUser.value?.id).fetchUserItems(widget.username, options: options, pageToken: pageToken),
       title: PrefixedName(
         prefix: widget.platform.userPrefix,
         name: widget.username,
@@ -111,11 +110,11 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
             showCommunityName: true,
             showViewUserOption: false,
             optionsBuilder: (context, activeUser) => {
-              'View context': () {
+              Text('View context'): (context) {
                 context.push(() {
                   return PostDetailsScreen.fromUrl(
                     platform: widget.platform,
-                    url: widget.platform.api.getCommentUrl(item),
+                    url: widget.platform.getCommentUrl(item),
                     urlInfo:widget.platform.getPostUrlInfoFromPath(item.permalink)
                   );
                 });

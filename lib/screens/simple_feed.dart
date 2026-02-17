@@ -1,13 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/constants.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/feed_list.dart';
-import 'package:lurk/widgets/feed_option_selector.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 
 class SimpleFeedScreen<T> extends StatefulWidget {
@@ -17,13 +17,13 @@ class SimpleFeedScreen<T> extends StatefulWidget {
   final Community? activeCommunity;
   final FeedOptionsGroup? feedOptions;
   final Future<PagedItems<T>>? initialItems;
-  final Future<PagedItems<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) getItems;
+  final Future<PagedItems<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) fetchItems;
   final Widget? title;
   final Widget? subtitle;
   final bool showFeedOptionsSubtitle;
   final List<Widget>? iconActions;
   final (Listenable, List<Widget> Function(BuildContext context))? iconActionsBuilder;
-  final Map<String, void Function()>? popupMenuActions;
+  final Map<Widget, Function(BuildContext context)>? popupMenuActions;
   final PreferredSizeWidget? flexibleSpaceHeader;
   final List<Widget>? slivers;
   final Widget? Function(BuildContext context)? bottomSheetBuilder;
@@ -37,7 +37,7 @@ class SimpleFeedScreen<T> extends StatefulWidget {
     this.activeCommunity,
     this.feedOptions,
     this.initialItems,
-    required this.getItems,
+    required this.fetchItems,
     required this.title,
     this.subtitle,
     this.showFeedOptionsSubtitle = true,
@@ -154,7 +154,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
                         platform: widget.platform,
                         initialItems: i == 0 ? widget.initialItems : null,
                         getItems: (String? pageToken) async {
-                          return widget.getItems(
+                          return widget.fetchItems(
                             {
                               FeedOptionType.category: widget.feedOptions!.options[i],
                               ...?_selectedFeedOptions[i],
@@ -206,7 +206,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
             if (subGroupOptions == null) return [];
             return [
               ...?widget.iconActionsBuilder?.$2(context),
-              FeedFilterIconButton(
+              _FeedFilterIconButton(
                 platform: widget.platform,
                 feedOptions: subGroupOptions,
                 selectedFeedOptions: _selectedFeedOptions[visibleIndex],
@@ -256,7 +256,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
       iconActionsBuilder: widget.iconActionsBuilder,
       iconActions: [
         ...?widget.iconActions,
-        FeedFilterIconButton(
+        _FeedFilterIconButton(
           platform: widget.platform,
           feedOptions: feedOptions,
           selectedFeedOptions: selectedFeedOptions,
@@ -272,7 +272,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
           platform: widget.platform,
           initialItems: widget.initialItems,
           getItems: (String? pageToken) =>
-              widget.getItems(_selectedFeedOptions[0], pageToken),
+              widget.fetchItems(_selectedFeedOptions[0], pageToken),
           noItemsBuilder: widget.noItemsBuilder,
           itemBuilder: widget.itemBuilder,
         ),
@@ -283,6 +283,254 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
         _refreshIndicatorKeys[0].currentState?.show();
         return null;
       },
+    );
+  }
+
+}
+
+
+
+class _FeedFilterIconButton extends StatelessWidget {
+
+  final Platform platform;
+  final FeedOptionsGroup? feedOptions;
+  final Map<FeedOptionType, FeedOption>? selectedFeedOptions;
+  final Function(Map<FeedOptionType, FeedOption>) onFeedOptionsSelected;
+
+  const _FeedFilterIconButton({
+    required this.platform,
+    required this.feedOptions,
+    required this.selectedFeedOptions,
+    required this.onFeedOptionsSelected
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return IconButton(
+      icon: const Icon(Icons.sort_rounded),
+      tooltip: 'Filter',
+      iconSize: 26,
+      onPressed: feedOptions != null
+        ? () {
+            showModalBottomSheet(
+              context: context,
+              showDragHandle: true,
+              isScrollControlled: true,
+              builder: (context) {
+                return SafeArea(
+                  child: Padding(
+                    padding: const EdgeInsets.only(bottom: 16),
+                    child: _FeedOptionsSelector(
+                      platform: platform,
+                      optionsGroup: feedOptions!,
+                      selected: selectedFeedOptions,
+                      onSelected: (options) {
+                        onFeedOptionsSelected(options);
+                        context.pop();
+                      }
+                    ),
+                  ),
+                );
+              }
+            );
+          }
+        : null,
+    );
+  }
+
+}
+
+class _FeedOptionSelector extends StatelessWidget {
+
+  final Platform platform;
+  final String? header;
+  final List<FeedOption> options;
+  final FeedOption? selected;
+  final Function(FeedOption) onSelected;
+
+  const _FeedOptionSelector({
+    required this.platform,
+    this.header,
+    required this.options,
+    this.selected,
+    required this.onSelected
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        if (header != null)
+          Padding(
+            padding: EdgeInsetsGeometry.only(bottom: 4),
+            child: Text(
+              header!,
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.bold
+              )
+            )
+          ),
+        Wrap(
+          spacing: Constants.choiceChipGapSize,
+          runSpacing: Constants.choiceChipGapSize,
+          children: options.map((filter) {
+            final isSelected = selected == filter;
+            return ChoiceChip(
+              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              label: Text(filter.label),
+              selected: isSelected,
+              labelStyle: isSelected ? null : TextStyle(color: Theme.of(context).colorScheme.onSurface),
+              onSelected: (selected) {
+                if (selected) {
+                  onSelected(filter);
+                }
+              },
+            );
+          }).toList(),
+        )
+      ],
+    );
+  }
+
+}
+
+class _FeedOptionsSelector extends StatefulWidget {
+
+  final Platform platform;
+  final FeedOptionsGroup optionsGroup;
+  final Map<FeedOptionType, FeedOption>? selected;
+  final Function(Map<FeedOptionType, FeedOption>) onSelected;
+
+  const _FeedOptionsSelector({
+    required this.platform,
+    required this.optionsGroup,
+    required this.selected,
+    required this.onSelected
+  });
+
+  @override
+  State<_FeedOptionsSelector> createState() => _FeedOptionsSelectorState();
+  
+}
+
+class _FeedOptionsSelectorState extends State<_FeedOptionsSelector> {
+
+  late final List<(FeedOptionType, FeedOption)> _selected;
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.selected != null) {
+      _selected = widget.selected!.entries.map((entry) => (entry.key, entry.value)).toList();
+    }
+    else {
+      // _selected = [(widget.optionsGroup.type, widget.optionsGroup.options.first)];
+      _selected = [];
+      void addDefaultSelection(FeedOptionsGroup group) {
+        final firstOption = group.options.first;
+        _selected.add((group.type, firstOption));
+        if (firstOption.subGroup != null) {
+          addDefaultSelection(firstOption.subGroup!);
+        }
+      }
+      addDefaultSelection(widget.optionsGroup);
+    }
+  }
+
+  void _onOptionSelected(int index, FeedOptionType feedOptionType, FeedOption option) {
+    if (_selected.length > index) {
+      _selected.removeRange(index, _selected.length);
+    }
+    _selected.add((feedOptionType, option));
+    if (option.subGroup != null) {
+      setState(() {});
+    }
+    else {
+      widget.onSelected({for (var item in _selected) item.$1: item.$2});
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<FeedOptionsGroup> toShow = [widget.optionsGroup];
+    for (var selection in _selected) {
+      final option = selection.$2;
+      if (option.subGroup != null) {
+        toShow.add(option.subGroup!);
+      }
+    }
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        ...List.generate(toShow.length, (index) {
+          final group = toShow[index];
+          return _AnimatedRow(
+            child: Padding(
+              padding: EdgeInsets.fromLTRB(32, index == 0 ? 0 : 16, 32, 0),
+              child: _FeedOptionSelector(
+                platform: widget.platform,
+                header: group.type.label,
+                options: group.options,
+                selected: _selected.length > index ? _selected[index].$2 : null,
+                onSelected: (option) => _onOptionSelected(index, group.type, option),
+              ),
+            ),
+          );
+        }),
+      ]
+    );
+  }
+
+}
+
+class _AnimatedRow extends StatefulWidget {
+
+  final Widget child;
+  const _AnimatedRow({
+    required this.child
+  });
+
+  @override
+  State<_AnimatedRow> createState() => _AnimatedRowState();
+
+}
+
+class _AnimatedRowState extends State<_AnimatedRow> with SingleTickerProviderStateMixin {
+
+  late AnimationController _controller;
+  late Animation<double> _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(milliseconds: 500),
+      vsync: this,
+    );
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: Curves.easeInOutCubicEmphasized,
+    );
+    _controller.forward();
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return SizeTransition(
+      sizeFactor: _animation,
+      axisAlignment: -1.0,
+      child: FadeTransition(
+        opacity: _animation,
+        child: widget.child
+      ),
     );
   }
 

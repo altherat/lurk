@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/post_details.dart';
@@ -12,7 +12,7 @@ class MediaScaffold extends StatelessWidget {
   final Post? post;
   final String type;
   final Widget body;
-  final VoidCallback? onSave;
+  final void Function(BuildContext context)? onSave;
 
   const MediaScaffold({
     super.key,
@@ -24,18 +24,18 @@ class MediaScaffold extends StatelessWidget {
     required this.onSave
   });
 
-  static Map<String, void Function()> getOptions({
+  static Map<Widget, void Function(BuildContext context)> getOptions({
     required BuildContext context,
     required String type,
     required String url,
     Post? post,
-    VoidCallback? onSave,
+    void Function(BuildContext context)? onSave,
   }) => {
-    'Save $type': ?onSave,
+    Text('Save $type'): ?onSave,
     if (post != null)
-      'View comments': () => context.push(() => PostDetailsScreen.fromPost(post: post!)),
-    'View in browser': () => openInBrowser(url),
-    'Copy link': () => copyToClipboard(url)
+      Text('View comments'): (context) => context.push(() => PostDetailsScreen.fromPost(post: post)),
+    Text('View in browser'): (context) => openInBrowser(url),
+    Text('Copy link'): (context) => copyToClipboard(url)
   };
 
   @override

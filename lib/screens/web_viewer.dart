@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/post_details.dart';
@@ -82,9 +82,9 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
         ],
         popupMenuActions: {
           if (widget.post != null)
-            'View comments': () => context.push(() => PostDetailsScreen.fromPost(post: widget.post!)),
-          'View in browser': () => openInBrowser(widget.url),
-          'Copy link': () => copyToClipboard(widget.url)
+            Text('View comments'): (context) => context.push(() => PostDetailsScreen.fromPost(post: widget.post!)),
+          Text('View in browser'): (context) => openInBrowser(widget.url),
+          Text('Copy link'): (context) => copyToClipboard(widget.url)
         },
         body: _isExiting
           ? const SizedBox.shrink()

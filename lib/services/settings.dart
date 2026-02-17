@@ -3,16 +3,16 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/database/database.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/database_list_notifier.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/flavors.dart';
-import 'package:lurk/models/community.dart';
 import 'package:lurk/models/user.dart';
 
 import '../core/database/database.dart' as tbl;
 
 class Settings {
 
-  static late final RelationalListSettingNotifier<LoggedInUser> loggedInUsers;
+  static late final DatabaseListNotifier<LoggedInUser> loggedInUsers;
   static late final SettingNotifier<LoggedInUser?> activeUser;
 
   static late final SettingNotifier<Platform> homeCommunityPlatform;
@@ -42,14 +42,14 @@ class Settings {
 
   static late final Setting<SearchType?> searchType;
 
-  static late final RelationalListSettingNotifier<Community> communities;
+  static void Function(Platform platform)? onSessionsInvalidated;
 
   static Future<void> init() async {
 
     final db = Database.instance;
-    final [dbSettings as tbl.Setting, dbLoggedInUseres as List<LoggedInUser>, dbCommunities as List<Community>] = await Future.wait([db.getAllSettings(), db.getAllLoggedInUsers(), db.getAllCommunities()]);
+    final [dbSettings as tbl.Setting, dbLoggedInUseres as List<LoggedInUser>] = await Future.wait([db.getAllSettings(), db.getAllLoggedInUsers()]);
     
-    loggedInUsers = RelationalListSettingNotifier(
+    loggedInUsers = DatabaseListNotifier(
       dbLoggedInUseres,
       save: db.saveLoggedInUser,
       delete: db.deleteLoggedInUser
@@ -160,6 +160,13 @@ class Settings {
     redditClientId = SettingNotifier(
       initialValue: dbSettings.redditClientId,
       companionBuilder: (value) => SettingsCompanion(redditClientId: Value(value)),
+      onChanged: (value) {
+        if (value == null) {
+          loggedInUsers.clear();
+          activeUser.value = null;
+          onSessionsInvalidated?.call(Platform.reddit);
+        }
+      }
     );
 
     redditRedirectUri = SettingNotifier(
@@ -191,13 +198,6 @@ class Settings {
     searchType = Setting(
       initialValue: dbSettings.searchType,
       companionBuilder: (value) => SettingsCompanion(searchType: Value(value)),
-    );
-
-    communities = RelationalListSettingNotifier<Community>(
-      dbCommunities,
-      save: db.saveCommunity,
-      saveAll: db.saveAllCommunities,
-      delete: db.deleteCommunity,
     );
 
   }
@@ -245,12 +245,14 @@ class SettingNotifier<T> extends ValueNotifier<T> {
   final SettingsCompanion Function(T? value)? nullableCompanionBuilder;
   T? _defaultValue;
   bool hasSavedValue;
+  void Function(T value)? onChanged;
 
   SettingNotifier({
     required T? initialValue,
     this.companionBuilder,
     this.nullableCompanionBuilder,
     T? defaultValue,
+    this.onChanged
   })  : assert(companionBuilder != null || nullableCompanionBuilder != null),
         _defaultValue = defaultValue,
         hasSavedValue = initialValue != null,
@@ -271,6 +273,7 @@ class SettingNotifier<T> extends ValueNotifier<T> {
     }
     super.value = finalValue;
     Database.instance.updateSettings(companion);
+    onChanged?.call(finalValue);
   }
   
   T? get defaultValue => _defaultValue;
@@ -282,86 +285,4 @@ class SettingNotifier<T> extends ValueNotifier<T> {
     }
   }
   
-}
-
-class RelationalListSettingNotifier<T> extends ChangeNotifier implements ValueListenable<List<T>> {
-
-  List<T> _value;
-  final Future<void> Function(T item) _save;
-  final Future<void> Function(Iterable<T> items)? _saveAll;
-  final Future<void> Function(T item) _delete;
-
-  RelationalListSettingNotifier(
-    List<T> initialValue, {
-    required Future<void> Function(T) save,
-    Future<void> Function(Iterable<T> items)? saveAll,
-    required Future<void> Function(T) delete,
-  }) :  _value = List.unmodifiable(initialValue),
-        _save = save,
-        _saveAll = saveAll,
-        _delete = delete;
-
-  @override
-  List<T> get value => _value;
-
-  Future<void> add(T item) async {
-    if (_value.contains(item)) return;
-    _value = List.unmodifiable([..._value, item]);
-    notifyListeners();
-    await _save(item);
-  }
-
-  Future<void> addAll(Iterable<T> items) async {
-    final newItems = items.where((item) => !_value.contains(item)).toList();
-    if (newItems.isEmpty) return;
-    _value = List.unmodifiable([..._value, ...newItems]);
-    notifyListeners();
-    await _saveAll?.call(newItems);
-  }
-
-  Future<void> remove(T item) async {
-    if (!_value.contains(item)) return;
-    _value = List.unmodifiable(_value.where((x) => x != item));
-    notifyListeners();
-    await _delete(item);
-  }
-
-  Future<void> update(T item) async {
-    final index = _value.indexOf(item);
-    if (index != -1) {
-      final newList = List<T>.from(_value);
-      final bool changedIdentity = newList[index] != item;
-      newList[index] = item;
-      _value = List.unmodifiable(newList);
-      notifyListeners();
-      if (changedIdentity) {
-        await _save(item);
-      }
-    }
-  }
-
-  Future<void> updateEach(T Function(T item) updateFn) async {
-    final valueList = List<T>.from(_value);
-    bool changedIdentity = false;
-    for (var i = 0; i < valueList.length; i++) {
-      final updated = updateFn(valueList[i]);
-      valueList[i] = updated;
-      if (updated != valueList[i]) {
-        changedIdentity = true;
-      }
-    }
-    _value = List.unmodifiable(valueList);
-    notifyListeners();
-    if (changedIdentity) {
-      await _saveAll?.call(valueList);
-    }
-  }
-
-  void sort(int Function(T a, T b) compare) {
-    final newList = List<T>.from(_value);
-    newList.sort(compare);
-    _value = List.unmodifiable(newList);
-    notifyListeners();
-  }
-
 }

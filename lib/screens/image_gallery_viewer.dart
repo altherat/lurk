@@ -2,10 +2,11 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
 import 'package:lurk/core/constants.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/image_viewer.dart';
+import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
 
@@ -70,7 +71,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
   }
 
   Future<void> _getGalleryFromUrl() async {
-    final postDetails = await widget.platform.api.getPostDetailsFromUrl(widget.url);
+    final postDetails = await widget.platform.getApi(Settings.activeUser.value?.id).fetchPostDetailsFromUrl(widget.url);
     if (mounted) {
       setState(() {
         _post = postDetails.post;
@@ -81,14 +82,14 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final VoidCallback? onSave;
+    final void Function(BuildContext context)? onSave;
     final Widget body;
     if (_isLoadingPost) {
       onSave = null;
       body = const LargeCenteredCircularProgressIndicator();
     }
     else {
-      onSave = () {
+      onSave = (context) {
         final count = _post.galleryImages.length;
         saveMedia(
           context: context,
@@ -96,7 +97,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
           snackbarMediaTypeMessage: '$count images',
           save: () async {
             for (final image in _post.galleryImages) {
-              final filePath = await downloadMediaToTemp(image.url, widget.platform.api.savedOrDefaultUserAgent);
+              final filePath = await downloadMediaToTemp(image.url, widget.platform.savedOrDefaultUserAgent);
               await Gal.putImage(filePath);
             }
           },
@@ -135,7 +136,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
               children: [
                 ExtendedImage.network(
                   image.url,
-                  headers: {'User-Agent': widget.platform.api.savedOrDefaultUserAgent},
+                  headers: {'User-Agent': widget.platform.savedOrDefaultUserAgent},
                   fit: BoxFit.fitWidth,
                   mode: ExtendedImageMode.gesture,
                   cacheWidth: (MediaQuery.of(context).size.width * MediaQuery.of(context).devicePixelRatio).toInt(),
@@ -183,7 +184,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                         );
                       },
                       onLongPress: () {
-                        showSimpleTextOptionsBottomSheet(
+                        showSimpleOptionsBottomSheet(
                           context: context,
                           options: MediaScaffold.getOptions(
                             context: context,

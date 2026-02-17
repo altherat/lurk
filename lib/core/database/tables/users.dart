@@ -1,5 +1,5 @@
 import 'package:drift/drift.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/user.dart';
 
 @UseRowClass(LoggedInUser)

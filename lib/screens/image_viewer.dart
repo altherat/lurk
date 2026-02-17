@@ -1,7 +1,7 @@
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
@@ -39,7 +39,7 @@ class ImageViewerScreen extends StatelessWidget {
       url: url,
       type: 'image',
       post: post,
-      onSave: () => _onSave(context),
+      onSave: _onSave,
       body: Hero(
         tag: 'media_$url',
         // transitionOnUserGestures: true,
@@ -47,20 +47,20 @@ class ImageViewerScreen extends StatelessWidget {
           child: GestureDetector(
             onLongPress:() {
               HapticFeedback.mediumImpact();
-              showSimpleTextOptionsBottomSheet(
+              showSimpleOptionsBottomSheet(
                 context: context,
                 options: MediaScaffold.getOptions(
                   context: context,
                   type: 'image',
                   url: url,
-                  onSave: () => _onSave(context)
+                  onSave: _onSave
                 )
               );
             },
             child: CustomInteractiveViewer(
               child: ExtendedImage.network(
                 url,
-                headers: {'User-Agent': platform.api.savedOrDefaultUserAgent},
+                headers: {'User-Agent': platform.savedOrDefaultUserAgent},
                 fit: BoxFit.contain, 
                 alignment: Alignment.topCenter,
                 loadStateChanged: (state) {

@@ -8,7 +8,7 @@ import 'package:ffmpeg_kit_flutter_new_min/return_code.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
@@ -70,7 +70,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
       final client = HttpClient();
 
       final request = await client.getUrl(Uri.parse('${widget.url}/DASHPlaylist.mpd'));
-      request.headers.set('User-Agent', widget.platform.api.savedOrDefaultUserAgent);
+      request.headers.set('User-Agent', widget.platform.savedOrDefaultUserAgent);
 
       final response = await request.close();
       _dashManifest = await response.transform(utf8.decoder).join();
@@ -88,7 +88,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
       _videoController = VideoPlayerController.networkUrl(
         _uri,
         httpHeaders: {
-          'User-Agent': widget.platform.api.savedOrDefaultUserAgent,
+          'User-Agent': widget.platform.savedOrDefaultUserAgent,
         },
         videoPlayerOptions: VideoPlayerOptions(allowBackgroundPlayback: false),
       );
@@ -138,7 +138,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
     return "${twoDigits(duration.inMinutes)}:${twoDigits(duration.inSeconds.remainder(60))}";
   }
 
-  void _onSave() async {
+  void _onSave(BuildContext context) async {
     if (_dashManifest != null) {
       saveMedia(
         context: context,
@@ -164,7 +164,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
           final audioSet = RegExp(r'<AdaptationSet [^>]*contentType="audio".*?<\/AdaptationSet>', dotAll: true).firstMatch(_dashManifest!)!.group(0)!;
           final bestVideoUrl = getBestUrl(videoSet);
           final bestAudioUrl = getBestUrl(audioSet);
-          final userAgent = widget.platform.api.savedOrDefaultUserAgent;
+          final userAgent = widget.platform.savedOrDefaultUserAgent;
           final videoPath = await downloadMediaToTemp(bestVideoUrl, userAgent);
           final audioPath = await downloadMediaToTemp(bestAudioUrl, userAgent);
           final tempDir = await getTemporaryDirectory();
@@ -227,7 +227,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
               child: GestureDetector(
                 onLongPress: () {
                   HapticFeedback.mediumImpact();
-                  showSimpleTextOptionsBottomSheet(
+                  showSimpleOptionsBottomSheet(
                     context: context,
                     options: MediaScaffold.getOptions(
                       context: context,

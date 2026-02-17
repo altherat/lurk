@@ -1,4 +1,4 @@
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/community.dart';
 
 enum Flavor {

@@ -2,15 +2,15 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/repositories/comments.dart';
+import 'package:lurk/repositories/posts.dart';
 import 'package:lurk/screens/image_gallery_viewer.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/screens/community.dart';
 import 'package:lurk/screens/user_details.dart';
-import 'package:lurk/services/history.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
-import 'package:lurk/services/votes.dart';
 import 'package:lurk/widgets/collection_listenable_builder.dart';
 import 'package:lurk/widgets/swipe_to_vote.dart';
 
@@ -39,14 +39,14 @@ class PostTile extends StatelessWidget {
   });
 
   void _showOptions(BuildContext context) {
-    showSimpleTextOptionsBottomSheet(
+    showSimpleOptionsBottomSheet(
       context: context,
       title: post.title,
       options: {
         if (showViewCommunityOption)
-          'View ${post.community.prefixedName}': () => context.push(() => CommunityScreen(community: post.community)),
+          Text('View ${post.community.prefixedName}'): (context) => context.push(() => CommunityScreen(community: post.community)),
         if (showViewUserOption && post.author != null)
-          'View ${post.community.platform.userPrefix}${post.author}': () {
+          Text('View ${post.community.platform.userPrefix}${post.author}'): (context) {
             context.push(
               () => UserDetailsScreen(
                 platform: post.community.platform,
@@ -54,18 +54,16 @@ class PostTile extends StatelessWidget {
               )
             );
           },
-        'View link in browser': () => openInBrowser(post.url),
-        'View comments in browser': () => openInBrowser(post.community.platform.api.getPostDetailsUrl(post)),
-        'Copy link': () => copyToClipboard(post.url),
-        'Copy comments link': () => copyToClipboard(post.community.platform.api.getPostDetailsUrl(post))
+        Text('View link in browser'): (context) => openInBrowser(post.url),
+        Text('View comments in browser'): (context) => openInBrowser(post.community.platform.getPostDetailsUrl(post)),
+        Text('Copy link'): (context) => copyToClipboard(post.url),
+        Text('Copy comments link'): (context) => copyToClipboard(post.community.platform.getPostDetailsUrl(post))
       }      
     );
   }
 
-  void _onVote(bool upvote) {
-    final vote = Votes.posts.value(post.id) == upvote ? null : upvote;
-    Votes.posts.setVote(post.id, vote);
-    post.community.platform.api.vote(post.id, vote);
+  void _updateVote(String activeUserId, bool up) {
+    post.community.platform.getApi(activeUserId).votePost(post.id, up);
   }
 
   @override
@@ -77,7 +75,7 @@ class PostTile extends StatelessWidget {
       onTap = onTapNavigate
         ? () {
             if (post.isSelf) {
-              History.posts.add(post.id);
+              Posts.visitedLinks.add(post.id);
             }
             context.push(() => PostDetailsScreen.fromPost(post: post));
           }
@@ -102,11 +100,11 @@ class PostTile extends StatelessWidget {
               builder: (context, activeUser, child) {
                 final canVote = activeUser != null && activeUser.platform == post.community.platform;
                 return CollectionListenableBuilder(
-                  id: post.id,
-                  collectionListenable: Votes.posts,
-                  builder: (context, vote) {
+                  id: (activeUser?.id, post.id),
+                  collectionListenable: Posts.interactionStates,
+                  builder: (context, interactionState) {
                     final String scoreText;
-                    final score = post.score + (vote == null ? 0 : vote ? 1 : -1);
+                    final score = interactionState?.score ?? post.score;
                     if (score < 1000) {
                       scoreText = score.toString();
                     }
@@ -124,13 +122,13 @@ class PostTile extends StatelessWidget {
                           alignment: Alignment.topCenter,
                           child: _VoteArrow(
                             assetName: 'assets/arrow_drop_up_rounded.png',
-                            isActive: vote == true,
+                            isActive: interactionState?.vote == true,
                             alignment: Alignment.topCenter,
                             activeColor: Constants.upvoteColor,
                             onPressed: canVote
                               ? () {
                                   HapticFeedback.mediumImpact();
-                                  _onVote(true);
+                                  _updateVote(activeUser.id, true);
                                 }
                               : null
                           ),
@@ -142,7 +140,7 @@ class PostTile extends StatelessWidget {
                               style: TextStyle(
                                 fontSize: 13,
                                 fontWeight: FontWeight.bold,
-                                color: vote == true ? Constants.upvoteColor : vote == false ? Constants.downvoteColor : onSurfaceVariantColor,
+                                color: interactionState?.vote == null ? onSurfaceVariantColor : interactionState!.vote! ? Constants.upvoteColor : Constants.downvoteColor,
                               ),
                             ),
                           ),
@@ -151,13 +149,13 @@ class PostTile extends StatelessWidget {
                           alignment: Alignment.bottomCenter,
                           child: _VoteArrow(
                             assetName: 'assets/arrow_drop_down_rounded.png',
-                            isActive: vote == false,
+                            isActive: interactionState?.vote == false,
                             alignment: Alignment.bottomCenter,
                             activeColor: Constants.downvoteColor,
                             onPressed: canVote
                               ? () {
                                   HapticFeedback.mediumImpact();
-                                  _onVote(false);
+                                  _updateVote(activeUser.id, false);
                                 }
                               : null
                           ),
@@ -177,7 +175,7 @@ class PostTile extends StatelessWidget {
                 children: [
                   CollectionListenableBuilder(
                     id: post.id,
-                    collectionListenable: History.posts,
+                    collectionListenable: Posts.visitedLinks,
                     builder: (context, isVisited) {
                       return Text.rich(
                         TextSpan(
@@ -220,7 +218,7 @@ class PostTile extends StatelessWidget {
                     child: post.thumbnailUrl != null
                       ? ExtendedImage.network(
                           post.thumbnailUrl!,
-                          headers: {'User-Agent': post.community.platform.api.savedOrDefaultUserAgent},
+                          headers: {'User-Agent': post.community.platform.savedOrDefaultUserAgent},
                           cacheWidth: (Constants.thumbnailSize * MediaQuery.devicePixelRatioOf(context)).round(),
                           fit: BoxFit.cover,
                           loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed ? const Icon(Icons.broken_image_rounded) : null,
@@ -242,7 +240,7 @@ class PostTile extends StatelessWidget {
                         color: Colors.transparent,
                         child: InkWell(
                           onTap: () {
-                            History.posts.add(post.id);
+                            Posts.visitedLinks.add(post.id);
                             if (post.isSelf) {
                               context.push(() => PostDetailsScreen.fromPost(post: post));
                             }
@@ -273,7 +271,7 @@ class PostTile extends StatelessWidget {
             builder: (context, activeUser, child) {
               if (activeUser != null && activeUser.platform == post.community.platform) {
                 return SwipeToVote(
-                  onVote: _onVote,
+                  onVote: (upvote) => _updateVote(activeUser.id, upvote),
                   child: child!
                 );
               }
@@ -302,7 +300,7 @@ class PostTileCommentHistorySubtitle extends StatelessWidget {
   Widget build(BuildContext context) {
     return CollectionListenableBuilder(
       id: post.id,
-      collectionListenable: History.postDetails,
+      collectionListenable: Posts.visitedDetails,
       builder: (context, isVisited) {
         return Text.rich(
           TextSpan(

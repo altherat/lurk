@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/constants.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/core/flavors.dart';
 import 'package:lurk/services/api/digg.dart';
@@ -88,7 +88,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
               label: 'Override back navigation',
               infoText: 'When enabled and on the home screen, navigating back will show the community list rather than exit the app.',
             ),
-            if (F.appFlavor.platforms.any((platform) => platform.api.hasLogin)) ...[
+            if (F.appFlavor.platforms.any((platform) => platform.hasLogin)) ...[
               _BoolSettingListTile(
                 setting: Settings.swipePostsToVote,
                 label: 'Swipe posts to vote',

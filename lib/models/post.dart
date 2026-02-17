@@ -26,6 +26,7 @@ class Post {
   final bool isGallery;
   final Size? mediaSize;
   final List<GalleryImage> galleryImages;
+  final bool? vote;
 
   Post({
     required this.community,
@@ -48,6 +49,7 @@ class Post {
     required this.isGallery,
     required this.mediaSize,
     required this.galleryImages,
+    required this.vote,
   }) : shortId = shortId ?? id;
 
   String get timeAgoCompact => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgoCompact;

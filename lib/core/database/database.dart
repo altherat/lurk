@@ -8,10 +8,11 @@ import 'package:lurk/core/database/tables/communities.dart';
 import 'package:lurk/core/database/tables/cookies.dart';
 import 'package:lurk/core/database/tables/history.dart';
 import 'package:lurk/core/database/tables/settings.dart';
+import 'package:lurk/core/database/tables/user_communities.dart';
 import 'package:lurk/core/database/tables/users.dart';
 import 'package:lurk/core/flavors.dart';
 import 'package:lurk/models/community.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/user.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -20,7 +21,7 @@ import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [Cookies, Settings, Users, Communities, History])
+@DriftDatabase(tables: [Cookies, Settings, Users, UserCommunities, Communities, History])
 class Database extends _$Database {
 
   static Database instance = Database._();
@@ -140,19 +141,22 @@ class Database extends _$Database {
         platform: community.platform,
         name: community.name,
         isFavorite: Value(community.isFavorite),
+        id: Value(community.id),
       ),
       mode: InsertMode.insertOrReplace
     );
   }
 
   Future<void> saveAllCommunities(Iterable<Community> communities) {
-    return batch((batch) {
-      batch.insertAll(
-        this.communities, 
-        communities.map((community) => CommunitiesCompanion.insert(
-          platform: community.platform,
-          name: community.name,
-          isFavorite: Value(community.isFavorite),
+    return batch(
+      (batch) {
+        batch.insertAll(
+          this.communities, 
+          communities.map((community) => CommunitiesCompanion.insert(
+            platform: community.platform,
+            name: community.name,
+            isFavorite: Value(community.isFavorite),
+            id: Value(community.id),
         )).toList(),
         mode: InsertMode.insertOrReplace,
       );
@@ -184,6 +188,70 @@ class Database extends _$Database {
       HistoryCompanion.insert(itemId: id, type: type),
       mode: InsertMode.insertOrIgnore,
     );
+  }
+
+  Future<void> saveCommunitySubscription(Platform platform, String userId, String communityName) {
+    return into(userCommunities).insert(
+      UserCommunitiesCompanion.insert(
+        platform: platform,
+        userId: userId,
+        communityName: communityName,
+      ),
+      mode: InsertMode.insertOrIgnore,
+    );
+  }
+
+  Future<void> saveAllCommunitySubscriptions(Platform platform, String userId, Iterable<String> communityNames) {
+    return batch((batch) {
+      batch.insertAll(
+        userCommunities,
+        communityNames.map((name) => UserCommunitiesCompanion.insert(
+          platform: platform,
+          userId: userId,
+          communityName: name,
+        )).toList(),
+        mode: InsertMode.insertOrIgnore,
+      );
+    });
+  }
+
+  Future<void> deleteCommunitySubscription(Platform platform, String userId, String communityName) {
+    return (
+      delete(userCommunities)
+        ..where((t) => 
+          t.platform.equalsValue(platform) & 
+          t.userId.equals(userId) & 
+          t.communityName.equals(communityName)
+        )
+    ).go();
+  }
+
+  Future<List<String>> getSubscribedCommunityNames(Platform platform, String userId) {
+    return (
+      select(userCommunities)
+        ..where((t) => t.platform.equalsValue(platform) & t.userId.equals(userId))
+    ).map((row) => row.communityName).get();
+  }
+
+  Future<List<Community>> getSubscribedCommunities(Platform platform, String userId) {
+    return (
+      select(userCommunities)
+        ..where((t) => t.platform.equalsValue(platform) & t.userId.equals(userId))
+    ).join([
+      innerJoin(communities, 
+        communities.platform.equalsExp(userCommunities.platform) & 
+        communities.name.equalsExp(userCommunities.communityName)
+      )
+    ]).map((row) => row.readTable(communities)).get();
+  }
+
+  Future<Map<(Platform, String), Set<String>>> getAllSubscribedCommunities() async {
+    final rows = await select(userCommunities).get();
+    final Map<(Platform, String), Set<String>> result = {};
+    for (final row in rows) {
+      result.putIfAbsent((row.platform, row.userId), () => {}).add(row.communityName);
+    }
+    return result;
   }
 
 }

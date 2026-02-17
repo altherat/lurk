@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:lurk/core/constants.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 
 class Settings extends Table {
 

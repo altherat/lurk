@@ -5,7 +5,7 @@ import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
 import 'package:intl/intl.dart';
 import 'package:lurk/core/constants.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/image_gallery_viewer.dart';
@@ -273,12 +273,23 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
     }
 
     if (resolvedPlatform.isUnresolved(path)) {
-      final resolvedUrl = await resolvedPlatform.api.resolveUrl(url);
-      if (context.mounted && resolvedUrl != null) {
-        return navigate(context, platform, resolvedUrl, post: post);
+      final client = HttpClient();
+      try {
+        final request = await client.getUrl(Uri.parse(url));
+        request.followRedirects = false; 
+        request.headers.set('User-Agent', resolvedPlatform.savedOrDefaultUserAgent);
+        final response = await request.close();
+        if (response.statusCode == 301) {
+          final resolvedUrl = response.headers.value('location');
+          if (context.mounted && resolvedUrl != null) {
+            return navigate(context, platform, resolvedUrl, post: post);
+          }
+        }
+      }
+      finally {
+        client.close();
       }
     }
-
   }
 
   if (!context.mounted) return;
@@ -378,21 +389,21 @@ Future<void> showOptionsBottomSheet({
   );
 }
 
-Future<void> showSimpleTextOptionsBottomSheet({
+Future<void> showSimpleOptionsBottomSheet({
   required BuildContext context,
   String? title,
-  required Map<String, VoidCallback?> options
+  required Map<Widget, void Function(BuildContext context)?> options
 }) {
   return showOptionsBottomSheet(
     context: context,
     title: title,
     options: options.entries.map((entry) {
       return ListTile(
-        title: Text(entry.key),
+        title: entry.key,
         onTap: entry.value != null
         ? () {
             context.pop();
-            entry.value?.call();
+            entry.value?.call(context);
           }
         : null
       );
@@ -418,7 +429,7 @@ Future<void> showSimpleOptionsDialog({
           return SimpleDialogOption(
             padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
             onPressed: () {
-              Navigator.pop(dialogContext);
+              dialogContext.pop();
               entry.value();
             },
             child: Text(
@@ -467,7 +478,7 @@ Future<void> saveImage({
   platform: platform,
   snackbarMediaTypeMessage: 'image',
   save: () async {
-    final filePath = await downloadMediaToTemp(url, platform.api.savedOrDefaultUserAgent);
+    final filePath = await downloadMediaToTemp(url, platform.savedOrDefaultUserAgent);
     await Gal.putImage(filePath);
   }
 );
@@ -481,7 +492,7 @@ Future<void> saveVideo({
   platform: platform,
   snackbarMediaTypeMessage: 'video',
   save: () async {
-    final filePath = await downloadMediaToTemp(url, platform.api.savedOrDefaultUserAgent);
+    final filePath = await downloadMediaToTemp(url, platform.savedOrDefaultUserAgent);
     await Gal.putVideo(filePath);
   }
 );

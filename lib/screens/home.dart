@@ -26,13 +26,14 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   @override
   void initState() {
     super.initState();
-    _onCommunityChanged();
+    _homeCommunity =_getHomeCommunity();
     Settings.homeCommunityPlatform.addListener(_onCommunityChanged);
     Settings.homeCommunityName.addListener(_onCommunityChanged);
   }
 
   @override
   void dispose() { 
+    Settings.onSessionsInvalidated = null;
     Settings.homeCommunityPlatform.removeListener(_onCommunityChanged);
     Settings.homeCommunityName.removeListener(_onCommunityChanged);
     App.routeObserver.unsubscribe(this);

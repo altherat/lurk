@@ -5,11 +5,12 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/app.dart';
 import 'package:lurk/core/constants.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/core/flavors.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/user.dart';
+import 'package:lurk/repositories/communities.dart';
 import 'package:lurk/screens/community.dart';
 import 'package:lurk/screens/search.dart';
 import 'package:lurk/screens/settings.dart';
@@ -29,7 +30,7 @@ class MainScaffold extends StatefulWidget {
   final Widget? title;
   final Widget? subtitle;
   final List<Widget>? iconActions;
-  final Map<String, VoidCallback>? popupMenuActions;
+  final Map<Widget, Function(BuildContext context)>? popupMenuActions;
   final PreferredSizeWidget? sliverAppBarFlexibleBackground;
   final PreferredSizeWidget? sliverAppBarBottom;
   final List<Widget>? slivers;
@@ -161,13 +162,21 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
     );
   }
 
-  Future<void> _onLoginPressed(BuildContext context) async {
-    context.pop();
-    final username = await widget.platform.api.login();
-    if (username != null) {
-      Settings.communities.addAll(await widget.platform.api.getSubscribedCommunities());
-      if (context.mounted) {
-        context.showSnackBarMessage('Logged in to ${widget.platform.name.toTitleCase()} as "$username"');
+  void _onLoginPressed(BuildContext context) async {
+    _scaffoldKey.currentState?.closeDrawer();
+    final user = await widget.platform.getApi(null).login();
+    if (user != null) {
+      if (!Settings.loggedInUsers.value.any((u) => u.id == user.id)) {
+        Settings.loggedInUsers.add(user);
+        Settings.activeUser.value = user;
+        widget.platform.destroySession(null);
+        widget.platform.getApi(user.id).fetchSubscribedCommunities();
+        if (context.mounted) {
+          context.showSnackBarMessage('Logged in to ${widget.platform.name.toTitleCase()} as ${user.name}');
+        }
+      }
+      else if (context.mounted) {
+        context.showSnackBarMessage('Already logged in to ${widget.platform.name.toTitleCase()} as ${user.name}');
       }
     }
   }
@@ -207,7 +216,7 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
                 valueListenable: Settings.useBottomBar,
                 builder: (context, useBottomBar, child) {
                   final List<Widget> iconActions = widget.iconActions?.toList() ?? [];
-                  final List<PopupMenuItem> popupMenuItems = [];
+                  final List<PopupMenuItem<void Function(BuildContext context)>> popupMenuItems = [];
                   final titleWidget = Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
@@ -248,8 +257,8 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
                     drawerEdgeDragWidth = 20;
                     appBarDrawerIcon = null;
                     popupMenuItems.add(
-                      PopupMenuItem<VoidCallback>(
-                        value: () => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen())),
+                      PopupMenuItem<void Function(BuildContext context)>(
+                        value: (context) => Navigator.push(context, MaterialPageRoute(builder: (context) => const SettingsScreen())),
                         child: const Text('Settings'),
                       )
                     );
@@ -336,7 +345,7 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
                       valueListenable: Settings.loggedInUsers,
                       builder: (context, loggedInUsers, child) {
                         if (loggedInUsers.isEmpty) {
-                          if (widget.platform.api.hasLogin) {
+                          if (widget.platform.hasLogin) {
                             return ValueListenableBuilder(
                               valueListenable: Settings.redditClientId,
                               builder: (context, redditClientId, child) {
@@ -348,7 +357,10 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
                                     }
                                     return ListTile(
                                       title: Text('Login to Reddit'),
-                                      onTap: () => _onLoginPressed(context),
+                                      onTap: () {
+                                        context.pop();
+                                        _onLoginPressed(this.context);
+                                      },
                                       trailing: const _SettingsIconButton(),
                                     );
                                   }
@@ -366,7 +378,10 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
                               activeUser: activeUser!,
                               addUserTileTrailing: const _SettingsIconButton(),
                               reverse: reverse,
-                              onLoginPressed: () => _onLoginPressed(context),
+                              onLoginPressed: () {
+                                context.pop();
+                                _onLoginPressed(this.context);
+                              }
                             );
                           }
                         );
@@ -416,9 +431,9 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
                     popupMenuItems.insertAll(
                       0,
                       widget.popupMenuActions!.entries.map((entry) {
-                        return PopupMenuItem<VoidCallback>(
+                        return PopupMenuItem(
                           value: entry.value,
-                          child: Text(entry.key),
+                          child: entry.key
                         );
                       })
                     );
@@ -426,7 +441,7 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
                   if (popupMenuItems.isNotEmpty) {
                     iconActions.add(
                       PopupMenuButton(
-                        onSelected: (callback) => callback(),
+                        onSelected: (callback) => callback(context),
                         itemBuilder: (context) => popupMenuItems
                       )
                     );
@@ -645,7 +660,7 @@ class _UserListState extends State<_UserList> {
 
   bool _isExpanded = false;
 
-  void _onTileLongPress(LoggedInUser user, bool isActiveUser) {
+  void _onTileLongPress(LoggedInUser user) {
     showSimpleOptionsDialog(
       context: context,
       title: user.platform.getPrefixedUsername(user.name),
@@ -661,13 +676,13 @@ class _UserListState extends State<_UserList> {
         },
         'Logout': () async {
           Settings.loggedInUsers.remove(user);
-          if (isActiveUser) {
+          if (Settings.activeUser.value == user) {
             Settings.activeUser.value = Settings.loggedInUsers.value.firstOrNull;
           }
-         await user.platform.api.logout(user.id);
-         if (mounted) {
-          context.showSnackBarMessage('Logged out of ${user.name}');
-         }
+          user.platform.destroySession(user.id);
+          if (mounted) {
+            context.showSnackBarMessage('Logged out of ${user.name}');
+          }
         }
       }
     );
@@ -700,7 +715,7 @@ class _UserListState extends State<_UserList> {
                 await Future.delayed(const Duration(milliseconds: 300));
                 setState(() => _isExpanded = false);
               },
-              onLongPress: () => _onTileLongPress(user, false)
+              onLongPress: () => _onTileLongPress(user)
             ))
           ],
         ),
@@ -728,7 +743,7 @@ class _UserListState extends State<_UserList> {
           ),
         ),
         onTap: () => setState(() => _isExpanded = !_isExpanded),
-        onLongPress: () => _onTileLongPress(widget.activeUser, true)
+        onLongPress: () => _onTileLongPress(widget.activeUser)
       )
     ];
     return Column(
@@ -855,25 +870,26 @@ class _CommunityListState extends State<_CommunityList> {
   @override
   void initState() {
     super.initState();
-    _visibleCommunities = Settings.communities.value.toList();
+    _visibleCommunities = Communities.saved.value.toList();
     _searchPlatform = widget.platform;
     final savedSearchType = Settings.searchType.value;
-    _searchType = savedSearchType == null || (savedSearchType == SearchType.withinCommunity && (widget.activeCommunity == null || !_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames.contains(widget.activeCommunity))) ? SearchType.community : savedSearchType;
+    _searchType = savedSearchType == null || (savedSearchType == SearchType.withinCommunity && (widget.activeCommunity == null || !_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames.contains(widget.activeCommunity?.name))) ? SearchType.community : savedSearchType;
     _updateSearchBarTexts();
     _searchBarFocusNode.addListener(_onSearchBarFocusChanged);
-    Settings.communities.addListener(_onCommunitiesSettingChanged);
+    Communities.saved.addListener(_onSavedCommunitiesChanged);
     _sortVisibleCommunities();
   }
 
   @override
   void dispose() {
+    Communities.saved.removeListener(_onSavedCommunitiesChanged);
     _searchBarFocusNode.removeListener(_onSearchBarFocusChanged);
     _searchController.dispose();
     _searchBarFocusNode.dispose();
     super.dispose();
   }
 
-  void _onCommunitiesSettingChanged() {
+  void _onSavedCommunitiesChanged() {
     if (!mounted) return;
     setState(() {
       _updateVisibleCommunities();
@@ -882,7 +898,7 @@ class _CommunityListState extends State<_CommunityList> {
   }
 
   void _updateVisibleCommunities() {
-    _visibleCommunities = (_searchQuery.isEmpty ? Settings.communities.value : Settings.communities.value.where((community) => community.name?.contains(_searchQuery) ?? false)).toList();
+    _visibleCommunities = (_searchQuery.isEmpty ? Communities.saved.value : Communities.saved.value.where((community) => community.name?.contains(_searchQuery) ?? false)).toList();
   }
 
   void _sortVisibleCommunities() {
@@ -898,6 +914,7 @@ class _CommunityListState extends State<_CommunityList> {
       if (_searchType == SearchType.community || _searchType == SearchType.user) {
         _searchBarHint = _searchBarFocusNode.hasFocus ? _searchBarHint.toLowerCase() : _searchBarHint.toTitleCase();
       }
+      _updateIsSearchValid();
     });
   }
 
@@ -959,7 +976,7 @@ class _CommunityListState extends State<_CommunityList> {
 
   void _cycleSearchType() {
     setState(() {
-      final searchTypes = widget.activeCommunity == null || !_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames.contains(widget.activeCommunity) ? SearchType.values.where((type) => type != SearchType.withinCommunity).toList() : SearchType.values;
+      final searchTypes = widget.activeCommunity == null || !_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames.contains(widget.activeCommunity?.name) ? SearchType.values.where((type) => type != SearchType.withinCommunity).toList() : SearchType.values;
       _updateSearchType(searchTypes[(searchTypes.indexOf(_searchType) + 1) % searchTypes.length]);
       _updateSearchBarTexts();
       _updateIsSearchValid();
@@ -1016,7 +1033,7 @@ class _CommunityListState extends State<_CommunityList> {
     return ValueListenableBuilder(
       valueListenable: Settings.activeUser,
       builder: (context, activeUser, child) {
-        final showRootPage = _searchQuery.isEmpty && activeUser?.platform.api.hasLogin == true;
+        final showRootPage = _searchQuery.isEmpty && activeUser?.platform.hasLogin == true;
         final headerCount = showRootPage ? 2 : 1;
         return ValueListenableBuilder(
           valueListenable: Settings.showPlatformColorAccents,
@@ -1185,9 +1202,6 @@ class _CommunityListState extends State<_CommunityList> {
                             }
                             String? query = value;
                             if (query.isEmpty) {
-                              if (_searchPlatform.homeCommunityName != null) {
-                                return;
-                              }
                               query = null;
                             }
                             final community = Community(
@@ -1195,7 +1209,7 @@ class _CommunityListState extends State<_CommunityList> {
                               name: query
                             );
                             _navigateToCommunity(community);
-                            Settings.communities.add(community);
+                            Communities.saved.add(community);
                           case SearchType.user:
                             if (!RegExp(_searchPlatform.userNameValidation).hasMatch(value)) {
                               return;
@@ -1262,6 +1276,7 @@ class _CommunityListState extends State<_CommunityList> {
                     platform: widget.platform,
                     community: Community(platform: activeUser!.platform),
                     activeCommunity: widget.activeCommunity,
+                    isFixed: true,
                     leading: IconButton(
                       onPressed: () {},
                       icon: Stack(
@@ -1283,7 +1298,7 @@ class _CommunityListState extends State<_CommunityList> {
                         ],
                       )
                     ),
-                    title: Text(activeUser.platform.rootCommunityName),
+                    title: Text(activeUser.platform.rootCommunityName ?? ''),
                     onTap: _navigateToCommunity
                   );
                 }
@@ -1309,20 +1324,21 @@ class _CommunityListState extends State<_CommunityList> {
                   platform: widget.platform,
                   community: community,
                   activeCommunity: widget.activeCommunity,
+                  isFixed: false,
                   leading: IconButton(
                     icon: Icon(
                       icon,
                       color: color,
                       size: 24
                     ),
-                    onPressed: () {
-                      Settings.communities.update(community.copyWith(isFavorite: !community.isFavorite));
-                    }
+                    onPressed: () => Communities.saved.update(community.copyWith(isFavorite: !community.isFavorite))
                   ),
                   title: ValueListenableBuilder(
                     valueListenable: Settings.showPlatformColorTextAccents,
                     builder: (context, showPlatformColorTextAccents, child) {
                       return Text.rich(
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
                         TextSpan(
                           children: [
                             TextSpan(
@@ -1348,15 +1364,13 @@ class _CommunityListState extends State<_CommunityList> {
             return CustomRefreshIndicator(
               edgeOffset: MediaQuery.of(context).padding.top + 56,
               onRefresh: () async {
-                final Map<Community, Community> subscribedCommunities = {};
+                final List<Future> futures = [];
                 for (final platform in F.appFlavor.platforms) {
-                  if (platform.api.hasLogin) {
-                    for (final community in await platform.api.getSubscribedCommunities()) {
-                      subscribedCommunities[community] = community;
-                    }
+                  if (platform.hasLogin) {
+                    futures.add(platform.getApi(activeUser.id).fetchSubscribedCommunities());
                   }
                 }
-                Settings.communities.updateEach((community) => subscribedCommunities[community] ?? community.copyWith(isSubscribed: false));
+                await Future.wait(futures);
               },
               child: listView
             );
@@ -1375,6 +1389,7 @@ class _CommunityNameListTile extends StatelessWidget {
   final Community? activeCommunity;
   final Widget? leading;
   final Widget title;
+  final bool isFixed;
   final void Function(Community community) onTap;
 
   const _CommunityNameListTile({
@@ -1383,6 +1398,7 @@ class _CommunityNameListTile extends StatelessWidget {
     required this.activeCommunity,
     required this.leading,
     required this.title,
+    required this.isFixed,
     required this.onTap,
   });
 
@@ -1395,26 +1411,22 @@ class _CommunityNameListTile extends StatelessWidget {
           leading: leading,
           title: title,
           onTap: () => onTap(community),
-          onLongPress: community.name != null
+          onLongPress: !isFixed
             ? () {
-              final activeUser = Settings.activeUser.value;
+                final activeUser = Settings.activeUser.value;
+                final Map<String, void Function()> options = {};
+                if (community.id != null && activeUser != null) {
+                  if (Communities.isSubscribed(activeUser.platform, activeUser.id, community.name!)) {
+                    options['Unsubscribe'] = () => activeUser.platform.getApi(activeUser.id).unsubscribeFromCommunity(community.name!, community.id!);
+                  }
+                  else {
+                    options['Subscribe'] = () => activeUser.platform.getApi(activeUser.id).subscribeToCommunity(community.name!, community.id!);
+                  }
+                }
                 showSimpleOptionsDialog(
                   context: context,
                   title: community.prefixedName,
-                  options: {
-                    if (activeUser != null && community.isSubscribed != null)
-                      if (community.isSubscribed!)
-                        'Unsubscribe': () {
-                          activeUser.platform.api.unsubscribe(community.name!);
-                          Settings.communities.update(community.copyWith(isSubscribed: false));
-                        }
-                      else
-                        'Subscribe': () {
-                          activeUser.platform.api.subscribe(community.name!);
-                          Settings.communities.update(community.copyWith(isSubscribed: true));
-                        },
-                    'Remove': () => Settings.communities.remove(community)
-                  },
+                  options: options..['Remove'] = () => Communities.saved.remove(community)
                 );
               }
             : null

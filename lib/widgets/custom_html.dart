@@ -4,7 +4,7 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:lurk/core/constants.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/image_viewer.dart';
@@ -275,7 +275,7 @@ class _Image extends StatelessWidget {
         ),
         child: ExtendedImage.network(
           url,
-          headers: {'User-Agent': platform.api.savedOrDefaultUserAgent},
+          headers: {'User-Agent': platform.savedOrDefaultUserAgent},
           cacheHeight: (maxHeight * MediaQuery.devicePixelRatioOf(context)).round(),
           fit: BoxFit.contain,
           loadStateChanged: (state) {
@@ -311,18 +311,18 @@ class _Image extends StatelessWidget {
                       color: Colors.transparent,
                       child: InkWell(
                         onLongPress: () {
-                          showSimpleTextOptionsBottomSheet(
+                          showSimpleOptionsBottomSheet(
                             context: context,
                             options: {
-                              'Save image': () {
+                              Text('Save image'): (context) {
                                 saveImage(
                                   context: context,
                                   platform: platform,
                                   url: url
                                 );
                               },
-                              'View in browser': () => openInBrowser(url),
-                              'Copy link': () => copyToClipboard(url)
+                              Text('View in browser'): (context) => openInBrowser(url),
+                              Text('Copy link'): (context) => copyToClipboard(url)
                             }
                           );
                         },

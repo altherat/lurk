@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
-import 'package:lurk/models/community.dart';
+import 'package:lurk/models/community_details.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/screens/community.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/screens/user_details.dart';
+import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/list_tile_icon.dart';
 import 'package:lurk/widgets/post_tile.dart';
@@ -46,13 +47,13 @@ class SearchScreen extends StatelessWidget {
     return SimpleFeedScreen(
       platform: platform,
       feedOptions: feedOptions,
-      getItems: (options, pageToken) => platform.api.search(query, communityName, options: options, pageToken: pageToken),
+      fetchItems: (options, pageToken) => platform.getApi(Settings.activeUser.value?.id).fetchSearchResults(query, communityName, options: options, pageToken: pageToken),
       title: title,
       itemBuilder: (context, index, item) {
         if (item is Post) {
           return PostTile(post: item);
         }
-        if (item is Community) {
+        if (item is CommunityDetails) {
           final theme = Theme.of(context);
           return ListTile(
             title: Row(
@@ -72,11 +73,11 @@ class SearchScreen extends StatelessWidget {
                       TextSpan(
                         children: [
                           TextSpan(
-                            text: item.platform.communityPrefix,
+                            text: item.community.platform.communityPrefix,
                             style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                           ),
                           TextSpan(
-                            text: item.name!,
+                            text: item.community.name,
                           ),
                         ],
                       ),
@@ -89,7 +90,7 @@ class SearchScreen extends StatelessWidget {
                 ),
               ],
             ),
-            onTap: () => context.push(() => CommunityScreen(community: item)),
+            onTap: () => context.push(() => CommunityScreen(community: item.community)),
             subtitle: item.description != null
               ? Padding(
                   padding: const EdgeInsets.only(top: 8),

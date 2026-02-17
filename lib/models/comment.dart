@@ -2,7 +2,7 @@
 
 import 'dart:ui';
 
-import 'package:lurk/core/enums.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart' as utils;
 
 abstract class CommentItem {
@@ -32,6 +32,7 @@ class Comment extends CommentItem {
   final String? text;
   final String? textHtml;
   final Map<String, Size> images;
+  final bool? vote;
 
   final String? postTitle;
   final String? communityName;
@@ -50,8 +51,9 @@ class Comment extends CommentItem {
     required this.score,
     required this.timestampMs,
     required this.text,
-    required this.textHtml,
+    required this.textHtml, 
     required this.images,
+    required this.vote,
     this.postTitle,
     this.communityName,
   });
@@ -72,6 +74,7 @@ class Comment extends CommentItem {
     String? text,
     String? textHtml,
     Map<String, Size>? images,
+    bool? vote,
     String? postTitle,
     String? communityName,
   }) {
@@ -91,6 +94,7 @@ class Comment extends CommentItem {
       text: text ?? this.text,
       textHtml: textHtml ?? this.textHtml,
       images: images ?? this.images,
+      vote: vote ?? this.vote,
       postTitle: postTitle ?? this.postTitle,
       communityName: communityName ?? this.communityName,
     );

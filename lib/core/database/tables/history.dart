@@ -1,6 +1,6 @@
 import 'package:drift/drift.dart';
 
-enum HistoryType { post, comment }
+enum HistoryType { link, details }
 
 class History extends Table {
 

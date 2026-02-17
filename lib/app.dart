@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
+import 'package:lurk/repositories/communities.dart';
+import 'package:lurk/repositories/posts.dart';
 import 'package:lurk/screens/home.dart';
-import 'package:lurk/services/history.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
@@ -29,7 +30,8 @@ class _AppState extends State<App> {
     super.initState();
     _servicesInitFuture = Future.wait([
       Settings.init(),
-      History.init(),
+      Communities.init(),
+      Posts.init(),
     ]);
   }
 
@@ -55,7 +57,7 @@ class _AppState extends State<App> {
           dividerColor: Colors.transparent,
         ),
         popupMenuTheme: const PopupMenuThemeData(
-          color: Constants.lighterBackgroundColor
+          color: Constants.lighterBackgroundColor,
         ),
         chipTheme: const ChipThemeData(
           showCheckmark: false,

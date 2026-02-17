@@ -3,15 +3,14 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:lurk/core/constants.dart';
-import 'package:lurk/core/enums.dart';
-import 'package:lurk/core/flavors.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/repositories/posts.dart';
 import 'package:lurk/screens/simple_feed.dart';
-import 'package:lurk/services/history.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
@@ -98,7 +97,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
     super.initState();
     _post = widget.post;
     _feedOptionsNotifier = ValueNotifier(null);
-    _initialItemsFuture = _getItems(widget.platform.postCommentsFeedOptions.defaults, null);
+    _initialItemsFuture = _fetchItems(widget.platform.postCommentsFeedOptions.defaults, null);
   }
 
   @override
@@ -110,21 +109,21 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
     super.dispose();
   }
 
-  Future<PagedItems<CommentItem>> _getItems(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) async {
+  Future<PagedItems<CommentItem>> _fetchItems(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) async {
     _feedOptionsNotifier.value = feedOptions;
     final PostDetails postDetails;
     if (_post != null) {
-      postDetails = await _post!.community.platform.api.getPostDetailsFromId(_post!.shortId, shortCommentId: _contextCommentShortId, options: feedOptions);
+      postDetails = await _post!.community.platform.getApi(Settings.activeUser.value?.id).fetchPostDetailsFromId(_post!.shortId, shortCommentId: _contextCommentShortId, options: feedOptions);
     }
     else {
-      postDetails = await widget.platform.api.getPostDetailsFromUrl(widget.url, options: feedOptions);
+      postDetails = await widget.platform.getApi(Settings.activeUser.value?.id).fetchPostDetailsFromUrl(widget.url, options: feedOptions);
       _post = postDetails.post;
     }
     _contextCommentShortId = postDetails.contextCommentShortId;
     if (mounted) {
       setState(() {});
     }
-    History.postDetails.add(_post!.id);
+    Posts.visitedDetails.add(_post!.id);
     return PagedItems(items: postDetails.comments);
   }
 
@@ -139,16 +138,16 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
   Widget build(BuildContext context) {
     final Widget? title;
     final Widget subtitle;
-    final Map<String, VoidCallback>? popupMenuActions;
+    final Map<Widget, Function(BuildContext context)>? popupMenuActions;
     final List<Widget>? slivers;
     if (_post != null) {
       title = Text(_post!.title);
       subtitle = Text(_post!.community.prefixedName);
       popupMenuActions = {
-        'View in browser': () => openInBrowser(widget.url),
-        'View comments in browser': () => openInBrowser(_post!.community.platform.api.getPostDetailsUrl(_post!)),
-        'Copy link': () => copyToClipboard(widget.url),
-        'Copy comments link': () => copyToClipboard(_post!.community.platform.api.getPostDetailsUrl(_post!))
+        Text('View in browser'): (context) => openInBrowser(widget.url),
+        Text('View comments in browser'): (context) => openInBrowser(_post!.community.platform.getPostDetailsUrl(_post!)),
+        Text('Copy link'): (context) => copyToClipboard(widget.url),
+        Text('Copy comments link'): (context) => copyToClipboard(_post!.community.platform.getPostDetailsUrl(_post!))
       };
       slivers = [
         SliverToBoxAdapter(
@@ -236,7 +235,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
       platform: widget.platform,
       feedOptions: widget.platform.postCommentsFeedOptions,
       initialItems: _initialItemsFuture,
-      getItems: _getItems,
+      fetchItems: _fetchItems,
       title: title,
       subtitle: subtitle,
       showFeedOptionsSubtitle: false,
@@ -251,6 +250,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                 showAddCommentBottomSheet(
                   context: context,
                   platform: widget.platform,
+                  activeUserId: activeUser.id,
                   id: _post!.id,
                   replyingToWidget: Column(
                     children: [
@@ -430,7 +430,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
           child = _LoadMoreComments(
             comment: item as LoadMoreComment,
             onLoadMoreComments: () async {
-              final comments = await _post!.community.platform.api.getMoreComments(_post!.id, item.pageToken!, depth: item.depth);
+              final comments = await _post!.community.platform.getApi(Settings.activeUser.value?.id).fetchMoreComments(_post!.id, item.pageToken!, depth: item.depth);
               if (mounted) {
                 _simpleFeedScreenKey.currentState?.feedList?.updateItems((items) => items.replaceRange(index, index + 1, comments));
               }
