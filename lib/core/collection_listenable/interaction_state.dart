@@ -1,11 +1,11 @@
 import 'package:lurk/core/collection_listenable/collection_listenable.dart';
 import 'package:lurk/models/interaction_state.dart';
 
-class InteractionStateCollectionListenable extends CollectionListenable<(String, String), InteractionState?> {
+class InteractionStateCollectionListenable extends CollectionListenable<(String?, String), InteractionState?> {
 
-  final Map<(String, String), InteractionState> _states = {};
+  final Map<(String?, String), InteractionState> _states = {};
   
-  void set(String userId, String id, InteractionState state) {
+  void set(String? userId, String id, InteractionState state) {
     final key = (userId, id);
     if (state == _states[key]) {
       return;
@@ -14,7 +14,7 @@ class InteractionStateCollectionListenable extends CollectionListenable<(String,
     notifyListeners(key);
   }
 
-  void updateVote(String userId, String id, bool? newVote) {
+  void updateVote(String? userId, String id, bool? newVote) {
     final key = (userId, id);
     final currentState = _states[key];
     if (currentState?.score == null) {
@@ -29,6 +29,6 @@ class InteractionStateCollectionListenable extends CollectionListenable<(String,
   }
   
   @override
-  InteractionState? value((String, String) ids) => _states[ids];
+  InteractionState? value((String?, String) ids) => _states[ids];
 
 }

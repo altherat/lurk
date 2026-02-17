@@ -79,7 +79,7 @@ class RedditApi extends Api<RestClientHelper> {
     'User-Agent': savedOrDefaultUserAgent
   };
 
-  String _replaceHtmlEscapedCharacters(String html) => html.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&');
+  String _replaceHtmlEscapedCharacters(String text) => text.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&');
 
   @override
   String get baseUrl => Settings.redditCopyOldRedditLinks.value ? _baseUrlOld : _baseUrl;
@@ -91,8 +91,14 @@ class RedditApi extends Api<RestClientHelper> {
       (String body) {
         final data = jsonDecode(body)['data'] as Map<String, dynamic>;
         final String description = data['public_description'];
-        final String? iconUrl = data['community_icon'];
-        final String? bannerUrl = data['banner_background_image'];
+        final String communityIconUrl = data['community_icon'];
+        final String iconUrl = data['icon_img'];
+        final String? headerUrl = data['header_img'];
+        final String bannerMobileUrl = data['mobile_banner_image']!;
+        final String bannerBackgroundUrl = data['banner_background_image']!;
+        final String bannerUrl = data['banner_img'];
+        final finalIconUrl = communityIconUrl.isNotEmpty ? communityIconUrl : iconUrl.isNotEmpty ? iconUrl : headerUrl;
+        final finalBannerUrl = bannerMobileUrl.isNotEmpty ? bannerMobileUrl : bannerBackgroundUrl.isNotEmpty ? bannerBackgroundUrl : bannerUrl.isNotEmpty ? bannerUrl : null;
         return CommunityDetails(
           community: Community(
             platform: Platform.reddit,
@@ -103,8 +109,8 @@ class RedditApi extends Api<RestClientHelper> {
           createdDate: DateTime.fromMillisecondsSinceEpoch((data['created_utc'] as num).toInt() * 1000, isUtc: true),
           title: _replaceHtmlEscapedCharacters(data['title']),
           description: description.isNotEmpty ? description : null,
-          iconUrl: iconUrl == null || iconUrl.isEmpty ? data['icon_img'] : _replaceHtmlEscapedCharacters(iconUrl),
-          bannerUrl: bannerUrl == null || bannerUrl.isEmpty ? data['mobile_banner_image'] : _replaceHtmlEscapedCharacters(bannerUrl),
+          iconUrl: finalIconUrl != null ? _replaceHtmlEscapedCharacters(finalIconUrl) : null,
+          bannerUrl: finalBannerUrl != null ? _replaceHtmlEscapedCharacters(finalBannerUrl) : null,
           subscriberCount: data['subscribers'],
           isSubscribed: data['user_is_subscriber']
         );

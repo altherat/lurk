@@ -1,7 +1,7 @@
 import 'dart:developer' as dev;
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
-import 'package:lurk/app.dart' as App;
+import 'package:lurk/app.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/community_details.dart';
@@ -21,7 +21,11 @@ class CommunityScreen extends StatefulWidget {
   final Community community;
   final GlobalKey<MainScaffoldState>? scaffoldKey;
 
-  const CommunityScreen({super.key, required this.community, this.scaffoldKey});
+  const CommunityScreen({
+    super.key,
+    required this.community,
+    this.scaffoldKey
+  });
 
   @override
   State<CommunityScreen> createState() => _CommunityScreenState();
@@ -42,19 +46,19 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
   @override
   void dispose() {
     Settings.activeUser.removeListener(_onActiveUserChanged);
-    App.routeObserver.unsubscribe(this);
+    routeObserver.unsubscribe(this);
     super.dispose();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    App.routeObserver.subscribe(this, ModalRoute.of(context)!);
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
   }
 
   @override
   void didPopNext() {
-    if (App.routeObserver.staleRoutes.remove(ModalRoute.of(context))) {
+    if (routeObserver.staleRoutes.remove(ModalRoute.of(context))) {
       _feedKey.currentState?.reload();
     }
   }
@@ -86,8 +90,9 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
         }
         return result;
       },
-      title: widget.community.name != null
-        ? ValueListenableBuilder(
+      title: widget.community.name == null && widget.community.platform.rootCommunityName != null
+        ? Text(widget.community.platform.rootCommunityName!)
+        : ValueListenableBuilder(
             valueListenable: Settings.showPlatformColorTextAccents,
             builder: (context, showPlatformColorTextAccents, child) {
               return PrefixedName(
@@ -99,8 +104,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
                 applyAppBarAlpha: true,
               );
             },
-          )
-        : Text(widget.community.platform.rootCommunityName ?? ''),
+          ),
       popupMenuActions: !widget.community.platform.aggregateCommunityNames.contains(widget.community.name)
         ? {
             Text('Info'): (context) => showModalBottomSheet(
@@ -201,6 +205,7 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
     return Container(
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
       constraints: BoxConstraints(
+        minWidth: double.infinity,
         maxHeight: MediaQuery.of(context).size.height * 0.9,
       ),
       child: FutureBuilder(
@@ -224,7 +229,7 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
       
           final details = snapshot.data!;
           final theme = Theme.of(context);
-      
+          debugPrint(details.bannerUrl);
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -235,6 +240,17 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
                   height: 150,
                   width: double.infinity,
                   fit: BoxFit.cover,
+                  loadStateChanged: (state) {
+                    switch (state.extendedImageLoadState) {
+                      case LoadState.loading:
+                        return const CustomCircularProgressIndicator(
+                          size: 48,
+                          strokeWidth: 5,
+                        );
+                      default:
+                        return null;
+                    }
+                  }
                 ),
               Padding(
                 padding: const EdgeInsets.all(16),

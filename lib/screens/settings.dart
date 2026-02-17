@@ -132,24 +132,16 @@ class _SettingsScreenState extends State<SettingsScreen> {
             if (F.appFlavor == Flavor.combined) ...[
               const _Divider(),
               const _Header(text: 'Reddit'),
-              const _RedditLinksFromOldRedditSetting(),
-              const _RedditClientIdSetting(),
-              const _RedditRedirectUriSetting(),
-              const _RedditUserAgentSetting(),
+              const _RedditSettings(),
               const _Divider(),
               const _Header(text: 'Digg'),
-              const _DiggPostsFetchDepthSetting(),
-              const _DiggUserAgentSetting()
+              const _DiggSettings(),
             ]
             else if (F.appFlavor == Flavor.reddit) ...[
-              const _RedditLinksFromOldRedditSetting(),
-              const _RedditClientIdSetting(),
-              const _RedditRedirectUriSetting(),
-              const _RedditUserAgentSetting(),
+              const _RedditSettings(),
             ]
             else if (F.appFlavor == Flavor.digg) ...[
-              const _DiggPostsFetchDepthSetting(),
-              const _DiggUserAgentSetting()
+              const _DiggSettings(),
             ],
           ],
         ),
@@ -173,98 +165,65 @@ class _Divider extends StatelessWidget {
 
 }
 
-class _RedditLinksFromOldRedditSetting extends StatelessWidget {
+class _RedditSettings extends StatelessWidget {
 
-  const _RedditLinksFromOldRedditSetting();
+  const _RedditSettings();
 
   @override
   Widget build(BuildContext context) {
-    return _BoolSettingListTile(
-      setting: Settings.redditCopyOldRedditLinks,
-      label: 'Links from old.reddit.com',
-      infoText: 'When enabled, any links you copy or open in your browser will be from old.reddit.com rather than www.reddit.com.',
+    return Column(
+      children: [
+        _BoolSettingListTile(
+          setting: Settings.redditCopyOldRedditLinks,
+          label: 'Links from old.reddit.com',
+          infoText: 'When enabled, any links you copy or open in your browser will be from old.reddit.com rather than www.reddit.com.',
+        ),
+        _TextSettingListTile(
+          setting: Settings.redditClientId,
+          label: 'Client ID',
+          infoText: 'Without a client ID, Reddit limits you to 100 requests per 10 minutes.\n\nSpecifying a client ID increases this limit to 1000 requests per 10 minutes (per client ID) and enables login.',
+          inputFormatters: [LengthLimitingTextInputFormatter(22)],
+        ),
+        _TextSettingListTile(
+          setting: Settings.redditRedirectUri,
+          label: 'Redirect URI',
+          infoText: "Possibly used to spoof another app's login. No one knows.",
+        ),
+        _TextSettingListTile(
+          setting: Settings.redditUserAgent,
+          label: 'User agent',
+          floatingLabelBehavior: FloatingLabelBehavior.auto,
+        ),
+      ],
     );
   }
 
 }
 
-class _RedditClientIdSetting extends StatelessWidget {
+class _DiggSettings extends StatelessWidget {
 
-  const _RedditClientIdSetting();
-
-  @override
-  Widget build(BuildContext context) {
-    return _TextSettingListTile(
-      setting: Settings.redditClientId,
-      label: 'Client ID',
-      infoText: 'Without a client ID, Reddit limits you to 100 requests per 10 minutes.\n\nSpecifying a client ID increases this limit to 1000 requests per 10 minutes (per client ID) and enables login.',
-      inputFormatters: [LengthLimitingTextInputFormatter(22)],
-    );
-  }
-
-}
-
-class _RedditRedirectUriSetting extends StatelessWidget {
-
-  const _RedditRedirectUriSetting();
-
-  @override
-  Widget build(BuildContext context) {
-    return _TextSettingListTile(
-      setting: Settings.redditRedirectUri,
-      label: 'Redirect URI',
-      infoText: "Possibly used to spoof another app's login. No one knows.",
-    );
-  }
-
-}
-
-class _RedditUserAgentSetting extends StatelessWidget {
+  final _maxPostsFetchDepth = 5;
   
-  const _RedditUserAgentSetting();
+  const _DiggSettings();
 
   @override
   Widget build(BuildContext context) {
-    return _TextSettingListTile(
-      setting: Settings.redditUserAgent,
-      label: 'User agent',
-      floatingLabelBehavior: FloatingLabelBehavior.auto,
+    return Column(
+      children: [
+        _ChoiceChipSettingListTile(
+          title: 'Posts fetch depth',
+          setting: Settings.diggPostsFetchDepth,
+          infoText: "Digg's website and app seems to show fewer posts than what actually might exist for smaller communities (unsure if intentional). This setting causes additional requests in attempt to retrieve more posts (up to ${DiggApi.resultsLimit} posts). When loading popular communties with many posts, this setting should have no effect.\n\nExample (setting value of 3):\nWhen requesting posts from a lesser-known community, Digg might respond with 10 posts but also indicate that there are more posts available. Lurk will do up to 2 more requests to try and get a total of ${DiggApi.resultsLimit} posts.",
+          choices: List.generate(_maxPostsFetchDepth, (index) => index + 1),
+        ),
+        _TextSettingListTile(
+          setting: Settings.diggUserAgent,
+          label: 'User agent',
+          floatingLabelBehavior: FloatingLabelBehavior.auto,
+        ),
+      ],
     );
   }
-
-}
-
-class _DiggPostsFetchDepthSetting extends StatelessWidget {
-
-  final _maxDepth = 5;
-
-  const _DiggPostsFetchDepthSetting();
-
-  @override
-  Widget build(BuildContext context) {
-    return _ChoiceChipSettingListTile(
-      title: 'Posts fetch depth',
-      setting: Settings.diggPostsFetchDepth,
-      infoText: "Digg's website and app seems to show fewer posts than what actually might exist for smaller communities (unsure if intentional). This setting causes additional requests in attempt to retrieve more posts (up to ${DiggApi.resultsLimit} posts). When loading popular communties with many posts, this setting should have no effect.\n\nExample (setting value of 3):\nWhen requesting posts from a lesser-known community, Digg might respond with 10 posts but also indicate that there are more posts available. Lurk will do up to 2 more requests to try and get a total of ${DiggApi.resultsLimit} posts.",
-      choices: List.generate(_maxDepth, (index) => index + 1),
-    );
-  }
-
-}
-
-class _DiggUserAgentSetting extends StatelessWidget {
-  
-  const _DiggUserAgentSetting();
-
-  @override
-  Widget build(BuildContext context) {
-    return _TextSettingListTile(
-      setting: Settings.diggUserAgent,
-      label: 'User agent',
-      floatingLabelBehavior: FloatingLabelBehavior.auto,
-    );
-  }
-
 }
 
 class _Header extends StatelessWidget {

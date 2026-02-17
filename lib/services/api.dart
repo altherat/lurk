@@ -1,4 +1,3 @@
-import 'package:http/http.dart';
 import 'package:lurk/core/collection_listenable/interaction_state.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/comment.dart';

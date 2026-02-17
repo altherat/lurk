@@ -100,7 +100,12 @@ class _AppState extends State<App> {
                     if (didPop) {
                       return;
                     }
-                    _scaffoldKey.currentState?.showCommunityList();
+                    if (_scaffoldKey.currentState?.isDrawerOpen == true) {
+                      _scaffoldKey.currentState?.closeDrawer();
+                    }
+                    else {
+                      _scaffoldKey.currentState?.showCommunityList();
+                    }
                   },
                   child: HomeScreen(scaffoldKey: _scaffoldKey)
                 );

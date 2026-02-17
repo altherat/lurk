@@ -301,7 +301,7 @@ class _CommentTileState extends State<CommentTile> {
                           text: ' [$authorTag]',
                           style: TextStyle(color: authorColor)
                         ),
-                      TextSpan(text: '${Constants.separator}${widget.comment.score != null ? interactionState?.score?.toPluralString('point') : '[~]'}${Constants.separator}${widget.comment.timeAgoLong}${widget.showCommunityName ? '${Constants.separator}${widget.comment.communityName}' : ''}'),
+                      TextSpan(text: '${Constants.separator}${(interactionState?.score ?? widget.comment.score)?.toPluralString('point') ?? '[~]'}${Constants.separator}${widget.comment.timeAgoLong}${widget.showCommunityName ? '${Constants.separator}${widget.comment.communityName}' : ''}'),
                       if (widget.isCollapsed)
                         const TextSpan(text: ' [+]'),
                     ],

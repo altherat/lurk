@@ -99,6 +99,10 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
     }
   }
 
+  bool get isDrawerOpen => _scaffoldKey.currentState?.isDrawerOpen ?? false;
+  
+  void closeDrawer() => _scaffoldKey.currentState?.closeDrawer();
+
   void _scrollToTopAndRefresh() {
     final scrollController = widget.onOtherRefresh?.call() ?? _scrollController;
     if (scrollController.hasClients) {

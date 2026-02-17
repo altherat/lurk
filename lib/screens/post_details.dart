@@ -120,6 +120,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
       _post = postDetails.post;
     }
     _contextCommentShortId = postDetails.contextCommentShortId;
+    _collapsedCommentIds.clear();
     if (mounted) {
       setState(() {});
     }

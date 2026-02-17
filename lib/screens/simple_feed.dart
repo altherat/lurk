@@ -340,62 +340,6 @@ class _FeedFilterIconButton extends StatelessWidget {
 
 }
 
-class _FeedOptionSelector extends StatelessWidget {
-
-  final Platform platform;
-  final String? header;
-  final List<FeedOption> options;
-  final FeedOption? selected;
-  final Function(FeedOption) onSelected;
-
-  const _FeedOptionSelector({
-    required this.platform,
-    this.header,
-    required this.options,
-    this.selected,
-    required this.onSelected
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        if (header != null)
-          Padding(
-            padding: EdgeInsetsGeometry.only(bottom: 4),
-            child: Text(
-              header!,
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold
-              )
-            )
-          ),
-        Wrap(
-          spacing: Constants.choiceChipGapSize,
-          runSpacing: Constants.choiceChipGapSize,
-          children: options.map((filter) {
-            final isSelected = selected == filter;
-            return ChoiceChip(
-              materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              label: Text(filter.label),
-              selected: isSelected,
-              labelStyle: isSelected ? null : TextStyle(color: Theme.of(context).colorScheme.onSurface),
-              onSelected: (selected) {
-                if (selected) {
-                  onSelected(filter);
-                }
-              },
-            );
-          }).toList(),
-        )
-      ],
-    );
-  }
-
-}
-
 class _FeedOptionsSelector extends StatefulWidget {
 
   final Platform platform;
@@ -439,19 +383,6 @@ class _FeedOptionsSelectorState extends State<_FeedOptionsSelector> {
     }
   }
 
-  void _onOptionSelected(int index, FeedOptionType feedOptionType, FeedOption option) {
-    if (_selected.length > index) {
-      _selected.removeRange(index, _selected.length);
-    }
-    _selected.add((feedOptionType, option));
-    if (option.subGroup != null) {
-      setState(() {});
-    }
-    else {
-      widget.onSelected({for (var item in _selected) item.$1: item.$2});
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final List<FeedOptionsGroup> toShow = [widget.optionsGroup];
@@ -461,75 +392,63 @@ class _FeedOptionsSelectorState extends State<_FeedOptionsSelector> {
         toShow.add(option.subGroup!);
       }
     }
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ...List.generate(toShow.length, (index) {
-          final group = toShow[index];
-          return _AnimatedRow(
-            child: Padding(
-              padding: EdgeInsets.fromLTRB(32, index == 0 ? 0 : 16, 32, 0),
-              child: _FeedOptionSelector(
-                platform: widget.platform,
-                header: group.type.label,
-                options: group.options,
-                selected: _selected.length > index ? _selected[index].$2 : null,
-                onSelected: (option) => _onOptionSelected(index, group.type, option),
-              ),
-            ),
-          );
-        }),
-      ]
-    );
-  }
-
-}
-
-class _AnimatedRow extends StatefulWidget {
-
-  final Widget child;
-  const _AnimatedRow({
-    required this.child
-  });
-
-  @override
-  State<_AnimatedRow> createState() => _AnimatedRowState();
-
-}
-
-class _AnimatedRowState extends State<_AnimatedRow> with SingleTickerProviderStateMixin {
-
-  late AnimationController _controller;
-  late Animation<double> _animation;
-
-  @override
-  void initState() {
-    super.initState();
-    _controller = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-    _animation = CurvedAnimation(
-      parent: _controller,
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 250),
       curve: Curves.easeInOutCubicEmphasized,
-    );
-    _controller.forward();
-  }
-
-  @override
-  void dispose() {
-    _controller.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return SizeTransition(
-      sizeFactor: _animation,
-      axisAlignment: -1.0,
-      child: FadeTransition(
-        opacity: _animation,
-        child: widget.child
+      alignment: Alignment.topLeft,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          ...List.generate(toShow.length, (index) {
+            final group = toShow[index];
+            return Padding(
+              padding: EdgeInsets.fromLTRB(32, index == 0 ? 0 : 16, 32, 0),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (group.type.label != null)
+                    Padding(
+                      padding: EdgeInsetsGeometry.only(bottom: 4),
+                      child: Text(
+                        group.type.label!,
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold
+                        )
+                      )
+                    ),
+                  Wrap(
+                    spacing: Constants.choiceChipGapSize,
+                    runSpacing: Constants.choiceChipGapSize,
+                    children: group.options.map((option) {
+                      final isSelected = _selected.length > index && _selected[index].$2 == option;
+                      return ChoiceChip(
+                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                        label: Text(option.label),
+                        selected: isSelected,
+                        labelStyle: isSelected ? null : TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                        onSelected: (selected) {
+                          if (selected) {
+                            if (_selected.length > index) {
+                              _selected.removeRange(index, _selected.length);
+                            }
+                            _selected.add((group.type, option));
+                            if (option.subGroup != null) {
+                              setState(() {});
+                            }
+                            else {
+                              widget.onSelected({for (var item in _selected) item.$1: item.$2});
+                            }
+                          }
+                        },
+                      );
+                    }).toList(),
+                  )
+                ],
+              )
+            );
+          }),
+        ]
       ),
     );
   }
