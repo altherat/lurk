@@ -3,7 +3,7 @@ import 'package:lurk/core/platforms.dart';
 
 class Constants {
 
-  static const version = '1.0.0';
+  static const version = '1.0.1';
 
   static const separator = ' • ';
 
