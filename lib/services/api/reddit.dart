@@ -1032,35 +1032,6 @@ class _AuthClientHelper extends RestClientHelper implements AuthClientHelper<Res
     return request(headers);
   }
 
-  // Future<void> revokeTokens() async {
-  //   final tokenResponse = await _getCachedOrStoredToken();
-  //   dev.log('[Reddit][OAuthHelper] Revoking tokens: clientId=${_oAuthHelper.clientId}, refresh token=${_debugTokenToString(tokenResponse?.refreshToken)}, access token=${_debugTokenToString(tokenResponse?.accessToken)}');
-  //   if (tokenResponse == null) return;
-
-  //   final authHeader = 'Basic ${base64Encode(utf8.encode('${_oAuthHelper.clientId}:'))}';
-  //   Future<void> revoke(String token, String hint) async {
-  //     final response = await http.post(
-  //       Uri.parse('https://www.reddit.com/api/v1/revoke'),
-  //       headers: {
-  //         'Authorization': authHeader,
-  //         'User-Agent': _userAgentProvider(),
-  //       },
-  //       body: {
-  //         'token': token,
-  //         'token_type_hint': hint,
-  //       },
-  //     );
-  //     dev.log('[Reddit][OAuthHelper] Revoked $hint: status code=${response.statusCode}');
-  //   }
-
-  //   if (tokenResponse.accessToken != null) {
-  //     await revoke(tokenResponse.accessToken!, 'access_token');
-  //   }
-  //   if (tokenResponse.hasRefreshToken()) {
-  //     await revoke(tokenResponse.refreshToken!, 'refresh_token');
-  //   }
-  // }
-
 }
 
 String _debugTruncateLongString(String? longString, [int maxLength = 10]) {

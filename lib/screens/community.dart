@@ -195,8 +195,8 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
         await widget.community.platform.getApi(userId).subscribeToCommunity(widget.community.name!, communityId);
       }
     }
-    catch (e, stackTrace) {
-      dev.log('Error updating subscription: $e, $stackTrace');
+    catch (error, stackTrace) {
+      dev.log('Error updating subscription', error: error, stackTrace: stackTrace);
     }
   }
 
@@ -229,7 +229,7 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
       
           final details = snapshot.data!;
           final theme = Theme.of(context);
-          debugPrint(details.bannerUrl);
+
           return Column(
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,

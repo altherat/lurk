@@ -181,7 +181,6 @@ class _PageRoute<T> extends PageRoute<T> with MaterialRouteTransitionMixin<T> {
 Future<void> openInBrowser(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
 Future navigate(BuildContext context, Platform platform, String url, {Post? post}) async {
-  // dev.log('navigate: $url');
   final uri = Uri.tryParse(url);
   if (uri == null) return;
 
