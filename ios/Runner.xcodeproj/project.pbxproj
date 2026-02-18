@@ -8,11 +8,14 @@
 
 /* Begin PBXBuildFile section */
 		128F4AA1BCEF23507EFA09B7 /* redditDebug.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = D2E498DD9C773952A38D6707 /* redditDebug.xcconfig */; };
+		142233DDD22EE6DA884A33C4 /* lemmyProfile.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 491ECAC27E1CC98CC040734C /* lemmyProfile.xcconfig */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
+		33C62CBE02DE2E7C5A1A78E4 /* lemmyDebug.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 84AE534299CB417F95F29527 /* lemmyDebug.xcconfig */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
 		40D4DF8396A625C8B77910FD /* diggRelease.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 35ED79600030A7B519ABB484 /* diggRelease.xcconfig */; };
 		4B86158A7D37012FA54A7726 /* redditLaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = E889989B3FBB833A00B2C786 /* redditLaunchScreen.storyboard */; };
+		556D0F5B2849CB6A410DE57F /* lemmyRelease.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = BF004BC0D62F520B2233D730 /* lemmyRelease.xcconfig */; };
 		564DFDD683CB3A51B16E1A1D /* combinedDebug.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = C663A869DDEE46A6E5F23480 /* combinedDebug.xcconfig */; };
 		5949F2D38458DAC671F87019 /* combinedRelease.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = C77BEBCC309A1FD9C940E5F1 /* combinedRelease.xcconfig */; };
 		6E3600515ACFF5B82109403D /* diggProfile.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 51F0B609B34AC5B621DB813E /* diggProfile.xcconfig */; };
@@ -25,6 +28,7 @@
 		C0809309C7C0976F2BAE6FE4 /* combinedLaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 299E5E992357E0EA3A7D6C4B /* combinedLaunchScreen.storyboard */; };
 		C1F7EBD18F892A15806B6BE4 /* combinedProfile.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = 9E718D3779F5843F0E6C8795 /* combinedProfile.xcconfig */; };
 		DAABD1801E1AFDC5D1E2F41E /* redditProfile.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = E63922B288E78C65AE25EFED /* redditProfile.xcconfig */; };
+		DBE1AB5392802C6A35F8F639 /* lemmyLaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 8F619AEF6D349B973CA1D40C /* lemmyLaunchScreen.storyboard */; };
 		E4C3203CF5C16B42487343BF /* diggDebug.xcconfig in Resources */ = {isa = PBXBuildFile; fileRef = BAE1F2DBED8AF93858AD0C75 /* diggDebug.xcconfig */; };
 /* End PBXBuildFile section */
 
@@ -59,11 +63,14 @@
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		35ED79600030A7B519ABB484 /* diggRelease.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = diggRelease.xcconfig; path = Flutter/diggRelease.xcconfig; sourceTree = "<group>"; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		491ECAC27E1CC98CC040734C /* lemmyProfile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = lemmyProfile.xcconfig; path = Flutter/lemmyProfile.xcconfig; sourceTree = "<group>"; };
 		4FE981CFE68A6F7B8D8AA760 /* redditRelease.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = redditRelease.xcconfig; path = Flutter/redditRelease.xcconfig; sourceTree = "<group>"; };
 		51F0B609B34AC5B621DB813E /* diggProfile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = diggProfile.xcconfig; path = Flutter/diggProfile.xcconfig; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		7AFA3C8E1D35360C0083082E /* Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Release.xcconfig; path = Flutter/Release.xcconfig; sourceTree = "<group>"; };
+		84AE534299CB417F95F29527 /* lemmyDebug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = lemmyDebug.xcconfig; path = Flutter/lemmyDebug.xcconfig; sourceTree = "<group>"; };
+		8F619AEF6D349B973CA1D40C /* lemmyLaunchScreen.storyboard */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = file.storyboard; name = lemmyLaunchScreen.storyboard; path = Runner/lemmyLaunchScreen.storyboard; sourceTree = "<group>"; };
 		9740EEB21CF90195004384FC /* Debug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Debug.xcconfig; path = Flutter/Debug.xcconfig; sourceTree = "<group>"; };
 		9740EEB31CF90195004384FC /* Generated.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Generated.xcconfig; path = Flutter/Generated.xcconfig; sourceTree = "<group>"; };
 		97C146EE1CF9000F007C117D /* Runner.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Runner.app; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -73,6 +80,7 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9E718D3779F5843F0E6C8795 /* combinedProfile.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = combinedProfile.xcconfig; path = Flutter/combinedProfile.xcconfig; sourceTree = "<group>"; };
 		BAE1F2DBED8AF93858AD0C75 /* diggDebug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = diggDebug.xcconfig; path = Flutter/diggDebug.xcconfig; sourceTree = "<group>"; };
+		BF004BC0D62F520B2233D730 /* lemmyRelease.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = lemmyRelease.xcconfig; path = Flutter/lemmyRelease.xcconfig; sourceTree = "<group>"; };
 		C663A869DDEE46A6E5F23480 /* combinedDebug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = combinedDebug.xcconfig; path = Flutter/combinedDebug.xcconfig; sourceTree = "<group>"; };
 		C77BEBCC309A1FD9C940E5F1 /* combinedRelease.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = combinedRelease.xcconfig; path = Flutter/combinedRelease.xcconfig; sourceTree = "<group>"; };
 		D2E498DD9C773952A38D6707 /* redditDebug.xcconfig */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.xcconfig; name = redditDebug.xcconfig; path = Flutter/redditDebug.xcconfig; sourceTree = "<group>"; };
@@ -116,6 +124,9 @@
 				C663A869DDEE46A6E5F23480 /* combinedDebug.xcconfig */,
 				9E718D3779F5843F0E6C8795 /* combinedProfile.xcconfig */,
 				C77BEBCC309A1FD9C940E5F1 /* combinedRelease.xcconfig */,
+				84AE534299CB417F95F29527 /* lemmyDebug.xcconfig */,
+				491ECAC27E1CC98CC040734C /* lemmyProfile.xcconfig */,
+				BF004BC0D62F520B2233D730 /* lemmyRelease.xcconfig */,
 			);
 			name = Flutter;
 			sourceTree = "<group>";
@@ -130,6 +141,7 @@
 				E889989B3FBB833A00B2C786 /* redditLaunchScreen.storyboard */,
 				F0F5E6F34995123E319DEE89 /* diggLaunchScreen.storyboard */,
 				299E5E992357E0EA3A7D6C4B /* combinedLaunchScreen.storyboard */,
+				8F619AEF6D349B973CA1D40C /* lemmyLaunchScreen.storyboard */,
 			);
 			sourceTree = "<group>";
 		};
@@ -264,6 +276,10 @@
 				4B86158A7D37012FA54A7726 /* redditLaunchScreen.storyboard in Resources */,
 				8FEA077FF20ABE483A194856 /* diggLaunchScreen.storyboard in Resources */,
 				C0809309C7C0976F2BAE6FE4 /* combinedLaunchScreen.storyboard in Resources */,
+				33C62CBE02DE2E7C5A1A78E4 /* lemmyDebug.xcconfig in Resources */,
+				142233DDD22EE6DA884A33C4 /* lemmyProfile.xcconfig in Resources */,
+				556D0F5B2849CB6A410DE57F /* lemmyRelease.xcconfig in Resources */,
+				DBE1AB5392802C6A35F8F639 /* lemmyLaunchScreen.storyboard in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -351,6 +367,14 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		031925B675B71661338E9086 /* Release-lemmy */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BF004BC0D62F520B2233D730 /* lemmyRelease.xcconfig */;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = "Release-lemmy";
+		};
 		222F4F98A010EBE1B0744176 /* Release-digg */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 35ED79600030A7B519ABB484 /* diggRelease.xcconfig */;
@@ -432,12 +456,84 @@
 			};
 			name = Profile;
 		};
+		28455BC497711051C8826444 /* Release-lemmy */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = BF004BC0D62F520B2233D730 /* lemmyRelease.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "$(ASSET_PREFIX)AppIcon";
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Flutter",
+				);
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_FILE = Runner/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Flutter",
+				);
+				MTL_ENABLE_DEBUG_INFO = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.altherat.lurk.lemmy;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = "Release-lemmy";
+		};
 		28FE267AA21782748779B39B /* Profile-reddit */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = E63922B288E78C65AE25EFED /* redditProfile.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "$(ASSET_PREFIX)AppIcon";
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
@@ -507,7 +603,7 @@
 			baseConfigurationReference = C663A869DDEE46A6E5F23480 /* combinedDebug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "$(ASSET_PREFIX)AppIcon";
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
@@ -637,7 +733,7 @@
 			baseConfigurationReference = 35ED79600030A7B519ABB484 /* diggRelease.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "$(ASSET_PREFIX)AppIcon";
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
@@ -709,7 +805,7 @@
 			baseConfigurationReference = 51F0B609B34AC5B621DB813E /* diggProfile.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "$(ASSET_PREFIX)AppIcon";
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
@@ -779,7 +875,7 @@
 			baseConfigurationReference = C77BEBCC309A1FD9C940E5F1 /* combinedRelease.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "$(ASSET_PREFIX)AppIcon";
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
@@ -859,7 +955,7 @@
 			baseConfigurationReference = 4FE981CFE68A6F7B8D8AA760 /* redditRelease.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "$(ASSET_PREFIX)AppIcon";
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
@@ -926,6 +1022,81 @@
 			};
 			name = "Release-reddit";
 		};
+		7F096770F603D9AC27DB3727 /* Debug-lemmy */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 84AE534299CB417F95F29527 /* lemmyDebug.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "$(ASSET_PREFIX)AppIcon";
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Flutter",
+				);
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_FILE = Runner/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Flutter",
+				);
+				MTL_ENABLE_DEBUG_INFO = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_BUNDLE_IDENTIFIER = com.altherat.lurk.lemmy;
+				SDKROOT = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = "Debug-lemmy";
+		};
 		836EE5BF6C05E2AE19485A29 /* Debug-combined */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = C663A869DDEE46A6E5F23480 /* combinedDebug.xcconfig */;
@@ -939,7 +1110,7 @@
 			baseConfigurationReference = D2E498DD9C773952A38D6707 /* redditDebug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "$(ASSET_PREFIX)AppIcon";
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
@@ -1192,7 +1363,7 @@
 			baseConfigurationReference = BAE1F2DBED8AF93858AD0C75 /* diggDebug.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "$(ASSET_PREFIX)AppIcon";
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
@@ -1267,7 +1438,7 @@
 			baseConfigurationReference = 9E718D3779F5843F0E6C8795 /* combinedProfile.xcconfig */;
 			buildSettings = {
 				ALWAYS_SEARCH_USER_PATHS = NO;
-				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "$(ASSET_PREFIX)AppIcon";
 				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
 				CLANG_ANALYZER_NONNULL = YES;
 				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
@@ -1332,6 +1503,22 @@
 			};
 			name = "Profile-combined";
 		};
+		BCB8AE80FEBDE672182200F5 /* Profile-lemmy */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 491ECAC27E1CC98CC040734C /* lemmyProfile.xcconfig */;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = "Profile-lemmy";
+		};
+		C9B4E75441D94C828EB7C476 /* Debug-lemmy */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 84AE534299CB417F95F29527 /* lemmyDebug.xcconfig */;
+			buildSettings = {
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = "Debug-lemmy";
+		};
 		CB000DD6936402F42D59325C /* Profile-digg */ = {
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 51F0B609B34AC5B621DB813E /* diggProfile.xcconfig */;
@@ -1347,6 +1534,76 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = "Profile-reddit";
+		};
+		F2F3E1F4ABE6E06BAB5004D3 /* Profile-lemmy */ = {
+			isa = XCBuildConfiguration;
+			baseConfigurationReference = 491ECAC27E1CC98CC040734C /* lemmyProfile.xcconfig */;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_APPICON_NAME = "$(ASSET_PREFIX)AppIcon";
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = AppIcon;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++0x";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				"CODE_SIGN_IDENTITY[sdk=iphoneos*]" = "iPhone Developer";
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = NO;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Flutter",
+				);
+				GCC_C_LANGUAGE_STANDARD = gnu99;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				INFOPLIST_FILE = Runner/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 13.0;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				LIBRARY_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/Flutter",
+				);
+				MTL_ENABLE_DEBUG_INFO = NO;
+				PRODUCT_BUNDLE_IDENTIFIER = com.altherat.lurk.lemmy;
+				SDKROOT = iphoneos;
+				SUPPORTED_PLATFORMS = iphoneos;
+				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = "Profile-lemmy";
 		};
 /* End XCBuildConfiguration section */
 
@@ -1376,6 +1633,9 @@
 				32EEB7E928A6E3A2FC312036 /* Debug-combined */,
 				B9299B11008377F46FF3D0A6 /* Profile-combined */,
 				4E2B0F082FC6828D8423CDEE /* Release-combined */,
+				7F096770F603D9AC27DB3727 /* Debug-lemmy */,
+				F2F3E1F4ABE6E06BAB5004D3 /* Profile-lemmy */,
+				28455BC497711051C8826444 /* Release-lemmy */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
@@ -1395,6 +1655,9 @@
 				836EE5BF6C05E2AE19485A29 /* Debug-combined */,
 				9FD34CEB91981C2BE61A9FA1 /* Profile-combined */,
 				A69F1F460B6376E3A93AF225 /* Release-combined */,
+				C9B4E75441D94C828EB7C476 /* Debug-lemmy */,
+				BCB8AE80FEBDE672182200F5 /* Profile-lemmy */,
+				031925B675B71661338E9086 /* Release-lemmy */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

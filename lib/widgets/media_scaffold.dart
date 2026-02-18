@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
@@ -43,7 +44,7 @@ class MediaScaffold extends StatelessWidget {
     return MainScaffold(
       platform: platform,
       title: post != null ? Text(post!.title) : null,
-      subtitle: Text(post != null ? post!.community.prefixedName : url),
+      subtitle: Text(post != null ? post!.community.fullName : url),
       popupMenuActions: getOptions(
         context: context,
         type: type,

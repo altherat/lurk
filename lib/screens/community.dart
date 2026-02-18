@@ -2,7 +2,7 @@ import 'dart:developer' as dev;
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:lurk/app.dart';
-import 'package:lurk/core/utils.dart';
+import 'package:lurk/core/extensions.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/community_details.dart';
 import 'package:lurk/repositories/communities.dart';
@@ -11,7 +11,7 @@ import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_html.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
-import 'package:lurk/widgets/prefixed_name.dart';
+import 'package:lurk/widgets/name_text.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
 import 'package:lurk/widgets/stat.dart';
@@ -76,7 +76,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
       scaffoldKey: widget.scaffoldKey,
       platform: widget.community.platform,
       fetchItems: (options, pageToken) async {
-        final result = await widget.community.platform.getApi(Settings.activeUser.value?.id).fetchCommunityPosts(
+        final result = await widget.community.getApi(Settings.activeUser.value?.id).fetchCommunityPosts(
           widget.community.name,
           options: options,
           pageToken: pageToken,
@@ -95,17 +95,14 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
         : ValueListenableBuilder(
             valueListenable: Settings.showPlatformColorTextAccents,
             builder: (context, showPlatformColorTextAccents, child) {
-              return PrefixedName(
-                prefix: widget.community.platform.communityPrefix,
-                name: widget.community.name,
-                prefixColor: showPlatformColorTextAccents
-                    ? widget.community.platform.color
-                    : null,
+              return CommunityNameText(
+                community: widget.community,
+                prefixColor: showPlatformColorTextAccents ? widget.community.platform.color : null,
                 applyAppBarAlpha: true,
               );
             },
           ),
-      popupMenuActions: !widget.community.platform.aggregateCommunityNames.contains(widget.community.name)
+      popupMenuActions: widget.community.name != null && !(widget.community.platform.aggregateCommunityNames?.contains(widget.community.name) ?? false)
         ? {
             Text('Info'): (context) => showModalBottomSheet(
               context: context,
@@ -131,7 +128,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
             extraTexts: [
               post.timeAgoCompact,
               if (!_isSingleCommunity)
-                post.community.name!,
+                post.community.name!.toLowerCase(),
             ],
           ),
         );
@@ -170,7 +167,7 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
   @override
   void initState() {
     super.initState();
-    _detailsFuture = widget.community.platform.getApi(widget.activeUserId).fetchCommunityDetails(widget.community.name!);
+    _detailsFuture = widget.community.getApi(widget.activeUserId).fetchCommunityDetails(widget.community.name!);
     _detailsFuture.then((details) {
       if (widget.activeUserId != null && mounted) {
         setState(() {
@@ -186,13 +183,13 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
         setState(() {
           _isSubscribed = false;
         });
-        await widget.community.platform.getApi(userId).unsubscribeFromCommunity(widget.community.name!, communityId);
+        await widget.community.getApi(userId).unsubscribeFromCommunity(widget.community.name!, communityId);
       }
       else {
         setState(() {
           _isSubscribed = true;
         });
-        await widget.community.platform.getApi(userId).subscribeToCommunity(widget.community.name!, communityId);
+        await widget.community.getApi(userId).subscribeToCommunity(widget.community.name!, communityId);
       }
     }
     catch (error, stackTrace) {
@@ -206,7 +203,7 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
       padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
       constraints: BoxConstraints(
         minWidth: double.infinity,
-        maxHeight: MediaQuery.of(context).size.height * 0.9,
+        maxHeight: MediaQuery.of(context).size.height * 0.5,
       ),
       child: FutureBuilder(
         future: _detailsFuture,
@@ -218,11 +215,14 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
             );
           }
           if (snapshot.hasError) {
-            return SizedBox(
+            return Container(
               height: 200,
-              child: LargeVerticalIconMessage(
+              alignment: Alignment.center,
+              child: VerticalIconMessage(
                 icon: Icons.feed_outlined,
                 message: 'Something went wrong',
+                iconSize: 96,
+                fontSize: 16
               ),
             );
           }
@@ -230,125 +230,142 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
           final details = snapshot.data!;
           final theme = Theme.of(context);
 
-          return Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              if (details.bannerUrl != null)
-                ExtendedImage.network(
-                  details.bannerUrl!,
-                  height: 150,
-                  width: double.infinity,
-                  fit: BoxFit.cover,
-                  loadStateChanged: (state) {
-                    switch (state.extendedImageLoadState) {
-                      case LoadState.loading:
-                        return const CustomCircularProgressIndicator(
-                          size: 48,
-                          strokeWidth: 5,
-                        );
-                      default:
-                        return null;
-                    }
-                  }
-                ),
-              Padding(
-                padding: const EdgeInsets.all(16),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
-                      children: [
-                        if (details.iconUrl != null)
-                          Padding(
-                            padding: const EdgeInsets.only(right: 16.0),
-                            child: CircleAvatar(
-                              radius: 32,
-                              backgroundImage: NetworkImage(
-                                details.iconUrl!,
+          return SingleChildScrollView(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                if (details.bannerUrl != null)
+                  DecoratedBox(
+                    decoration: BoxDecoration(color: details.bannerBackgroundColorHexCode?.toColor()),
+                    child: ExtendedImage.network(
+                      details.bannerUrl!,
+                      height: 150,
+                      width: double.infinity,
+                      fit: BoxFit.cover,
+                      loadStateChanged: (state) {
+                        switch (state.extendedImageLoadState) {
+                          case LoadState.loading:
+                            return const CustomCircularProgressIndicator(
+                              size: 48,
+                              strokeWidth: 5,
+                              color: Colors.white,
+                            );
+                          default:
+                            return null;
+                        }
+                      }
+                    ),
+                  ),
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          if (details.iconUrl != null)
+                            Padding(
+                              padding: const EdgeInsets.only(right: 16),
+                              child: Container(
+                                width: 64,
+                                height: 64,
+                                decoration: BoxDecoration(
+                                  shape: BoxShape.circle,
+                                  color: details.primaryColorHexCode?.toColor()
+                                ),
+                                child: ExtendedImage.network(
+                                  details.iconUrl!,
+                                  fit: BoxFit.cover,
+                                  shape: BoxShape.circle,
+                                  loadStateChanged: (state) {
+                                    switch (state.extendedImageLoadState) {
+                                      case LoadState.loading:
+                                        return const CustomCircularProgressIndicator(
+                                          size: 32,
+                                          strokeWidth: 4,
+                                          color: Colors.white,
+                                        );
+                                      default:
+                                        return null;
+                                    }
+                                  }
+                                ),
                               ),
                             ),
-                          ),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                details.title!,
-                                style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
-                              ),
-                              PrefixedName(
-                                prefix: details.community.platform.communityPrefix,
-                                name: details.community.name,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (widget.activeUserId != null && details.community.platform.hasLogin) ...[
-                      const SizedBox(height: 24),
-                      InkWell(
-                        onTap: () => _toggleSubscription(widget.activeUserId!, details.id!),
-                        child: AnimatedContainer(
-                          duration: const Duration(milliseconds: 200),
-                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                          decoration: BoxDecoration(
-                            color: _isSubscribed == true ? theme.colorScheme.primary : theme.colorScheme.surfaceContainerHighest,
-                            borderRadius: BorderRadius.circular(8),
-                            border: Border.all(color: _isSubscribed == true ? Colors.transparent : theme.colorScheme.outline),
-                          ),
-                          child: Text(
-                            _isSubscribed == true ? 'Subscribed' : 'Subscribe',
-                            style: theme.textTheme.labelLarge?.copyWith(color: _isSubscribed == true ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant),
-                          ),
-                        ),
-                      ),
-                    ],
-                    const SizedBox(height: 24),
-                    Row(
-                      children: [
-                        Stat(
-                          value: details.subscriberCount!.toCommaString(),
-                          label: 'Subscribers',
-                        ),
-                        if (details.postCount != null) ...[
-                          const SizedBox(width: 24),
-                          Stat(
-                            value: details.postCount!.toCommaString(),
-                            label: 'Posts',
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  details.title!,
+                                  style: theme.textTheme.headlineSmall?.copyWith(fontWeight: FontWeight.bold),
+                                ),
+                                CommunityNameText(community: details.community),
+                              ],
+                            ),
                           ),
                         ],
-                        const SizedBox(width: 24),
-                        Stat(
-                          value: details.createdDate!.timeAgoLong,
-                          label: 'Created',
+                      ),
+                      if (widget.activeUserId != null && details.community.platform.hasLogin) ...[
+                        const SizedBox(height: 24),
+                        InkWell(
+                          onTap: () => _toggleSubscription(widget.activeUserId!, details.id!),
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 200),
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: _isSubscribed == true ? theme.colorScheme.primary : theme.colorScheme.surfaceContainerHighest,
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: _isSubscribed == true ? Colors.transparent : theme.colorScheme.outline),
+                            ),
+                            child: Text(
+                              _isSubscribed == true ? 'Subscribed' : 'Subscribe',
+                              style: theme.textTheme.labelLarge?.copyWith(color: _isSubscribed == true ? theme.colorScheme.onPrimary : theme.colorScheme.onSurfaceVariant),
+                            ),
+                          ),
                         ),
                       ],
-                    ),
-                    if (details.description != null) ...[
                       const SizedBox(height: 24),
-                      Text(
-                        details.description!,
-                        style: theme.textTheme.bodyMedium,
+                      Row(
+                        children: [
+                          Stat(
+                            value: details.subscriberCount!.toCommaString(),
+                            label: 'Subscribers',
+                          ),
+                          if (details.postCount != null) ...[
+                            const SizedBox(width: 24),
+                            Stat(
+                              value: details.postCount!.toCommaString(),
+                              label: 'Posts',
+                            ),
+                          ],
+                          const SizedBox(width: 24),
+                          Stat(
+                            value: details.createdDate!.timeAgoLong,
+                            label: 'Created',
+                          ),
+                        ],
                       ),
+                      if (details.shortDescription != null) ...[
+                        const SizedBox(height: 24),
+                        Text(
+                          details.shortDescription!,
+                          style: theme.textTheme.bodyMedium,
+                        ),
+                      ],
+                      if (details.longDescriptionHtml != null) ...[
+                        const SizedBox(height: 24),
+                        CustomHtml(
+                          platform: details.community.platform,
+                          html: details.longDescriptionHtml!,
+                        ),
+                      ],
                     ],
-                    if (details.descriptionHtml != null) ...[
-                      const SizedBox(height: 24),
-                      Text(
-                        'Description',
-                        style: theme.textTheme.titleLarge?.copyWith(fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 8),
-                      CustomHtml(
-                        platform: details.community.platform,
-                        html: details.descriptionHtml!,
-                      ),
-                    ],
-                  ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           );
         },
       ),

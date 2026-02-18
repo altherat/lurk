@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:lurk/core/constants.dart';
+import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
-import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post.dart';
@@ -12,18 +13,20 @@ import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
-import 'package:lurk/widgets/prefixed_name.dart';
+import 'package:lurk/widgets/name_text.dart';
 import 'package:lurk/widgets/user_stats.dart';
 
 class UserDetailsScreen extends StatefulWidget {
 
   final Platform platform;
+  final String host;
   final String username;
 
   const UserDetailsScreen({
     super.key,
     required this.platform,
-    required this.username
+    required this.host,
+    required this.username,
   });
 
   @override
@@ -39,7 +42,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    final response = widget.platform.getApi(Settings.activeUser.value?.id).fetchUserDetails(widget.username);
+    final response = widget.platform.getApi(widget.host, Settings.activeUser.value?.id).fetchUserDetails(widget.username);
     _initialItemsFuture = response.items;
     _userStatsFuture = response.other;
   }
@@ -50,8 +53,8 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
       platform: widget.platform,
       feedOptions: widget.platform.userFeedOptions,
       initialItems: _initialItemsFuture,
-      fetchItems: (options, pageToken) => widget.platform.getApi(Settings.activeUser.value?.id).fetchUserItems(widget.username, options: options, pageToken: pageToken),
-      title: PrefixedName(
+      fetchItems: (options, pageToken) => widget.platform.getApi(widget.host, Settings.activeUser.value?.id).fetchUserItems(widget.username, options: options, pageToken: pageToken),
+      title: NameText(
         prefix: widget.platform.userPrefix,
         name: widget.username,
         applyAppBarAlpha: true,
@@ -62,9 +65,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
           future: _userStatsFuture,
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const CustomCircularProgressIndicator(
-                padding: const EdgeInsets.all(16),
-              );
+              return const CustomCircularProgressIndicator(padding: EdgeInsets.all(16));
             }
             if (snapshot.hasError) {
               return Container(
@@ -83,7 +84,8 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                   return UserStats(
                     stats: snapshot.data!,
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-                    color: appBarColor.contrast,
+                    valueColor: appBarColor.contrast,
+                    labelColor: appBarColor.contrast.withAlpha(Constants.onSurfaceVariantAlpha)
                   );
                 }
               );
@@ -114,6 +116,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
                 context.push(() {
                   return PostDetailsScreen.fromUrl(
                     platform: widget.platform,
+                    host: widget.host,
                     url: widget.platform.getCommentUrl(item),
                     urlInfo:widget.platform.getPostUrlInfoFromPath(item.permalink)
                   );

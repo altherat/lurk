@@ -1,7 +1,6 @@
 import 'dart:ui';
 
-import 'package:lurk/core/utils.dart';
-import 'package:lurk/core/utils.dart' as utils;
+import 'package:lurk/core/extensions.dart';
 import 'package:lurk/models/community.dart';
 
 class Post {

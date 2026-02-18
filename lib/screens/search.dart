@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
-import 'package:lurk/core/utils.dart';
+import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/community_details.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
@@ -8,21 +9,24 @@ import 'package:lurk/screens/community.dart';
 import 'package:lurk/screens/simple_feed.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
+import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/list_tile_icon.dart';
 import 'package:lurk/widgets/post_tile.dart';
-import 'package:lurk/widgets/prefixed_name.dart';
+import 'package:lurk/widgets/name_text.dart';
 import 'package:lurk/widgets/user_stats.dart';
 
 class SearchScreen extends StatelessWidget {
 
   final Platform platform;
-  final String query;
+  final String host;
   final String? communityName;
+  final String query;
 
   const SearchScreen({
     super.key,
     required this.platform,
+    required this.host,
     required this.query,
     this.communityName
   });
@@ -33,10 +37,10 @@ class SearchScreen extends StatelessWidget {
     final Widget title;
     if (communityName != null) {
       feedOptions = platform.postsFeedOptions;
-      title = PrefixedName(
-        before: TextSpan(text: '"$query" in '),
-        prefix: platform.communityPrefix,
+      title = NameText(
         name: communityName!,
+        prefix: platform.communityPrefix,
+        before: '"$query" in ',
         applyAppBarAlpha: true,
       );
     }
@@ -47,11 +51,18 @@ class SearchScreen extends StatelessWidget {
     return SimpleFeedScreen(
       platform: platform,
       feedOptions: feedOptions,
-      fetchItems: (options, pageToken) => platform.getApi(Settings.activeUser.value?.id).fetchSearchResults(query, communityName, options: options, pageToken: pageToken),
+      fetchItems: (options, pageToken) => platform.getApi(host, Settings.activeUser.value?.id).fetchSearchResults(query, communityName, options: options, pageToken: pageToken),
       title: title,
       itemBuilder: (context, index, item) {
         if (item is Post) {
           return PostTile(post: item);
+        }
+        if (item is Comment) {
+          return CommentTile(
+            comment: item,
+            padding: const EdgeInsets.symmetric(vertical: 4),
+            showCommunityName: true,
+          );
         }
         if (item is CommunityDetails) {
           final theme = Theme.of(context);
@@ -91,11 +102,11 @@ class SearchScreen extends StatelessWidget {
               ],
             ),
             onTap: () => context.push(() => CommunityScreen(community: item.community)),
-            subtitle: item.description != null
+            subtitle: item.shortDescription != null
               ? Padding(
                   padding: const EdgeInsets.only(top: 8),
                   child: Text(
-                    item.description!,
+                    item.shortDescription!,
                     maxLines: 4,
                     overflow: TextOverflow.ellipsis,
                   ),
@@ -115,7 +126,7 @@ class SearchScreen extends StatelessWidget {
             subtitle = UserStats(
               stats: item.stats!,
               valueFontSize: 13,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
+              valueColor: Theme.of(context).colorScheme.onSurfaceVariant,
               labelFontSize: 10,
             );
           }
@@ -132,7 +143,8 @@ class SearchScreen extends StatelessWidget {
                   context.push(() {
                     return UserDetailsScreen(
                       platform: platform,
-                      username: item.name
+                      username: item.name,
+                      host: item.host,
                     );
                   });
                 }

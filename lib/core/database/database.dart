@@ -43,7 +43,13 @@ class Database extends _$Database {
           );
           batch.insertAll(
             communities,
-            F.appFlavor.defaultCommunities.map((community) => CommunitiesCompanion.insert(platform: community.platform, name: community.name))
+            F.appFlavor.defaultCommunities.map((community) {
+              return CommunitiesCompanion.insert(
+                platform: community.platform,
+                host: community.host,
+                name: community.name
+              );
+            })
           );
         });
       },
@@ -54,14 +60,11 @@ class Database extends _$Database {
     return LazyDatabase(() async {
       final dbFolder = await getApplicationSupportDirectory();
       final file = io.File(p.join(dbFolder.path, 'db.sqlite'));
-
       if (io.Platform.isAndroid) {
         await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
       }
-
       final cachebase = (await getTemporaryDirectory()).path;
       sqlite3.tempDirectory = cachebase;
-
       return NativeDatabase.createInBackground(file);
     });
   }
@@ -108,6 +111,7 @@ class Database extends _$Database {
     return into(users).insertOnConflictUpdate(
       UsersCompanion.insert(
         platform: user.platform,
+        host: user.host,
         id: user.id,
         name: user.name,
         iconUrl: user.iconUrl,
@@ -139,6 +143,7 @@ class Database extends _$Database {
     return into(communities).insert(
       CommunitiesCompanion.insert(
         platform: community.platform,
+        host: community.host,
         name: community.name,
         isFavorite: Value(community.isFavorite),
         id: Value(community.id),
@@ -154,6 +159,7 @@ class Database extends _$Database {
           this.communities, 
           communities.map((community) => CommunitiesCompanion.insert(
             platform: community.platform,
+            host: community.host,
             name: community.name,
             isFavorite: Value(community.isFavorite),
             id: Value(community.id),

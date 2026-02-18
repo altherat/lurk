@@ -6,12 +6,14 @@ class CommunityDetails {
   final String? id;
   final DateTime? createdDate;
   final String? title;
-  final String? description;
-  final String? descriptionHtml;
+  final String? shortDescription;
+  final String? longDescriptionHtml;
   final String? iconUrl;
   final String? bannerUrl;
   final int? subscriberCount;
   final int? postCount;
+  final String? primaryColorHexCode;
+  final String? bannerBackgroundColorHexCode;
   final bool? isSubscribed;
 
   const CommunityDetails({
@@ -19,12 +21,14 @@ class CommunityDetails {
     this.id,
     this.createdDate,
     this.title,
-    this.description,
-    this.descriptionHtml,
+    this.shortDescription,
+    this.longDescriptionHtml,
     this.iconUrl,
     this.bannerUrl,
     this.subscriberCount,
     this.postCount,
+    this.primaryColorHexCode,
+    this.bannerBackgroundColorHexCode,
     this.isSubscribed,
   });
 

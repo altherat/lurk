@@ -2,6 +2,19 @@
     "version": "0.2.0",
     "configurations": [
         {
+            "name": "Combined (Debug)",
+            "request": "launch",
+            "type": "dart",
+            "args": ["--flavor", "combined"]
+        },
+        {
+            "name": "Combined (Release)",
+            "request": "launch",
+            "type": "dart",
+            "flutterMode": "release",
+            "args": ["--flavor", "combined"]
+        },
+        {
             "name": "Reddit (Debug)",
             "request": "launch",
             "type": "dart",
@@ -28,17 +41,17 @@
             "args": ["--flavor", "digg"]
         },
         {
-            "name": "Combined (Debug)",
+            "name": "Lemmy (Debug)",
             "request": "launch",
             "type": "dart",
-            "args": ["--flavor", "combined"]
+            "args": ["--flavor", "lemmy"]
         },
         {
-            "name": "Combined (Release)",
+            "name": "Lemmy (Release)",
             "request": "launch",
             "type": "dart",
             "flutterMode": "release",
-            "args": ["--flavor", "combined"]
-        }
+            "args": ["--flavor", "lemmy"]
+        },
     ]
 }

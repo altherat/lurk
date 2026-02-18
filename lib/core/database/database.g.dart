@@ -299,6 +299,18 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   ).withConverter<Platform?>($SettingsTable.$converterhomeCommunityPlatformn);
+  static const VerificationMeta _homeCommunityHostMeta = const VerificationMeta(
+    'homeCommunityHost',
+  );
+  @override
+  late final GeneratedColumn<String> homeCommunityHost =
+      GeneratedColumn<String>(
+        'home_community_host',
+        aliasedName,
+        true,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _homeCommunityNameMeta = const VerificationMeta(
     'homeCommunityName',
   );
@@ -579,6 +591,17 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _lemmyUserAgentMeta = const VerificationMeta(
+    'lemmyUserAgent',
+  );
+  @override
+  late final GeneratedColumn<String> lemmyUserAgent = GeneratedColumn<String>(
+    'lemmy_user_agent',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   late final GeneratedColumnWithTypeConverter<SearchType?, String> searchType =
       GeneratedColumn<String>(
@@ -603,6 +626,7 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
   List<GeneratedColumn> get $columns => [
     id,
     homeCommunityPlatform,
+    homeCommunityHost,
     homeCommunityName,
     showCommentImages,
     autoplayVideos,
@@ -624,6 +648,7 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     redditUserAgent,
     diggPostsFetchDepth,
     diggUserAgent,
+    lemmyUserAgent,
     searchType,
     activeUserId,
   ];
@@ -641,6 +666,15 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     final data = instance.toColumns(true);
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('home_community_host')) {
+      context.handle(
+        _homeCommunityHostMeta,
+        homeCommunityHost.isAcceptableOrUnknown(
+          data['home_community_host']!,
+          _homeCommunityHostMeta,
+        ),
+      );
     }
     if (data.containsKey('home_community_name')) {
       context.handle(
@@ -813,6 +847,15 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         ),
       );
     }
+    if (data.containsKey('lemmy_user_agent')) {
+      context.handle(
+        _lemmyUserAgentMeta,
+        lemmyUserAgent.isAcceptableOrUnknown(
+          data['lemmy_user_agent']!,
+          _lemmyUserAgentMeta,
+        ),
+      );
+    }
     if (data.containsKey('active_user_id')) {
       context.handle(
         _activeUserIdMeta,
@@ -842,6 +885,10 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
               data['${effectivePrefix}home_community_platform'],
             ),
           ),
+      homeCommunityHost: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}home_community_host'],
+      ),
       homeCommunityName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}home_community_name'],
@@ -932,6 +979,10 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         DriftSqlType.string,
         data['${effectivePrefix}digg_user_agent'],
       ),
+      lemmyUserAgent: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}lemmy_user_agent'],
+      ),
       searchType: $SettingsTable.$convertersearchTypen.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -975,6 +1026,7 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
 class Setting extends DataClass implements Insertable<Setting> {
   final int id;
   final Platform? homeCommunityPlatform;
+  final String? homeCommunityHost;
   final String? homeCommunityName;
   final bool showCommentImages;
   final bool autoplayVideos;
@@ -996,11 +1048,13 @@ class Setting extends DataClass implements Insertable<Setting> {
   final String? redditUserAgent;
   final int diggPostsFetchDepth;
   final String? diggUserAgent;
+  final String? lemmyUserAgent;
   final SearchType? searchType;
   final String? activeUserId;
   const Setting({
     required this.id,
     this.homeCommunityPlatform,
+    this.homeCommunityHost,
     this.homeCommunityName,
     required this.showCommentImages,
     required this.autoplayVideos,
@@ -1022,6 +1076,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     this.redditUserAgent,
     required this.diggPostsFetchDepth,
     this.diggUserAgent,
+    this.lemmyUserAgent,
     this.searchType,
     this.activeUserId,
   });
@@ -1035,6 +1090,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           homeCommunityPlatform,
         ),
       );
+    }
+    if (!nullToAbsent || homeCommunityHost != null) {
+      map['home_community_host'] = Variable<String>(homeCommunityHost);
     }
     if (!nullToAbsent || homeCommunityName != null) {
       map['home_community_name'] = Variable<String>(homeCommunityName);
@@ -1089,6 +1147,9 @@ class Setting extends DataClass implements Insertable<Setting> {
     if (!nullToAbsent || diggUserAgent != null) {
       map['digg_user_agent'] = Variable<String>(diggUserAgent);
     }
+    if (!nullToAbsent || lemmyUserAgent != null) {
+      map['lemmy_user_agent'] = Variable<String>(lemmyUserAgent);
+    }
     if (!nullToAbsent || searchType != null) {
       map['search_type'] = Variable<String>(
         $SettingsTable.$convertersearchTypen.toSql(searchType),
@@ -1106,6 +1167,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       homeCommunityPlatform: homeCommunityPlatform == null && nullToAbsent
           ? const Value.absent()
           : Value(homeCommunityPlatform),
+      homeCommunityHost: homeCommunityHost == null && nullToAbsent
+          ? const Value.absent()
+          : Value(homeCommunityHost),
       homeCommunityName: homeCommunityName == null && nullToAbsent
           ? const Value.absent()
           : Value(homeCommunityName),
@@ -1143,6 +1207,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       diggUserAgent: diggUserAgent == null && nullToAbsent
           ? const Value.absent()
           : Value(diggUserAgent),
+      lemmyUserAgent: lemmyUserAgent == null && nullToAbsent
+          ? const Value.absent()
+          : Value(lemmyUserAgent),
       searchType: searchType == null && nullToAbsent
           ? const Value.absent()
           : Value(searchType),
@@ -1163,6 +1230,9 @@ class Setting extends DataClass implements Insertable<Setting> {
           .fromJson(
             serializer.fromJson<String?>(json['homeCommunityPlatform']),
           ),
+      homeCommunityHost: serializer.fromJson<String?>(
+        json['homeCommunityHost'],
+      ),
       homeCommunityName: serializer.fromJson<String?>(
         json['homeCommunityName'],
       ),
@@ -1210,6 +1280,7 @@ class Setting extends DataClass implements Insertable<Setting> {
         json['diggPostsFetchDepth'],
       ),
       diggUserAgent: serializer.fromJson<String?>(json['diggUserAgent']),
+      lemmyUserAgent: serializer.fromJson<String?>(json['lemmyUserAgent']),
       searchType: $SettingsTable.$convertersearchTypen.fromJson(
         serializer.fromJson<String?>(json['searchType']),
       ),
@@ -1226,6 +1297,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           homeCommunityPlatform,
         ),
       ),
+      'homeCommunityHost': serializer.toJson<String?>(homeCommunityHost),
       'homeCommunityName': serializer.toJson<String?>(homeCommunityName),
       'showCommentImages': serializer.toJson<bool>(showCommentImages),
       'autoplayVideos': serializer.toJson<bool>(autoplayVideos),
@@ -1261,6 +1333,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       'redditUserAgent': serializer.toJson<String?>(redditUserAgent),
       'diggPostsFetchDepth': serializer.toJson<int>(diggPostsFetchDepth),
       'diggUserAgent': serializer.toJson<String?>(diggUserAgent),
+      'lemmyUserAgent': serializer.toJson<String?>(lemmyUserAgent),
       'searchType': serializer.toJson<String?>(
         $SettingsTable.$convertersearchTypen.toJson(searchType),
       ),
@@ -1271,6 +1344,7 @@ class Setting extends DataClass implements Insertable<Setting> {
   Setting copyWith({
     int? id,
     Value<Platform?> homeCommunityPlatform = const Value.absent(),
+    Value<String?> homeCommunityHost = const Value.absent(),
     Value<String?> homeCommunityName = const Value.absent(),
     bool? showCommentImages,
     bool? autoplayVideos,
@@ -1292,6 +1366,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     Value<String?> redditUserAgent = const Value.absent(),
     int? diggPostsFetchDepth,
     Value<String?> diggUserAgent = const Value.absent(),
+    Value<String?> lemmyUserAgent = const Value.absent(),
     Value<SearchType?> searchType = const Value.absent(),
     Value<String?> activeUserId = const Value.absent(),
   }) => Setting(
@@ -1299,6 +1374,9 @@ class Setting extends DataClass implements Insertable<Setting> {
     homeCommunityPlatform: homeCommunityPlatform.present
         ? homeCommunityPlatform.value
         : this.homeCommunityPlatform,
+    homeCommunityHost: homeCommunityHost.present
+        ? homeCommunityHost.value
+        : this.homeCommunityHost,
     homeCommunityName: homeCommunityName.present
         ? homeCommunityName.value
         : this.homeCommunityName,
@@ -1339,6 +1417,9 @@ class Setting extends DataClass implements Insertable<Setting> {
     diggUserAgent: diggUserAgent.present
         ? diggUserAgent.value
         : this.diggUserAgent,
+    lemmyUserAgent: lemmyUserAgent.present
+        ? lemmyUserAgent.value
+        : this.lemmyUserAgent,
     searchType: searchType.present ? searchType.value : this.searchType,
     activeUserId: activeUserId.present ? activeUserId.value : this.activeUserId,
   );
@@ -1348,6 +1429,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       homeCommunityPlatform: data.homeCommunityPlatform.present
           ? data.homeCommunityPlatform.value
           : this.homeCommunityPlatform,
+      homeCommunityHost: data.homeCommunityHost.present
+          ? data.homeCommunityHost.value
+          : this.homeCommunityHost,
       homeCommunityName: data.homeCommunityName.present
           ? data.homeCommunityName.value
           : this.homeCommunityName,
@@ -1412,6 +1496,9 @@ class Setting extends DataClass implements Insertable<Setting> {
       diggUserAgent: data.diggUserAgent.present
           ? data.diggUserAgent.value
           : this.diggUserAgent,
+      lemmyUserAgent: data.lemmyUserAgent.present
+          ? data.lemmyUserAgent.value
+          : this.lemmyUserAgent,
       searchType: data.searchType.present
           ? data.searchType.value
           : this.searchType,
@@ -1426,6 +1513,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     return (StringBuffer('Setting(')
           ..write('id: $id, ')
           ..write('homeCommunityPlatform: $homeCommunityPlatform, ')
+          ..write('homeCommunityHost: $homeCommunityHost, ')
           ..write('homeCommunityName: $homeCommunityName, ')
           ..write('showCommentImages: $showCommentImages, ')
           ..write('autoplayVideos: $autoplayVideos, ')
@@ -1451,6 +1539,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('redditUserAgent: $redditUserAgent, ')
           ..write('diggPostsFetchDepth: $diggPostsFetchDepth, ')
           ..write('diggUserAgent: $diggUserAgent, ')
+          ..write('lemmyUserAgent: $lemmyUserAgent, ')
           ..write('searchType: $searchType, ')
           ..write('activeUserId: $activeUserId')
           ..write(')'))
@@ -1461,6 +1550,7 @@ class Setting extends DataClass implements Insertable<Setting> {
   int get hashCode => Object.hashAll([
     id,
     homeCommunityPlatform,
+    homeCommunityHost,
     homeCommunityName,
     showCommentImages,
     autoplayVideos,
@@ -1482,6 +1572,7 @@ class Setting extends DataClass implements Insertable<Setting> {
     redditUserAgent,
     diggPostsFetchDepth,
     diggUserAgent,
+    lemmyUserAgent,
     searchType,
     activeUserId,
   ]);
@@ -1491,6 +1582,7 @@ class Setting extends DataClass implements Insertable<Setting> {
       (other is Setting &&
           other.id == this.id &&
           other.homeCommunityPlatform == this.homeCommunityPlatform &&
+          other.homeCommunityHost == this.homeCommunityHost &&
           other.homeCommunityName == this.homeCommunityName &&
           other.showCommentImages == this.showCommentImages &&
           other.autoplayVideos == this.autoplayVideos &&
@@ -1514,6 +1606,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.redditUserAgent == this.redditUserAgent &&
           other.diggPostsFetchDepth == this.diggPostsFetchDepth &&
           other.diggUserAgent == this.diggUserAgent &&
+          other.lemmyUserAgent == this.lemmyUserAgent &&
           other.searchType == this.searchType &&
           other.activeUserId == this.activeUserId);
 }
@@ -1521,6 +1614,7 @@ class Setting extends DataClass implements Insertable<Setting> {
 class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<int> id;
   final Value<Platform?> homeCommunityPlatform;
+  final Value<String?> homeCommunityHost;
   final Value<String?> homeCommunityName;
   final Value<bool> showCommentImages;
   final Value<bool> autoplayVideos;
@@ -1542,11 +1636,13 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<String?> redditUserAgent;
   final Value<int> diggPostsFetchDepth;
   final Value<String?> diggUserAgent;
+  final Value<String?> lemmyUserAgent;
   final Value<SearchType?> searchType;
   final Value<String?> activeUserId;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.homeCommunityPlatform = const Value.absent(),
+    this.homeCommunityHost = const Value.absent(),
     this.homeCommunityName = const Value.absent(),
     this.showCommentImages = const Value.absent(),
     this.autoplayVideos = const Value.absent(),
@@ -1568,12 +1664,14 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.redditUserAgent = const Value.absent(),
     this.diggPostsFetchDepth = const Value.absent(),
     this.diggUserAgent = const Value.absent(),
+    this.lemmyUserAgent = const Value.absent(),
     this.searchType = const Value.absent(),
     this.activeUserId = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
     this.homeCommunityPlatform = const Value.absent(),
+    this.homeCommunityHost = const Value.absent(),
     this.homeCommunityName = const Value.absent(),
     this.showCommentImages = const Value.absent(),
     this.autoplayVideos = const Value.absent(),
@@ -1595,12 +1693,14 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.redditUserAgent = const Value.absent(),
     this.diggPostsFetchDepth = const Value.absent(),
     this.diggUserAgent = const Value.absent(),
+    this.lemmyUserAgent = const Value.absent(),
     this.searchType = const Value.absent(),
     this.activeUserId = const Value.absent(),
   });
   static Insertable<Setting> custom({
     Expression<int>? id,
     Expression<String>? homeCommunityPlatform,
+    Expression<String>? homeCommunityHost,
     Expression<String>? homeCommunityName,
     Expression<bool>? showCommentImages,
     Expression<bool>? autoplayVideos,
@@ -1622,6 +1722,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<String>? redditUserAgent,
     Expression<int>? diggPostsFetchDepth,
     Expression<String>? diggUserAgent,
+    Expression<String>? lemmyUserAgent,
     Expression<String>? searchType,
     Expression<String>? activeUserId,
   }) {
@@ -1629,6 +1730,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (id != null) 'id': id,
       if (homeCommunityPlatform != null)
         'home_community_platform': homeCommunityPlatform,
+      if (homeCommunityHost != null) 'home_community_host': homeCommunityHost,
       if (homeCommunityName != null) 'home_community_name': homeCommunityName,
       if (showCommentImages != null) 'show_comment_images': showCommentImages,
       if (autoplayVideos != null) 'autoplay_videos': autoplayVideos,
@@ -1661,6 +1763,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (diggPostsFetchDepth != null)
         'digg_posts_fetch_depth': diggPostsFetchDepth,
       if (diggUserAgent != null) 'digg_user_agent': diggUserAgent,
+      if (lemmyUserAgent != null) 'lemmy_user_agent': lemmyUserAgent,
       if (searchType != null) 'search_type': searchType,
       if (activeUserId != null) 'active_user_id': activeUserId,
     });
@@ -1669,6 +1772,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   SettingsCompanion copyWith({
     Value<int>? id,
     Value<Platform?>? homeCommunityPlatform,
+    Value<String?>? homeCommunityHost,
     Value<String?>? homeCommunityName,
     Value<bool>? showCommentImages,
     Value<bool>? autoplayVideos,
@@ -1690,6 +1794,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<String?>? redditUserAgent,
     Value<int>? diggPostsFetchDepth,
     Value<String?>? diggUserAgent,
+    Value<String?>? lemmyUserAgent,
     Value<SearchType?>? searchType,
     Value<String?>? activeUserId,
   }) {
@@ -1697,6 +1802,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       id: id ?? this.id,
       homeCommunityPlatform:
           homeCommunityPlatform ?? this.homeCommunityPlatform,
+      homeCommunityHost: homeCommunityHost ?? this.homeCommunityHost,
       homeCommunityName: homeCommunityName ?? this.homeCommunityName,
       showCommentImages: showCommentImages ?? this.showCommentImages,
       autoplayVideos: autoplayVideos ?? this.autoplayVideos,
@@ -1725,6 +1831,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       redditUserAgent: redditUserAgent ?? this.redditUserAgent,
       diggPostsFetchDepth: diggPostsFetchDepth ?? this.diggPostsFetchDepth,
       diggUserAgent: diggUserAgent ?? this.diggUserAgent,
+      lemmyUserAgent: lemmyUserAgent ?? this.lemmyUserAgent,
       searchType: searchType ?? this.searchType,
       activeUserId: activeUserId ?? this.activeUserId,
     );
@@ -1742,6 +1849,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           homeCommunityPlatform.value,
         ),
       );
+    }
+    if (homeCommunityHost.present) {
+      map['home_community_host'] = Variable<String>(homeCommunityHost.value);
     }
     if (homeCommunityName.present) {
       map['home_community_name'] = Variable<String>(homeCommunityName.value);
@@ -1826,6 +1936,9 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     if (diggUserAgent.present) {
       map['digg_user_agent'] = Variable<String>(diggUserAgent.value);
     }
+    if (lemmyUserAgent.present) {
+      map['lemmy_user_agent'] = Variable<String>(lemmyUserAgent.value);
+    }
     if (searchType.present) {
       map['search_type'] = Variable<String>(
         $SettingsTable.$convertersearchTypen.toSql(searchType.value),
@@ -1842,6 +1955,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     return (StringBuffer('SettingsCompanion(')
           ..write('id: $id, ')
           ..write('homeCommunityPlatform: $homeCommunityPlatform, ')
+          ..write('homeCommunityHost: $homeCommunityHost, ')
           ..write('homeCommunityName: $homeCommunityName, ')
           ..write('showCommentImages: $showCommentImages, ')
           ..write('autoplayVideos: $autoplayVideos, ')
@@ -1867,6 +1981,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('redditUserAgent: $redditUserAgent, ')
           ..write('diggPostsFetchDepth: $diggPostsFetchDepth, ')
           ..write('diggUserAgent: $diggUserAgent, ')
+          ..write('lemmyUserAgent: $lemmyUserAgent, ')
           ..write('searchType: $searchType, ')
           ..write('activeUserId: $activeUserId')
           ..write(')'))
@@ -1888,6 +2003,15 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       ).withConverter<Platform>($UsersTable.$converterplatform);
+  static const VerificationMeta _hostMeta = const VerificationMeta('host');
+  @override
+  late final GeneratedColumn<String> host = GeneratedColumn<String>(
+    'host',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -1940,6 +2064,7 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
   @override
   List<GeneratedColumn> get $columns => [
     platform,
+    host,
     id,
     name,
     iconUrl,
@@ -1958,6 +2083,14 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('host')) {
+      context.handle(
+        _hostMeta,
+        host.isAcceptableOrUnknown(data['host']!, _hostMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_hostMeta);
+    }
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
@@ -1999,7 +2132,7 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {platform, id};
+  Set<GeneratedColumn> get $primaryKey => {platform, host, id};
   @override
   LoggedInUser map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -2010,6 +2143,10 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
           data['${effectivePrefix}platform'],
         )!,
       ),
+      host: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}host'],
+      )!,
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -2044,6 +2181,7 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
 
 class UsersCompanion extends UpdateCompanion<LoggedInUser> {
   final Value<Platform> platform;
+  final Value<String> host;
   final Value<String> id;
   final Value<String> name;
   final Value<String> iconUrl;
@@ -2052,6 +2190,7 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
   final Value<int> rowid;
   const UsersCompanion({
     this.platform = const Value.absent(),
+    this.host = const Value.absent(),
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.iconUrl = const Value.absent(),
@@ -2061,6 +2200,7 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
   });
   UsersCompanion.insert({
     required Platform platform,
+    required String host,
     required String id,
     required String name,
     required String iconUrl,
@@ -2068,6 +2208,7 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
     required int score,
     this.rowid = const Value.absent(),
   }) : platform = Value(platform),
+       host = Value(host),
        id = Value(id),
        name = Value(name),
        iconUrl = Value(iconUrl),
@@ -2075,6 +2216,7 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
        score = Value(score);
   static Insertable<LoggedInUser> custom({
     Expression<String>? platform,
+    Expression<String>? host,
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? iconUrl,
@@ -2084,6 +2226,7 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
   }) {
     return RawValuesInsertable({
       if (platform != null) 'platform': platform,
+      if (host != null) 'host': host,
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (iconUrl != null) 'icon_url': iconUrl,
@@ -2095,6 +2238,7 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
 
   UsersCompanion copyWith({
     Value<Platform>? platform,
+    Value<String>? host,
     Value<String>? id,
     Value<String>? name,
     Value<String>? iconUrl,
@@ -2104,6 +2248,7 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
   }) {
     return UsersCompanion(
       platform: platform ?? this.platform,
+      host: host ?? this.host,
       id: id ?? this.id,
       name: name ?? this.name,
       iconUrl: iconUrl ?? this.iconUrl,
@@ -2120,6 +2265,9 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
       map['platform'] = Variable<String>(
         $UsersTable.$converterplatform.toSql(platform.value),
       );
+    }
+    if (host.present) {
+      map['host'] = Variable<String>(host.value);
     }
     if (id.present) {
       map['id'] = Variable<String>(id.value);
@@ -2146,6 +2294,7 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
   String toString() {
     return (StringBuffer('UsersCompanion(')
           ..write('platform: $platform, ')
+          ..write('host: $host, ')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('iconUrl: $iconUrl, ')
@@ -2449,6 +2598,15 @@ class $CommunitiesTable extends Communities
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       ).withConverter<Platform>($CommunitiesTable.$converterplatform);
+  static const VerificationMeta _hostMeta = const VerificationMeta('host');
+  @override
+  late final GeneratedColumn<String> host = GeneratedColumn<String>(
+    'host',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   @override
   late final GeneratedColumnWithTypeConverter<String?, String> name =
       GeneratedColumn<String>(
@@ -2483,7 +2641,7 @@ class $CommunitiesTable extends Communities
     defaultValue: const Constant(false),
   );
   @override
-  List<GeneratedColumn> get $columns => [platform, name, id, isFavorite];
+  List<GeneratedColumn> get $columns => [platform, host, name, id, isFavorite];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2496,6 +2654,14 @@ class $CommunitiesTable extends Communities
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('host')) {
+      context.handle(
+        _hostMeta,
+        host.isAcceptableOrUnknown(data['host']!, _hostMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_hostMeta);
+    }
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     }
@@ -2509,7 +2675,7 @@ class $CommunitiesTable extends Communities
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {platform, name};
+  Set<GeneratedColumn> get $primaryKey => {platform, host, name};
   @override
   Community map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -2520,6 +2686,10 @@ class $CommunitiesTable extends Communities
           data['${effectivePrefix}platform'],
         )!,
       ),
+      host: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}host'],
+      )!,
       name: $CommunitiesTable.$convertername.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -2550,12 +2720,14 @@ class $CommunitiesTable extends Communities
 
 class CommunitiesCompanion extends UpdateCompanion<Community> {
   final Value<Platform> platform;
+  final Value<String> host;
   final Value<String?> name;
   final Value<String?> id;
   final Value<bool> isFavorite;
   final Value<int> rowid;
   const CommunitiesCompanion({
     this.platform = const Value.absent(),
+    this.host = const Value.absent(),
     this.name = const Value.absent(),
     this.id = const Value.absent(),
     this.isFavorite = const Value.absent(),
@@ -2563,14 +2735,17 @@ class CommunitiesCompanion extends UpdateCompanion<Community> {
   });
   CommunitiesCompanion.insert({
     required Platform platform,
+    required String host,
     required String? name,
     this.id = const Value.absent(),
     this.isFavorite = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : platform = Value(platform),
+       host = Value(host),
        name = Value(name);
   static Insertable<Community> custom({
     Expression<String>? platform,
+    Expression<String>? host,
     Expression<String>? name,
     Expression<String>? id,
     Expression<bool>? isFavorite,
@@ -2578,6 +2753,7 @@ class CommunitiesCompanion extends UpdateCompanion<Community> {
   }) {
     return RawValuesInsertable({
       if (platform != null) 'platform': platform,
+      if (host != null) 'host': host,
       if (name != null) 'name': name,
       if (id != null) 'id': id,
       if (isFavorite != null) 'is_favorite': isFavorite,
@@ -2587,6 +2763,7 @@ class CommunitiesCompanion extends UpdateCompanion<Community> {
 
   CommunitiesCompanion copyWith({
     Value<Platform>? platform,
+    Value<String>? host,
     Value<String?>? name,
     Value<String?>? id,
     Value<bool>? isFavorite,
@@ -2594,6 +2771,7 @@ class CommunitiesCompanion extends UpdateCompanion<Community> {
   }) {
     return CommunitiesCompanion(
       platform: platform ?? this.platform,
+      host: host ?? this.host,
       name: name ?? this.name,
       id: id ?? this.id,
       isFavorite: isFavorite ?? this.isFavorite,
@@ -2608,6 +2786,9 @@ class CommunitiesCompanion extends UpdateCompanion<Community> {
       map['platform'] = Variable<String>(
         $CommunitiesTable.$converterplatform.toSql(platform.value),
       );
+    }
+    if (host.present) {
+      map['host'] = Variable<String>(host.value);
     }
     if (name.present) {
       map['name'] = Variable<String>(
@@ -2630,6 +2811,7 @@ class CommunitiesCompanion extends UpdateCompanion<Community> {
   String toString() {
     return (StringBuffer('CommunitiesCompanion(')
           ..write('platform: $platform, ')
+          ..write('host: $host, ')
           ..write('name: $name, ')
           ..write('id: $id, ')
           ..write('isFavorite: $isFavorite, ')
@@ -3035,6 +3217,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
     SettingsCompanion Function({
       Value<int> id,
       Value<Platform?> homeCommunityPlatform,
+      Value<String?> homeCommunityHost,
       Value<String?> homeCommunityName,
       Value<bool> showCommentImages,
       Value<bool> autoplayVideos,
@@ -3056,6 +3239,7 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> redditUserAgent,
       Value<int> diggPostsFetchDepth,
       Value<String?> diggUserAgent,
+      Value<String?> lemmyUserAgent,
       Value<SearchType?> searchType,
       Value<String?> activeUserId,
     });
@@ -3063,6 +3247,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
       Value<int> id,
       Value<Platform?> homeCommunityPlatform,
+      Value<String?> homeCommunityHost,
       Value<String?> homeCommunityName,
       Value<bool> showCommentImages,
       Value<bool> autoplayVideos,
@@ -3084,6 +3269,7 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> redditUserAgent,
       Value<int> diggPostsFetchDepth,
       Value<String?> diggUserAgent,
+      Value<String?> lemmyUserAgent,
       Value<SearchType?> searchType,
       Value<String?> activeUserId,
     });
@@ -3106,6 +3292,11 @@ class $$SettingsTableFilterComposer
   get homeCommunityPlatform => $composableBuilder(
     column: $table.homeCommunityPlatform,
     builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<String> get homeCommunityHost => $composableBuilder(
+    column: $table.homeCommunityHost,
+    builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<String> get homeCommunityName => $composableBuilder(
@@ -3216,6 +3407,11 @@ class $$SettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get lemmyUserAgent => $composableBuilder(
+    column: $table.lemmyUserAgent,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnWithTypeConverterFilters<SearchType?, SearchType, String>
   get searchType => $composableBuilder(
     column: $table.searchType,
@@ -3244,6 +3440,11 @@ class $$SettingsTableOrderingComposer
 
   ColumnOrderings<String> get homeCommunityPlatform => $composableBuilder(
     column: $table.homeCommunityPlatform,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get homeCommunityHost => $composableBuilder(
+    column: $table.homeCommunityHost,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -3353,6 +3554,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get lemmyUserAgent => $composableBuilder(
+    column: $table.lemmyUserAgent,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get searchType => $composableBuilder(
     column: $table.searchType,
     builder: (column) => ColumnOrderings(column),
@@ -3379,6 +3585,11 @@ class $$SettingsTableAnnotationComposer
   GeneratedColumnWithTypeConverter<Platform?, String>
   get homeCommunityPlatform => $composableBuilder(
     column: $table.homeCommunityPlatform,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get homeCommunityHost => $composableBuilder(
+    column: $table.homeCommunityHost,
     builder: (column) => column,
   );
 
@@ -3490,6 +3701,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get lemmyUserAgent => $composableBuilder(
+    column: $table.lemmyUserAgent,
+    builder: (column) => column,
+  );
+
   GeneratedColumnWithTypeConverter<SearchType?, String> get searchType =>
       $composableBuilder(
         column: $table.searchType,
@@ -3532,6 +3748,7 @@ class $$SettingsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<Platform?> homeCommunityPlatform = const Value.absent(),
+                Value<String?> homeCommunityHost = const Value.absent(),
                 Value<String?> homeCommunityName = const Value.absent(),
                 Value<bool> showCommentImages = const Value.absent(),
                 Value<bool> autoplayVideos = const Value.absent(),
@@ -3556,11 +3773,13 @@ class $$SettingsTableTableManager
                 Value<String?> redditUserAgent = const Value.absent(),
                 Value<int> diggPostsFetchDepth = const Value.absent(),
                 Value<String?> diggUserAgent = const Value.absent(),
+                Value<String?> lemmyUserAgent = const Value.absent(),
                 Value<SearchType?> searchType = const Value.absent(),
                 Value<String?> activeUserId = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 homeCommunityPlatform: homeCommunityPlatform,
+                homeCommunityHost: homeCommunityHost,
                 homeCommunityName: homeCommunityName,
                 showCommentImages: showCommentImages,
                 autoplayVideos: autoplayVideos,
@@ -3583,6 +3802,7 @@ class $$SettingsTableTableManager
                 redditUserAgent: redditUserAgent,
                 diggPostsFetchDepth: diggPostsFetchDepth,
                 diggUserAgent: diggUserAgent,
+                lemmyUserAgent: lemmyUserAgent,
                 searchType: searchType,
                 activeUserId: activeUserId,
               ),
@@ -3590,6 +3810,7 @@ class $$SettingsTableTableManager
               ({
                 Value<int> id = const Value.absent(),
                 Value<Platform?> homeCommunityPlatform = const Value.absent(),
+                Value<String?> homeCommunityHost = const Value.absent(),
                 Value<String?> homeCommunityName = const Value.absent(),
                 Value<bool> showCommentImages = const Value.absent(),
                 Value<bool> autoplayVideos = const Value.absent(),
@@ -3614,11 +3835,13 @@ class $$SettingsTableTableManager
                 Value<String?> redditUserAgent = const Value.absent(),
                 Value<int> diggPostsFetchDepth = const Value.absent(),
                 Value<String?> diggUserAgent = const Value.absent(),
+                Value<String?> lemmyUserAgent = const Value.absent(),
                 Value<SearchType?> searchType = const Value.absent(),
                 Value<String?> activeUserId = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 homeCommunityPlatform: homeCommunityPlatform,
+                homeCommunityHost: homeCommunityHost,
                 homeCommunityName: homeCommunityName,
                 showCommentImages: showCommentImages,
                 autoplayVideos: autoplayVideos,
@@ -3641,6 +3864,7 @@ class $$SettingsTableTableManager
                 redditUserAgent: redditUserAgent,
                 diggPostsFetchDepth: diggPostsFetchDepth,
                 diggUserAgent: diggUserAgent,
+                lemmyUserAgent: lemmyUserAgent,
                 searchType: searchType,
                 activeUserId: activeUserId,
               ),
@@ -3669,6 +3893,7 @@ typedef $$SettingsTableProcessedTableManager =
 typedef $$UsersTableCreateCompanionBuilder =
     UsersCompanion Function({
       required Platform platform,
+      required String host,
       required String id,
       required String name,
       required String iconUrl,
@@ -3679,6 +3904,7 @@ typedef $$UsersTableCreateCompanionBuilder =
 typedef $$UsersTableUpdateCompanionBuilder =
     UsersCompanion Function({
       Value<Platform> platform,
+      Value<String> host,
       Value<String> id,
       Value<String> name,
       Value<String> iconUrl,
@@ -3700,6 +3926,11 @@ class $$UsersTableFilterComposer extends Composer<_$Database, $UsersTable> {
         column: $table.platform,
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
+
+  ColumnFilters<String> get host => $composableBuilder(
+    column: $table.host,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
@@ -3740,6 +3971,11 @@ class $$UsersTableOrderingComposer extends Composer<_$Database, $UsersTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get host => $composableBuilder(
+    column: $table.host,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
@@ -3776,6 +4012,9 @@ class $$UsersTableAnnotationComposer extends Composer<_$Database, $UsersTable> {
   });
   GeneratedColumnWithTypeConverter<Platform, String> get platform =>
       $composableBuilder(column: $table.platform, builder: (column) => column);
+
+  GeneratedColumn<String> get host =>
+      $composableBuilder(column: $table.host, builder: (column) => column);
 
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
@@ -3824,6 +4063,7 @@ class $$UsersTableTableManager
           updateCompanionCallback:
               ({
                 Value<Platform> platform = const Value.absent(),
+                Value<String> host = const Value.absent(),
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
                 Value<String> iconUrl = const Value.absent(),
@@ -3832,6 +4072,7 @@ class $$UsersTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => UsersCompanion(
                 platform: platform,
+                host: host,
                 id: id,
                 name: name,
                 iconUrl: iconUrl,
@@ -3842,6 +4083,7 @@ class $$UsersTableTableManager
           createCompanionCallback:
               ({
                 required Platform platform,
+                required String host,
                 required String id,
                 required String name,
                 required String iconUrl,
@@ -3850,6 +4092,7 @@ class $$UsersTableTableManager
                 Value<int> rowid = const Value.absent(),
               }) => UsersCompanion.insert(
                 platform: platform,
+                host: host,
                 id: id,
                 name: name,
                 iconUrl: iconUrl,
@@ -4047,6 +4290,7 @@ typedef $$UserCommunitiesTableProcessedTableManager =
 typedef $$CommunitiesTableCreateCompanionBuilder =
     CommunitiesCompanion Function({
       required Platform platform,
+      required String host,
       required String? name,
       Value<String?> id,
       Value<bool> isFavorite,
@@ -4055,6 +4299,7 @@ typedef $$CommunitiesTableCreateCompanionBuilder =
 typedef $$CommunitiesTableUpdateCompanionBuilder =
     CommunitiesCompanion Function({
       Value<Platform> platform,
+      Value<String> host,
       Value<String?> name,
       Value<String?> id,
       Value<bool> isFavorite,
@@ -4075,6 +4320,11 @@ class $$CommunitiesTableFilterComposer
         column: $table.platform,
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
+
+  ColumnFilters<String> get host => $composableBuilder(
+    column: $table.host,
+    builder: (column) => ColumnFilters(column),
+  );
 
   ColumnWithTypeConverterFilters<String?, String, String> get name =>
       $composableBuilder(
@@ -4107,6 +4357,11 @@ class $$CommunitiesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get host => $composableBuilder(
+    column: $table.host,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get name => $composableBuilder(
     column: $table.name,
     builder: (column) => ColumnOrderings(column),
@@ -4134,6 +4389,9 @@ class $$CommunitiesTableAnnotationComposer
   });
   GeneratedColumnWithTypeConverter<Platform, String> get platform =>
       $composableBuilder(column: $table.platform, builder: (column) => column);
+
+  GeneratedColumn<String> get host =>
+      $composableBuilder(column: $table.host, builder: (column) => column);
 
   GeneratedColumnWithTypeConverter<String?, String> get name =>
       $composableBuilder(column: $table.name, builder: (column) => column);
@@ -4176,12 +4434,14 @@ class $$CommunitiesTableTableManager
           updateCompanionCallback:
               ({
                 Value<Platform> platform = const Value.absent(),
+                Value<String> host = const Value.absent(),
                 Value<String?> name = const Value.absent(),
                 Value<String?> id = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CommunitiesCompanion(
                 platform: platform,
+                host: host,
                 name: name,
                 id: id,
                 isFavorite: isFavorite,
@@ -4190,12 +4450,14 @@ class $$CommunitiesTableTableManager
           createCompanionCallback:
               ({
                 required Platform platform,
+                required String host,
                 required String? name,
                 Value<String?> id = const Value.absent(),
                 Value<bool> isFavorite = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => CommunitiesCompanion.insert(
                 platform: platform,
+                host: host,
                 name: name,
                 id: id,
                 isFavorite: isFavorite,

@@ -5,6 +5,7 @@ import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/app.dart';
 import 'package:lurk/core/constants.dart';
+import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/core/flavors.dart';
@@ -20,6 +21,7 @@ import 'package:lurk/widgets/custom_app_bar.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/custom_search_bar.dart';
 import 'package:lurk/widgets/list_tile_icon.dart';
+import 'package:lurk/widgets/name_text.dart';
 
 class MainScaffold extends StatefulWidget {
 
@@ -168,13 +170,13 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
 
   void _onLoginPressed(BuildContext context) async {
     _scaffoldKey.currentState?.closeDrawer();
-    final user = await widget.platform.getApi(null).login();
+    final user = await widget.platform.getApi(widget.activeCommunity!.host, null).login();
     if (user != null) {
       if (!Settings.loggedInUsers.value.any((u) => u.id == user.id)) {
         Settings.loggedInUsers.add(user);
         Settings.activeUser.value = user;
-        widget.platform.destroySession(null);
-        widget.platform.getApi(user.id).fetchSubscribedCommunities();
+        widget.platform.destroySession(widget.activeCommunity!.host, null);
+        widget.platform.getApi(widget.activeCommunity!.host, user.id).fetchSubscribedCommunities();
         if (context.mounted) {
           context.showSnackBarMessage('Logged in to ${widget.platform.name.toTitleCase()} as ${user.name}');
         }
@@ -674,7 +676,8 @@ class _UserListState extends State<_UserList> {
           context.push(() {
             return UserDetailsScreen(
               platform: user.platform,
-              username: user.name
+              username: user.name,
+              host: user.host
             );
           });
         },
@@ -683,7 +686,7 @@ class _UserListState extends State<_UserList> {
           if (Settings.activeUser.value == user) {
             Settings.activeUser.value = Settings.loggedInUsers.value.firstOrNull;
           }
-          user.platform.destroySession(user.id);
+          user.platform.destroySession(user.host, user.id);
           if (mounted) {
             context.showSnackBarMessage('Logged out of ${user.name}');
           }
@@ -877,7 +880,7 @@ class _CommunityListState extends State<_CommunityList> {
     _visibleCommunities = Communities.saved.value.toList();
     _searchPlatform = widget.platform;
     final savedSearchType = Settings.searchType.value;
-    _searchType = savedSearchType == null || (savedSearchType == SearchType.withinCommunity && (widget.activeCommunity == null || !_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames.contains(widget.activeCommunity?.name))) ? SearchType.community : savedSearchType;
+    _searchType = savedSearchType == null || (savedSearchType == SearchType.withinCommunity && (widget.activeCommunity == null || !_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames == null || _searchPlatform.aggregateCommunityNames!.contains(widget.activeCommunity?.name))) || (savedSearchType == SearchType.all && _searchPlatform.host == null && widget.activeCommunity == null) ? SearchType.community : savedSearchType;
     _updateSearchBarTexts();
     _searchBarFocusNode.addListener(_onSearchBarFocusChanged);
     Communities.saved.addListener(_onSavedCommunitiesChanged);
@@ -970,8 +973,15 @@ class _CommunityListState extends State<_CommunityList> {
   void _cyclePlatform() {
     setState(() {
       _searchPlatform = Platform.values[(Platform.values.indexOf(_searchPlatform) + 1) % Platform.values.length];
-      if (_searchType == SearchType.withinCommunity && !_searchPlatform.canSearchWithinCommunities) {
-        _updateSearchType(SearchType.all);
+      if (_searchType == SearchType.all) {
+        if (_searchPlatform.host == null && _searchPlatform != widget.activeCommunity?.platform) {
+          _updateSearchType(SearchType.community);
+        }
+      }
+      else if (_searchType == SearchType.withinCommunity) {
+        if (!_searchPlatform.canSearchWithinCommunities) {
+          _updateSearchType(SearchType.all);
+        }
       }
       _updateSearchBarTexts();
       _updateIsSearchValid();
@@ -980,7 +990,16 @@ class _CommunityListState extends State<_CommunityList> {
 
   void _cycleSearchType() {
     setState(() {
-      final searchTypes = widget.activeCommunity == null || !_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames.contains(widget.activeCommunity?.name) ? SearchType.values.where((type) => type != SearchType.withinCommunity).toList() : SearchType.values;
+      final searchTypes = SearchType.values.toList();
+      final canSearchPlatform = _searchPlatform.host != null || _searchPlatform == widget.activeCommunity?.platform;
+      final canSearchWithinCommunity = widget.activeCommunity != null && _searchPlatform.canSearchWithinCommunities && !(_searchPlatform.aggregateCommunityNames?.contains(widget.activeCommunity?.name) ?? false);
+      if (!canSearchPlatform) {
+        searchTypes.remove(SearchType.all);
+      } 
+      if (!canSearchWithinCommunity) {
+        searchTypes.remove(SearchType.withinCommunity);
+      }
+      // final searchTypes = widget.activeCommunity == null || !_searchPlatform.canSearchWithinCommunities || _searchPlatform.aggregateCommunityNames == null || _searchPlatform.aggregateCommunityNames!.contains(widget.activeCommunity?.name) ? SearchType.values.where((type) => type != SearchType.withinCommunity).toList() : SearchType.values;
       _updateSearchType(searchTypes[(searchTypes.indexOf(_searchType) + 1) % searchTypes.length]);
       _updateSearchBarTexts();
       _updateIsSearchValid();
@@ -1004,7 +1023,7 @@ class _CommunityListState extends State<_CommunityList> {
         _searchBarHint = _searchBarFocusNode.hasFocus ? 'username' : 'Username';
       case SearchType.withinCommunity:
         _searchBarPrefixText = null;
-        _searchBarHint = 'Search ${widget.activeCommunity!.prefixedName}';
+        _searchBarHint = 'Search ${widget.activeCommunity!.fullName}';
       case SearchType.all:
         _searchBarPrefixText = null;
         _searchBarHint = 'Search ${_searchPlatform.name.toTitleCase()}';
@@ -1027,6 +1046,17 @@ class _CommunityListState extends State<_CommunityList> {
       SearchType.withinCommunity => _searchQuery.isNotEmpty,
       SearchType.all => _searchQuery.isNotEmpty,
     };
+  }
+
+  (String, String?)? _getHostAndNameFromSearchQuery(String value) {
+    if (_searchPlatform.host != null) {
+      return (_searchPlatform.host!, value.isNotEmpty ? value : null);
+    }
+    final match = RegExp(_searchPlatform.hostAndNameFromSearchQueryRegex!).firstMatch(value);
+    if (match != null) {
+      return (match.group(2)!, match.group(1));
+    }
+    return null;
   }
 
   @override
@@ -1204,13 +1234,11 @@ class _CommunityListState extends State<_CommunityList> {
                             if (!RegExp(_searchPlatform.communityNameValidation).hasMatch(value)) {
                               return;
                             }
-                            String? query = value;
-                            if (query.isEmpty) {
-                              query = null;
-                            }
+                            final (host, communityName) = _getHostAndNameFromSearchQuery(value)!;
                             final community = Community(
                               platform: _searchPlatform,
-                              name: query
+                              host: host,
+                              name: communityName
                             );
                             _navigateToCommunity(community);
                             Communities.saved.add(community);
@@ -1220,9 +1248,11 @@ class _CommunityListState extends State<_CommunityList> {
                             }
                             context.pop();
                             context.push(() {
+                              final (host, username) = _getHostAndNameFromSearchQuery(value)!;
                               return UserDetailsScreen(
                                 platform: _searchPlatform,
-                                username: value
+                                host: host,
+                                username: username!,
                               );
                             });
                           case SearchType.withinCommunity:
@@ -1232,6 +1262,7 @@ class _CommunityListState extends State<_CommunityList> {
                             context.push(() {
                               return SearchScreen(
                                 platform: _searchPlatform,
+                                host: _searchPlatform.host ?? widget.activeCommunity!.host,
                                 query: query,
                                 communityName: widget.activeCommunity?.name,
                               );
@@ -1244,6 +1275,7 @@ class _CommunityListState extends State<_CommunityList> {
                             context.push(() {
                               return SearchScreen(
                                 platform: _searchPlatform,
+                                host: _searchPlatform.host ?? widget.activeCommunity!.host,
                                 query: query
                               );
                             });
@@ -1278,7 +1310,10 @@ class _CommunityListState extends State<_CommunityList> {
                 if (index == 1 && showRootPage) {
                   return _CommunityNameListTile(
                     platform: widget.platform,
-                    community: Community(platform: activeUser!.platform),
+                    community: Community(
+                      platform: activeUser!.platform,
+                      host: activeUser.host
+                    ),
                     activeCommunity: widget.activeCommunity,
                     isFixed: true,
                     leading: IconButton(
@@ -1340,21 +1375,9 @@ class _CommunityListState extends State<_CommunityList> {
                   title: ValueListenableBuilder(
                     valueListenable: Settings.showPlatformColorTextAccents,
                     builder: (context, showPlatformColorTextAccents, child) {
-                      return Text.rich(
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        TextSpan(
-                          children: [
-                            TextSpan(
-                              text: community.platform.communityPrefix,
-                              style: TextStyle(color: showPlatformColorTextAccents ? community.platform.color : communityPrefixColor),
-                            ),
-                            TextSpan(
-                              text: community.name,
-                              style: TextStyle(color: communityNameColor),
-                            ),
-                          ],
-                        )
+                      return CommunityNameText(
+                        community: community,
+                        prefixColor: showPlatformColorTextAccents ? community.platform.color : communityPrefixColor,
                       );
                     }
                   ),
@@ -1369,10 +1392,15 @@ class _CommunityListState extends State<_CommunityList> {
               edgeOffset: MediaQuery.of(context).padding.top + 56,
               onRefresh: () async {
                 final List<Future> futures = [];
+                final Set<String> fetchingHosts = {};
                 for (final platform in F.appFlavor.platforms) {
-                  if (platform.hasLogin) {
-                    futures.add(platform.getApi(activeUser.id).fetchSubscribedCommunities());
+                  if (platform.host != null && platform.hasLogin) {
+                    futures.add(platform.getApi(platform.host!, activeUser.id).fetchSubscribedCommunities());
+                    fetchingHosts.add(platform.host!);
                   }
+                }
+                if (widget.activeCommunity != null && !fetchingHosts.contains(widget.activeCommunity!.host)) {
+                  futures.add(widget.activeCommunity!.platform.getApi(widget.activeCommunity!.host, activeUser.id).fetchSubscribedCommunities());
                 }
                 await Future.wait(futures);
               },
@@ -1421,15 +1449,15 @@ class _CommunityNameListTile extends StatelessWidget {
                 final Map<String, void Function()> options = {};
                 if (community.id != null && activeUser != null) {
                   if (Communities.isSubscribed(activeUser.platform, activeUser.id, community.name!)) {
-                    options['Unsubscribe'] = () => activeUser.platform.getApi(activeUser.id).unsubscribeFromCommunity(community.name!, community.id!);
+                    options['Unsubscribe'] = () => activeUser.platform.getApi(community.host, activeUser.id).unsubscribeFromCommunity(community.name!, community.id!);
                   }
                   else {
-                    options['Subscribe'] = () => activeUser.platform.getApi(activeUser.id).subscribeToCommunity(community.name!, community.id!);
+                    options['Subscribe'] = () => activeUser.platform.getApi(community.host, activeUser.id).subscribeToCommunity(community.name!, community.id!);
                   }
                 }
                 showSimpleOptionsDialog(
                   context: context,
-                  title: community.prefixedName,
+                  title: community.fullName,
                   options: options..['Remove'] = () => Communities.saved.remove(community)
                 );
               }

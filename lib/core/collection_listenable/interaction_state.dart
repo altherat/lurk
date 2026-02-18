@@ -5,7 +5,7 @@ class InteractionStateCollectionListenable extends CollectionListenable<(String?
 
   final Map<(String?, String), InteractionState> _states = {};
   
-  void set(String? userId, String id, InteractionState state) {
+  void update(String? userId, String id, InteractionState state) {
     final key = (userId, id);
     if (state == _states[key]) {
       return;

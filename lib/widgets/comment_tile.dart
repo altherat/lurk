@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/constants.dart';
+import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
+import 'package:lurk/models/community.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/repositories/comments.dart';
 import 'package:lurk/screens/user_details.dart';
@@ -70,7 +72,7 @@ class _CommentTileState extends State<CommentTile> {
       context: context,
       title: '${widget.comment.authorName == null ? 'Deleted' : widget.comment.authorName!.toPosessive()} comment',
       options: {
-        if (activeUser != null && activeUser.platform == widget.comment.platform) ...{
+        if (activeUser != null && activeUser.platform == widget.comment.community.platform) ...{
           Text('Upvote'): (context) => _updateVote(activeUser.id, true),
           Text('Downvote'): (context) => _updateVote(activeUser.id, false),
           Text('Reply'): (context) => _onReplyPressed(context, activeUser.id),
@@ -79,17 +81,18 @@ class _CommentTileState extends State<CommentTile> {
         },
         ...?widget.optionsBuilder?.call(context, activeUser),
         if (widget.showViewUserOption && widget.comment.authorName != null)
-          Text('View ${widget.comment.platform.userPrefix}${widget.comment.authorName}'): (context) {
+          Text('View ${widget.comment.community.platform.userPrefix}${widget.comment.authorName}'): (context) {
             context.push(
               () => UserDetailsScreen(
-                platform: widget.comment.platform,
-                username: widget.comment.authorName!
+                platform: widget.comment.community.platform,
+                username: widget.comment.authorName!,
+                host: widget.comment.community.host,
               )
             );
           },
         if (widget.comment.text != null)
           Text('Copy text'): (context) => copyToClipboard(widget.comment.text!),
-        Text('Copy link'): (context) => copyToClipboard(widget.comment.platform.getCommentUrl(widget.comment)),
+        Text('Copy link'): (context) => copyToClipboard(widget.comment.community.platform.getCommentUrl(widget.comment)),
       }
     );
   }
@@ -105,7 +108,7 @@ class _CommentTileState extends State<CommentTile> {
   void _onReplyPressed(BuildContext context, String activeUserId) {
     showAddCommentBottomSheet(
       context: context,
-      platform: widget.comment.platform,
+      community: widget.comment.community,
       id: widget.comment.id,
       activeUserId: activeUserId,
       replyingToWidget: CommentTile(
@@ -118,11 +121,11 @@ class _CommentTileState extends State<CommentTile> {
 
   void _deleteComment(String activeUserId) {
     widget.onDelete?.call();
-    widget.comment.platform.getApi(activeUserId).deleteComment(widget.comment.id);
+    widget.comment.community.platform.getApi(widget.comment.community.host, activeUserId).deleteComment(widget.comment.id);
   }
 
   void _updateVote(String activeUserId, bool up) {
-    widget.comment.platform.getApi(activeUserId).voteComment(widget.comment.id, up);
+    widget.comment.community.platform.getApi(widget.comment.community.host, activeUserId).voteComment(widget.comment.id, up);
   }
 
   @override
@@ -146,7 +149,7 @@ class _CommentTileState extends State<CommentTile> {
     Widget body;
     if (htmlText != null) {
       body = CustomHtml(
-        platform: widget.comment.platform,
+        platform: widget.comment.community.platform,
         html: htmlText,
         imageSizes: widget.comment.images,
       );
@@ -159,7 +162,7 @@ class _CommentTileState extends State<CommentTile> {
       listenable: Listenable.merge([Settings.activeUser, Settings.commentTapBehavior, Settings.commentLongPressBehavior]),
       builder: (context, child) {
         final activeUser = Settings.activeUser.value;
-        final canDoLoginActions = activeUser != null && activeUser.platform == widget.comment.platform;
+        final canDoLoginActions = activeUser != null && activeUser.platform == widget.comment.community.platform;
         final commentTapBehavior = Settings.commentTapBehavior.value;
         final commentLongPressBehavior = Settings.commentLongPressBehavior.value;
         final VoidCallback? onTap;
@@ -301,9 +304,7 @@ class _CommentTileState extends State<CommentTile> {
                           text: ' [$authorTag]',
                           style: TextStyle(color: authorColor)
                         ),
-                      TextSpan(text: '${Constants.separator}${(interactionState?.score ?? widget.comment.score)?.toPluralString('point') ?? '[~]'}${Constants.separator}${widget.comment.timeAgoLong}${widget.showCommunityName ? '${Constants.separator}${widget.comment.communityName}' : ''}'),
-                      if (widget.isCollapsed)
-                        const TextSpan(text: ' [+]'),
+                      TextSpan(text: '${Constants.separator}${(interactionState?.score ?? widget.comment.score)?.toPluralString('point') ?? '[~]'}${Constants.separator}${widget.comment.timeAgoLong}${widget.showCommunityName ? '${Constants.separator}${widget.comment.community.name}' : ''}${widget.isCollapsed ? ' [+]': ''}'),
                     ],
                   ),
                 );
@@ -449,7 +450,7 @@ class CommentIndent extends StatelessWidget {
 
 Future<void> showAddCommentBottomSheet({
   required BuildContext context,
-  required Platform platform,
+  required Community community,
   required String id,
   required String activeUserId,
   required Widget replyingToWidget,
@@ -467,7 +468,7 @@ Future<void> showAddCommentBottomSheet({
     ),
     builder: (context) {
       return _AddCommentBottomSheetContent(
-        platform: platform,
+        community: community,
         replyingToId: id,
         activeUserId: activeUserId,
         replyingToWidget: replyingToWidget,
@@ -480,14 +481,14 @@ Future<void> showAddCommentBottomSheet({
 
 class _AddCommentBottomSheetContent extends StatefulWidget {
   
-  final Platform platform;
+  final Community community;
   final String activeUserId;
   final String replyingToId;
   final Widget replyingToWidget;
   final void Function(Comment comment) onSubmitted;
 
   const _AddCommentBottomSheetContent({
-    required this.platform,
+    required this.community,
     required this.activeUserId,
     required this.replyingToId,
     required this.replyingToWidget,
@@ -550,7 +551,7 @@ class _AddCommentBottomSheetContentState extends State<_AddCommentBottomSheetCon
                           onPressed: text.isNotEmpty
                             ? () async {
                                 setState(() => _isSubmitting = true);
-                                final comment = await widget.platform.getApi(widget.activeUserId).postComment(widget.replyingToId, text);
+                                final comment = await widget.community.platform.getApi(widget.community.host, widget.activeUserId).postComment(widget.replyingToId, text);
                                 if (context.mounted) {
                                   widget.onSubmitted(comment);
                                   context.pop();

@@ -5,19 +5,21 @@ import 'package:lurk/models/post.dart';
 import 'package:lurk/services/api.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/api/digg.dart';
+import 'package:lurk/services/api/lemmy.dart';
 import 'package:lurk/services/api/reddit.dart';
 
 enum Platform {
   
   reddit(
     api: RedditApi(),
-    domains: ['reddit.com', 'redd.it'],
+    host: 'reddit.com',
+    otherDomains: ['redd.it'],
     color: Color(0xFFFF4500),
     communityLabel: 'subreddit',
     communityPrefix: 'r/',
     homeCommunityName: 'popular',
     rootCommunityName: 'Front page',
-    aggregateCommunityNames: {null, 'all', 'popular'},
+    aggregateCommunityNames: {'all', 'popular'},
     canSearchWithinCommunities: true,
     userPrefix: 'u/',
     communityPath: r'^\/r\/([^\/]+)\/?$',
@@ -83,13 +85,10 @@ enum Platform {
 
   digg(
     api: DiggApi(),
-    domains: ['digg.com'],
+    host: 'digg.com',
     color: Color(0xFF1F65DB),
     communityLabel: 'community',
     communityPrefix: '/',
-    homeCommunityName: null,
-    rootCommunityName: null,
-    aggregateCommunityNames: {null},
     canSearchWithinCommunities: false,
     userPrefix: '@',
     communityPath: r'^\/(?![d@]\/|@)([^\/]+)\/?$',
@@ -156,19 +155,81 @@ enum Platform {
       ]
     )
   
+  ),
+
+  lemmy(
+    api: LemmyApi(),
+    color: Color(0xFF0CAD09),
+    communityLabel: 'community',
+    communityPrefix: '!',
+    homeCommunityHost: 'lemmy.world',
+    canSearchWithinCommunities: true,
+    userPrefix: 'u/',
+    communityPath: r'^\/c\/([^\/]+)\/?$',
+    userPath: r'^\/u\/([^\/]+)\/?$',
+    postPath: r'^\/post\/([0-9]+)\/?$',
+    communityNameAllowedChars: '!@.',
+    userNameAllowedChars: '@._-',
+    communityNameValidation: r'^([a-z0-9_]*)@([a-z0-9.-]+\.[a-z]{2,})$',
+    userNameValidation: r'^(?=.{3,}$)[a-zA-Z0-9][a-zA-Z0-9_-]*(?:@[a-zA-Z0-9.-]+\.[a-z]{2,})?$',
+    hostAndNameFromSearchQueryRegex: r'^([a-z0-9_]*)@([a-z0-9.-]+\.[a-z]{2,})$',
+    postsFeedOptions: FeedOptionsGroup(
+      FeedOptionType.sort,
+      [
+        FeedOption('Active', id: 'Active'),
+        FeedOption('Hot', id: 'Hot'),
+        FeedOption('Scaled', id: 'Scaled'),
+        FeedOption('Controversial', id: 'Controversial'),
+        FeedOption('New', id: 'New'),
+        FeedOption('Old', id: 'Old'),
+        FeedOption('Most comments', id: 'MostComments'),
+        FeedOption('New comments', id: 'NewComments'),
+        FeedOption('Top', id: 'Top', subGroup: _lemmyFeedTimeOptions),
+      ],
+    ),
+    postCommentsFeedOptions: FeedOptionsGroup(
+      FeedOptionType.sort,
+      [
+        FeedOption('Hot', id: 'Hot'),
+        FeedOption('Top', id: 'Top'),
+        FeedOption('New', id: 'New'),
+        FeedOption('Old', id: 'Old'),
+        FeedOption('Controversial', id: 'Controversial'),
+      ],
+    ),
+    userFeedOptions: FeedOptionsGroup(
+      FeedOptionType.category,
+      [
+        FeedOption('Overview', id: UserFeedType.all, subGroup: _lemmyUserAndSearchFeedSortOptions),
+        FeedOption('Posts', id: UserFeedType.posts, subGroup: _lemmyUserAndSearchFeedSortOptions),
+        FeedOption('Comments', id: UserFeedType.comments, subGroup: _lemmyUserAndSearchFeedSortOptions)
+      ]
+    ),
+    searchFeedOptions: FeedOptionsGroup(
+      FeedOptionType.category,
+      [
+        FeedOption('All', id: 'All', subGroup: _lemmyUserAndSearchFeedSortOptions),
+        FeedOption('Posts', id: 'Posts', subGroup: _lemmyUserAndSearchFeedSortOptions),
+        FeedOption('Comments', id: 'Comments', subGroup: _lemmyUserAndSearchFeedSortOptions),
+        FeedOption('Communities', id: 'Communities', subGroup: _lemmyUserAndSearchFeedSortOptions),
+        FeedOption('Users', id: 'Users', subGroup: _lemmyUserAndSearchFeedSortOptions),
+      ]
+    )
   );
 
 
-  static final Map<(Platform, String?), ApiService> _apiServices = {};
+  static final Map<(Platform, String?, String?), ApiService> _apiServices = {};
 
   final Api _api;
-  final List<String> domains;
+  final String? host;
+  final List<String>? otherDomains;
   final Color color;
   final String communityLabel;
   final String communityPrefix;
+  final String? homeCommunityHost;
   final String? homeCommunityName;
   final String? rootCommunityName;
-  final Set<String?> aggregateCommunityNames;
+  final Set<String>? aggregateCommunityNames;
   final bool canSearchWithinCommunities;
   final String userPrefix;
   final String communityPath;
@@ -180,6 +241,7 @@ enum Platform {
   final String userNameAllowedChars;
   final String communityNameValidation;
   final String userNameValidation;
+  final String? hostAndNameFromSearchQueryRegex;
   final FeedOptionsGroup? rootPostsFeedOptions;
   final FeedOptionsGroup postsFeedOptions;
   final FeedOptionsGroup postCommentsFeedOptions;
@@ -188,12 +250,14 @@ enum Platform {
 
   const Platform({
     required Api api,
-    required this.domains,
+    this.host,
+    this.otherDomains,
     required this.color,
     required this.communityPrefix,
-    required this.homeCommunityName,
-    required this.rootCommunityName,
-    required this.aggregateCommunityNames,
+    this.homeCommunityHost,
+    this.homeCommunityName,
+    this.rootCommunityName,
+    this.aggregateCommunityNames,
     required this.canSearchWithinCommunities,
     required this.userPrefix,
     required this.communityPath,
@@ -205,6 +269,7 @@ enum Platform {
     required this.userNameAllowedChars,
     required this.communityNameValidation,
     required this.userNameValidation,
+    this.hostAndNameFromSearchQueryRegex,
     required this.communityLabel,
     this.rootPostsFeedOptions,
     required this.postsFeedOptions,
@@ -213,19 +278,10 @@ enum Platform {
     required this.searchFeedOptions
   })  : _api = api;
 
-  static Platform? forHost(String host) {
-    for (var platform in Platform.values) {
-      for (var domain in platform.domains) {
-        if (host == domain || host.endsWith('.$domain')) {
-          return platform;
-        }
-      }
-    }
-    return null;
-  }
+  static Platform? forHost(String host) => Platform.values.where((platform) => platform.host == host).firstOrNull;
 
-  ApiService getApi(String? userId) {
-    final key = (this, userId);
+  ApiService getApi(String host, String? userId) {
+    final key = (this, host, userId);
     final existing = _apiServices[key];
     if (existing != null) {
       if (existing.isValid) {
@@ -233,13 +289,13 @@ enum Platform {
       }
       _apiServices.remove(key)?.dispose();
     }
-    final api = ApiService(_api, userId);
+    final api = ApiService(this, host, _api, userId);
     _apiServices[key] = api;
     return api;
   }
 
-  void destroySession(String? userId) {
-    _apiServices.remove((this, userId))?.dispose();
+  void destroySession(String? host, String? userId) {
+    _apiServices.remove((this, host, userId))?.dispose();
   }
 
   void destroyAllSessions() {
@@ -256,11 +312,15 @@ enum Platform {
 
   String get savedOrDefaultUserAgent => _api.savedOrDefaultUserAgent;
 
+  String? getHostFromCommunityName(String? communityName) => communityName != null && hostAndNameFromSearchQueryRegex != null ? RegExp(hostAndNameFromSearchQueryRegex!).firstMatch(communityName)?.group(1) : null;
+
   String getPostDetailsUrl(Post post) => _api.getPostDetailsUrl(post);
 
   String getCommentUrl(Comment comment) => _api.getCommentUrl(comment);
 
-  String getPrefixedCommunityName(String communityName) => '$communityPrefix$communityName';
+  String getFullCommunityName(String host, String? communityName) => _getFullName(host, communityPrefix, communityName ?? '');
+
+  String getFullUserName(String host, String userName) => _getFullName(host, userPrefix, userName);
 
   String getPrefixedUsername(String username) => '$userPrefix$username';
 
@@ -285,6 +345,8 @@ enum Platform {
   bool isGallery(String urlPath) => galleryPath != null && RegExp(galleryPath!).hasMatch(urlPath);
 
   bool isUnresolved(String urlPath) => unresolvedPath != null && RegExp(unresolvedPath!).hasMatch(urlPath);
+
+  String _getFullName(String host, String prefix, String name) => '$prefix$name${this.host != null ? '' : '@$host'}';
 
   List<TextInputFormatter> get communityNameInputFormatters => _getNameInputFormatters(communityNameAllowedChars);
 
@@ -336,6 +398,33 @@ const _redditUserFeedSortOptions = FeedOptionsGroup(
     FeedOption('Hot', id: 'hot'),
     FeedOption('Top', id: 'top', subGroup: _redditPostsFeedTimeOptions),
   ],
+);
+
+const _lemmyUserAndSearchFeedSortOptions = FeedOptionsGroup(
+  FeedOptionType.sort,
+  [
+    FeedOption('New', id: 'New'),
+    FeedOption('Old', id: 'Old'),
+    FeedOption('Controlversial', id: 'Controversial'),
+    FeedOption('Top', id: 'Top', subGroup: _lemmyFeedTimeOptions),
+  ],
+);
+
+const _lemmyFeedTimeOptions = FeedOptionsGroup(
+  FeedOptionType.time,
+  [
+    FeedOption('Hour', id: 'TopHour'),
+    FeedOption('6 hours', id: 'TopSixHour'),
+    FeedOption('12 hours', id: 'TopTwelveHour'),
+    FeedOption('Day', id: 'TopDay'),
+    FeedOption('Week', id: 'TopWeek'),
+    FeedOption('Month', id: 'TopMonth'),
+    FeedOption('3 months', id: 'TopThreeMonths'),
+    FeedOption('6 months', id: 'TopSixMonths'),
+    FeedOption('9 months', id: 'TopNineMonths'),
+    FeedOption('Year', id: 'TopYear'),
+    FeedOption('All', id: 'TopAll'),
+  ]
 );
 
 enum FeedOptionType {

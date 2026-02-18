@@ -2,6 +2,7 @@ import 'package:lurk/core/platforms.dart';
 
 class LookedUpUser {
 
+  final String host;
   final String? id;
   final String name;
   final String? iconUrl;
@@ -9,6 +10,7 @@ class LookedUpUser {
   final List<UserStat>? stats;
 
   LookedUpUser({
+    required this.host,
     required this.id,
     required this.name,
     required this.iconUrl,
@@ -21,6 +23,7 @@ class LookedUpUser {
 class LoggedInUser {
 
   final Platform platform;
+  final String host;
   final String id;
   final String name;
   final String iconUrl;
@@ -29,6 +32,7 @@ class LoggedInUser {
 
   LoggedInUser({
     required this.platform,
+    required this.host,
     required this.id,
     required this.name,
     required this.iconUrl,

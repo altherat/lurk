@@ -10,6 +10,7 @@ class CustomCircularProgressIndicator extends StatelessWidget {
   final double? size;
   final double? strokeWidth;
   final double? value;
+  final Color? color;
 
   const CustomCircularProgressIndicator({
     super.key,
@@ -17,7 +18,8 @@ class CustomCircularProgressIndicator extends StatelessWidget {
     this.alignment = Alignment.center,
     this.size,
     this.strokeWidth,
-    this.value
+    this.value,
+    this.color
   });
 
   @override
@@ -25,7 +27,8 @@ class CustomCircularProgressIndicator extends StatelessWidget {
     Widget child = CircularProgressIndicator.adaptive(
       strokeWidth: strokeWidth,
       strokeCap: StrokeCap.round,
-      value: value
+      value: value,
+      valueColor: color != null ? AlwaysStoppedAnimation(color) : null,
     );
     if (size != null) {
       child = SizedBox(

@@ -15,7 +15,6 @@ class Communities {
       save: Database.instance.saveCommunity,
       saveAll: Database.instance.saveAllCommunities,
       delete: Database.instance.deleteCommunity,
-      shouldUpdate: (oldCommunity, newCommunity) => !oldCommunity.equalsAll(newCommunity),
     );
     _subscribedCommunityNames = getSubscribedCommunityNames;
   }

@@ -1,23 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:lurk/core/constants.dart';
+import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/widgets/stat.dart';
 
 class UserStats extends StatelessWidget {
+
   final List<UserStat> stats;
   final EdgeInsetsGeometry? padding;
   final double valueFontSize;
-  final Color? color;
   final double labelFontSize;
+  final Color? valueColor;
+  final Color? labelColor;
 
   const UserStats({
     super.key,
     required this.stats,
     this.padding,
     this.valueFontSize = 18,
-    this.color,
     this.labelFontSize = 11,
+    this.valueColor,
+    this.labelColor,
   });
 
   @override
@@ -29,22 +32,15 @@ class UserStats extends StatelessWidget {
         spacing: 24,
         children: stats.map((stat) {
           final value = stat.value;
-          final String displayValue;
-          if (value is DateTime) {
-            displayValue = value.timeAgo;
-          } else if (value is num) {
-            displayValue = value.toCommaString();
-          } else {
-            displayValue = value.toString();
-          }
           return ConstrainedBox(
             constraints: const BoxConstraints(minWidth: 40),
             child: Stat(
-              value: displayValue,
+              value: value is DateTime ? value.timeAgo : value is num ? value.toCommaString() : value.toString(),
               label: stat.label,
-              color: color?.withAlpha(Constants.onSurfaceVariantAlpha),
               valueFontSize: valueFontSize,
               labelFontSize: labelFontSize,
+              valueColor: valueColor,
+              labelColor: labelColor,
             ),
           );
         }).toList(),

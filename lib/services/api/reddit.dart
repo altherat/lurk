@@ -27,8 +27,7 @@ import 'package:oauth2_client/oauth2_helper.dart';
 
 class RedditApi extends Api<RestClientHelper> {
 
-  static const _domain = 'www.reddit.com';
-  static const _oauthDomain = 'oauth.reddit.com';
+  static const _oAuthDomain = 'oauth.reddit.com';
   static const _baseUrl = 'https://www.reddit.com';
   static const _baseUrlOld = 'https://old.reddit.com';
   static const _oauthScopes = ['edit', 'history', 'identity', 'mysubreddits', 'read', 'subscribe', 'submit', 'vote'];
@@ -53,9 +52,6 @@ class RedditApi extends Api<RestClientHelper> {
   const RedditApi();
 
   @override
-  Platform get platform => Platform.reddit;
-
-  @override
   bool get hasLogin => true;
 
   @override
@@ -66,23 +62,18 @@ class RedditApi extends Api<RestClientHelper> {
   // String get defaultUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by /u/altherat)';
 
   @override
-  ClientHelper getClientHelper(String? userId) {
+  ClientHelper getClientHelper(String host, String? userId) {
     final clientId = Settings.redditClientId.value;
     if (clientId != null) {
       return _AuthClientHelper(clientId, userId, () => savedOrDefaultUserAgent);
     }
-    return _ClientHelper();
+    return _ClientHelper(host);
   }
-  
-  Map<String, String> get authenticatedHeaders => {
-    ..._defaultAuthenticatedHeaders,
-    'User-Agent': savedOrDefaultUserAgent
-  };
 
   String _replaceHtmlEscapedCharacters(String text) => text.replaceAll('&lt;', '<').replaceAll('&gt;', '>').replaceAll('&amp;', '&');
 
   @override
-  String get baseUrl => Settings.redditCopyOldRedditLinks.value ? _baseUrlOld : _baseUrl;
+  String getBaseUrl(String? communityName) => Settings.redditCopyOldRedditLinks.value ? _baseUrlOld : _baseUrl;
 
   @override
   Future<CommunityDetails> getCommunityDetails(RestClientHelper clientHelper, String name) async {
@@ -97,21 +88,26 @@ class RedditApi extends Api<RestClientHelper> {
         final String bannerMobileUrl = data['mobile_banner_image']!;
         final String bannerBackgroundUrl = data['banner_background_image']!;
         final String bannerUrl = data['banner_img'];
+        final String primaryColor = data['primary_color'];
+        final String bannerBackgroundColor = data['banner_background_color'];
         final finalIconUrl = communityIconUrl.isNotEmpty ? communityIconUrl : iconUrl.isNotEmpty ? iconUrl : headerUrl;
         final finalBannerUrl = bannerMobileUrl.isNotEmpty ? bannerMobileUrl : bannerBackgroundUrl.isNotEmpty ? bannerBackgroundUrl : bannerUrl.isNotEmpty ? bannerUrl : null;
         return CommunityDetails(
           community: Community(
             platform: Platform.reddit,
-            name: (data['display_name'] as String).toLowerCase(),
+            host: Platform.reddit.host!,
+            name: data['display_name'],
             id: data['name'],
           ),
           id: data['name'],
           createdDate: DateTime.fromMillisecondsSinceEpoch((data['created_utc'] as num).toInt() * 1000, isUtc: true),
           title: _replaceHtmlEscapedCharacters(data['title']),
-          description: description.isNotEmpty ? description : null,
+          shortDescription: description.isNotEmpty ? description : null,
           iconUrl: finalIconUrl != null ? _replaceHtmlEscapedCharacters(finalIconUrl) : null,
           bannerUrl: finalBannerUrl != null ? _replaceHtmlEscapedCharacters(finalBannerUrl) : null,
           subscriberCount: data['subscribers'],
+          primaryColorHexCode: primaryColor.isNotEmpty ? primaryColor.substring(1) : null,
+          bannerBackgroundColorHexCode: bannerBackgroundColor.isNotEmpty ? bannerBackgroundColor.substring(1) : null,
           isSubscribed: data['user_is_subscriber']
         );
       },
@@ -222,7 +218,12 @@ class RedditApi extends Api<RestClientHelper> {
             items.add(
               Comment(
                 depth: currentDepth,
-                platform: Platform.reddit,
+                community: Community(
+                  platform: Platform.reddit,
+                  host: Platform.reddit.host!,
+                  name: element.attributes['data-subreddit'],
+                  id: element.attributes['data-subreddit-fullname'],
+                ),
                 id: id,
                 shortId: id.split('_').last,
                 permalink: element.attributes['data-permalink']!,
@@ -246,7 +247,6 @@ class RedditApi extends Api<RestClientHelper> {
             final idMatch = RegExp(r"morechildren\(.*?\s*'.*?'\s*,\s*'.*?'\s*,\s*'(.*?)'").firstMatch(moreLink.attributes['onclick']!);
             items.add(
               LoadMoreComment(
-                platform: Platform.reddit,
                 depth: currentDepth,
                 count: int.tryParse(countMatch!.group(1)!)!,
                 pageToken: idMatch!.group(1)!
@@ -277,7 +277,6 @@ class RedditApi extends Api<RestClientHelper> {
           else if (kind == 'more') {
             items.add(
               LoadMoreComment(
-                platform: Platform.reddit,
                 depth: currentDepth,
                 count: data['count'] ?? 0,
                 pageToken: (data['children'] as List).join(','),
@@ -421,10 +420,11 @@ class RedditApi extends Api<RestClientHelper> {
                     return CommunityDetails(
                       community: Community(
                         platform: Platform.reddit,
-                        name: (childData['display_name'] as String).toLowerCase(),
+                        host: Platform.reddit.host!,
+                        name: childData['display_name'],
                         id: childData['name'],
                       ),
-                      description: description.isNotEmpty ? description : null,
+                      shortDescription: description.isNotEmpty ? description : null,
                       iconUrl: iconUrl.isNotEmpty ? Uri.parse(iconUrl).replace(queryParameters: {}).toString() : null,
                       subscriberCount: childData['subscribers'],
                     );
@@ -453,6 +453,7 @@ class RedditApi extends Api<RestClientHelper> {
                   final childData = child['data'];
                   final bool isSuspended = childData['is_suspended'] ?? false;
                   return LookedUpUser(
+                    host: Platform.reddit.host!,
                     id: childData['id'],
                     name: childData['name'],
                     iconUrl: (childData['icon_img'] as String?)?.replaceAll('&amp;', '&'),
@@ -510,7 +511,8 @@ class RedditApi extends Api<RestClientHelper> {
         communities.add(
           Community(
             platform: Platform.reddit,
-            name: (data['display_name'] as String).toLowerCase(),
+            host: Platform.reddit.host!,
+            name: data['display_name'],
             id: data['name']
           )
         );
@@ -520,6 +522,12 @@ class RedditApi extends Api<RestClientHelper> {
     while (after != null);
     return communities;
   }
+
+  @override
+  Future<void> subscribeToCommunity(RestClientHelper clientHelper, String id) => _updateSubscription(clientHelper, id, 'sub');
+
+  @override
+  Future<void> unsubscribeFromCommunity(RestClientHelper clientHelper, String id) => _updateSubscription(clientHelper, id, 'unsub');
 
   @override
   Future<void> votePost(RestClientHelper clientHelper, String id, bool? up) => _vote(clientHelper, id, up);
@@ -542,12 +550,6 @@ class RedditApi extends Api<RestClientHelper> {
 
   @override
   Future<void> deleteComment(RestClientHelper clientHelper, String commentId) => clientHelper.post('/api/del', {'id': commentId});
-
-  @override
-  Future<void> subscribeToCommunity(RestClientHelper clientHelper, String id) => _updateSubscription(clientHelper, id, 'sub');
-
-  @override
-  Future<void> unsubscribeFromCommunity(RestClientHelper clientHelper, String id) => _updateSubscription(clientHelper, id, 'unsub');
 
   Future<void> _vote(RestClientHelper clientHelper, String id, bool? up) {
     return clientHelper.post(
@@ -647,12 +649,13 @@ class RedditApi extends Api<RestClientHelper> {
       }
     }
     else {
-      domain = (data['domain'] as String).toLowerCase();
+      domain = data['domain'];
     }
     return Post(
       community: Community(
         platform: Platform.reddit,
-        name: data['subreddit'].toLowerCase(),
+        host: Platform.reddit.host!,
+        name: data['subreddit'],
         id: data['subreddit_id'],
       ),
       id: data['name'],
@@ -710,7 +713,6 @@ class RedditApi extends Api<RestClientHelper> {
         if (data['count'] != 0) {
           comments.add(
             LoadMoreComment(
-              platform: Platform.reddit,
               depth: depth,
               count: data['count']!,
               pageToken: List<String>.from(data['children']!).join(','),
@@ -736,7 +738,12 @@ class RedditApi extends Api<RestClientHelper> {
     }
     return Comment(
       depth: depth,
-      platform: Platform.reddit,
+      community: Community(
+        platform: Platform.reddit,
+        host: Platform.reddit.host!,
+        name: data['subreddit'],
+        id: data['subreddit_id'],
+      ),
       id: data['name'],
       shortId: data['id'],
       permalink: data['permalink'],
@@ -751,7 +758,6 @@ class RedditApi extends Api<RestClientHelper> {
       textHtml: _replaceHtmlEscapedCharacters(data['body_html']),
       images: images,
       postTitle: data['link_title'],
-      communityName: (data['subreddit'] as String).toLowerCase(),
       vote: data['likes']
     );
   }
@@ -761,6 +767,7 @@ class RedditApi extends Api<RestClientHelper> {
     final iconUri = Uri.parse(data['icon_img']);
     return LoggedInUser(
       platform: Platform.reddit,
+      host: Platform.reddit.host!,
       id: 't2_${data['id']}',
       name: data['name'],
       iconUrl: Uri(scheme: iconUri.scheme,host: iconUri.host,path: iconUri.path).toString(),
@@ -771,11 +778,9 @@ class RedditApi extends Api<RestClientHelper> {
 
 }
 
-class _ClientHelper extends RestClientHelper {
+class _ClientHelper extends SimpleRestClientHelper {
 
-  final http.Client _client;
-
-  _ClientHelper() : _client = http.Client();
+  _ClientHelper(String host) : super(host, RedditApi._defaultUnauthenticatedHeaders);
 
   Map<String, Cookie>? _cookies;
   Future<void>? _initCookiesFuture;
@@ -784,33 +789,7 @@ class _ClientHelper extends RestClientHelper {
   bool get isValid => Settings.redditClientId.value == null;
 
   @override
-  Future<Response> request(RestParams params) {
-    switch (params.method) {
-      case RequestMethod.get:
-      return _request((client, headers) async {
-        return client.get(
-          Uri.https(RedditApi._domain, params.path, params.params),
-          headers: headers
-        );
-      });
-      case RequestMethod.post:
-        return _request((client, headers) async {
-          return client.post(
-            Uri.https(RedditApi._domain, params.path),
-            headers: headers,
-            body: params.body
-          );
-        });
-    }
-  }
-
-  @override
-  void dispose() {
-    _client.close();
-  }
-
-  Future<Response> _request(Future<Response> Function(http.Client client, Map<String, String> headers) request) async {
-    final headers = Map.of(RedditApi._defaultUnauthenticatedHeaders);
+  Future<Response> request(Map<String, String> headers, Future<Response> Function(Map<String, String> headers) request) async {
     await (_initCookiesFuture ??= _initCookies());
     if (_cookies!.isNotEmpty) {
       final DateTime now = DateTime.now();
@@ -833,12 +812,12 @@ class _ClientHelper extends RestClientHelper {
     dev.log('[Reddit][_ClientHelper]\tUser-Agent: ${headers['User-Agent']}');
     dev.log('[Reddit][_ClientHelper]\tCookie: ${_cookies!.entries.map((entry) => '${entry.key}=${_debugTruncateLongString(entry.value.value, 6)}').join(', ')}');
 
-    final Response response = await request(_client, headers);
+    final Response response = await request(headers);
     if (response.headers.containsKey('set-cookie')) {
       await _updateCookiesFromHeaders(response.headers['set-cookie']!);
       if (response.statusCode == 403) {
         dev.log('[Reddit][_ClientHelper] Status code 403 detected. Attempting HTML warm-up...');
-        final warmUp = await _client.get(
+        final warmUp = await client.get(
           Uri.parse(RedditApi._baseUrl), 
           headers: {
             'Upgrade-Insecure-Requests': '1',
@@ -848,7 +827,7 @@ class _ClientHelper extends RestClientHelper {
         if (warmUp.headers.containsKey('set-cookie')) {
           await _updateCookiesFromHeaders(warmUp.headers['set-cookie']!);
           dev.log('[Reddit][_ClientHelper] Warm-up complete. Retrying original request...');
-          return request(_client, headers);
+          return request(headers);
         }
       }
     }
@@ -884,35 +863,16 @@ class _ClientHelper extends RestClientHelper {
 
 }
 
-class _AuthClientHelper extends RestClientHelper implements AuthClientHelper<RestParams, Response> {
+class _AuthClientHelper extends RestClientHelper implements AuthClientHelper {
 
   final OAuth2Helper _oAuthHelper;
   final String Function() _userAgentProvider;
   AccessTokenResponse? _cachedToken;
   bool _resetTokenStorage = false;
 
-  _AuthClientHelper(String clientId, String? userId, this._userAgentProvider) : _oAuthHelper = _createOAuth2Helper(clientId, userId != null ? TokenStorage(userId) : null);
-  
-  @override
-  Future<Response> request(RestParams params) {
-    switch (params.method) {
-      case RequestMethod.get:
-        return _request((headers) {
-          return _oAuthHelper.get(
-            Uri.https(RedditApi._oauthDomain, params.path, params.params).toString(),
-            headers: headers
-          );
-        });
-      case RequestMethod.post:
-        return _request((headers) {
-          return _oAuthHelper.post(
-            Uri.https(RedditApi._oauthDomain, params.path).toString(),
-            headers: headers,
-            body: params.body
-          );
-        });
-    }
-  }
+  _AuthClientHelper(String clientId, String? userId, this._userAgentProvider)
+    : _oAuthHelper = _createOAuth2Helper(clientId, userId != null ? TokenStorage(userId) : null),
+      super(RedditApi._oAuthDomain, RedditApi._defaultAuthenticatedHeaders);
 
   @override
   bool get isValid {
@@ -933,6 +893,61 @@ class _AuthClientHelper extends RestClientHelper implements AuthClientHelper<Res
     dev.log('[Reddit][OAuthHelper] Disposing OAuth2Helper');
     await _oAuthHelper.removeAllTokens();
     _cachedToken = null;
+  }
+  
+  @override
+  Future<Response> performGet(Uri uri, Map<String, String> headers) => _oAuthHelper.get(uri.toString(), headers: headers);
+  
+  @override
+  Future<Response> performPost(Uri uri, Map<String, String> headers, body) => _oAuthHelper.post(uri.toString(), headers: headers, body: body);
+
+  @override
+  Future<Response> request(Map<String, String> headers, Future<Response> Function(Map<String, String> headers) request) async {
+    final bool cached;
+    final AccessTokenResponse? tokenResponse;
+    if (_resetTokenStorage) {
+      await _oAuthHelper.removeAllTokens();
+      _resetTokenStorage = false;
+      cached = false;
+      tokenResponse = null;
+    }
+    else {
+      cached = _cachedToken != null;
+      tokenResponse = await _getCachedOrStoredToken();
+    }
+    dev.log('[Reddit][OAuthHelper] Loaded token: cached=$cached, accessToken=${_debugTruncateLongString(tokenResponse?.accessToken)}, refreshToken=${_debugTruncateLongString(tokenResponse?.refreshToken)}');
+    if (tokenResponse == null || (!tokenResponse.hasRefreshToken() && tokenResponse.isExpired())) {
+      dev.log('[Reddit][OAuthHelper] Fetching access token (${tokenResponse == null ? 'new' : 'expired'})');
+      String? deviceId = Settings.redditDeviceId.value;
+      if (deviceId == null) {
+        deviceId = List<int>.generate(16, (i) => Random.secure().nextInt(256)).map((e) => e.toRadixString(16).padLeft(2, '0')).join();
+        Settings.redditDeviceId.value = deviceId;
+      }
+      final response = await http.post( // Manually get access token with http.Client, because using _oAuthHelper.post() initiates login flow
+        Uri.parse('https://www.reddit.com/api/v1/access_token'),
+        headers: {
+          'Authorization': 'Basic ${base64Encode(utf8.encode('${_oAuthHelper.clientId}:'))}',
+          'User-Agent': _userAgentProvider(),
+        },
+        body: {
+          'grant_type': 'https://oauth.reddit.com/grants/installed_client',
+          'device_id': deviceId,
+        }
+      );
+      final data = jsonDecode(response.body);
+      await _oAuthHelper.tokenStorage.addToken(
+        AccessTokenResponse.fromMap({
+          'access_token': data['access_token'],
+          'token_type': 'bearer',
+          'expires_in': data['expires_in'],
+          'scope': RedditApi._oauthScopes.join(' '),
+        })
+      );
+      dev.log('[Reddit][OAuthHelper] Fetched access token: ${_debugTruncateLongString(data['access_token'])}');
+    }
+    dev.log('[Reddit][OAuthHelper] Request headers: ${headers.length}');
+    dev.log('[Reddit][OAuthHelper]\tUser-Agent: ${headers['User-Agent']}');
+    return request(headers);
   }
 
   @override
@@ -979,58 +994,6 @@ class _AuthClientHelper extends RestClientHelper implements AuthClientHelper<Res
   }
 
   Future<AccessTokenResponse?> _getCachedOrStoredToken() async => _cachedToken ??= await _oAuthHelper.getTokenFromStorage();
-
-  Future<Response> _request(Future<Response> Function(Map<String, String> headers) request) async {
-    final bool cached;
-    final AccessTokenResponse? tokenResponse;
-    if (_resetTokenStorage) {
-      await _oAuthHelper.removeAllTokens();
-      _resetTokenStorage = false;
-      cached = false;
-      tokenResponse = null;
-    }
-    else {
-      cached = _cachedToken != null;
-      tokenResponse = await _getCachedOrStoredToken();
-    }
-    dev.log('[Reddit][OAuthHelper] Loaded token: cached=$cached, accessToken=${_debugTruncateLongString(tokenResponse?.accessToken)}, refreshToken=${_debugTruncateLongString(tokenResponse?.refreshToken)}');
-    if (tokenResponse == null || (!tokenResponse.hasRefreshToken() && tokenResponse.isExpired())) {
-      dev.log('[Reddit][OAuthHelper] Fetching access token (${tokenResponse == null ? 'new' : 'expired'})');
-      String? deviceId = Settings.redditDeviceId.value;
-      if (deviceId == null) {
-        deviceId = List<int>.generate(16, (i) => Random.secure().nextInt(256)).map((e) => e.toRadixString(16).padLeft(2, '0')).join();
-        Settings.redditDeviceId.value = deviceId;
-      }
-      final response = await http.post( // Manually get access token with http.Client, because using _oAuthHelper.post() initiates login flow
-        Uri.parse('https://www.reddit.com/api/v1/access_token'),
-        headers: {
-          'Authorization': 'Basic ${base64Encode(utf8.encode('${_oAuthHelper.clientId}:'))}',
-          'User-Agent': _userAgentProvider(),
-        },
-        body: {
-          'grant_type': 'https://oauth.reddit.com/grants/installed_client',
-          'device_id': deviceId,
-        }
-      );
-      final data = jsonDecode(response.body);
-      await _oAuthHelper.tokenStorage.addToken(
-        AccessTokenResponse.fromMap({
-          'access_token': data['access_token'],
-          'token_type': 'bearer',
-          'expires_in': data['expires_in'],
-          'scope': RedditApi._oauthScopes.join(' '),
-        })
-      );
-      dev.log('[Reddit][OAuthHelper] Fetched access token: ${_debugTruncateLongString(data['access_token'])}');
-    }
-    final headers = {
-      ...RedditApi._defaultAuthenticatedHeaders,
-      'User-Agent': _userAgentProvider()
-    };
-    dev.log('[Reddit][OAuthHelper] Request headers: ${headers.length}');
-    dev.log('[Reddit][OAuthHelper]\tUser-Agent: ${headers['User-Agent']}');
-    return request(headers);
-  }
 
 }
 

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/constants.dart';
+import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/core/flavors.dart';
@@ -129,19 +130,28 @@ class _SettingsScreenState extends State<SettingsScreen> {
               setting: Settings.showPlatformColorTextAccents,
               label: '$platformLabel color text accents'
             ),
+            const _Divider(),
             if (F.appFlavor == Flavor.combined) ...[
-              const _Divider(),
               const _Header(text: 'Reddit'),
               const _RedditSettings(),
               const _Divider(),
               const _Header(text: 'Digg'),
               const _DiggSettings(),
+              const _Divider(),
+              const _Header(text: 'Lemmy'),
+              const _LemmySettings(),
             ]
             else if (F.appFlavor == Flavor.reddit) ...[
+              const _Header(text: 'Other'),
               const _RedditSettings(),
             ]
             else if (F.appFlavor == Flavor.digg) ...[
+              const _Header(text: 'Other'),
               const _DiggSettings(),
+            ]
+            else if (F.appFlavor == Flavor.lemmy) ...[
+              const _Header(text: 'Other'),
+              const _LemmySettings(),
             ],
           ],
         ),
@@ -224,6 +234,25 @@ class _DiggSettings extends StatelessWidget {
       ],
     );
   }
+}
+
+class _LemmySettings extends StatelessWidget {
+
+  const _LemmySettings();
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        _TextSettingListTile(
+          setting: Settings.lemmyUserAgent,
+          label: 'User agent',
+          floatingLabelBehavior: FloatingLabelBehavior.auto,
+        ),
+      ],
+    );
+  }
+
 }
 
 class _Header extends StatelessWidget {

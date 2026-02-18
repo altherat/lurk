@@ -6,6 +6,7 @@ import 'package:lurk/models/user.dart';
 class Users extends Table {
 
   TextColumn get platform => text().map(const EnumNameConverter<Platform>(Platform.values))();
+  TextColumn get host => text()();
   TextColumn get id => text()();
   TextColumn get name => text()();
   TextColumn get iconUrl => text()();
@@ -13,6 +14,6 @@ class Users extends Table {
   IntColumn get score => integer()();
 
   @override
-  Set<Column> get primaryKey => {platform, id};
+  Set<Column> get primaryKey => {platform, host, id};
 
 }

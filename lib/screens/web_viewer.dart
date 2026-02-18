@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';

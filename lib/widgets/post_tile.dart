@@ -1,6 +1,7 @@
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/repositories/posts.dart';
 import 'package:lurk/screens/image_gallery_viewer.dart';
@@ -43,13 +44,14 @@ class PostTile extends StatelessWidget {
       title: post.title,
       options: {
         if (showViewCommunityOption)
-          Text('View ${post.community.prefixedName}'): (context) => context.push(() => CommunityScreen(community: post.community)),
+          Text('View ${post.community.fullName}'): (context) => context.push(() => CommunityScreen(community: post.community)),
         if (showViewUserOption && post.author != null)
-          Text('View ${post.community.platform.userPrefix}${post.author}'): (context) {
+          Text('View ${post.community.platform.getFullUserName(post.community.host, post.author!)}'): (context) {
             context.push(
               () => UserDetailsScreen(
                 platform: post.community.platform,
-                username: post.author!
+                username: post.author!,
+                host: post.community.host
               )
             );
           },
@@ -62,7 +64,7 @@ class PostTile extends StatelessWidget {
   }
 
   void _updateVote(String activeUserId, bool up) {
-    post.community.platform.getApi(activeUserId).votePost(post.id, up);
+    post.community.platform.getApi(post.community.host, activeUserId).votePost(post.id, up);
   }
 
   @override
@@ -201,7 +203,7 @@ class PostTile extends StatelessWidget {
                   ),
                   subtitle ?? PostTileCommentHistorySubtitle(
                     post: post,
-                    extraTexts: [post.timeAgoCompact, post.community.name!]
+                    extraTexts: [post.timeAgoCompact, post.community.name!.toLowerCase()]
                   )
                 ],
               ),

@@ -68,7 +68,6 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
   Future<void> _init() async {
     if (_uri.host == 'v.redd.it') {
       final client = HttpClient();
-
       final request = await client.getUrl(Uri.parse('${widget.url}/DASHPlaylist.mpd'));
       request.headers.set('User-Agent', widget.platform.savedOrDefaultUserAgent);
 

@@ -16,30 +16,59 @@ import 'package:lurk/services/api/client_helpers.dart';
 
 class ApiService {
 
+  final Platform platform;
   final Api _api;
   final String? _userId;
   final ClientHelper _clientHelper;
 
   ApiService(
-    this._api, 
+    this.platform,
+    String host,
+    this._api,
     this._userId
-  ) : _clientHelper = _api.getClientHelper(_userId);
+  ) : _clientHelper = _api.getClientHelper(host, _userId);
 
   bool get isValid => _clientHelper.isValid;
 
   void dispose() => _clientHelper.dispose();
 
+  Future<LoggedInUser?> login() async {
+    if (_clientHelper is AuthClientHelper && await _clientHelper.fetchToken()) {
+      final user = await fetchLoggedInUser();
+      await _clientHelper.saveToken(user.id);
+      return user;
+    }
+    return null;
+  }
+
   Future<CommunityDetails> fetchCommunityDetails(String name) async {
     final details = await _api.getCommunityDetails(_clientHelper, name);
     if (_userId != null && details.isSubscribed != null) {
-      Communities.updateSubscribedCommunity(_api.platform, _userId, name, details.isSubscribed!);
+      Communities.updateSubscribedCommunity(platform, _userId, name, details.isSubscribed!);
     }
     return details;
   }
 
   Future<PagedItems<Post>> fetchCommunityPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     final pagedItems = await _api.getCommunityPosts(_clientHelper, id, options: options, pageToken: pageToken);
-    Communities.saved.updateAll(pagedItems.items.map((post) => post.community).toSet());
+    Communities.saved.updateAll((savedCommunities) {
+      bool changed = false;
+      final savedCommunitiesIndexes = {
+        for (int i = 0; i < savedCommunities.length; i++) 
+          savedCommunities[i]: i
+      };
+      for (final post in pagedItems.items) {
+        final index = savedCommunitiesIndexes[post.community];
+        if (index != null) {
+          final savedCommunity = savedCommunities[index];
+          if (savedCommunity.id != post.community.id) {
+            savedCommunities[index] = savedCommunity.copyWith(id: post.community.id);
+            changed = true;
+          }
+        } 
+      }
+      return changed;
+    });
     _updateDynamicInteractionStates(pagedItems.items);
     return pagedItems;
   }
@@ -82,13 +111,42 @@ class ApiService {
 
   Future<LoggedInUser> fetchLoggedInUser() => _api.getLoggedInUser(_clientHelper);
 
-  Future<LoggedInUser?> login() async {
-    if (_clientHelper is AuthClientHelper && await _clientHelper.fetchToken()) {
-      final user = await fetchLoggedInUser();
-      await _clientHelper.saveToken(user.id);
-      return user;
-    }
-    return null;
+  Future<List<Community>> fetchSubscribedCommunities() async {
+    final communities = await _api.getSubscribedCommunities(_clientHelper);
+    Communities.saved.updateAll((savedCommunities) {
+      final savedCommunitiesIndexes = {
+        for (int i = 0; i < savedCommunities.length; i++) 
+          savedCommunities[i]: i
+      };
+      bool changed = false;
+      for (final community in communities) {
+        final index = savedCommunitiesIndexes[community];
+        if (index != null) {
+          final savedCommunity = savedCommunities[index];
+          if (savedCommunity.id != community.id) {
+            savedCommunities[index] = savedCommunity.copyWith(id: community.id);
+            changed = true;
+          }
+        }
+        else {
+          savedCommunities.add(community);
+          changed = true;
+        }
+      }
+      return changed;
+    });
+    Communities.addAllSubscribedCommunities(platform, _userId!, communities);
+    return communities;
+  }
+
+  Future<void> subscribeToCommunity(String communityName, String communityId) async {
+    Communities.addSubscribedCommunity(platform, _userId!, communityName);
+    return _api.subscribeToCommunity(_clientHelper, communityId);
+  }
+
+  Future<void> unsubscribeFromCommunity(String communityName, String communityId) async {
+    Communities.removeSubscribedCommunity(platform, _userId!, communityName);
+    return _api.unsubscribeFromCommunity(_clientHelper, communityId);
   }
 
   Future<void> votePost(String postId, bool up) => _vote(Posts.interactionStates, postId, up);
@@ -98,23 +156,6 @@ class ApiService {
   Future<Comment> postComment(String parentId, String text) => _api.postComment(_clientHelper, parentId, text);
 
   Future<void> deleteComment(String commentId) => _api.deleteComment(_clientHelper, commentId);
-
-  Future<List<Community>> fetchSubscribedCommunities() async {
-    final communities = await _api.getSubscribedCommunities(_clientHelper);
-    Communities.saved.addOrUpdateAll(communities);
-    Communities.addAllSubscribedCommunities(_api.platform, _userId!, communities);
-    return communities;
-  }
-
-  Future<void> subscribeToCommunity(String communityName, String communityId) async {
-    Communities.addSubscribedCommunity(_api.platform, _userId!, communityName);
-    return _api.subscribeToCommunity(_clientHelper, communityId);
-  }
-
-  Future<void> unsubscribeFromCommunity(String communityName, String communityId) async {
-    Communities.removeSubscribedCommunity(_api.platform, _userId!, communityName);
-    return _api.unsubscribeFromCommunity(_clientHelper, communityId);
-  }
 
   Future<void> _vote(InteractionStateCollectionListenable listenable, String id, bool up) {
     final vote = up == listenable.value((_userId!, id))?.vote ? null : up;
@@ -128,10 +169,10 @@ class ApiService {
     }
     for (final item in items) {
       if (item is Post) {
-        Posts.interactionStates.set(_userId, item.id, InteractionState(score: item.score, vote: item.vote));
+        Posts.interactionStates.update(_userId, item.id, InteractionState(score: item.score, vote: item.vote));
       }
       else if (item is Comment) {
-        Comments.interactionStates.set(_userId, item.id, InteractionState(score: item.score, vote: item.vote));
+        Comments.interactionStates.update(_userId, item.id, InteractionState(score: item.score, vote: item.vote));
       }
     }
   }

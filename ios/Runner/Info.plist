@@ -4,13 +4,13 @@
   <dict>
     <key>NSAppTransportSecurity</key>
     <dict>
-        <key>NSAllowsArbitraryLoadsInWebContent</key>
-        <true/>
+      <key>NSAllowsArbitraryLoadsInWebContent</key>
+      <true/>
     </dict>
-  	<key>NSPhotoLibraryAddUsageDescription</key>
-	  <string>$(BUNDLE_DISPLAY_NAME) needs permission to save photos and videos to your gallery.</string>
+    <key>NSPhotoLibraryAddUsageDescription</key>
+    <string>$(BUNDLE_DISPLAY_NAME) needs permission to save photos and videos to your gallery.</string>
     <key>NSPhotoLibraryUsageDescription</key>
-	  <string>$(BUNDLE_DISPLAY_NAME) needs permission to save photos and videos to your gallery.</string>
+    <string>$(BUNDLE_DISPLAY_NAME) needs permission to save photos and videos to your gallery.</string>
     <key>CFBundleDevelopmentRegion</key>
     <string>$(DEVELOPMENT_LANGUAGE)</string>
     <key>CFBundleDisplayName</key>

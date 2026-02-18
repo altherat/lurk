@@ -64,6 +64,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   Community _getHomeCommunity() {
     return Community(
       platform: Settings.homeCommunityPlatform.value,
+      host: Settings.homeCommunityHost.value!,
       name: Settings.homeCommunityName.value
     );
   }

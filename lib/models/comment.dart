@@ -2,16 +2,14 @@
 
 import 'dart:ui';
 
-import 'package:lurk/core/platforms.dart';
-import 'package:lurk/core/utils.dart' as utils;
+import 'package:lurk/core/extensions.dart';
+import 'package:lurk/models/community.dart';
 
 abstract class CommentItem {
 
-  final Platform platform;
   final int depth;
 
   const CommentItem({
-    required this.platform,
     required this.depth
   });
   
@@ -19,8 +17,9 @@ abstract class CommentItem {
 
 class Comment extends CommentItem {
   
+  final Community community;
   final String id;
-  final String shortId;
+  final String? shortId;
   final String permalink;
   final bool isDeleted;
   final String? authorId;
@@ -31,17 +30,16 @@ class Comment extends CommentItem {
   final int timestampMs;
   final String? text;
   final String? textHtml;
-  final Map<String, Size> images;
+  final Map<String, Size>? images;
   final bool? vote;
 
   final String? postTitle;
-  final String? communityName;
 
   const Comment({
-    required super.platform,
     required super.depth,
+    required this.community,
     required this.id,
-    required this.shortId,
+    this.shortId,
     required this.permalink,
     required this.isDeleted,
     required this.authorId,
@@ -51,15 +49,14 @@ class Comment extends CommentItem {
     required this.score,
     required this.timestampMs,
     required this.text,
-    required this.textHtml, 
-    required this.images,
+    this.textHtml, 
+    this.images,
     required this.vote,
     this.postTitle,
-    this.communityName,
   });
 
   Comment copyWith({
-    Platform? platform,
+    Community? community,
     int? depth,
     String? id,
     String? shortId,
@@ -76,10 +73,9 @@ class Comment extends CommentItem {
     Map<String, Size>? images,
     bool? vote,
     String? postTitle,
-    String? communityName,
   }) {
     return Comment(
-      platform: platform ?? this.platform,
+      community: community ?? this.community,
       depth: depth ?? this.depth,
       id: id ?? this.id,
       shortId: shortId ?? this.shortId,
@@ -96,7 +92,6 @@ class Comment extends CommentItem {
       images: images ?? this.images,
       vote: vote ?? this.vote,
       postTitle: postTitle ?? this.postTitle,
-      communityName: communityName ?? this.communityName,
     );
   }
 
@@ -112,7 +107,6 @@ class LoadMoreComment extends CommentItem {
   final String? pageToken;
 
   const LoadMoreComment({
-    required super.platform,
     required super.depth,
     required this.count,
     required this.pageToken

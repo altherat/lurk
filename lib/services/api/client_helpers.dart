@@ -1,12 +1,10 @@
 import 'dart:developer' as dev;
 
+import 'package:flutter/foundation.dart';
 import 'package:graphql_flutter/graphql_flutter.dart' as gql;
-import 'package:http/http.dart' as http;
 import 'package:http/http.dart';
 
-abstract class ClientHelper<T, R> {
-
-  Future<R> request(T params);
+abstract class ClientHelper {
 
   bool get isValid => true;
 
@@ -16,27 +14,50 @@ abstract class ClientHelper<T, R> {
 
 }
 
-abstract class RestClientHelper extends ClientHelper<RestParams, http.Response> {
+abstract class RestClientHelper extends ClientHelper {
 
-  Future<http.Response> get(String path, [Map<String, dynamic>? params]) {
-    dev.log('[RestClientHelper] GET: path=$path, params=$params');
-    return _handleResponse(request(RestParams(method: RequestMethod.get, path: path, params: params)));
+  final String host;
+  final Map<String, String> _headers;
+
+  RestClientHelper(this.host, Map<String, String> headers)
+    : _headers = Map.of(headers);
+
+  @protected
+  Future<Response> performGet(Uri uri, Map<String, String> headers);
+  
+  @protected
+  Future<Response> performPost(Uri uri, Map<String, String> headers, dynamic body);
+
+  Future<Response> get(String path, [Map<String, dynamic>? params]) {
+    dev.log('[RestClientHelper] GET: ${Uri.https(host, path, params)}');
+    return request(
+      _headers,
+      (headers) => performGet(Uri.https(host, path, params), headers)
+    );
   }
 
-  Future<http.Response> post(String path, dynamic body) {
-    dev.log('[RestClientHelper] POST: path=$path, body=$body');
-    return _handleResponse(request(RestParams(method: RequestMethod.post, path: path, body: body)));
+  Future<Response> post(String path, dynamic body) {
+    dev.log('[RestClientHelper] POST: ${Uri.https(host, path)}, body=$body');
+    return request(
+      _headers,
+      (headers) => performPost(Uri.https(host, path), headers, body)
+    );
   }
+
+  @protected
+  Future<Response> request(Map<String, String> headers, Future<Response> Function(Map<String, String> headers) request) => _handleResponse(request(headers));
 
   Future<Response> _handleResponse(Future<Response> futureResponse) async {
     final response = await futureResponse;
     dev.log('[RestClientHelper] Response code: ${response.statusCode}');
     // dev.log('[RestClientHelper] Response: ${response.body}');
-    dev.log('[RestClientHelper] Rate limit headers:');
-    for (var headerEntry in response.headers.entries) {
-      // dev.log('[RestClientHelper] ${headerEntry.key}: ${headerEntry.value}');
-      if (headerEntry.key.startsWith('x-ratelimit-')) {
-        dev.log('[RestClientHelper]\t${headerEntry.key}: ${headerEntry.value}');
+    if (response.headers.keys.any((key) => key.startsWith('x-ratelimit-'))) {
+      dev.log('[RestClientHelper] Rate limit headers:');
+      for (var headerEntry in response.headers.entries) {
+        // dev.log('[RestClientHelper] ${headerEntry.key}: ${headerEntry.value}');
+        if (headerEntry.key.startsWith('x-ratelimit-')) {
+          dev.log('[RestClientHelper]\t${headerEntry.key}: ${headerEntry.value}');
+        }
       }
     }
     return response;
@@ -44,7 +65,27 @@ abstract class RestClientHelper extends ClientHelper<RestParams, http.Response> 
 
 }
 
-class GraphQlClientHelper extends ClientHelper<gql.QueryOptions, gql.QueryResult> {
+class SimpleRestClientHelper extends RestClientHelper {
+  
+  @protected
+  final Client client;
+
+  SimpleRestClientHelper(super.domain, super.headers) : client = Client();
+  
+  @override
+  void dispose() {
+    client.close();
+  }
+  
+  @override
+  Future<Response> performGet(Uri uri, Map<String, String> headers) => client.get(uri, headers: headers);
+  
+  @override
+  Future<Response> performPost(Uri uri, Map<String, String> headers, body) => client.post(uri, headers: headers, body: body);
+
+}
+
+class GraphQlClientHelper extends ClientHelper {
 
   final gql.GraphQLClient _client;
 
@@ -80,8 +121,7 @@ class GraphQlClientHelper extends ClientHelper<gql.QueryOptions, gql.QueryResult
         )
       );
   
-  @override
-  Future<gql.QueryResult<Object?>> request(gql.QueryOptions<Object?> params) async {
+  Future<gql.QueryResult<Object?>> query(gql.QueryOptions<Object?> params) async {
     final response = await _client.query(params);
     // dev.log('[GraphQlClientHelper] Response: ${response.data}');
     return response;
@@ -94,31 +134,10 @@ class GraphQlClientHelper extends ClientHelper<gql.QueryOptions, gql.QueryResult
 
 }
 
-abstract class AuthClientHelper<T, R> extends ClientHelper<T, R>{
+abstract class AuthClientHelper extends ClientHelper {
 
   Future<bool> fetchToken();
 
   Future<void> saveToken(String userId);
 
-}
-
-class RestParams {
-
-  final RequestMethod method;
-  final String path;
-  final Map<String, dynamic>? params;
-  final dynamic body;
-
-  const RestParams({
-    required this.method,
-    required this.path,
-    this.params,
-    this.body
-  });
-
-}
-
-enum RequestMethod {
-  get,
-  post,
 }

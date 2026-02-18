@@ -13,15 +13,13 @@ abstract class Api<T extends ClientHelper> {
   
   const Api();
 
-  Platform get platform;
-
   String get savedOrDefaultUserAgent => savedUserAgent ?? defaultUnauthenticatedUserAgent;
 
-  String get baseUrl;
+  String getBaseUrl(String host);
 
   bool get hasLogin;
 
-  ClientHelper getClientHelper(String? userId);
+  ClientHelper getClientHelper(String host, String? userId);
 
   @protected
   String? get savedUserAgent;
@@ -29,9 +27,9 @@ abstract class Api<T extends ClientHelper> {
   @protected
   String get defaultUnauthenticatedUserAgent;
 
-  String getPostDetailsUrl(Post post) => '$baseUrl${post.permalink}';
+  String getPostDetailsUrl(Post post) => '${getBaseUrl(post.community.host)}${post.permalink}';
 
-  String getCommentUrl(Comment comment) => '$baseUrl${comment.permalink}';
+  String getCommentUrl(Comment comment) => '${getBaseUrl(comment.community.host)}${comment.permalink}';
 
   Future<CommunityDetails> getCommunityDetails(T clientHelper, String name);
 
@@ -49,14 +47,6 @@ abstract class Api<T extends ClientHelper> {
 
   Future<PagedItems<dynamic>> getSearchResults(T clientHelper, String query, String? communityName, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
 
-  Future<void> votePost(T clientHelper, String commentId, bool? vote);
-
-  Future<void> voteComment(T clientHelper, String commentId, bool? vote);
-
-  Future<Comment> postComment(T clientHelper, String parentId, String text);
-
-  Future<void> deleteComment(T clientHelper, String commentId);
-
   Future<LoggedInUser> getLoggedInUser(T clientHelper);
 
   Future<List<Community>> getSubscribedCommunities(T clientHelper);
@@ -64,6 +54,14 @@ abstract class Api<T extends ClientHelper> {
   Future<void> subscribeToCommunity(T clientHelper, String communityId);
 
   Future<void> unsubscribeFromCommunity(T clientHelper, String communityId);
+
+  Future<void> votePost(T clientHelper, String commentId, bool? vote);
+
+  Future<void> voteComment(T clientHelper, String commentId, bool? vote);
+
+  Future<Comment> postComment(T clientHelper, String parentId, String text);
+
+  Future<void> deleteComment(T clientHelper, String commentId);
 
 }
 

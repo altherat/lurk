@@ -6,6 +6,11 @@ android.apply {
     flavorDimensions("flavor-type")
 
     productFlavors {
+        create("combined") {
+            dimension = "flavor-type"
+            applicationId = "com.altherat.lurk"
+            resValue(type = "string", name = "app_name", value = "Lurk")
+        }
         create("reddit") {
             dimension = "flavor-type"
             applicationId = "com.altherat.lurk.reddit"
@@ -16,10 +21,10 @@ android.apply {
             applicationId = "com.altherat.lurk.digg"
             resValue(type = "string", name = "app_name", value = "Lurk Digg")
         }
-        create("combined") {
+        create("lemmy") {
             dimension = "flavor-type"
-            applicationId = "com.altherat.lurk"
-            resValue(type = "string", name = "app_name", value = "Lurk")
+            applicationId = "com.altherat.lurk.lemmy"
+            resValue(type = "string", name = "app_name", value = "Lurk Lemmy")
         }
     }
 }

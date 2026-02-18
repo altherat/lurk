@@ -4,6 +4,7 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:lurk/core/constants.dart';
+import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
@@ -160,6 +161,7 @@ class CustomHtml extends StatelessWidget {
                 () => CommunityScreen(
                   community: Community(
                     platform: platform,
+                    host: Uri.parse(url).host,
                     name: communityName.toLowerCase(),
                   ),
                 ),
@@ -173,6 +175,7 @@ class CustomHtml extends StatelessWidget {
                 () => UserDetailsScreen(
                   platform: platform,
                   username: userName.toLowerCase(),
+                  host: Uri.parse(url).host
                 ),
               );
               return true;

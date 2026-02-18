@@ -2,6 +2,7 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
 import 'package:lurk/core/constants.dart';
+import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/post.dart';
@@ -62,24 +63,20 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
     super.initState();
     if (widget.post == null) {
       _isLoadingPost = true;
-      _getGalleryFromUrl();
+      widget.platform.getApi(Uri.parse(widget.url).host, Settings.activeUser.value?.id).fetchPostDetailsFromUrl(widget.url).then((postDetails) {
+        if (mounted) {
+          setState(() {
+            _post = postDetails.post!;
+            _isLoadingPost = false;
+          });
+        }
+      });
     }
     else {
       _isLoadingPost = false;
       _post = widget.post!;
     }
   }
-
-  Future<void> _getGalleryFromUrl() async {
-    final postDetails = await widget.platform.getApi(Settings.activeUser.value?.id).fetchPostDetailsFromUrl(widget.url);
-    if (mounted) {
-      setState(() {
-        _post = postDetails.post;
-        _isLoadingPost = false;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final void Function(BuildContext context)? onSave;

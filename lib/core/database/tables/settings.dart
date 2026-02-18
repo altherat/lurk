@@ -7,6 +7,7 @@ class Settings extends Table {
   IntColumn get id => integer().autoIncrement()();
 
   TextColumn get homeCommunityPlatform => text().map(const EnumNameConverter<Platform>(Platform.values)).nullable()();
+  TextColumn get homeCommunityHost => text().nullable()();
   TextColumn get homeCommunityName => text().nullable()();
 
   BoolColumn get showCommentImages => boolean().withDefault(const Constant(Constants.defaultShowCommentImages))();
@@ -32,6 +33,8 @@ class Settings extends Table {
   
   IntColumn get diggPostsFetchDepth => integer().withDefault(const Constant(Constants.diggPostsFetchDepth))();
   TextColumn get diggUserAgent => text().nullable()();
+
+  TextColumn get lemmyUserAgent => text().nullable()();
 
   TextColumn get searchType => text().map(const EnumNameConverter<SearchType>(SearchType.values)).nullable()();
   

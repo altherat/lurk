@@ -16,6 +16,7 @@ class Settings {
   static late final SettingNotifier<LoggedInUser?> activeUser;
 
   static late final SettingNotifier<Platform> homeCommunityPlatform;
+  static late final SettingNotifier<String> homeCommunityHost;
   static late final SettingNotifier<String?> homeCommunityName;
   static late final SettingNotifier<bool> showCommentImages;
   static late final SettingNotifier<bool> autoplayVideos;
@@ -40,12 +41,14 @@ class Settings {
   static late final SettingNotifier<int> diggPostsFetchDepth;
   static late final SettingNotifier<String?> diggUserAgent;
 
+  static late final SettingNotifier<String?> lemmyUserAgent;
+
   static late final Setting<SearchType?> searchType;
 
   static void Function(Platform platform)? onSessionsInvalidated;
 
   static Future<void> init() async {
-
+    
     final db = Database.instance;
     final [dbSettings as tbl.Setting, dbLoggedInUseres as List<LoggedInUser>] = await Future.wait([db.getAllSettings(), db.getAllLoggedInUsers()]);
     
@@ -67,10 +70,16 @@ class Settings {
       defaultValue: F.appFlavor.defaultCommunities.first.platform,
     );
 
+    homeCommunityHost = SettingNotifier(
+      initialValue: dbSettings.homeCommunityHost,
+      companionBuilder: (value) => SettingsCompanion(homeCommunityHost: Value(value)),
+      defaultValue: F.appFlavor.defaultCommunities.first.host,
+    );
+
     homeCommunityName = SettingNotifier(
       initialValue: dbSettings.homeCommunityName,
       companionBuilder: (value) => SettingsCompanion(homeCommunityName: Value(value)),
-      defaultValue: activeUserId == null ? homeCommunityPlatform.value.homeCommunityName : null,
+      defaultValue: F.appFlavor.defaultCommunities.first.name,
     );
 
     showCommentImages = SettingNotifier(
@@ -195,12 +204,17 @@ class Settings {
       companionBuilder: (value) => SettingsCompanion(diggUserAgent: Value(value)),
     );
 
+    lemmyUserAgent = SettingNotifier(
+      initialValue: dbSettings.lemmyUserAgent,
+      companionBuilder: (value) => SettingsCompanion(lemmyUserAgent: Value(value)),
+    );
+
     searchType = Setting(
       initialValue: dbSettings.searchType,
       companionBuilder: (value) => SettingsCompanion(searchType: Value(value)),
     );
 
-  }
+  } 
 
 }
 
