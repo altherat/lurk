@@ -1,16 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:lurk/core/constants.dart';
-import 'package:lurk/models/community.dart';
-import 'package:lurk/services/api.dart';
 
 final _commaFormatter = NumberFormat.decimalPattern();
-
-extension CommunityExtension on Community {
-
-  ApiService getApi(String? activeUserId) => platform.getApi(host, activeUserId);
-  
-}
 
 extension NumExtension on num {
 

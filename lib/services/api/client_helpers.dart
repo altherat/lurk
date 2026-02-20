@@ -30,22 +30,26 @@ abstract class RestClientHelper extends ClientHelper {
 
   Future<Response> get(String path, [Map<String, dynamic>? params]) {
     dev.log('[RestClientHelper] GET: ${Uri.https(host, path, params)}');
-    return request(
-      _headers,
-      (headers) => performGet(Uri.https(host, path, params), headers)
+    return _handleResponse(
+      request(
+        _headers,
+        (headers) => performGet(Uri.https(host, path, params), headers)
+      )
     );
   }
 
   Future<Response> post(String path, dynamic body) {
     dev.log('[RestClientHelper] POST: ${Uri.https(host, path)}, body=$body');
-    return request(
-      _headers,
-      (headers) => performPost(Uri.https(host, path), headers, body)
+    return _handleResponse(
+      request(
+        _headers,
+        (headers) => performPost(Uri.https(host, path), headers, body)
+      )
     );
   }
 
   @protected
-  Future<Response> request(Map<String, String> headers, Future<Response> Function(Map<String, String> headers) request) => _handleResponse(request(headers));
+  Future<Response> request(Map<String, String> headers, Future<Response> Function(Map<String, String> headers) request) => request(headers);
 
   Future<Response> _handleResponse(Future<Response> futureResponse) async {
     final response = await futureResponse;
@@ -65,23 +69,24 @@ abstract class RestClientHelper extends ClientHelper {
 
 }
 
+
 class SimpleRestClientHelper extends RestClientHelper {
+
+  static final Client _client = Client();
   
   @protected
-  final Client client;
+  Client get client => _client;
 
-  SimpleRestClientHelper(super.domain, super.headers) : client = Client();
+  SimpleRestClientHelper(super.host, super.headers);
   
   @override
-  void dispose() {
-    client.close();
+  Future<Response> performGet(Uri uri, Map<String, String> headers) => _client.get(uri, headers: headers);
+  
+  @override
+  Future<Response> performPost(Uri uri, Map<String, String> headers, dynamic body) {
+    dev.log('[SimpleRestClientHelper] performPost: uri=$uri, body=$body');
+    return _client.post(uri, headers: headers, body: body);
   }
-  
-  @override
-  Future<Response> performGet(Uri uri, Map<String, String> headers) => client.get(uri, headers: headers);
-  
-  @override
-  Future<Response> performPost(Uri uri, Map<String, String> headers, body) => client.post(uri, headers: headers, body: body);
 
 }
 
@@ -134,10 +139,26 @@ class GraphQlClientHelper extends ClientHelper {
 
 }
 
-abstract class AuthClientHelper extends ClientHelper {
+abstract interface class AuthClientHelper extends ClientHelper {
 
-  Future<bool> fetchToken();
+  Future<FetchTokenResult> fetchToken([Map<String, String>? credentials]);
 
   Future<void> saveToken(String userId);
+
+}
+
+sealed class FetchTokenResult {}
+
+class FetchTokenSuccess extends FetchTokenResult {
+
+  FetchTokenSuccess();
+
+}
+
+class FetchTokenError extends FetchTokenResult {
+
+  final String? message;
+  
+  FetchTokenError([this.message]);
 
 }

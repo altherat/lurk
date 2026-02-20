@@ -24,20 +24,18 @@ class LoggedInUser {
 
   final Platform platform;
   final String host;
+  final String? hostIconUrl;
   final String id;
   final String name;
-  final String iconUrl;
-  final int inboxCount;
-  final int score;
+  final String? iconUrl;
 
   LoggedInUser({
     required this.platform,
     required this.host,
+    this.hostIconUrl,
     required this.id,
     required this.name,
     required this.iconUrl,
-    required this.inboxCount,
-    required this.score,
   });
 
 }

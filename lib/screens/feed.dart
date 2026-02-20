@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
-import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/services/settings.dart';
@@ -11,16 +10,15 @@ import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/feed_list.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 
-class SimpleFeedScreen<T> extends StatefulWidget {
+class FeedScreen<T> extends StatefulWidget {
 
   final GlobalKey<MainScaffoldState>? scaffoldKey;
-  final Platform platform;
-  final Community? activeCommunity;
+  final Community activeCommunity;
   final FeedOptionsGroup? feedOptions;
   final Future<PagedItems<T>>? initialItems;
   final Future<PagedItems<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) fetchItems;
   final Widget? title;
-  final Widget? subtitle;
+  final String? subtitle;
   final bool showFeedOptionsSubtitle;
   final List<Widget>? iconActions;
   final (Listenable, List<Widget> Function(BuildContext context))? iconActionsBuilder;
@@ -31,11 +29,10 @@ class SimpleFeedScreen<T> extends StatefulWidget {
   final Widget Function(BuildContext context) noItemsBuilder;
   final Widget? Function(BuildContext context, int index, T item) itemBuilder;
 
-  const SimpleFeedScreen({
+  const FeedScreen({
     super.key,
     this.scaffoldKey,
-    required this.platform,
-    this.activeCommunity,
+    required this.activeCommunity,
     this.feedOptions,
     this.initialItems,
     required this.fetchItems,
@@ -53,11 +50,11 @@ class SimpleFeedScreen<T> extends StatefulWidget {
   });
 
   @override
-  State<SimpleFeedScreen<T>> createState() => SimpleFeedScreenState<T>();
+  State<FeedScreen<T>> createState() => FeedScreenState<T>();
 
 }
 
-class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTickerProviderStateMixin {
+class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderStateMixin {
 
   late List<GlobalKey<FeedListState<T>>> _feedListKeys;
   late List<GlobalKey<CustomRefreshIndicatorState>> _refreshIndicatorKeys;
@@ -68,7 +65,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
   @override
   void initState() {
     super.initState();
-    if (widget.feedOptions?.type == FeedOptionType.category) {
+    if (widget.feedOptions != null && widget.feedOptions!.type == FeedOptionType.category && widget.feedOptions!.options.length <= 3) {
       _tabController = TabController(
         length: widget.feedOptions!.options.length,
         vsync: this,
@@ -152,7 +149,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
                       SliverOverlapInjector(handle: overlapAbsorberHandle),
                       FeedList(
                         key: _feedListKeys[i],
-                        platform: widget.platform,
+                        platform: widget.activeCommunity.platform,
                         initialItems: i == 0 ? widget.initialItems : null,
                         getItems: (String? pageToken) async {
                           return widget.fetchItems(
@@ -176,10 +173,9 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
       }
       return MainScaffold(
         key: widget.scaffoldKey,
-        platform: widget.platform,
         activeCommunity: widget.activeCommunity,
         title: widget.title,
-        subtitle: widget.subtitle ?? (widget.showFeedOptionsSubtitle
+        subtitle: widget.showFeedOptionsSubtitle
           ? ValueListenableBuilder(
               valueListenable: _tabController!.animation!,
               builder: (context, value, child) {
@@ -190,11 +186,11 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
                 }
                 return Opacity(
                   opacity: (1.0 - ((value - index).abs() * 2)).clamp(0.0, 1.0),
-                  child: Text(_getSubtitle(_selectedFeedOptions[index] ?? feedOptionsAtScrollIndex.defaults)),
+                  child: Text('${widget.subtitle != null ? '${widget.subtitle}${Constants.separator}' : ''}${_getSubtitle(_selectedFeedOptions[index] ?? feedOptionsAtScrollIndex.defaults)}'),
                 );
               },
             )
-          : null),
+          : widget.subtitle != null ? Text(widget.subtitle!) : null,
         iconActions: widget.iconActions,
         iconActionsBuilder: (
           Listenable.merge([
@@ -208,7 +204,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
             return [
               ...?widget.iconActionsBuilder?.$2(context),
               _FeedFilterIconButton(
-                platform: widget.platform,
+                platform: widget.activeCommunity.platform,
                 feedOptions: subGroupOptions,
                 selectedFeedOptions: _selectedFeedOptions[visibleIndex],
                 onFeedOptionsSelected: _onFeedOptionsSelected,
@@ -246,19 +242,23 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
     }
     final feedOptions = widget.feedOptions;
     final selectedFeedOptions = _selectedFeedOptions[0];
+    final List<String> subtitles = [
+      ?widget.subtitle,
+      if (widget.showFeedOptionsSubtitle && feedOptions != null && selectedFeedOptions != null && !mapEquals(selectedFeedOptions, feedOptions.defaults))
+        _getSubtitle(selectedFeedOptions)
+    ];
     return MainScaffold(
       key: widget.scaffoldKey,
       refreshIndicatorKey: _refreshIndicatorKeys[0],
-      platform: widget.platform,
       activeCommunity: widget.activeCommunity,
       customScrollViewController: _scrollControllers[0],
       title: widget.title,
-      subtitle: widget.subtitle ?? (widget.showFeedOptionsSubtitle && feedOptions != null && selectedFeedOptions != null && !mapEquals(selectedFeedOptions, feedOptions.defaults) ? Text(_getSubtitle(selectedFeedOptions)) : null),
+      subtitle: subtitles.isNotEmpty ? Text(subtitles.join(Constants.separator)) : null,
       iconActionsBuilder: widget.iconActionsBuilder,
       iconActions: [
         ...?widget.iconActions,
         _FeedFilterIconButton(
-          platform: widget.platform,
+          platform: widget.activeCommunity.platform,
           feedOptions: feedOptions,
           selectedFeedOptions: selectedFeedOptions,
           onFeedOptionsSelected: _onFeedOptionsSelected,
@@ -270,7 +270,7 @@ class SimpleFeedScreenState<T> extends State<SimpleFeedScreen<T>> with SingleTic
         ...?widget.slivers,
         FeedList(
           key: _feedListKeys[0],
-          platform: widget.platform,
+          platform: widget.activeCommunity.platform,
           initialItems: widget.initialItems,
           getItems: (String? pageToken) =>
               widget.fetchItems(_selectedFeedOptions[0], pageToken),

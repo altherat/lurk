@@ -14,6 +14,7 @@ class Post {
   final String title;
   final String? textHtml;
   final String? author;
+  final String? authorHost;
   final int commentCount;
   final String url;
   final String domain;
@@ -37,6 +38,7 @@ class Post {
     required this.title,
     required this.textHtml,
     required this.author,
+    required this.authorHost,
     required this.commentCount,
     required this.url,
     required this.domain,

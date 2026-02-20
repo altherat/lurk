@@ -10,9 +10,11 @@ import 'package:http/http.dart';
 import 'package:http/http.dart' as http;
 import 'package:lurk/core/database/database.dart';
 import 'package:lurk/core/platforms.dart';
+import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/community_details.dart';
+import 'package:lurk/models/login.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
@@ -52,14 +54,14 @@ class RedditApi extends Api<RestClientHelper> {
   const RedditApi();
 
   @override
-  bool get hasLogin => true;
-
-  @override
-  String? get savedUserAgent => Settings.redditUserAgent.value;
+  List<LoginField>? get loginFields => const [];
 
   @override
   String get defaultUnauthenticatedUserAgent => _defaultUnauthenticatedUserAgent;
   // String get defaultUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:0.1.0 (by /u/altherat)';
+
+  @override
+  String? get savedUserAgent => Settings.redditUserAgent.value;
 
   @override
   ClientHelper getClientHelper(String host, String? userId) {
@@ -181,13 +183,11 @@ class RedditApi extends Api<RestClientHelper> {
 
   @override
   Future<List<CommentItem>> getMoreComments(RestClientHelper clientHelper, String id, String pageToken, {int? depth, Map<FeedOptionType, FeedOption>? options}) async {
-    final sort = options?[FeedOptionType.sort];
     final body = {
       'api_type': 'json',
       'link_id': id,
       'children': pageToken,
-      if (sort != null)
-        'sort': sort.id.toString()
+      'sort': ?options?[FeedOptionType.sort]?.id.toString()
     };
     final Future<Response> response;
     final List<CommentItem> Function(String) parseFn;
@@ -230,6 +230,7 @@ class RedditApi extends Api<RestClientHelper> {
                 isDeleted: author == '[deleted]',
                 authorId: element.attributes['data-author-fullname'],
                 authorName: author,
+                authorHost: Platform.reddit.host!,
                 isModerator: authorElement?.classes.contains('moderator') ?? false,
                 isSubmitter: authorElement?.classes.contains('submitter') ?? false,
                 score: scoreTitle == null ? null : int.tryParse(scoreTitle),
@@ -666,6 +667,7 @@ class RedditApi extends Api<RestClientHelper> {
       title: parse(data['title']).body!.text,
       textHtml: textHtml,
       author: author,
+      authorHost: Platform.reddit.host!,
       commentCount: data['num_comments'],
       url: data['url'],
       domain: domain,
@@ -750,6 +752,7 @@ class RedditApi extends Api<RestClientHelper> {
       isDeleted: author == '[deleted]',
       authorId: data['author_fullname'],
       authorName: author,
+      authorHost: Platform.reddit.host!,
       isModerator: data['distinguished'] == 'moderator',
       isSubmitter: data['is_submitter'] ?? false,
       score: data['score_hidden'] ? null : data['score'],
@@ -770,9 +773,7 @@ class RedditApi extends Api<RestClientHelper> {
       host: Platform.reddit.host!,
       id: 't2_${data['id']}',
       name: data['name'],
-      iconUrl: Uri(scheme: iconUri.scheme,host: iconUri.host,path: iconUri.path).toString(),
-      inboxCount: data['inbox_count'],
-      score: data['link_karma'] + data['comment_karma']
+      iconUrl: Uri(scheme: iconUri.scheme,host: iconUri.host,path: iconUri.path).toString()
     );
   }
 
@@ -810,7 +811,7 @@ class _ClientHelper extends SimpleRestClientHelper {
     }
     dev.log('[Reddit][_ClientHelper] Request headers: ${headers.length} (${_cookies!.length} cookies)');
     dev.log('[Reddit][_ClientHelper]\tUser-Agent: ${headers['User-Agent']}');
-    dev.log('[Reddit][_ClientHelper]\tCookie: ${_cookies!.entries.map((entry) => '${entry.key}=${_debugTruncateLongString(entry.value.value, 6)}').join(', ')}');
+    dev.log('[Reddit][_ClientHelper]\tCookie: ${_cookies!.entries.map((entry) => '${entry.key}=${debugTruncateLongString(entry.value.value, 6)}').join(', ')}');
 
     final Response response = await request(headers);
     if (response.headers.containsKey('set-cookie')) {
@@ -839,7 +840,7 @@ class _ClientHelper extends SimpleRestClientHelper {
       for (var cookie in await Database.instance.getAllValidCookies())
         cookie.key: cookie
     };
-    dev.log('[Reddit][_ClientHelper] Loaded ${_cookies!.length} cookies: ${_cookies!.entries.map((entry) => '${entry.key}=${_debugTruncateLongString(entry.value.value, 6)}').join(', ')}');
+    dev.log('[Reddit][_ClientHelper] Loaded ${_cookies!.length} cookies: ${_cookies!.entries.map((entry) => '${entry.key}=${debugTruncateLongString(entry.value.value, 6)}').join(', ')}');
   }
 
   Future<void> _updateCookiesFromHeaders(String headerValue) async {
@@ -854,7 +855,7 @@ class _ClientHelper extends SimpleRestClientHelper {
       );
       _cookies![ioCookie.name] = cookie;
       cookies.add(cookie);
-      dev.log('[Reddit][_ClientHelper] Added cookie: ${cookie.key}=${_debugTruncateLongString(cookie.value)}, expirationTime=${cookie.expirationTime}');
+      dev.log('[Reddit][_ClientHelper] Added cookie: ${cookie.key}=${debugTruncateLongString(cookie.value)}, expirationTime=${cookie.expirationTime}');
     }
     if (cookies.isNotEmpty) {
       await Database.instance.saveCookies(cookies);
@@ -890,7 +891,7 @@ class _AuthClientHelper extends RestClientHelper implements AuthClientHelper {
 
   @override
   Future<void> dispose() async {
-    dev.log('[Reddit][OAuthHelper] Disposing OAuth2Helper');
+    dev.log('[Reddit][_AuthClientHelper] Disposing OAuth2Helper');
     await _oAuthHelper.removeAllTokens();
     _cachedToken = null;
   }
@@ -915,9 +916,9 @@ class _AuthClientHelper extends RestClientHelper implements AuthClientHelper {
       cached = _cachedToken != null;
       tokenResponse = await _getCachedOrStoredToken();
     }
-    dev.log('[Reddit][OAuthHelper] Loaded token: cached=$cached, accessToken=${_debugTruncateLongString(tokenResponse?.accessToken)}, refreshToken=${_debugTruncateLongString(tokenResponse?.refreshToken)}');
+    dev.log('[Reddit][_AuthClientHelper] Loaded token: cached=$cached, accessToken=${debugTruncateLongString(tokenResponse?.accessToken)}, refreshToken=${debugTruncateLongString(tokenResponse?.refreshToken)}');
     if (tokenResponse == null || (!tokenResponse.hasRefreshToken() && tokenResponse.isExpired())) {
-      dev.log('[Reddit][OAuthHelper] Fetching access token (${tokenResponse == null ? 'new' : 'expired'})');
+      dev.log('[Reddit][_AuthClientHelper] Fetching access token (${tokenResponse == null ? 'new' : 'expired'})');
       String? deviceId = Settings.redditDeviceId.value;
       if (deviceId == null) {
         deviceId = List<int>.generate(16, (i) => Random.secure().nextInt(256)).map((e) => e.toRadixString(16).padLeft(2, '0')).join();
@@ -943,36 +944,38 @@ class _AuthClientHelper extends RestClientHelper implements AuthClientHelper {
           'scope': RedditApi._oauthScopes.join(' '),
         })
       );
-      dev.log('[Reddit][OAuthHelper] Fetched access token: ${_debugTruncateLongString(data['access_token'])}');
+      dev.log('[Reddit][_AuthClientHelper] Fetched access token: ${debugTruncateLongString(data['access_token'])}');
     }
-    dev.log('[Reddit][OAuthHelper] Request headers: ${headers.length}');
-    dev.log('[Reddit][OAuthHelper]\tUser-Agent: ${headers['User-Agent']}');
+    dev.log('[Reddit][_AuthClientHelper] Request headers: ${headers.length}');
+    dev.log('[Reddit][_AuthClientHelper]\tUser-Agent: ${headers['User-Agent']}');
     return request(headers);
-  }
+  }  
 
   @override
-  Future<bool> fetchToken() async {
-    dev.log('[Reddit][OAuthHelper] fetchToken');
+  List<String>? get requiredCredentials => null;
+
+  @override
+  Future<FetchTokenResult> fetchToken([Map<String, String>? credentials]) async {
+    dev.log('[Reddit][_AuthClientHelper] fetchToken');
     final redirectUri = Settings.redditRedirectUri.value!;
     _oAuthHelper.clientId = Settings.redditClientId.value!;
     _oAuthHelper.client.redirectUri = redirectUri;
     _oAuthHelper.client.customUriScheme = redirectUri.split('://')[0];
-    dev.log('[Reddit][OAuthHelper] Updated OAuth2Helper: clientId=${_oAuthHelper.clientId}, redirectUri=${_oAuthHelper.client.redirectUri}, customUriScheme=${_oAuthHelper.client.customUriScheme}');
+    dev.log('[Reddit][_AuthClientHelper] Updated OAuth2Helper: clientId=${_oAuthHelper.clientId}, redirectUri=${_oAuthHelper.client.redirectUri}, customUriScheme=${_oAuthHelper.client.customUriScheme}');
     final tokenResponse = await _oAuthHelper.fetchToken();
     _cachedToken = tokenResponse;
-    return tokenResponse.isValid();
+    return tokenResponse.isValid() ? FetchTokenSuccess() : FetchTokenError();
   }
 
   @override
-  Future<void> saveToken(String userId) async {
-    dev.log('[Reddit][OAuthHelper] saveToken: tokenStorageKey=$userId, access token=${_debugTruncateLongString(_cachedToken!.accessToken)}');
+  Future<void> saveToken(String userId) {
+    dev.log('[Reddit][_AuthClientHelper] saveToken: tokenStorageKey=$userId, access token=${debugTruncateLongString(_cachedToken!.accessToken)}');
     // await _oAuthHelper.tokenStorage.deleteAllTokens();
-    final tokenStorage = TokenStorage(userId);
-    await tokenStorage.addToken(_cachedToken!);
+    return TokenStorage(userId).addToken(_cachedToken!);
   }
   
   static OAuth2Helper _createOAuth2Helper(String clientId, TokenStorage? tokenStorage) {
-    dev.log('[Reddit] _createOAuth2Helper: clientId=$clientId, tokenStorage key=${tokenStorage?.key}');
+    dev.log('[Reddit][_AuthClientHelper] _createOAuth2Helper: clientId=$clientId, tokenStorage key=${tokenStorage?.key}');
     return OAuth2Helper(
       OAuth2Client(
         authorizeUrl: 'https://www.reddit.com/api/v1/authorize',
@@ -995,9 +998,4 @@ class _AuthClientHelper extends RestClientHelper implements AuthClientHelper {
 
   Future<AccessTokenResponse?> _getCachedOrStoredToken() async => _cachedToken ??= await _oAuthHelper.getTokenFromStorage();
 
-}
-
-String _debugTruncateLongString(String? longString, [int maxLength = 10]) {
-  if (longString == null) return 'null';
-  return longString.length > maxLength ? '${longString.substring(0, maxLength ~/ 2)}...${longString.substring(longString.length - maxLength ~/ 2)}' : longString;
 }

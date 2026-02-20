@@ -24,6 +24,7 @@ class Comment extends CommentItem {
   final bool isDeleted;
   final String? authorId;
   final String? authorName;
+  final String? authorHost;
   final bool isModerator;
   final bool isSubmitter;
   final int? score;
@@ -44,6 +45,7 @@ class Comment extends CommentItem {
     required this.isDeleted,
     required this.authorId,
     required this.authorName,
+    required this.authorHost,
     required this.isModerator,
     required this.isSubmitter,
     required this.score,
@@ -64,6 +66,7 @@ class Comment extends CommentItem {
     bool? isDeleted,
     String? authorId,
     String? authorName,
+    String? authorHost,
     bool? isModerator,
     bool? isSubmitter,
     int? score,
@@ -83,6 +86,7 @@ class Comment extends CommentItem {
       isDeleted: isDeleted ?? this.isDeleted,
       authorId: authorId ?? this.authorId,
       authorName: authorName ?? this.authorName,
+      authorHost: authorHost ?? this.authorHost,
       isModerator: isModerator ?? this.isModerator,
       isSubmitter: isSubmitter ?? this.isSubmitter,
       score: score ?? this.score,

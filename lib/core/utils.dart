@@ -18,9 +18,11 @@ import 'package:lurk/widgets/snack_bar_progress_content.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
+String? getPlatformNameOrCommunityHost(Platform platform, Community? community) => platform.host != null || community == null ? platform.name.toTitleCase() : community.host;
+
 Future<void> openInBrowser(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
-Future navigate(BuildContext context, Platform platform, String url, {Post? post}) async {
+Future navigate(BuildContext context, Community activeCommunity, String url, {Post? post}) async {
   final uri = Uri.tryParse(url);
   if (uri == null) return;
 
@@ -35,7 +37,7 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
   if (host == 'i.redd.it' || host.endsWith('.imgix.net') || pathLowerCase.endsWith('.jpg') || pathLowerCase.endsWith('.jpeg') || pathLowerCase.endsWith('.png') || pathLowerCase.endsWith('.gif') || pathLowerCase.endsWith('.webp')) {
     return context.push(
       () => ImageViewerScreen(
-        platform: platform,
+        activeCommunity: activeCommunity,
         url: url,
         post: post,
       )
@@ -47,7 +49,7 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
     if (directGiphyUrl != null) {
       return context.push(
         () => ImageViewerScreen(
-          platform: platform,
+          activeCommunity: activeCommunity,
           url: directGiphyUrl,
           post: post,
         )
@@ -58,7 +60,7 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
   if (uri.host == 'v.redd.it' || pathLowerCase.endsWith('.mp4') || pathLowerCase.endsWith('.mov')) {
     return context.push(
       () => VideoViewerScreen(
-        platform: platform,
+        activeCommunity: activeCommunity,
         url: url,
         post: post
       )
@@ -70,13 +72,15 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
 
     final communityName = resolvedPlatform.getCommunityNameFromPath(path);
     if (communityName != null) {
+      final community = Community(
+        platform: resolvedPlatform,
+        host: host,
+        name: communityName
+      );
       return context.push(
         () => CommunityScreen(
-          community: Community(
-            platform: resolvedPlatform,
-            host: host,
-            name: communityName
-          )
+          activeCommunity: activeCommunity.platform.supportsMultipleHosts ? activeCommunity : community,
+          community: community
         )
       );
     }
@@ -85,8 +89,7 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
     if (userName != null) {
       return context.push(
         () => UserDetailsScreen(
-          platform: resolvedPlatform,
-          host: host,
+          activeCommunity: activeCommunity,
           username: userName
         )
       );
@@ -96,6 +99,7 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
     if (postUrlInfo != null) {
       return context.push(
         () => PostDetailsScreen.fromUrl(
+          activeCommunity: activeCommunity,
           platform: resolvedPlatform,
           host: host,
           url: url,
@@ -107,7 +111,9 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
     if (resolvedPlatform.isGallery(path)) {
       return context.push(
         () => ImageGalleryViewerScreen(
+          activeCommunity: activeCommunity,
           platform: resolvedPlatform,
+          host: host,
           post: post,
           url: url
         )
@@ -124,7 +130,7 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
         if (response.statusCode == 301) {
           final resolvedUrl = response.headers.value('location');
           if (context.mounted && resolvedUrl != null) {
-            return navigate(context, platform, resolvedUrl, post: post);
+            return navigate(context, activeCommunity, resolvedUrl, post: post);
           }
         }
       }
@@ -138,7 +144,7 @@ Future navigate(BuildContext context, Platform platform, String url, {Post? post
 
   return context.push(
     () => WebViewerScreen(
-      platform: platform,
+      activeCommunity: activeCommunity,
       post: post,
       url: url,
     )
@@ -207,6 +213,7 @@ Future<void> showOptionsBottomSheet({
   return showModalBottomSheet(
     context: context,
     showDragHandle: true,
+    isScrollControlled: true,
     builder: (context) {
       return SafeArea(
         child: Column(
@@ -391,4 +398,11 @@ Set<String> hexEscape(String string) {
     }
   }
   return escaped;
+}
+
+String debugTruncateLongString(String? longString, [int maxLength = 10]) {
+  if (longString == null) {
+    return 'null';
+  }
+  return longString.length > maxLength ? '${longString.substring(0, maxLength ~/ 2)}...${longString.substring(longString.length - maxLength ~/ 2)}' : longString;
 }

@@ -79,7 +79,7 @@ class _AppState extends State<App> {
         snackBarTheme: const SnackBarThemeData(
           behavior: SnackBarBehavior.floating,
           backgroundColor: Constants.lighterBackgroundColor,
-          contentTextStyle: TextStyle(color: Colors.white),
+          contentTextStyle: TextStyle(color: Colors.white, fontSize: 16),
           actionTextColor: Constants.primaryColor,
           actionBackgroundColor: Constants.lighterBackgroundColor,
         ),

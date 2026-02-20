@@ -89,9 +89,6 @@ class DiggApi extends Api<GraphQlClientHelper> {
   const DiggApi();
 
   @override
-  bool get hasLogin => false;
-
-  @override
   String? get savedUserAgent => Settings.diggUserAgent.value;
 
   @override
@@ -856,6 +853,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
       timestampMs: DateTime.tryParse(json['createdDate'])?.millisecondsSinceEpoch ?? 0,
       commentCount: json['commentCount'],
       author: authorUsername == '[deleted]' ? null : authorUsername,
+      authorHost: Platform.digg.host!,
       domain: domain,
       isSelf: json['type'] == 'TEXT',
       isNsfw: json['nsfw'],
@@ -999,6 +997,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
       isDeleted: data['deletedDate'] != null,
       authorId: null,
       authorName: authorName,
+      authorHost: Platform.digg.host!,
       isModerator: false,
       isSubmitter: isSubmitter,
       score: data['score'],

@@ -1,15 +1,18 @@
 import 'dart:math';
 
+import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart' hide SearchBar, RefreshCallback;
 import 'package:flutter/rendering.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/app.dart';
 import 'package:lurk/core/constants.dart';
+import 'package:lurk/core/database/database.dart';
 import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/core/flavors.dart';
 import 'package:lurk/models/community.dart';
+import 'package:lurk/models/login.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/repositories/communities.dart';
 import 'package:lurk/screens/community.dart';
@@ -18,16 +21,17 @@ import 'package:lurk/screens/settings.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_app_bar.dart';
+import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/custom_search_bar.dart';
+import 'package:lurk/widgets/expansion_icon.dart';
 import 'package:lurk/widgets/list_tile_icon.dart';
 import 'package:lurk/widgets/name_text.dart';
 
 class MainScaffold extends StatefulWidget {
 
   final GlobalKey<CustomRefreshIndicatorState>? refreshIndicatorKey;
-  final Platform platform;
-  final Community? activeCommunity;
+  final Community activeCommunity;
   final ScrollController? customScrollViewController;
   final Widget? title;
   final Widget? subtitle;
@@ -45,8 +49,7 @@ class MainScaffold extends StatefulWidget {
   const MainScaffold({
     super.key,
     this.refreshIndicatorKey,
-    required this.platform,
-    this.activeCommunity,
+    required this.activeCommunity,
     this.customScrollViewController,
     required this.title,
     this.subtitle,
@@ -105,19 +108,8 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
   
   void closeDrawer() => _scaffoldKey.currentState?.closeDrawer();
 
-  void _scrollToTopAndRefresh() {
-    final scrollController = widget.onOtherRefresh?.call() ?? _scrollController;
-    if (scrollController.hasClients) {
-      scrollController.animateTo(
-        0, 
-        duration: const Duration(milliseconds: 300), 
-        curve: Curves.easeInOutCubicEmphasized
-      );
-    }
-  }
-
   void _showUsersBottomSheet(BuildContext context) {
-    final loggedInUsers = Settings.loggedInUsers.value;
+    final platformLoggedInUsers = Settings.loggedInUsers.value.where((user) => user.platform == widget.activeCommunity.platform);
     final activeUser = Settings.activeUser.value;
     showModalBottomSheet(
       context: context,
@@ -125,13 +117,14 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
       isScrollControlled: true,
       builder: (context) {
         return SafeArea(
-          child: loggedInUsers.isEmpty
+          child: platformLoggedInUsers.isEmpty
             ? ListTile(
-                title: Text('Login to Reddit'),
+                title: Text('Login to ${getPlatformNameOrCommunityHost(widget.activeCommunity.platform, widget.activeCommunity)}'),
                 onTap: () => _onLoginPressed(context),
               )
             : _UserList(
-                loggedInUsers: loggedInUsers,
+                activeCommunity: widget.activeCommunity,
+                loggedInUsers: platformLoggedInUsers,
                 activeUser: activeUser!,
                 onLoginPressed: () => _onLoginPressed(context),
               )
@@ -156,10 +149,9 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
             child: SizedBox(
               height: (screenHeight - viewInsetsBottom) * 0.4,
               child: _CommunityList(
-                platform: widget.platform,
+                platform: widget.activeCommunity.platform,
                 activeCommunity: widget.activeCommunity,
                 reverse: Settings.reverseCommunityList.value,
-                onActiveCommunitySelected: _scrollToTopAndRefresh
               )
             )
           ),
@@ -168,21 +160,53 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
     );
   }
 
+  void _showSnackbarMessage(String message) {
+    if (context.mounted) {
+      context.showSnackBarMessage(message);
+    }
+  }
+
   void _onLoginPressed(BuildContext context) async {
-    _scaffoldKey.currentState?.closeDrawer();
-    final user = await widget.platform.getApi(widget.activeCommunity!.host, null).login();
-    if (user != null) {
+
+    void onUserLoggedIn(LoggedInUser user) {
       if (!Settings.loggedInUsers.value.any((u) => u.id == user.id)) {
         Settings.loggedInUsers.add(user);
         Settings.activeUser.value = user;
-        widget.platform.destroySession(widget.activeCommunity!.host, null);
-        widget.platform.getApi(widget.activeCommunity!.host, user.id).fetchSubscribedCommunities();
-        if (context.mounted) {
-          context.showSnackBarMessage('Logged in to ${widget.platform.name.toTitleCase()} as ${user.name}');
-        }
+        widget.activeCommunity.platform.destroySession(widget.activeCommunity.host, null);
+        widget.activeCommunity.platform.getApi(widget.activeCommunity.host, user.id).fetchSubscribedCommunities();
+        _showSnackbarMessage('Logged in to ${getPlatformNameOrCommunityHost(widget.activeCommunity.platform, widget.activeCommunity)} as ${user.name}');
       }
-      else if (context.mounted) {
-        context.showSnackBarMessage('Already logged in to ${widget.platform.name.toTitleCase()} as ${user.name}');
+      else {
+        _showSnackbarMessage('Already logged in to ${getPlatformNameOrCommunityHost(widget.activeCommunity.platform, widget.activeCommunity)} as ${user.name}');
+      }
+    }
+
+    _scaffoldKey.currentState?.closeDrawer();
+    if (widget.activeCommunity.platform.loginFields != null) {
+      final user = await showDialog(
+        context: context,
+        builder: (context) {
+          return _LoginDialog(
+            platform: widget.activeCommunity.platform,
+            activeCommunity: widget.activeCommunity,
+            loginFields: widget.activeCommunity.platform.loginFields!,
+            performLogin: (credentials) => widget.activeCommunity.platform.getApi(widget.activeCommunity.host, null).login(credentials),
+          );
+        }
+      );
+      if (user != null) {
+        onUserLoggedIn(user);
+      }
+    }
+    else {
+      final result = await widget.activeCommunity.platform.getApi(widget.activeCommunity.host, null).login();
+      switch (result) {
+        case LoginSuccess():
+          onUserLoggedIn(result.user);
+          break;
+        case LoginError(:final message):
+          _showSnackbarMessage('Failed to login: $message');
+          break;
       }
     }
   }
@@ -197,21 +221,26 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
           data: showPlatformColorAccents
             ? theme.copyWith(
                 colorScheme: theme.colorScheme.copyWith(
-                  primary: widget.platform.color,
+                  primary: widget.activeCommunity.platform.color,
                   onPrimary: Colors.white,
-                  secondaryContainer: widget.platform.color,
+                  secondaryContainer: widget.activeCommunity.platform.color,
                   onSecondaryContainer: Colors.white,
                 ),
                 bottomNavigationBarTheme: theme.bottomNavigationBarTheme.copyWith(
-                  selectedItemColor: widget.platform.color,
+                  selectedItemColor: widget.activeCommunity.platform.color,
+                ),
+                textButtonTheme: TextButtonThemeData(
+                  style: TextButton.styleFrom(
+                    foregroundColor: widget.activeCommunity.platform.color,
+                  ),
                 ),
                 textSelectionTheme: TextSelectionThemeData(
-                  cursorColor: widget.platform.color.withAlpha(200),
-                  selectionColor: widget.platform.color.withAlpha(75),
-                  selectionHandleColor: widget.platform.color,
+                  cursorColor: widget.activeCommunity.platform.color.withAlpha(200),
+                  selectionColor: widget.activeCommunity.platform.color.withAlpha(75),
+                  selectionHandleColor: widget.activeCommunity.platform.color,
                 ),
                 snackBarTheme: theme.snackBarTheme.copyWith(
-                  actionTextColor: widget.platform.color
+                  actionTextColor: widget.activeCommunity.platform.color
                 ),
               )
             : theme,
@@ -320,7 +349,16 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
                                                 tooltip: 'Refresh',
                                                 iconSize: 26,
                                                 color: appBarColor.contrast,
-                                                onPressed: _scrollToTopAndRefresh
+                                                onPressed: () {
+                                                  final scrollController = widget.onOtherRefresh?.call() ?? _scrollController;
+                                                    if (scrollController.hasClients) {
+                                                      scrollController.animateTo(
+                                                        0, 
+                                                        duration: const Duration(milliseconds: 300), 
+                                                        curve: Curves.easeInOutCubicEmphasized
+                                                      );
+                                                    }
+                                                }
                                               ),
                                             ]
                                           );
@@ -341,56 +379,50 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
                     final divider = const Divider(height: 1, color: Constants.lighterBackgroundColor);
                     final communityList = Expanded(
                       child: _CommunityList(
-                        platform: widget.platform,
+                        platform: widget.activeCommunity.platform,
                         activeCommunity: widget.activeCommunity,
                         reverse: reverse,
-                        onActiveCommunitySelected: _scrollToTopAndRefresh
                       )
                     );
                     final userList = ValueListenableBuilder(
                       valueListenable: Settings.loggedInUsers,
                       builder: (context, loggedInUsers, child) {
-                        if (loggedInUsers.isEmpty) {
-                          if (widget.platform.hasLogin) {
-                            return ValueListenableBuilder(
-                              valueListenable: Settings.redditClientId,
-                              builder: (context, redditClientId, child) {
-                                return ValueListenableBuilder(
-                                  valueListenable: Settings.redditRedirectUri,
-                                  builder: (context, redditRedirectUri, child) {
-                                    if (redditClientId == null || redditRedirectUri == null) {
-                                      return const ListTile(leading: _SettingsIconButton());
-                                    }
-                                    return ListTile(
-                                      title: Text('Login to Reddit'),
-                                      onTap: () {
-                                        context.pop();
-                                        _onLoginPressed(this.context);
-                                      },
-                                      trailing: const _SettingsIconButton(),
-                                    );
-                                  }
-                                );
-                              }
-                            );
-                          }
-                          return const ListTile(leading: _SettingsIconButton());
+                        final platformLoggedInUsers = loggedInUsers.where((user) => user.platform == widget.activeCommunity.platform).toList();
+                        if (platformLoggedInUsers.isNotEmpty) {
+                          return ValueListenableBuilder(
+                            valueListenable: Settings.activeUser,
+                            builder: (context, activeUser, child) {
+                              return _UserList(
+                                activeCommunity: widget.activeCommunity,
+                                loggedInUsers: platformLoggedInUsers,
+                                activeUser: activeUser!,
+                                addUserTileTrailing: const _SettingsIconButton(),
+                                reverse: reverse,
+                                onLoginPressed: () {
+                                  context.pop();
+                                  _onLoginPressed(context);
+                                }
+                              );
+                            }
+                          );
                         }
-                        return ValueListenableBuilder(
-                          valueListenable: Settings.activeUser,
-                          builder: (context, activeUser, child) {
-                            return _UserList(
-                              loggedInUsers: loggedInUsers,
-                              activeUser: activeUser!,
-                              addUserTileTrailing: const _SettingsIconButton(),
-                              reverse: reverse,
-                              onLoginPressed: () {
-                                context.pop();
-                                _onLoginPressed(this.context);
+                        else if (widget.activeCommunity.platform.hasLogin) {
+                          final bool hasLoginRequiredSettings = widget.activeCommunity.platform.loginRequiredSettingKeys != null;
+                          return StreamBuilder(
+                            stream: hasLoginRequiredSettings ? Database.instance.watchSettings(widget.activeCommunity.platform.loginRequiredSettingKeys!) : null,
+                            builder: (context, snapshot) {
+                              if (hasLoginRequiredSettings && (!snapshot.hasData || (snapshot.data?.values.any((value) => value == null) ?? true))) {
+                                return const ListTile(leading: _SettingsIconButton());
                               }
-                            );
-                          }
-                        );
+                              return ListTile(
+                                title: Text('Login to ${getPlatformNameOrCommunityHost(widget.activeCommunity.platform, widget.activeCommunity)}'),
+                                onTap: () => _onLoginPressed(context),
+                                trailing: const _SettingsIconButton(),
+                              );
+                            }
+                          );
+                        }
+                        return const ListTile(leading: _SettingsIconButton());
                       }
                     );
                     extendBody = false;
@@ -604,21 +636,146 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
 
 }
 
-// class StiffBouncingScrollPhysics extends BouncingScrollPhysics {
+class _LoginDialog extends StatefulWidget {
 
-//   const StiffBouncingScrollPhysics({super.parent});
+  final Platform platform;
+  final Community? activeCommunity;
+  final List<LoginField> loginFields;
+  final Future<LoginResult> Function(Map<String, String> credentials) performLogin;
 
-//   @override
-//   StiffBouncingScrollPhysics applyTo(ScrollPhysics? ancestor) {
-//     return StiffBouncingScrollPhysics(parent: buildParent(ancestor));
-//   }
+  const _LoginDialog({
+    required this.platform,
+    required this.activeCommunity,
+    required this.loginFields,
+    required this.performLogin
+  });
 
-//   @override
-//   double frictionFactor(double overscrollFraction) {
-//     return super.frictionFactor(overscrollFraction) * 0.25;
-//   }
+  @override
+  State<_LoginDialog> createState() => _LoginDialogState();
 
-// }
+}
+
+class _LoginDialogState extends State<_LoginDialog> {
+
+  late final List<TextEditingController> _textEditingControllers;
+  bool _canLogin = false;
+  bool _isLoading = false;
+  String? _errorMessage;
+
+  @override
+  void initState() {
+    super.initState();
+    _textEditingControllers = [];
+    for (var _ in widget.loginFields) {
+      final controller = TextEditingController();
+      controller.addListener(_onTextUpdate);
+      _textEditingControllers.add(controller);
+    }
+  }
+
+  @override
+  void dispose() {
+    for (final controller in _textEditingControllers) {
+      controller.removeListener(_onTextUpdate);
+      controller.dispose();
+    }
+    super.dispose();
+  }
+
+  void _onTextUpdate() {
+    final bool canLogin = _textEditingControllers.every((controller) => controller.text.isNotEmpty);
+    if (canLogin != _canLogin) {
+      setState(() {
+        _canLogin = canLogin;
+      });
+    }
+  }
+
+  void _onError(String message) {
+    setState(() {
+      _errorMessage = 'Error: $message';
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> children = List.generate(
+      widget.loginFields.length,
+      (index) {
+        final field = widget.loginFields[index];
+        return TextField(
+          enabled: !_isLoading,
+          controller: _textEditingControllers[index],
+          obscureText: field.isSecret,
+          decoration: InputDecoration(labelText: field.label)
+        );
+      }
+    );
+    if (_errorMessage != null) {
+      children.add(
+        Padding(
+          padding: const EdgeInsets.only(top: 8),
+          child: Text(
+            _errorMessage!,
+            style: TextStyle(color: Theme.of(context).colorScheme.error)
+          ),
+        )
+      );
+    }
+    return AlertDialog(
+      title: Text('Login to ${getPlatformNameOrCommunityHost(widget.platform, widget.activeCommunity)}'),
+      content: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: children
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => context.pop(false),
+          child: const Text('Cancel'),
+        ),
+        Stack(
+          alignment: Alignment.center,
+          children: [
+            Opacity(
+              opacity: _isLoading ? 0 : 1,
+              child: TextButton(
+                onPressed: _canLogin && !_isLoading
+                  ? () async {
+                      setState(() {
+                        _isLoading = true;
+                      });
+                      final result = await widget.performLogin({
+                        for (var i = 0; i < widget.loginFields.length; i++)
+                          widget.loginFields[i].label: _textEditingControllers[i].text
+                      });
+                      setState(() {
+                        _isLoading = false;
+                      });
+                      switch (result) {
+                        case LoginSuccess success:
+                          if (context.mounted) {
+                            context.pop(success.user);
+                          }
+                          return;
+                        case LoginError error:
+                          _onError(error.message ?? 'something went wrong');
+                          return;
+                      }
+                    }
+                  : null,
+                child: const Text('Login'),
+              ),
+            ),
+            if (_isLoading)
+              const CustomCircularProgressIndicator(size: 16, strokeWidth: 2)
+          ],
+        )
+      ],
+    );
+  }
+
+}
 
 class _Scrim extends StatelessWidget {
 
@@ -643,13 +800,15 @@ class _Scrim extends StatelessWidget {
 
 class _UserList extends StatefulWidget {
 
-  final List<LoggedInUser> loggedInUsers;
+  final Community activeCommunity;
+  final Iterable<LoggedInUser> loggedInUsers;
   final LoggedInUser activeUser;
   final bool reverse;
   final Widget? addUserTileTrailing;
   final VoidCallback onLoginPressed;
 
   const _UserList({
+    required this.activeCommunity,
     required this.loggedInUsers,
     required this.activeUser,
     this.reverse = false,
@@ -675,9 +834,8 @@ class _UserListState extends State<_UserList> {
           context.pop();
           context.push(() {
             return UserDetailsScreen(
-              platform: user.platform,
+              activeCommunity: widget.activeCommunity,
               username: user.name,
-              host: user.host
             );
           });
         },
@@ -697,7 +855,6 @@ class _UserListState extends State<_UserList> {
 
   @override
   Widget build(BuildContext context) {
-    final inactiveUsers = widget.loggedInUsers.where((user) => user != widget.activeUser);
     final children = [
       AnimatedCrossFade(
         firstChild: const SizedBox(width: double.infinity, height: 0),
@@ -714,16 +871,18 @@ class _UserListState extends State<_UserList> {
               trailing: widget.addUserTileTrailing,
               onTap: widget.onLoginPressed,
             ),
-            ...inactiveUsers.map((user) => _UserListTile(
-              platform: user.platform,
-              user: user,
-              onTap: () async {
-                Settings.activeUser.value = user;
-                await Future.delayed(const Duration(milliseconds: 300));
-                setState(() => _isExpanded = false);
-              },
-              onLongPress: () => _onTileLongPress(user)
-            ))
+            ...widget.loggedInUsers.where((user) => user != widget.activeUser).map((user) {
+              return _UserListTile(
+                platform: user.platform,
+                user: user,
+                onTap: () async {
+                  Settings.activeUser.value = user;
+                  await Future.delayed(const Duration(milliseconds: 500));
+                  setState(() => _isExpanded = false);
+                },
+                onLongPress: () => _onTileLongPress(user)
+              );
+            })
           ],
         ),
         crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
@@ -735,18 +894,10 @@ class _UserListState extends State<_UserList> {
         user: widget.activeUser,
         trailing: IconButton(
           onPressed: () => setState(() => _isExpanded = !_isExpanded),
-          icon: TweenAnimationBuilder<double>(
-            tween: Tween<double>(end: (_isExpanded ^ widget.reverse) ? pi : 0),
-            duration: const Duration(milliseconds: 1000),
+          icon: ExpansionIcon(
+            up: _isExpanded,
+            duration: const Duration(milliseconds: 500),
             curve: Curves.easeInOutCubicEmphasized,
-            builder: (context, rotation, child) {
-              return Transform(
-                alignment: Alignment.center,
-                transform: Matrix4.identity()..rotateX(rotation),
-                  // ..rotateY(rotation),
-                child: const Icon(Icons.expand_less_rounded),
-              );
-            },
           ),
         ),
         onTap: () => setState(() => _isExpanded = !_isExpanded),
@@ -769,10 +920,7 @@ class _SettingsIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       icon: Icon(Icons.settings_rounded),
-      onPressed: () {
-        context.pop();
-        context.push(() => const SettingsScreen());
-      }
+      onPressed: () => context.push(() => const SettingsScreen())
     );
   }
 }
@@ -836,15 +984,13 @@ class _UserIcon extends StatelessWidget {
 class _CommunityList extends StatefulWidget {
 
   final Platform platform;
-  final Community? activeCommunity;
+  final Community activeCommunity;
   final bool reverse;
-  final VoidCallback? onActiveCommunitySelected;
 
   const _CommunityList({
     required this.platform,
     required this.activeCommunity,
     required this.reverse,
-    required this.onActiveCommunitySelected
   });
 
   @override
@@ -853,15 +999,6 @@ class _CommunityList extends StatefulWidget {
 }
 
 class _CommunityListState extends State<_CommunityList> {
-
-  static final RegExp _searchNameAllowedRegex = RegExp(
-    '[a-zA-Z0-9${
-      F.appFlavor.platforms
-      .expand((platform) => hexEscape('${platform.communityPrefix}${platform.userPrefix}${platform.communityNameAllowedChars}${platform.userNameAllowedChars}'))
-      .toSet()
-      .join()
-    }]'
-  );
 
   final TextEditingController _searchController = TextEditingController();
   late List<Community> _visibleCommunities;
@@ -897,7 +1034,9 @@ class _CommunityListState extends State<_CommunityList> {
   }
 
   void _onSavedCommunitiesChanged() {
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
     setState(() {
       _updateVisibleCommunities();
       _sortVisibleCommunities();
@@ -905,12 +1044,14 @@ class _CommunityListState extends State<_CommunityList> {
   }
 
   void _updateVisibleCommunities() {
-    _visibleCommunities = (_searchQuery.isEmpty ? Communities.saved.value : Communities.saved.value.where((community) => community.name?.contains(_searchQuery) ?? false)).toList();
+    _visibleCommunities = (_searchQuery.isEmpty ? Communities.saved.value : Communities.saved.value.where((community) => community.fullName.contains(_searchQuery))).toList();
   }
 
   void _sortVisibleCommunities() {
     _visibleCommunities.sort((c1, c2) {
-      if (c1.isFavorite != c2.isFavorite) return c1.isFavorite ? -1 : 1;
+      if (c1.isFavorite != c2.isFavorite) {
+        return c1.isFavorite ? -1 : 1;
+      }
       return (c1.name ?? '').compareTo((c2.name ?? ''));
     });
   }
@@ -926,49 +1067,27 @@ class _CommunityListState extends State<_CommunityList> {
   }
 
   void _navigateToCommunity(Community community) {
-    context.pop();
-    if (community == widget.activeCommunity) {
-      widget.onActiveCommunitySelected?.call();
-      return;
-    }
-    if (community.platform == Settings.homeCommunityPlatform.value && community.name == Settings.homeCommunityName.value) {
-      routeObserver.staleRoutes.add(routeObserver.routes.first);
-      Navigator.popUntil(context, (route) => route.isFirst);
-      return;
-    }
-    final routeName = '${community.platform.name}/community/${community.name}';
-    final existingRoute = routeObserver.routes.where((route) => route.settings.name == routeName).firstOrNull;
-    if (existingRoute != null) {
-      routeObserver.staleRoutes.add(existingRoute);
-      Navigator.of(context).popUntil((route) => route.settings.name == routeName);
-      return;
-    }
+    // if (community.platform == Settings.homeCommunityPlatform.value && community.host == Settings.homeCommunityHost.value && community.name == Settings.homeCommunityName.value) {
+    //   routeObserver.staleRoutes.add(routeObserver.routes.first);
+    //   Navigator.popUntil(context, (route) => route.isFirst);
+    //   return;
+    // }
+    final routeName = '${community.platform.name}/${community.host}/community/${community.name}';
+    // final existingRoute = routeObserver.routes.where((route) => route.settings.name == routeName).firstOrNull;
+    // if (existingRoute != null) {
+    //   routeObserver.staleRoutes.add(existingRoute);
+    //   Navigator.of(context).popUntil((route) => route.settings.name == routeName);
+    //   return;
+    // }
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(
-        settings: RouteSettings(name: routeName, arguments: <String, dynamic>{}),
-        builder: (context) => CommunityScreen(community: community)
+        settings: RouteSettings(name: routeName),
+        builder: (context) => CommunityScreen(activeCommunity: community, community: community)
       ),
       (route) => route.isFirst
     );
   }
-
-  // void _navigateToCommunity(Community community) {
-  //   context.pop();
-  //   if (community.platform == Settings.homeCommunityPlatform.value && community.name == Settings.homeCommunityName.value) {
-  //     Navigator.popUntil(context, (route) => route.isFirst);
-  //     return;
-  //   }
-  //   if (community == widget.activeCommunity) {
-  //     widget.onActiveCommunitySelected?.call();
-  //     return;
-  //   }
-  //   Navigator.pushAndRemoveUntil(
-  //     context,
-  //     MaterialPageRoute(builder: (context) => CommunityScreen(community: community)),
-  //     (route) => route.isFirst
-  //   );
-  // }
 
   void _cyclePlatform() {
     setState(() {
@@ -1014,11 +1133,11 @@ class _CommunityListState extends State<_CommunityList> {
   void _updateSearchBarTexts() {
     switch (_searchType) {
       case SearchType.community:
-        _searchController.text = _cleanName(_searchController.text, _searchPlatform.communityNameAllowedChars);
+        _searchController.text = _cleanName(_searchController.text, _searchPlatform.communityNameCleaningRegexReplacements);
         _searchBarPrefixText = _searchPlatform.communityPrefix;
         _searchBarHint = _searchBarFocusNode.hasFocus ? _searchPlatform.communityLabel : _searchPlatform.communityLabel.toTitleCase();
       case SearchType.user:
-        _searchController.text = _cleanName(_searchController.text, _searchPlatform.userNameAllowedChars);
+        _searchController.text = _cleanName(_searchController.text, _searchPlatform.userNameCleaningRegexReplacements);
         _searchBarPrefixText = _searchPlatform.userPrefix;
         _searchBarHint = _searchBarFocusNode.hasFocus ? 'username' : 'Username';
       case SearchType.withinCommunity:
@@ -1030,19 +1149,21 @@ class _CommunityListState extends State<_CommunityList> {
     }
   }
 
-  String _cleanName(String value, String allowedChars) {
-    final escaped = hexEscape(allowedChars).join();
-    return value
-      .toLowerCase()
-      .replaceAll(RegExp('[^a-z0-9$escaped]'), '')
-      .replaceAllMapped(RegExp('[$escaped]{2,}'), (m) => m.group(0)![0])
-      .replaceFirst(RegExp('^[$escaped]'), '');
+  String _cleanName(String value, List<(String, String)> regexes) {
+    if (value.isEmpty) {
+      return '';
+    }
+    String cleaned = value;
+    for (final (regex, replacement) in regexes) {
+      cleaned = cleaned.replaceAll(RegExp(regex), replacement);
+    }
+    return cleaned;
   }
 
   void _updateIsSearchValid() {
     _isSearchValid = switch (_searchType) {
-      SearchType.community => RegExp(_searchPlatform.communityNameValidation).hasMatch(_searchQuery),
-      SearchType.user => RegExp(_searchPlatform.userNameValidation).hasMatch(_searchQuery),
+      SearchType.community => RegExp(_searchPlatform.communityNameValidationRegex).hasMatch(_searchQuery),
+      SearchType.user => RegExp(_searchPlatform.userNameValidationRegex).hasMatch(_searchQuery),
       SearchType.withinCommunity => _searchQuery.isNotEmpty,
       SearchType.all => _searchQuery.isNotEmpty,
     };
@@ -1054,7 +1175,8 @@ class _CommunityListState extends State<_CommunityList> {
     }
     final match = RegExp(_searchPlatform.hostAndNameFromSearchQueryRegex!).firstMatch(value);
     if (match != null) {
-      return (match.group(2)!, match.group(1));
+      final communityName = match.group(1);
+      return (match.group(2)!, communityName!.isNotEmpty ? communityName : null);
     }
     return null;
   }
@@ -1065,13 +1187,13 @@ class _CommunityListState extends State<_CommunityList> {
     final primaryColor = theme.colorScheme.primary;
     final leadingForegroundColor = ThemeData.estimateBrightnessForColor(primaryColor) == Brightness.dark ? Colors.white : Colors.black;
     return ValueListenableBuilder(
-      valueListenable: Settings.activeUser,
-      builder: (context, activeUser, child) {
-        final showRootPage = _searchQuery.isEmpty && activeUser?.platform.hasLogin == true;
-        final headerCount = showRootPage ? 2 : 1;
+      valueListenable: Settings.showPlatformColorAccents,
+      builder: (context, showPlatformColorAccents, child) {
         return ValueListenableBuilder(
-          valueListenable: Settings.showPlatformColorAccents,
-          builder: (context, showPlatformColorAccents, child) {
+          valueListenable: Settings.activeUser,
+          builder: (context, activeUser, child) {
+            final showRootPage = _searchQuery.isEmpty && activeUser?.platform.hasLogin == true;
+            final headerCount = showRootPage ? 2 : 1;
             final listView = ListView.builder(
               reverse: widget.reverse,
               itemCount: headerCount + _visibleCommunities.length,
@@ -1112,7 +1234,7 @@ class _CommunityListState extends State<_CommunityList> {
                     height: 40,
                     alignment: leadingAlignment,
                     decoration: BoxDecoration(
-                      color: _searchPlatform.color,
+                      color: showPlatformColorAccents ? _searchPlatform.color : primaryColor,
                       borderRadius: BorderRadius.horizontal(
                         left: const Radius.circular(20),
                         right: Radius.circular(leadingRightCornerRadius),
@@ -1120,54 +1242,46 @@ class _CommunityListState extends State<_CommunityList> {
                     ),
                     child: leadingChild
                   );
-                  final searchBar = Theme(
-                    data: theme.copyWith(
-                      textSelectionTheme: TextSelectionThemeData(
-                        cursorColor: _searchPlatform.color.withAlpha(200),
-                        selectionColor: _searchPlatform.color.withAlpha(75),
-                        selectionHandleColor: _searchPlatform.color,
-                      )
+                  Widget searchBar = SearchBar(
+                    controller: _searchController,
+                    keyboardType: TextInputType.url,
+                    textInputAction: TextInputAction.go,
+                    padding: const WidgetStatePropertyAll<EdgeInsets>(EdgeInsets.only(right: 8)),
+                    hintText: _searchBarHint,
+                    hintStyle: WidgetStatePropertyAll(TextStyle(color: Colors.white60)),
+                    inputFormatters: [_InputFormatter(searchPlatform: _searchPlatform, searchType: _searchType)],
+                    // inputFormatters: _searchType != SearchType.all && _searchType != SearchType.withinCommunity ? [FilteringTextInputFormatter.allow(_searchNameAllowedRegex)] : null,
+                    backgroundColor: WidgetStateProperty.all(Constants.lighterBackgroundColor),
+                    side: _isSearchValid && _isSearchBarFocused ? WidgetStatePropertyAll(BorderSide(color: _searchPlatform.color),) : null,
+                    leading: Container(
+                      width: 52,
+                      height: 40,
+                      alignment: Alignment.centerLeft,
+                      margin: EdgeInsets.only(left: 8),
+                      child: isCombinedFlavor
+                        ? GestureDetector(
+                            onTap: _cyclePlatform,
+                            child: leadingIcon
+                          )
+                        : leadingIcon
                     ),
-                    child: SearchBar(
-                      controller: _searchController,
-                      keyboardType: TextInputType.url,
-                      textInputAction: TextInputAction.go,
-                      padding: const WidgetStatePropertyAll<EdgeInsets>(EdgeInsets.only(right: 8)),
-                      hintText: _searchBarHint,
-                      hintStyle: WidgetStatePropertyAll(TextStyle(color: Colors.white60)),
-                      inputFormatters: _searchType != SearchType.all && _searchType != SearchType.withinCommunity ? [FilteringTextInputFormatter.allow(_searchNameAllowedRegex)] : null,
-                      backgroundColor: WidgetStateProperty.all(Constants.lighterBackgroundColor),
-                      side: _isSearchValid && _isSearchBarFocused ? WidgetStatePropertyAll(BorderSide(color: _searchPlatform.color),) : null,
-                      leading: Container(
-                        width: 52,
-                        height: 40,
-                        alignment: Alignment.centerLeft,
-                        margin: EdgeInsets.only(left: 8),
-                        child: isCombinedFlavor
-                          ? GestureDetector(
-                              onTap: _cyclePlatform,
-                              child: leadingIcon
-                            )
-                          : leadingIcon
-                      ),
-                      trailing: _isSearchBarFocused
-                        ? [
-                            IconButton(
-                              icon: Icon(
-                                _searchType.icon,
-                                color: Colors.white54
-                              ),
-                              onPressed: _cycleSearchType,
-                            )
-                          ]
-                        : null,
-                      onChanged: (value) {
-                                
-                        var cleanValue = value;
-                        var lowerCase = value.toLowerCase();
-                                
-                        bool handledPrefix = false;
-                        for (Platform platform in F.appFlavor.platforms) {
+                    trailing: _isSearchBarFocused
+                      ? [
+                          IconButton(
+                            icon: Icon(
+                              _searchType.icon,
+                              color: Colors.white54
+                            ),
+                            onPressed: _cycleSearchType,
+                          )
+                        ]
+                      : null,
+                    onChanged: (value) {
+                      var cleanValue = value;
+                      var lowerCase = value.toLowerCase();
+                      bool handledPrefix = false;
+                      if (lowerCase.isNotEmpty && !RegExp(_searchPlatform.communityNameTypingRegex).hasMatch(lowerCase) && !RegExp(_searchPlatform.userNameTypingRegex).hasMatch(lowerCase)) {
+                        for (final platform in F.appFlavor.platforms) {
                           if (lowerCase.startsWith(platform.communityPrefix)) {
                             cleanValue = cleanValue.substring(platform.communityPrefix.length);
                             _updateSearchType(SearchType.community);
@@ -1187,103 +1301,99 @@ class _CommunityListState extends State<_CommunityList> {
                             break;
                           }
                         }
-                                
-                        if (cleanValue.isNotEmpty) {
-                          if (_searchType == SearchType.community) {
-                            cleanValue = _cleanName(cleanValue, _searchPlatform.communityNameAllowedChars);
+                      }
+                              
+                      if (cleanValue != value) {
+                        _searchController.text = cleanValue;
+                        _searchController.selection = TextSelection.fromPosition(TextPosition(offset: cleanValue.length));
+                      }
+                      
+                      if (handledPrefix || cleanValue != _searchQuery) {
+                        setState(() {
+                          _searchQuery = cleanValue;
+                          _updateVisibleCommunities();
+                          if (cleanValue.isEmpty) {
+                            _sortVisibleCommunities();
                           }
-                          else if (_searchType == SearchType.user) {
-                            cleanValue = _cleanName(cleanValue, _searchPlatform.userNameAllowedChars);
+                          else {
+                            _visibleCommunities.sort((c1, c2) {
+                              if (c1.isFavorite != c2.isFavorite) {
+                                return c1.isFavorite ? -1 : 1;
+                              }
+                              final startsWith1 = c1.fullName.startsWith(cleanValue);
+                              final startsWith2 = c2.fullName.startsWith(cleanValue);
+                              if (startsWith1 != startsWith2) {
+                                return startsWith1 ? -1 : 1;
+                              }
+                              return c1.fullName.compareTo(c2.fullName);
+                            });
                           }
-                        }
-                                
-                        if (cleanValue != value) {
-                          _searchController.text = cleanValue;
-                          _searchController.selection = TextSelection.fromPosition(TextPosition(offset: cleanValue.length));
-                        }
-                        
-                        if (handledPrefix || cleanValue != _searchQuery) {
-                          setState(() {
-                            _searchQuery = cleanValue;
-                            _updateVisibleCommunities();
-                            if (cleanValue.isEmpty) {
-                              _sortVisibleCommunities();
-                            }
-                            else {
-                              _visibleCommunities.sort((c1, c2) {
-                                if (c1.isFavorite != c2.isFavorite) {
-                                  return c1.isFavorite ? -1 : 1;
-                                }
-                                final name1 = (c1.name ?? '').toLowerCase();
-                                final name2 = (c2.name ?? '').toLowerCase();
-                                final startsWith1 = name1.startsWith(cleanValue);
-                                final startsWith2 = name2.startsWith(cleanValue);
-                                if (startsWith1 != startsWith2) {
-                                  return startsWith1 ? -1 : 1;
-                                }
-                                return (c1.name ?? '').compareTo((c2.name ?? ''));
-                              });
-                            }
-                            _updateIsSearchValid();
-                          });
-                        }
-                      },
-                      onSubmitted: (value) {
-                        switch (_searchType) {
-                          case SearchType.community:
-                            if (!RegExp(_searchPlatform.communityNameValidation).hasMatch(value)) {
-                              return;
-                            }
-                            final (host, communityName) = _getHostAndNameFromSearchQuery(value)!;
-                            final community = Community(
-                              platform: _searchPlatform,
-                              host: host,
-                              name: communityName
-                            );
-                            _navigateToCommunity(community);
-                            Communities.saved.add(community);
-                          case SearchType.user:
-                            if (!RegExp(_searchPlatform.userNameValidation).hasMatch(value)) {
-                              return;
-                            }
-                            context.pop();
-                            context.push(() {
-                              final (host, username) = _getHostAndNameFromSearchQuery(value)!;
-                              return UserDetailsScreen(
-                                platform: _searchPlatform,
-                                host: host,
-                                username: username!,
-                              );
-                            });
-                          case SearchType.withinCommunity:
-                            final query = value.trim();
-                            if (query.isEmpty) return;
-                            context.pop();
-                            context.push(() {
-                              return SearchScreen(
-                                platform: _searchPlatform,
-                                host: _searchPlatform.host ?? widget.activeCommunity!.host,
-                                query: query,
-                                communityName: widget.activeCommunity?.name,
-                              );
-                            });
+                          _updateIsSearchValid();
+                        });
+                      }
+                    },
+                    onSubmitted: (value) {
+                      switch (_searchType) {
+                        case SearchType.community:
+                          if (!RegExp(_searchPlatform.communityNameValidationRegex).hasMatch(value)) {
                             return;
-                          case SearchType.all:
-                            final query = value.trim();
-                            if (query.isEmpty) return;
-                            context.pop();
-                            context.push(() {
-                              return SearchScreen(
-                                platform: _searchPlatform,
-                                host: _searchPlatform.host ?? widget.activeCommunity!.host,
-                                query: query
-                              );
-                            });
-                        }
-                      },
-                    ),
+                          }
+                          final (host, communityName) = _getHostAndNameFromSearchQuery(value)!;
+                          final community = Community(
+                            platform: _searchPlatform,
+                            host: host,
+                            name: communityName
+                          );
+                          _navigateToCommunity(community);
+                          Communities.saved.add(community);
+                        case SearchType.user:
+                          if (!RegExp(_searchPlatform.userNameValidationRegex).hasMatch(value)) {
+                            return;
+                          }
+                          context.pop();
+                          context.push(() {
+                            final (host, username) = _getHostAndNameFromSearchQuery(value)!;
+                            return UserDetailsScreen(
+                              activeCommunity: widget.activeCommunity,
+                              username: username!,
+                            );
+                          });
+                        case SearchType.withinCommunity:
+                          final query = value.trim();
+                          if (query.isEmpty) return;
+                          context.pop();
+                          context.push(() {
+                            return SearchScreen(
+                              activeCommunity: widget.activeCommunity,
+                              query: query,
+                            );
+                          });
+                          return;
+                        case SearchType.all:
+                          final query = value.trim();
+                          if (query.isEmpty) return;
+                          context.pop();
+                          context.push(() {
+                            return SearchScreen(
+                              activeCommunity: widget.activeCommunity,
+                              query: query
+                            );
+                          });
+                      }
+                    },
                   );
-            
+                  if (showPlatformColorAccents) {
+                    searchBar = Theme(
+                      data: theme.copyWith(
+                        textSelectionTheme: TextSelectionThemeData(
+                          cursorColor: _searchPlatform.color.withAlpha(200),
+                          selectionColor: _searchPlatform.color.withAlpha(75),
+                          selectionHandleColor: _searchPlatform.color,
+                        )
+                      ),
+                      child: searchBar
+                    );
+                  }
                   return ListTile(
                     minVerticalPadding: 0,
                     contentPadding: EdgeInsets.symmetric(horizontal: 12),
@@ -1318,26 +1428,33 @@ class _CommunityListState extends State<_CommunityList> {
                     isFixed: true,
                     leading: IconButton(
                       onPressed: () {},
-                      icon: Stack(
-                        alignment: Alignment.center,
-                        children: [
-                          Container(
-                            width: 24,
-                            height: 24,
-                            decoration: const BoxDecoration(
-                              color: Colors.white,
-                              shape: BoxShape.circle,
-                            )
-                          ),
-                          Icon(
-                            Icons.reddit_rounded, //TODO?
-                            size: 32,
-                            color: activeUser.platform.color
-                          ),
-                        ],
+                      icon: activeUser.hostIconUrl != null
+                        ? ExtendedImage.network(
+                            activeUser.hostIconUrl!,
+                            width: 32,
+                            height: 32,
+                            fit: BoxFit.cover,
+                          )
+                        : Stack(
+                            alignment: Alignment.center,
+                            children: [
+                              Container(
+                                width: 24,
+                                height: 24,
+                                decoration: const BoxDecoration(
+                                  color: Colors.white,
+                                  shape: BoxShape.circle,
+                                )
+                              ),
+                              Icon(
+                                Icons.reddit_rounded, //TODO?
+                                size: 32,
+                                color: activeUser.platform.color
+                              ),
+                          ],
                       )
                     ),
-                    title: Text(activeUser.platform.rootCommunityName ?? ''),
+                    title: activeUser.platform.host != null ? Text(activeUser.platform.rootCommunityName ?? '') : CommunityNameText(community: Community(platform: activeUser.platform, host: activeUser.host)),
                     onTap: _navigateToCommunity
                   );
                 }
@@ -1345,19 +1462,13 @@ class _CommunityListState extends State<_CommunityList> {
                 final community = _visibleCommunities[index - headerCount];
                 final IconData icon;
                 final Color? color;
-                final Color communityPrefixColor;
-                final Color communityNameColor;
                 if (community.isFavorite) {
                   icon = Icons.star_rounded;
                   color = theme.colorScheme.onSurface;
-                  communityPrefixColor  = theme.colorScheme.onSurfaceVariant;
-                  communityNameColor = theme.colorScheme.onSurface;
                 }
                 else {
                   icon = Icons.star_border_rounded;
                   color = theme.colorScheme.onSurfaceVariant;
-                  communityPrefixColor  = theme.colorScheme.onSurfaceVariant;
-                  communityNameColor = theme.colorScheme.onSurfaceVariant;
                 }
                 return _CommunityNameListTile(
                   platform: widget.platform,
@@ -1377,7 +1488,8 @@ class _CommunityListState extends State<_CommunityList> {
                     builder: (context, showPlatformColorTextAccents, child) {
                       return CommunityNameText(
                         community: community,
-                        prefixColor: showPlatformColorTextAccents ? community.platform.color : communityPrefixColor,
+                        prefixColor: showPlatformColorTextAccents ? community.platform.color : null,
+                        nameColor: color,
                       );
                     }
                   ),
@@ -1410,6 +1522,68 @@ class _CommunityListState extends State<_CommunityList> {
         );
       }
     );
+  }
+
+}
+
+class _InputFormatter extends TextInputFormatter {
+
+  final Platform searchPlatform;
+  final SearchType searchType;
+
+  const _InputFormatter({
+    required this.searchPlatform,
+    required this.searchType,
+  });
+
+  @override
+  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
+    if (searchType == SearchType.all || searchType == SearchType.withinCommunity) {
+      return newValue;
+    }
+    final text = newValue.text.toLowerCase().trim();
+    final String prefix;
+    final List<(String, String)> regexReplacements;
+    final String typingRegexString;
+    if (searchType == SearchType.community) {
+      prefix = searchPlatform.communityPrefix;
+      regexReplacements = searchPlatform.communityNameCleaningRegexReplacements;
+      typingRegexString = searchPlatform.communityNameTypingRegex;
+    }
+    else {
+      prefix = searchPlatform.userPrefix;
+      regexReplacements = searchPlatform.userNameCleaningRegexReplacements;
+      typingRegexString = searchPlatform.userNameTypingRegex;
+    }
+    final String foundPrefix;
+    String body;
+    if (text.startsWith(prefix)) {
+      foundPrefix = prefix;
+      body = text.substring(prefix.length);
+    }
+    else {
+      foundPrefix = '';
+      body = text;
+    }
+    if (newValue.text.length > oldValue.text.length + 1) {
+      for (final (regex, replacement) in regexReplacements) {
+        body = body.replaceAll(RegExp(regex), replacement);
+      }
+    }
+    if (F.appFlavor.platforms.any((p) => p.communityPrefix.startsWith(text) || p.userPrefix.startsWith(text))) {
+      body = foundPrefix + body;
+      return newValue.copyWith(
+        text: body,
+        selection: TextSelection.collapsed(offset: body.length)
+      );
+    }
+    if (body.isEmpty || RegExp(typingRegexString).hasMatch(body)) {
+      return newValue.copyWith(
+        text: body,
+        selection: TextSelection.collapsed(offset: body.length)
+      );
+    }
+    return oldValue;
   }
 
 }

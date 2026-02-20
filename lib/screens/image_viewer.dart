@@ -1,8 +1,8 @@
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/custom_interactive_viewer.dart';
@@ -11,14 +11,14 @@ import 'package:lurk/widgets/media_scaffold.dart';
 
 class ImageViewerScreen extends StatelessWidget {
 
-  final Platform platform;
+  final Community activeCommunity;
   final String url;
   final Post? post;
   final Size? size;
 
   const ImageViewerScreen({
     super.key,
-    required this.platform,
+    required this.activeCommunity,
     required this.url,
     this.post,
     this.size
@@ -27,7 +27,7 @@ class ImageViewerScreen extends StatelessWidget {
   void _onSave(BuildContext context) {
     saveImage(
       context: context,
-      platform: platform,
+      platform: activeCommunity.platform,
       url: url,
     );
   }
@@ -35,7 +35,7 @@ class ImageViewerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MediaScaffold(
-      platform: platform,
+      activeCommunity: activeCommunity,
       url: url,
       type: 'image',
       post: post,
@@ -51,6 +51,7 @@ class ImageViewerScreen extends StatelessWidget {
                 context: context,
                 options: MediaScaffold.getOptions(
                   context: context,
+                  activeCommunity: activeCommunity,
                   type: 'image',
                   url: url,
                   onSave: _onSave
@@ -60,7 +61,7 @@ class ImageViewerScreen extends StatelessWidget {
             child: CustomInteractiveViewer(
               child: ExtendedImage.network(
                 url,
-                headers: {'User-Agent': platform.savedOrDefaultUserAgent},
+                headers: {'User-Agent': activeCommunity.platform.savedOrDefaultUserAgent},
                 fit: BoxFit.contain, 
                 alignment: Alignment.topCenter,
                 loadStateChanged: (state) {

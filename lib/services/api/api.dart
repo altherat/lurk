@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/community_details.dart';
+import 'package:lurk/models/login.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
@@ -15,17 +16,17 @@ abstract class Api<T extends ClientHelper> {
 
   String get savedOrDefaultUserAgent => savedUserAgent ?? defaultUnauthenticatedUserAgent;
 
-  String getBaseUrl(String host);
+  List<LoginField>? get loginFields => null;
 
-  bool get hasLogin;
-
-  ClientHelper getClientHelper(String host, String? userId);
+  @protected
+  String get defaultUnauthenticatedUserAgent;
 
   @protected
   String? get savedUserAgent;
 
-  @protected
-  String get defaultUnauthenticatedUserAgent;
+  String getBaseUrl(String host);
+
+  ClientHelper getClientHelper(String host, String? userId);
 
   String getPostDetailsUrl(Post post) => '${getBaseUrl(post.community.host)}${post.permalink}';
 

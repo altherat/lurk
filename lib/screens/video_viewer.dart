@@ -10,6 +10,7 @@ import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
@@ -23,13 +24,13 @@ const List<double> playbackSpeeds = [0.5, 1, 1.25, 1.5, 2];
 
 class VideoViewerScreen extends StatefulWidget {
 
-  final Platform platform;
+  final Community activeCommunity;
   final String url;
   final Post? post;
 
   const VideoViewerScreen({
     super.key,
-    required this.platform,
+    required this.activeCommunity,
     required this.url,
     this.post
   });
@@ -69,7 +70,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
     if (_uri.host == 'v.redd.it') {
       final client = HttpClient();
       final request = await client.getUrl(Uri.parse('${widget.url}/DASHPlaylist.mpd'));
-      request.headers.set('User-Agent', widget.platform.savedOrDefaultUserAgent);
+      request.headers.set('User-Agent', widget.activeCommunity.platform.savedOrDefaultUserAgent);
 
       final response = await request.close();
       _dashManifest = await response.transform(utf8.decoder).join();
@@ -87,7 +88,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
       _videoController = VideoPlayerController.networkUrl(
         _uri,
         httpHeaders: {
-          'User-Agent': widget.platform.savedOrDefaultUserAgent,
+          'User-Agent': widget.activeCommunity.platform.savedOrDefaultUserAgent,
         },
         videoPlayerOptions: VideoPlayerOptions(allowBackgroundPlayback: false),
       );
@@ -141,7 +142,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
     if (_dashManifest != null) {
       saveMedia(
         context: context,
-        platform: widget.platform,
+        platform: widget.activeCommunity.platform,
         snackbarMediaTypeMessage: 'video',
         save: () async {
 
@@ -163,7 +164,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
           final audioSet = RegExp(r'<AdaptationSet [^>]*contentType="audio".*?<\/AdaptationSet>', dotAll: true).firstMatch(_dashManifest!)!.group(0)!;
           final bestVideoUrl = getBestUrl(videoSet);
           final bestAudioUrl = getBestUrl(audioSet);
-          final userAgent = widget.platform.savedOrDefaultUserAgent;
+          final userAgent = widget.activeCommunity.platform.savedOrDefaultUserAgent;
           final videoPath = await downloadMediaToTemp(bestVideoUrl, userAgent);
           final audioPath = await downloadMediaToTemp(bestAudioUrl, userAgent);
           final tempDir = await getTemporaryDirectory();
@@ -195,7 +196,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
     else {
       saveVideo(
         context: context,
-        platform: widget.platform,
+        platform: widget.activeCommunity.platform,
         url: widget.url,
       );
     }
@@ -204,7 +205,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
   @override
   Widget build(BuildContext context) {
     return MediaScaffold(
-      platform: widget.platform,
+      activeCommunity: widget.activeCommunity,
       url: widget.url,
       type: 'video',
       post: widget.post,
@@ -213,7 +214,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
         children: [
           if (!_isInitialized)
             _ProgressIndicator(
-              platform: widget.platform,
+              platform: widget.activeCommunity.platform,
               size: widget.post?.mediaSize,
             )
           else ...[
@@ -230,6 +231,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
                     context: context,
                     options: MediaScaffold.getOptions(
                       context: context,
+                      activeCommunity: widget.activeCommunity,
                       type: 'video',
                       url: widget.url,
                       onSave: _onSave
@@ -391,7 +393,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
               builder: (context, VideoPlayerValue value, child) {
                 return value.isBuffering && !value.isCompleted
                     ? _ProgressIndicator(
-                        platform: widget.platform,
+                        platform: widget.activeCommunity.platform,
                         size: widget.post?.mediaSize,
                       )
                     : const SizedBox.shrink();

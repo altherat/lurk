@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/extensions.dart';
-import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/comment.dart';
+import 'package:lurk/models/community.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/screens/post_details.dart';
-import 'package:lurk/screens/simple_feed.dart';
+import 'package:lurk/screens/feed.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
@@ -18,14 +18,12 @@ import 'package:lurk/widgets/user_stats.dart';
 
 class UserDetailsScreen extends StatefulWidget {
 
-  final Platform platform;
-  final String host;
+  final Community activeCommunity;
   final String username;
 
   const UserDetailsScreen({
     super.key,
-    required this.platform,
-    required this.host,
+    required this.activeCommunity,
     required this.username,
   });
 
@@ -42,22 +40,28 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    final response = widget.platform.getApi(widget.host, Settings.activeUser.value?.id).fetchUserDetails(widget.username);
+    final response = widget.activeCommunity.platform.getApi(widget.activeCommunity.host, Settings.activeUser.value?.id).fetchUserDetails(widget.username);
     _initialItemsFuture = response.items;
     _userStatsFuture = response.other;
   }
 
   @override
   Widget build(BuildContext context) {
-    return SimpleFeedScreen(
-      platform: widget.platform,
-      feedOptions: widget.platform.userFeedOptions,
+    final theme = Theme.of(context);
+    return FeedScreen(
+      activeCommunity: widget.activeCommunity,
+      feedOptions: widget.activeCommunity.platform.userFeedOptions,
       initialItems: _initialItemsFuture,
-      fetchItems: (options, pageToken) => widget.platform.getApi(widget.host, Settings.activeUser.value?.id).fetchUserItems(widget.username, options: options, pageToken: pageToken),
-      title: NameText(
-        prefix: widget.platform.userPrefix,
-        name: widget.username,
-        applyAppBarAlpha: true,
+      fetchItems: (options, pageToken) => widget.activeCommunity.platform.getApi(widget.activeCommunity.host, Settings.activeUser.value?.id).fetchUserItems(widget.username, options: options, pageToken: pageToken),
+      title: MultiColoredAppBarTitle(
+        texts: [
+          (widget.activeCommunity.platform.userPrefix, theme.colorScheme.onSurfaceVariant),
+          (widget.username, theme.colorScheme.onSurface),
+          if (widget.activeCommunity.platform.host == null) ...[
+            ('@', theme.colorScheme.onSurfaceVariant),
+            (widget.activeCommunity.host, theme.colorScheme.onSurface)
+          ]
+        ],
       ),
       flexibleSpaceHeader: PreferredSize(
         preferredSize: Size.fromHeight(80),
@@ -97,6 +101,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
       itemBuilder: (context, index, item) { 
         if (item is Post) {
           return PostTile(
+            activeCommunity: widget.activeCommunity,
             post: item,
             showViewUserOption: false,
             subtitle: PostTileCommentHistorySubtitle(
@@ -107,6 +112,7 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
         }
         if (item is Comment) {
           return CommentTile(
+            activeCommunity: widget.activeCommunity,
             padding: const EdgeInsets.symmetric(vertical: 8),
             comment: item,
             showCommunityName: true,
@@ -115,10 +121,11 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
               Text('View context'): (context) {
                 context.push(() {
                   return PostDetailsScreen.fromUrl(
-                    platform: widget.platform,
-                    host: widget.host,
-                    url: widget.platform.getCommentUrl(item),
-                    urlInfo:widget.platform.getPostUrlInfoFromPath(item.permalink)
+                    activeCommunity: widget.activeCommunity,
+                    platform: widget.activeCommunity.platform,
+                    host: widget.activeCommunity.host,
+                    url: widget.activeCommunity.platform.getCommentUrl(item),
+                    urlInfo:widget.activeCommunity.platform.getPostUrlInfoFromPath(item.permalink)
                   );
                 });
               }

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/models/community.dart';
 import 'package:lurk/repositories/posts.dart';
 import 'package:lurk/screens/image_gallery_viewer.dart';
 import 'package:lurk/screens/post_details.dart';
@@ -19,6 +20,7 @@ const _voteHeight = 70.0;
 
 class PostTile extends StatelessWidget {
 
+  final Community activeCommunity;
   final Post post;
   final Widget? subtitle;
   final bool isInteractable;
@@ -29,6 +31,7 @@ class PostTile extends StatelessWidget {
 
   const PostTile({
     super.key,
+    required this.activeCommunity,
     required this.post,
     this.subtitle,
     this.isInteractable = true,
@@ -44,14 +47,13 @@ class PostTile extends StatelessWidget {
       title: post.title,
       options: {
         if (showViewCommunityOption)
-          Text('View ${post.community.fullName}'): (context) => context.push(() => CommunityScreen(community: post.community)),
+          Text('View ${post.community.fullName}'): (context) => context.push(() => CommunityScreen(activeCommunity: activeCommunity.platform.supportsMultipleHosts ? activeCommunity : post.community, community: post.community)),
         if (showViewUserOption && post.author != null)
           Text('View ${post.community.platform.getFullUserName(post.community.host, post.author!)}'): (context) {
             context.push(
               () => UserDetailsScreen(
-                platform: post.community.platform,
+                activeCommunity: activeCommunity,
                 username: post.author!,
-                host: post.community.host
               )
             );
           },
@@ -64,7 +66,7 @@ class PostTile extends StatelessWidget {
   }
 
   void _updateVote(String activeUserId, bool up) {
-    post.community.platform.getApi(post.community.host, activeUserId).votePost(post.id, up);
+    activeCommunity.platform.getApi(activeCommunity.host, activeUserId).votePost(post.id, up);
   }
 
   @override
@@ -73,14 +75,17 @@ class PostTile extends StatelessWidget {
     final VoidCallback? onTap;
     final VoidCallback? onLongPress;
     if (isInteractable) {
-      onTap = onTapNavigate
-        ? () {
-            if (post.isSelf) {
-              Posts.visitedLinks.add(post.id);
-            }
-            context.push(() => PostDetailsScreen.fromPost(post: post));
+      if (onTapNavigate) {
+        onTap = () {
+          if (post.isSelf) {
+            Posts.visitedLinks.add(post.id);
           }
-        : null;
+          context.push(() => PostDetailsScreen.fromPost(activeCommunity: activeCommunity, post: post));
+        };
+      }
+      else {
+        onTap = () => _showOptions(context);
+      }
       onLongPress = () => _showOptions(context);
     }
     else {
@@ -203,7 +208,7 @@ class PostTile extends StatelessWidget {
                   ),
                   subtitle ?? PostTileCommentHistorySubtitle(
                     post: post,
-                    extraTexts: [post.timeAgoCompact, post.community.name!.toLowerCase()]
+                    extraTexts: [post.timeAgoCompact, post.community.name!]
                   )
                 ],
               ),
@@ -243,13 +248,13 @@ class PostTile extends StatelessWidget {
                           onTap: () {
                             Posts.visitedLinks.add(post.id);
                             if (post.isSelf) {
-                              context.push(() => PostDetailsScreen.fromPost(post: post));
+                              context.push(() => PostDetailsScreen.fromPost(activeCommunity: activeCommunity, post: post));
                             }
                             else if (post.isGallery) {
-                              context.push(() => ImageGalleryViewerScreen.fromPost(post: post));
+                              context.push(() => ImageGalleryViewerScreen.fromPost(activeCommunity: activeCommunity, post: post));
                             }
                             else {
-                              navigate(context, post.community.platform, post.url, post: post);
+                              navigate(context, activeCommunity, post.url, post: post);
                             }
                           }
                         ),

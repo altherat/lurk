@@ -15,7 +15,7 @@ class CustomCircularProgressIndicator extends StatelessWidget {
   const CustomCircularProgressIndicator({
     super.key,
     this.padding,
-    this.alignment = Alignment.center,
+    this.alignment,
     this.size,
     this.strokeWidth,
     this.value,

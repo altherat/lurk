@@ -55,6 +55,7 @@ dependencies:
   html: ^0.15.6
   url_launcher: ^6.3.2
   markdown: ^7.3.0
+  flutter_secure_storage: ^10.0.0
 
 dev_dependencies:
   flutter_test:

@@ -69,6 +69,18 @@ class Database extends _$Database {
     });
   }
 
+  Stream<Map<String, dynamic>> watchSettings(Iterable<String> keys) {
+    return (select(settings)..limit(1))
+    .watchSingle()
+    .map((row) {
+      final json = row.toJson();
+      return {
+        for (var key in keys) 
+          key: json[key]
+      };
+    });
+  }
+
   Future<List<Cookie>> getAllValidCookies() {
     final now = DateTime.now();
     return (
@@ -112,11 +124,10 @@ class Database extends _$Database {
       UsersCompanion.insert(
         platform: user.platform,
         host: user.host,
+        hostIconUrl: Value(user.hostIconUrl),
         id: user.id,
         name: user.name,
-        iconUrl: user.iconUrl,
-        score: user.score,
-        inboxCount: user.inboxCount,
+        iconUrl: Value(user.iconUrl),
       ),
     );
   }

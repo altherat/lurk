@@ -7,11 +7,10 @@ class Users extends Table {
 
   TextColumn get platform => text().map(const EnumNameConverter<Platform>(Platform.values))();
   TextColumn get host => text()();
+  TextColumn get hostIconUrl => text().nullable()();
   TextColumn get id => text()();
   TextColumn get name => text()();
-  TextColumn get iconUrl => text()();
-  IntColumn get inboxCount => integer()();
-  IntColumn get score => integer()();
+  TextColumn get iconUrl => text().nullable()();
 
   @override
   Set<Column> get primaryKey => {platform, host, id};

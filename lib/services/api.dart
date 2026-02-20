@@ -4,6 +4,7 @@ import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/community_details.dart';
 import 'package:lurk/models/interaction_state.dart';
+import 'package:lurk/models/login.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/post_details.dart';
@@ -32,13 +33,22 @@ class ApiService {
 
   void dispose() => _clientHelper.dispose();
 
-  Future<LoggedInUser?> login() async {
-    if (_clientHelper is AuthClientHelper && await _clientHelper.fetchToken()) {
+  Future<LoginResult> login([Map<String, String>? credentials]) async {
+    try {
+      if (_clientHelper is! AuthClientHelper) {
+        return LoginError();
+      }
+      final result = await _clientHelper.fetchToken(credentials);
+      if (result is FetchTokenError) {
+        return LoginError(result.message);
+      }
       final user = await fetchLoggedInUser();
       await _clientHelper.saveToken(user.id);
-      return user;
+      return LoginSuccess(user);
     }
-    return null;
+    catch (e) {
+      return LoginError();
+    }
   }
 
   Future<CommunityDetails> fetchCommunityDetails(String name) async {

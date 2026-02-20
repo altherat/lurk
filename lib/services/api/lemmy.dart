@@ -1,13 +1,18 @@
 import 'dart:convert';
+import 'dart:developer' as dev;
 import 'dart:io' as io;
 import 'dart:isolate';
 import 'dart:ui';
 
+import 'package:flutter_secure_storage/flutter_secure_storage.dart';
+import 'package:http/http.dart' show Response;
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/platforms.dart';
+import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/community_details.dart';
+import 'package:lurk/models/login.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/post_details.dart';
@@ -23,13 +28,17 @@ class LemmyApi extends Api<RestClientHelper> {
   static const _resultsLimit = 25;
   static const _commentsMaxDepth = 8;
   static const _defaultHeaders = {
-    'Accept': 'application/json'
+    'Accept': 'application/json',
+    'Content-Type': 'application/json',
   };
 
   const LemmyApi();
 
   @override
-  bool get hasLogin => false;
+  List<LoginField>? get loginFields => [
+    LoginField(label: 'Username or email', isSecret: false),
+    LoginField(label: 'Password', isSecret: true),
+  ];
 
   @override
   String get defaultUnauthenticatedUserAgent => '${io.Platform.operatingSystem}:com.altherat.lurk:${Constants.version} (by u/altherat)';
@@ -41,7 +50,7 @@ class LemmyApi extends Api<RestClientHelper> {
   String getBaseUrl(String host) => 'https://$host';
 
   @override
-  ClientHelper getClientHelper(String? host, String? userId) => SimpleRestClientHelper(host!, {... _defaultHeaders, 'User-Agent': defaultUnauthenticatedUserAgent});
+  ClientHelper getClientHelper(String? host, String? userId) => _ClientHelper(host!, {... _defaultHeaders, 'User-Agent': defaultUnauthenticatedUserAgent}, userId);
 
   String _markdownToHtml(String markdown) {
     return md.markdownToHtml(
@@ -90,18 +99,22 @@ class LemmyApi extends Api<RestClientHelper> {
 
   @override
   Future<PagedItems<Post>> getCommunityPosts(RestClientHelper clientHelper, String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+    final timeInterval = options?[FeedOptionType.time]?.id;
     final response = await clientHelper.get(
       '$_basePath/post/list',
       {
-        'sort': ?options?[FeedOptionType.sort]?.id,
+        'type_': ?options?[FeedOptionType.type]?.id,
+        if (timeInterval != null)
+          'sort': timeInterval
+        else
+          'sort': ?options?[FeedOptionType.sort]?.id,
         'community_name': ?id,
         'limit': _resultsLimit.toString(),
         'page_cursor': ?pageToken,
       }
     );
-    final host = clientHelper.host;
     final body = response.body;
-    return Isolate.run(() => _parsePosts(host, body));
+    return Isolate.run(() => _parsePosts(body));
   }
 
   @override
@@ -127,15 +140,29 @@ class LemmyApi extends Api<RestClientHelper> {
   }
 
   @override
-  Future<List<CommentItem>> getMoreComments(RestClientHelper clientHelper, String id, String pageToken, {int? depth, Map<FeedOptionType, FeedOption>? options}) {
-    throw UnimplementedError();
+  Future<List<CommentItem>> getMoreComments(RestClientHelper clientHelper, String id, String pageToken, {int? depth, Map<FeedOptionType, FeedOption>? options}) async {
+    final response = await clientHelper.get(
+      '$_basePath/comment/list',
+      {
+        'parent_id': id,
+        'limit': _resultsLimit.toString(),
+        'page': pageToken,
+        'sort': options?[FeedOptionType.sort]?.id,
+      }
+    );
+    final body = response.body;
+    return Isolate.run(() {
+      final Map<String, dynamic> json = jsonDecode(body);
+      final List<dynamic> rawComments = json['comments'];
+      return rawComments.map<CommentItem>((item) => _parseComment(item)).toList();
+    });
   }
 
   @override
   MultiPartFeedResponse<dynamic, List<UserStat>> getUserDetails(RestClientHelper clientHelper, String id, {Map<FeedOptionType, FeedOption>? options}) {
     final Future<String> futureBody = clientHelper.get('$_basePath/user', {'username': id}).then((response) => response.body);
     return MultiPartFeedResponse(
-      items: futureBody.then((body) => _parseUserItems(clientHelper.host, body, null, options?[FeedOptionType.category])),
+      items: futureBody.then((body) => _parseUserItems(body, null, options?[FeedOptionType.category])),
       other: futureBody.then((body) {
         final personView = jsonDecode(body)['person_view'];
         return _parseUserStats(personView['person'], personView['counts']);
@@ -154,24 +181,22 @@ class LemmyApi extends Api<RestClientHelper> {
         'page': ?pageToken
       }
     );
-    final host = clientHelper.host;
     final body = response.body;
-    return Isolate.run(() => _parseUserItems(host, body, pageToken, options?[FeedOptionType.category]));
+    return Isolate.run(() => _parseUserItems(body, pageToken, options?[FeedOptionType.category]));
   }
 
   @override
   Future<PagedItems<dynamic>> getSearchResults(RestClientHelper clientHelper, String query, String? communityName, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
     final Map<String, dynamic> params = {
       'q': query,
-      'type_': options?[FeedOptionType.category]?.id,
-      'sort': options?[FeedOptionType.sort]?.id,
+      'type_': ?options?[FeedOptionType.category]?.id,
+      'sort': ?options?[FeedOptionType.sort]?.id,
       'community_id': ?communityName,
       'limit': _resultsLimit.toString(),
       'page': ?pageToken
     };
 
     final response = await clientHelper.get('$_basePath/search', params);
-    final host = clientHelper.host;
     final body = response.body;
     return Isolate.run(() {
       final Map<String, dynamic> json = jsonDecode(body);
@@ -180,14 +205,14 @@ class LemmyApi extends Api<RestClientHelper> {
       final List<dynamic>? posts = json['posts'];
       if (posts != null) {
         for (var item in posts) {
-          items.add(_parsePost(host, item));
+          items.add(_parsePost(item));
         }
       }
 
       final List<dynamic>? comments = json['comments'];
       if (comments != null) {
         for (var item in comments) {
-          items.add(_parseComment(host, item));
+          items.add(_parseComment(item));
         }
       }
 
@@ -200,7 +225,7 @@ class LemmyApi extends Api<RestClientHelper> {
             CommunityDetails(
               community: Community(
                 platform: Platform.lemmy,
-                host: host,
+                host: Uri.parse(community['actor_id']).host,
                 name: community['name'],
                 id: community['id'].toString(),
               ),
@@ -219,7 +244,7 @@ class LemmyApi extends Api<RestClientHelper> {
           final Map<String, dynamic> person = item['person'];
           items.add(
             LookedUpUser(
-              host: host,
+              host: Uri.parse(person['actor_id']).host,
               id: person['id'].toString(),
               name: person['name'],
               iconUrl: person['avatar'],
@@ -238,79 +263,156 @@ class LemmyApi extends Api<RestClientHelper> {
   }
 
   @override
-  Future<LoggedInUser> getLoggedInUser(RestClientHelper clientHelper) {
-    throw UnimplementedError();
+  Future<LoggedInUser> getLoggedInUser(RestClientHelper clientHelper) async {
+    final response = await clientHelper.get('/api/v3/site');
+    final Map<String, dynamic> data = jsonDecode(response.body);
+    final personData = data['my_user']['local_user_view']['person'];
+    return LoggedInUser(
+      platform: Platform.lemmy,
+      host: clientHelper.host,
+      hostIconUrl: data['site_view']['site']['icon'],
+      id: personData['id'].toString(),
+      name: personData['name'],
+      iconUrl: personData['avatar'],
+    );
   }
 
   @override
-  Future<List<Community>> getSubscribedCommunities(RestClientHelper clientHelper) {
-    throw UnimplementedError();
+  Future<List<Community>> getSubscribedCommunities(RestClientHelper clientHelper) async {
+    final response = await clientHelper.get(
+      '/api/v3/community/list',
+      {
+        'limit': _resultsLimit,
+        'type_': 'Subscribed',
+      },
+    );
+    final body = response.body;
+    return Isolate.run(() {
+      return (jsonDecode(body)['communities'] as List<dynamic>).map((json) {
+        final community = json['community'];
+        return Community(
+          platform: Platform.lemmy,
+          host: clientHelper.host,
+          name: community['name'],
+          id: community['id'].toString(),
+        );
+      }).toList();
+    });
   }
 
   @override
   Future<void> subscribeToCommunity(RestClientHelper clientHelper, String communityId) {
-    throw UnimplementedError();
+    return clientHelper.post(
+      '/api/v3/community/follow',
+      {
+        'community_id': int.parse(communityId),
+        'follow': true,
+      },
+    );
   }
 
   @override
   Future<void> unsubscribeFromCommunity(RestClientHelper clientHelper, String communityId) {
-    throw UnimplementedError();
+    return clientHelper.post(
+      '/api/v3/community/follow',
+      {
+        'community_id': int.parse(communityId),
+        'follow': false,
+      },
+    );
   }
 
   @override
   Future<void> voteComment(RestClientHelper clientHelper, String commentId, bool? vote) {
-    throw UnimplementedError();
+    return clientHelper.post(
+      '/api/v3/comment/like',
+      {
+        'comment_id': int.parse(commentId),
+        'score': vote == true ? 1 : vote == false ? -1 : 0,
+      },
+    );
   }
 
   @override
-  Future<void> votePost(RestClientHelper clientHelper, String commentId, bool? vote) {
-    throw UnimplementedError();
+  Future<void> votePost(RestClientHelper clientHelper, String postId, bool? vote) {
+    return clientHelper.post(
+      '/api/v3/post/like',
+      {
+        'post_id': int.parse(postId),
+        'score': vote == true ? 1 : vote == false ? -1 : 0,
+      },
+    );
   }
 
   @override
-  Future<Comment> postComment(RestClientHelper clientHelper, String parentId, String text) {
-    throw UnimplementedError();
+  Future<Comment> postComment(RestClientHelper clientHelper, String parentId, String text) async {
+    final response = await clientHelper.post(
+      '/api/v3/comment/create',
+      {
+        'parent_id': int.parse(parentId),
+        'body': text,
+      },
+    );
+    final String body = response.body;
+    return Isolate.run(() => _parseComment(jsonDecode(body)['comment_view']));
   }
 
   @override 
   Future<void> deleteComment(RestClientHelper clientHelper, String commentId) {
-    throw UnimplementedError();
+    return clientHelper.post(
+      '/api/v3/comment/delete',
+      {
+        'comment_id': int.parse(commentId),
+        'deleted': true,
+      },
+    );
   }
 
-  PagedItems<Post> _parsePosts(String host, String body) {
+  PagedItems<Post> _parsePosts(String body) {
     final Map<String, dynamic> json = jsonDecode(body);
     return PagedItems(
-      items: (json['posts'] as List<dynamic>).map((item) => _parsePost(host, item)).toList(),
+      items: (json['posts'] as List<dynamic>).map((item) => _parsePost(item)).toList(),
       pageToken: json['next_page'],
     );
   }
 
-  Post _parsePost(String host, Map<String, dynamic> json) {
+  Post _parsePost(Map<String, dynamic> json) {
     final Map<String, dynamic> postData = json['post'];
     final Map<String, dynamic> communityData = json['community'];
+    final Map<String, dynamic> creatorData = json['creator'];
     final Map<String, dynamic> counts = json['counts'];
-    final Map<String, dynamic>? imageDetails = postData['image_details'];
+    final Map<String, dynamic>? imageDetails = json['image_details'];
     final String? body = postData['body'];
+    final String? rawUrl = postData['url'];
+    final String apId = postData['ap_id'];
     final id = postData['id'].toString();
-    final rawUrl = postData['url'];
-    final apId = postData['ap_id'];
-    String url;
-    String domain;
-    bool isSelf;
+
+    final String url;
+    final String domain;
+    final bool isSelf;
+    final Size? mediaSize;
+
+    (String, Size?) getDomainAndMediaSize(String url) {
+      if (imageDetails != null) {
+        return (imageDetails['content_type'], Size((imageDetails['width'] as num).toDouble(), (imageDetails['height'] as num).toDouble()));
+      }
+      return (Uri.parse(apId).host.replaceFirst(RegExp(r'^www\.'), ''), null);
+    }
+
     if (rawUrl != null) {
       url = rawUrl;
-      domain = Uri.parse(url).host;
       isSelf = false;
+      (domain, mediaSize) = getDomainAndMediaSize(rawUrl);
     }
     else {
       url = apId;
-      domain = Uri.parse(apId).host;
       isSelf = true;
+      (domain, mediaSize) = getDomainAndMediaSize(apId);
     }
     return Post(
       community: Community(
         platform: Platform.lemmy,
-        host: host,
+        host: Uri.parse(communityData['actor_id']).host,
         name: communityData['name'],
         id: communityData['id'].toString(),
       ),
@@ -320,19 +422,20 @@ class LemmyApi extends Api<RestClientHelper> {
       timestampMs: DateTime.parse(postData['published']).millisecondsSinceEpoch,
       title: postData['name'],
       textHtml: body != null && body.isNotEmpty ? _markdownToHtml(body) : null,
-      author: json['creator']['name'],
+      author: creatorData['name'],
+      authorHost: Uri.parse(creatorData['actor_id']).host,
       commentCount: counts['comments'],
       url: url,
-      domain: domain.replaceFirst(RegExp(r'^www\.'), ''),
+      domain: domain,
       thumbnailUrl: postData['thumbnail_url'],
       isDeleted: postData['deleted'],
       isSelf: isSelf,
       isNsfw: postData['nsfw'],
       isStickied: postData['featured_community'],
       isGallery: false, 
-      mediaSize: imageDetails != null ? Size((imageDetails['width'] as num).toDouble(), (imageDetails['height'] as num).toDouble()) : null,
+      mediaSize: mediaSize,
       galleryImages: [],
-      vote: postData['my_vote'] == 1 ? true : (postData['my_vote'] == -1 ? false : null),
+      vote: json['my_vote'] == 1 ? true : (json['my_vote'] == -1 ? false : null),
     );
   }
 
@@ -375,12 +478,12 @@ class LemmyApi extends Api<RestClientHelper> {
 
     return PostDetails(
       post: null,
-      comments: rawComments.map<CommentItem>((item) => _parseComment(host, item)).toList(),
+      comments: rawComments.map<CommentItem>((item) => _parseComment(item)).toList(),
       contextCommentShortId: null,
     );
   }
 
-  Comment _parseComment(String host, Map<String, dynamic> json) {
+  Comment _parseComment(Map<String, dynamic> json) {
     final Map<String, dynamic> commentData = json['comment'];
     final Map<String, dynamic> creatorData = json['creator'];
     final Map<String, dynamic> communityData = json['community'];
@@ -394,7 +497,7 @@ class LemmyApi extends Api<RestClientHelper> {
       depth: depth < 0 ? 0 : depth,
       community: Community(
         platform: Platform.lemmy,
-        host: host,
+        host: Uri.parse(communityData['actor_id']).host,
         name: communityData['name'],
         id: communityData['id'].toString(),
       ),
@@ -403,6 +506,7 @@ class LemmyApi extends Api<RestClientHelper> {
       isDeleted: commentData['deleted'],
       authorId: creatorId.toString(),
       authorName: creatorData['name'],
+      authorHost: Uri.parse(creatorData['actor_id']).host,
       isModerator: json['creator_is_moderator'],
       isSubmitter: creatorId == postData['creator_id'],
       score: json['counts']['score'],
@@ -414,15 +518,15 @@ class LemmyApi extends Api<RestClientHelper> {
     );
   }
 
-  PagedItems<dynamic> _parseUserItems(String host, String body, String? pageToken, FeedOption? type) {
+  PagedItems<dynamic> _parseUserItems(String body, String? pageToken, FeedOption? type) {
     final Map<String, dynamic> json = jsonDecode(body);
     final items = [
       if (type?.id != UserFeedType.comments)
         for (var item in json['posts'] ?? []) 
-          _parsePost(host, item),
+          _parsePost(item),
       if (type?.id != UserFeedType.posts)
         for (var item in json['comments'] ?? []) 
-          _parseComment(host, item),
+          _parseComment(item),
     ];
     return PagedItems(
       items: items,
@@ -447,4 +551,64 @@ class LemmyApi extends Api<RestClientHelper> {
     ];
   }
   
+}
+
+class _ClientHelper extends SimpleRestClientHelper implements AuthClientHelper {
+
+  final _secureStorage = const FlutterSecureStorage();
+  final String? _userId;
+  String? _jwt;
+  Future<String?>? _loadJwtFuture;
+
+  _ClientHelper(
+    super.host,
+    super.headers,
+    String? userId
+  ) : _userId = userId;
+
+  @override
+  Future<Response> performPost(Uri uri, Map<String, String> headers, dynamic body) => super.performPost(uri, headers, jsonEncode(body));
+
+  @override
+  Future<Response> request(Map<String, String> headers, Future<Response> Function(Map<String, String> headers) request) async {
+    if (_jwt != null || (_userId != null && (_jwt = await (_loadJwtFuture ??= _secureStorage.read(key: 'lemmy_jwt_${host}_$_userId'))) != null)) {
+      dev.log('[Lemmy][_ClientHelper] Adding authorization header: jwt=${debugTruncateLongString(_jwt)}');
+      headers['Authorization'] = 'Bearer $_jwt';
+    }
+    return request(headers);
+  }
+  
+  @override
+  Future<FetchTokenResult> fetchToken([Map<String, String>? credentials]) async {
+    dev.log('[Lemmy][_ClientHelper] fetchToken');
+    final response = await post(
+      '/api/v3/user/login',
+      {
+        'username_or_email': credentials!['Username or email'],
+        'password': credentials['Password'],
+      }
+    );
+    dev.log('[Lemmy][_ClientHelper] fetchToken response: statusCode=${response.statusCode}, body=${response.body}');
+    if (response.statusCode == 200) {
+      _jwt = jsonDecode(response.body)['jwt'];
+      return FetchTokenSuccess();
+    }
+    if (response.statusCode == 401) {
+      return switch(jsonDecode(response.body)['error']) {
+        'incorrect_login' => FetchTokenError('invalid credentials'),
+        'email_not_verified' => FetchTokenError('email not verified'),
+        'registration_pending' || 'registration_application_pending' => FetchTokenError('registration pending'),
+        'registration_denied' => FetchTokenError('registration denied'),
+        _ => FetchTokenError(),
+      };
+    }
+    return FetchTokenError();
+  }
+
+  @override
+  Future<void> saveToken(String userId) {
+    dev.log('[Lemmy][_ClientHelper] saveToken: userId=$userId, jwt=${debugTruncateLongString(_jwt)}');
+    return _secureStorage.write(key: 'lemmy_jwt_${host}_$userId', value: _jwt);
+  }
+
 }

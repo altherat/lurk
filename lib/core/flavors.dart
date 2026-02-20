@@ -6,32 +6,32 @@ enum Flavor {
   combined(
     platforms: [Platform.reddit, Platform.digg, Platform.lemmy],
     defaultCommunities: [
-      Community(platform: Platform.reddit, host: 'reddit.com', name: 'popular'),
-      Community(platform: Platform.reddit, host: 'reddit.com', name: 'all'),
-      Community(platform: Platform.digg, host: 'digg.com', name: null),
-      Community(platform: Platform.lemmy, host: 'lemmy.world', name: null)
+      redditPopular,
+      redditAll,
+      diggFrontPage,
+      lemmyFrontPage
     ]
   ),
 
   reddit(
     platforms: [Platform.reddit],
     defaultCommunities: [
-      Community(platform: Platform.reddit, host: 'reddit.com', name: 'popular'),
-      Community(platform: Platform.reddit, host: 'reddit.com', name: 'all'),
+      redditPopular,
+      redditAll,
     ]
   ),
 
   digg(
     platforms: [Platform.digg],
     defaultCommunities: [
-      Community(platform: Platform.digg, host: 'digg.com', name: null)
+      diggFrontPage
     ]
   ),
 
   lemmy(
     platforms: [Platform.lemmy],
     defaultCommunities: [
-      Community(platform: Platform.lemmy, host: 'lemmy.world', name: null)
+      lemmyFrontPage
     ]
   );
 

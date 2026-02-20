@@ -1,14 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:lurk/core/extensions.dart';
-import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 
 class MediaScaffold extends StatelessWidget {
 
-  final Platform platform;
+  final Community activeCommunity;
   final String url;
   final Post? post;
   final String type;
@@ -17,7 +17,7 @@ class MediaScaffold extends StatelessWidget {
 
   const MediaScaffold({
     super.key,
-    required this.platform,
+    required this.activeCommunity,
     required this.url,
     this.post,
     required this.type,
@@ -27,6 +27,7 @@ class MediaScaffold extends StatelessWidget {
 
   static Map<Widget, void Function(BuildContext context)> getOptions({
     required BuildContext context,
+    required Community activeCommunity,
     required String type,
     required String url,
     Post? post,
@@ -34,7 +35,7 @@ class MediaScaffold extends StatelessWidget {
   }) => {
     Text('Save $type'): ?onSave,
     if (post != null)
-      Text('View comments'): (context) => context.push(() => PostDetailsScreen.fromPost(post: post)),
+      Text('View comments'): (context) => context.push(() => PostDetailsScreen.fromPost(activeCommunity: activeCommunity, post: post)),
     Text('View in browser'): (context) => openInBrowser(url),
     Text('Copy link'): (context) => copyToClipboard(url)
   };
@@ -42,11 +43,12 @@ class MediaScaffold extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MainScaffold(
-      platform: platform,
+      activeCommunity: activeCommunity,
       title: post != null ? Text(post!.title) : null,
       subtitle: Text(post != null ? post!.community.fullName : url),
       popupMenuActions: getOptions(
         context: context,
+        activeCommunity: activeCommunity,
         type: type,
         url: url,
         post: post,

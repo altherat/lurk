@@ -8,13 +8,29 @@ class Community {
   final String? id;
   final bool isFavorite;
 
-  const Community({
+  const Community._({
     required this.platform,
     required this.host,
     this.name,
     this.id,
     this.isFavorite = false,
   });
+
+  factory Community({
+    required Platform platform,
+    required String host,
+    String? name,
+    String? id,
+    bool isFavorite = false,
+  }) {
+    return Community._(
+      platform: platform,
+      host: host,
+      name: name?.toLowerCase(),
+      id: id,
+      isFavorite: isFavorite,
+    );
+  }
 
   Community copyWith({
     Platform? platform,
@@ -34,6 +50,8 @@ class Community {
 
   String get fullName => platform.getFullCommunityName(host, name);
 
+  String? get nameAndMaybeHost => name != null ? platform.host != null ? name : '$name@$host' : null;
+
   @override
   bool operator ==(Object other) {
     if (identical(this, other)) return true;
@@ -47,3 +65,25 @@ class Community {
   int get hashCode => Object.hash(platform, host, name);
 
 }
+
+const Community redditPopular = Community._(
+  platform: Platform.reddit,
+  host: 'reddit.com',
+  name: 'popular',
+);
+
+const Community redditAll = Community._(
+  platform: Platform.reddit,
+  host: 'reddit.com',
+  name: 'all',
+);
+
+const Community diggFrontPage = Community._(
+  platform: Platform.digg,
+  host: 'digg.com',
+);
+
+const Community lemmyFrontPage = Community._(
+  platform: Platform.lemmy,
+  host: 'lemmy.world'
+);

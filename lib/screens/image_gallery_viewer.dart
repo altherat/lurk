@@ -5,6 +5,7 @@ import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/models/community.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/image_viewer.dart';
 import 'package:lurk/services/settings.dart';
@@ -13,24 +14,31 @@ import 'package:lurk/widgets/media_scaffold.dart';
 
 class ImageGalleryViewerScreen extends StatefulWidget {
 
+  final Community activeCommunity;
   final Platform platform;
+  final String host;
   final String url;
   final Post? post;
 
   const ImageGalleryViewerScreen({
     super.key,
+    required this.activeCommunity,
     required this.platform,
+    required this.host,
     required this.url,
     this.post
   });
 
   factory ImageGalleryViewerScreen.fromPost({
     Key? key,
+    required Community activeCommunity,
     required Post post
   }) {
     return ImageGalleryViewerScreen(
       key: key,
+      activeCommunity: activeCommunity,
       platform: post.community.platform,
+      host: post.community.host,
       url: post.url,
       post: post,
     );
@@ -38,12 +46,14 @@ class ImageGalleryViewerScreen extends StatefulWidget {
 
   factory ImageGalleryViewerScreen.fromUrl({
     Key? key,
-    required Platform platform,
+    required Community activeCommunity,
     required String url
   }) {
     return ImageGalleryViewerScreen(
       key: key,
-      platform: platform,
+      activeCommunity: activeCommunity,
+      platform: activeCommunity.platform,
+      host: activeCommunity.host,
       url: url,
     );
   }
@@ -63,7 +73,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
     super.initState();
     if (widget.post == null) {
       _isLoadingPost = true;
-      widget.platform.getApi(Uri.parse(widget.url).host, Settings.activeUser.value?.id).fetchPostDetailsFromUrl(widget.url).then((postDetails) {
+      widget.platform.getApi(widget.host, Settings.activeUser.value?.id).fetchPostDetailsFromUrl(widget.url).then((postDetails) {
         if (mounted) {
           setState(() {
             _post = postDetails.post!;
@@ -174,7 +184,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                       onTap: () {
                         context.push(
                           () => ImageViewerScreen(
-                            platform: widget.platform,
+                            activeCommunity: widget.activeCommunity,
                             url: image.url,
                             post: widget.post,
                           )
@@ -185,6 +195,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                           context: context,
                           options: MediaScaffold.getOptions(
                             context: context,
+                            activeCommunity: widget.activeCommunity,
                             type: 'image',
                             url: image.url,
                             onSave: onSave
@@ -201,7 +212,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
       );
     }
     return MediaScaffold(
-      platform: widget.platform,
+      activeCommunity: widget.activeCommunity,
       url: widget.url,
       type: 'images',
       post: widget.post,

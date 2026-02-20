@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/comment.dart';
+import 'package:lurk/models/community.dart';
 import 'package:lurk/models/community_details.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/screens/community.dart';
-import 'package:lurk/screens/simple_feed.dart';
+import 'package:lurk/screens/feed.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/comment_tile.dart';
@@ -18,47 +19,55 @@ import 'package:lurk/widgets/user_stats.dart';
 
 class SearchScreen extends StatelessWidget {
 
-  final Platform platform;
-  final String host;
-  final String? communityName;
+  final Community activeCommunity;
   final String query;
 
   const SearchScreen({
     super.key,
-    required this.platform,
-    required this.host,
+    required this.activeCommunity,
     required this.query,
-    this.communityName
   });
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
     final FeedOptionsGroup feedOptions;
     final Widget title;
-    if (communityName != null) {
-      feedOptions = platform.postsFeedOptions;
-      title = NameText(
-        name: communityName!,
-        prefix: platform.communityPrefix,
-        before: '"$query" in ',
-        applyAppBarAlpha: true,
+    if (activeCommunity.name != null) {
+      feedOptions = activeCommunity.platform.postsFeedOptions;
+      title = MultiColoredAppBarTitle(
+        texts: [
+          ('"', theme.colorScheme.onSurfaceVariant),
+          (query, theme.colorScheme.onSurface),
+          ('" in ${activeCommunity.fullName}', theme.colorScheme.onSurfaceVariant)
+        ],
       );
     }
     else {
-      feedOptions = platform.searchFeedOptions;
-      title = Text('"$query"');
+      feedOptions = activeCommunity.platform.searchFeedOptions;
+      title = MultiColoredAppBarTitle(
+        texts: [
+          ('"', theme.colorScheme.onSurfaceVariant),
+          (query, theme.colorScheme.onSurface),
+          ('"', theme.colorScheme.onSurfaceVariant)
+        ],
+      );
     }
-    return SimpleFeedScreen(
-      platform: platform,
+    return FeedScreen(
+      activeCommunity: activeCommunity,
       feedOptions: feedOptions,
-      fetchItems: (options, pageToken) => platform.getApi(host, Settings.activeUser.value?.id).fetchSearchResults(query, communityName, options: options, pageToken: pageToken),
+      fetchItems: (options, pageToken) => activeCommunity.platform.getApi(activeCommunity.host, Settings.activeUser.value?.id).fetchSearchResults(query, activeCommunity.nameAndMaybeHost, options: options, pageToken: pageToken),
       title: title,
       itemBuilder: (context, index, item) {
         if (item is Post) {
-          return PostTile(post: item);
+          return PostTile(
+            activeCommunity: activeCommunity,
+            post: item
+          );
         }
         if (item is Comment) {
           return CommentTile(
+            activeCommunity: activeCommunity,
             comment: item,
             padding: const EdgeInsets.symmetric(vertical: 4),
             showCommunityName: true,
@@ -70,7 +79,7 @@ class SearchScreen extends StatelessWidget {
             title: Row(
               children: [
                 ListTileIcon(
-                  platform: platform,
+                  platform: activeCommunity.platform,
                   url: item.iconUrl,
                   placeholderIcon: Icons.groups_rounded,
                 ),
@@ -101,7 +110,7 @@ class SearchScreen extends StatelessWidget {
                 ),
               ],
             ),
-            onTap: () => context.push(() => CommunityScreen(community: item.community)),
+            onTap: () => context.push(() => CommunityScreen(activeCommunity: activeCommunity.platform.supportsMultipleHosts ? activeCommunity : item.community, community: item.community)),
             subtitle: item.shortDescription != null
               ? Padding(
                   padding: const EdgeInsets.only(top: 8),
@@ -132,7 +141,7 @@ class SearchScreen extends StatelessWidget {
           }
           return ListTile(
             leading: ListTileIcon(
-              platform: platform,
+              platform: activeCommunity.platform,
               url: item.iconUrl,
               placeholderIcon: Icons.no_accounts_rounded,
             ),
@@ -142,9 +151,8 @@ class SearchScreen extends StatelessWidget {
               ? () {
                   context.push(() {
                     return UserDetailsScreen(
-                      platform: platform,
+                      activeCommunity: activeCommunity,
                       username: item.name,
-                      host: item.host,
                     );
                   });
                 }

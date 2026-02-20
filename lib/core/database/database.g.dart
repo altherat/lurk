@@ -2012,6 +2012,17 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _hostIconUrlMeta = const VerificationMeta(
+    'hostIconUrl',
+  );
+  @override
+  late final GeneratedColumn<String> hostIconUrl = GeneratedColumn<String>(
+    'host_icon_url',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _idMeta = const VerificationMeta('id');
   @override
   late final GeneratedColumn<String> id = GeneratedColumn<String>(
@@ -2037,39 +2048,18 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
   late final GeneratedColumn<String> iconUrl = GeneratedColumn<String>(
     'icon_url',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _inboxCountMeta = const VerificationMeta(
-    'inboxCount',
-  );
-  @override
-  late final GeneratedColumn<int> inboxCount = GeneratedColumn<int>(
-    'inbox_count',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _scoreMeta = const VerificationMeta('score');
-  @override
-  late final GeneratedColumn<int> score = GeneratedColumn<int>(
-    'score',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   @override
   List<GeneratedColumn> get $columns => [
     platform,
     host,
+    hostIconUrl,
     id,
     name,
     iconUrl,
-    inboxCount,
-    score,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -2091,6 +2081,15 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
     } else if (isInserting) {
       context.missing(_hostMeta);
     }
+    if (data.containsKey('host_icon_url')) {
+      context.handle(
+        _hostIconUrlMeta,
+        hostIconUrl.isAcceptableOrUnknown(
+          data['host_icon_url']!,
+          _hostIconUrlMeta,
+        ),
+      );
+    }
     if (data.containsKey('id')) {
       context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
     } else if (isInserting) {
@@ -2109,24 +2108,6 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
         _iconUrlMeta,
         iconUrl.isAcceptableOrUnknown(data['icon_url']!, _iconUrlMeta),
       );
-    } else if (isInserting) {
-      context.missing(_iconUrlMeta);
-    }
-    if (data.containsKey('inbox_count')) {
-      context.handle(
-        _inboxCountMeta,
-        inboxCount.isAcceptableOrUnknown(data['inbox_count']!, _inboxCountMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_inboxCountMeta);
-    }
-    if (data.containsKey('score')) {
-      context.handle(
-        _scoreMeta,
-        score.isAcceptableOrUnknown(data['score']!, _scoreMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_scoreMeta);
     }
     return context;
   }
@@ -2147,6 +2128,10 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
         DriftSqlType.string,
         data['${effectivePrefix}host'],
       )!,
+      hostIconUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}host_icon_url'],
+      ),
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -2158,15 +2143,7 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
       iconUrl: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}icon_url'],
-      )!,
-      inboxCount: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}inbox_count'],
-      )!,
-      score: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}score'],
-      )!,
+      ),
     );
   }
 
@@ -2182,56 +2159,48 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
 class UsersCompanion extends UpdateCompanion<LoggedInUser> {
   final Value<Platform> platform;
   final Value<String> host;
+  final Value<String?> hostIconUrl;
   final Value<String> id;
   final Value<String> name;
-  final Value<String> iconUrl;
-  final Value<int> inboxCount;
-  final Value<int> score;
+  final Value<String?> iconUrl;
   final Value<int> rowid;
   const UsersCompanion({
     this.platform = const Value.absent(),
     this.host = const Value.absent(),
+    this.hostIconUrl = const Value.absent(),
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.iconUrl = const Value.absent(),
-    this.inboxCount = const Value.absent(),
-    this.score = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   UsersCompanion.insert({
     required Platform platform,
     required String host,
+    this.hostIconUrl = const Value.absent(),
     required String id,
     required String name,
-    required String iconUrl,
-    required int inboxCount,
-    required int score,
+    this.iconUrl = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : platform = Value(platform),
        host = Value(host),
        id = Value(id),
-       name = Value(name),
-       iconUrl = Value(iconUrl),
-       inboxCount = Value(inboxCount),
-       score = Value(score);
+       name = Value(name);
   static Insertable<LoggedInUser> custom({
     Expression<String>? platform,
     Expression<String>? host,
+    Expression<String>? hostIconUrl,
     Expression<String>? id,
     Expression<String>? name,
     Expression<String>? iconUrl,
-    Expression<int>? inboxCount,
-    Expression<int>? score,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (platform != null) 'platform': platform,
       if (host != null) 'host': host,
+      if (hostIconUrl != null) 'host_icon_url': hostIconUrl,
       if (id != null) 'id': id,
       if (name != null) 'name': name,
       if (iconUrl != null) 'icon_url': iconUrl,
-      if (inboxCount != null) 'inbox_count': inboxCount,
-      if (score != null) 'score': score,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -2239,21 +2208,19 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
   UsersCompanion copyWith({
     Value<Platform>? platform,
     Value<String>? host,
+    Value<String?>? hostIconUrl,
     Value<String>? id,
     Value<String>? name,
-    Value<String>? iconUrl,
-    Value<int>? inboxCount,
-    Value<int>? score,
+    Value<String?>? iconUrl,
     Value<int>? rowid,
   }) {
     return UsersCompanion(
       platform: platform ?? this.platform,
       host: host ?? this.host,
+      hostIconUrl: hostIconUrl ?? this.hostIconUrl,
       id: id ?? this.id,
       name: name ?? this.name,
       iconUrl: iconUrl ?? this.iconUrl,
-      inboxCount: inboxCount ?? this.inboxCount,
-      score: score ?? this.score,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -2269,6 +2236,9 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
     if (host.present) {
       map['host'] = Variable<String>(host.value);
     }
+    if (hostIconUrl.present) {
+      map['host_icon_url'] = Variable<String>(hostIconUrl.value);
+    }
     if (id.present) {
       map['id'] = Variable<String>(id.value);
     }
@@ -2277,12 +2247,6 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
     }
     if (iconUrl.present) {
       map['icon_url'] = Variable<String>(iconUrl.value);
-    }
-    if (inboxCount.present) {
-      map['inbox_count'] = Variable<int>(inboxCount.value);
-    }
-    if (score.present) {
-      map['score'] = Variable<int>(score.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -2295,11 +2259,10 @@ class UsersCompanion extends UpdateCompanion<LoggedInUser> {
     return (StringBuffer('UsersCompanion(')
           ..write('platform: $platform, ')
           ..write('host: $host, ')
+          ..write('hostIconUrl: $hostIconUrl, ')
           ..write('id: $id, ')
           ..write('name: $name, ')
           ..write('iconUrl: $iconUrl, ')
-          ..write('inboxCount: $inboxCount, ')
-          ..write('score: $score, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -3894,22 +3857,20 @@ typedef $$UsersTableCreateCompanionBuilder =
     UsersCompanion Function({
       required Platform platform,
       required String host,
+      Value<String?> hostIconUrl,
       required String id,
       required String name,
-      required String iconUrl,
-      required int inboxCount,
-      required int score,
+      Value<String?> iconUrl,
       Value<int> rowid,
     });
 typedef $$UsersTableUpdateCompanionBuilder =
     UsersCompanion Function({
       Value<Platform> platform,
       Value<String> host,
+      Value<String?> hostIconUrl,
       Value<String> id,
       Value<String> name,
-      Value<String> iconUrl,
-      Value<int> inboxCount,
-      Value<int> score,
+      Value<String?> iconUrl,
       Value<int> rowid,
     });
 
@@ -3932,6 +3893,11 @@ class $$UsersTableFilterComposer extends Composer<_$Database, $UsersTable> {
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get hostIconUrl => $composableBuilder(
+    column: $table.hostIconUrl,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnFilters(column),
@@ -3944,16 +3910,6 @@ class $$UsersTableFilterComposer extends Composer<_$Database, $UsersTable> {
 
   ColumnFilters<String> get iconUrl => $composableBuilder(
     column: $table.iconUrl,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get inboxCount => $composableBuilder(
-    column: $table.inboxCount,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get score => $composableBuilder(
-    column: $table.score,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -3976,6 +3932,11 @@ class $$UsersTableOrderingComposer extends Composer<_$Database, $UsersTable> {
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get hostIconUrl => $composableBuilder(
+    column: $table.hostIconUrl,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get id => $composableBuilder(
     column: $table.id,
     builder: (column) => ColumnOrderings(column),
@@ -3988,16 +3949,6 @@ class $$UsersTableOrderingComposer extends Composer<_$Database, $UsersTable> {
 
   ColumnOrderings<String> get iconUrl => $composableBuilder(
     column: $table.iconUrl,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get inboxCount => $composableBuilder(
-    column: $table.inboxCount,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get score => $composableBuilder(
-    column: $table.score,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -4016,6 +3967,11 @@ class $$UsersTableAnnotationComposer extends Composer<_$Database, $UsersTable> {
   GeneratedColumn<String> get host =>
       $composableBuilder(column: $table.host, builder: (column) => column);
 
+  GeneratedColumn<String> get hostIconUrl => $composableBuilder(
+    column: $table.hostIconUrl,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get id =>
       $composableBuilder(column: $table.id, builder: (column) => column);
 
@@ -4024,14 +3980,6 @@ class $$UsersTableAnnotationComposer extends Composer<_$Database, $UsersTable> {
 
   GeneratedColumn<String> get iconUrl =>
       $composableBuilder(column: $table.iconUrl, builder: (column) => column);
-
-  GeneratedColumn<int> get inboxCount => $composableBuilder(
-    column: $table.inboxCount,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get score =>
-      $composableBuilder(column: $table.score, builder: (column) => column);
 }
 
 class $$UsersTableTableManager
@@ -4064,40 +4012,36 @@ class $$UsersTableTableManager
               ({
                 Value<Platform> platform = const Value.absent(),
                 Value<String> host = const Value.absent(),
+                Value<String?> hostIconUrl = const Value.absent(),
                 Value<String> id = const Value.absent(),
                 Value<String> name = const Value.absent(),
-                Value<String> iconUrl = const Value.absent(),
-                Value<int> inboxCount = const Value.absent(),
-                Value<int> score = const Value.absent(),
+                Value<String?> iconUrl = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => UsersCompanion(
                 platform: platform,
                 host: host,
+                hostIconUrl: hostIconUrl,
                 id: id,
                 name: name,
                 iconUrl: iconUrl,
-                inboxCount: inboxCount,
-                score: score,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
                 required Platform platform,
                 required String host,
+                Value<String?> hostIconUrl = const Value.absent(),
                 required String id,
                 required String name,
-                required String iconUrl,
-                required int inboxCount,
-                required int score,
+                Value<String?> iconUrl = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => UsersCompanion.insert(
                 platform: platform,
                 host: host,
+                hostIconUrl: hostIconUrl,
                 id: id,
                 name: name,
                 iconUrl: iconUrl,
-                inboxCount: inboxCount,
-                score: score,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

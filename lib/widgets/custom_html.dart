@@ -16,16 +16,28 @@ import 'package:lurk/widgets/custom_progress_indicators.dart';
 
 class CustomHtml extends StatelessWidget {
 
-  final Platform platform;
+  final Community activeCommunity;
   final String html;
   final Map<String, Size>? imageSizes;
 
   const CustomHtml({
     super.key,
-    required this.platform,
+    required this.activeCommunity,
     required this.html,
     this.imageSizes,
   });
+
+  void _onLinkTap(BuildContext context, String url) => navigate(context, activeCommunity, url);
+
+  void _onImageTap(BuildContext context, String url, [Size? size]) {
+    context.push(() {
+      return ImageViewerScreen(
+        activeCommunity: activeCommunity,
+        url: url,
+        size: size
+      );
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -100,37 +112,41 @@ class CustomHtml extends StatelessWidget {
             }
             if (element.localName == 'img') {
               final String url = element.attributes['src']!;
+              final imageSize = imageSizes?[url];
               if (showImages) {
                 return _Image(
-                  platform: platform,
+                  platform: activeCommunity.platform,
+                  activeHost: activeCommunity.host,
                   url: url,
-                  size: imageSizes?[url]
+                  size: imageSize,
+                  onTap: () => _onImageTap(context, url, imageSize)
                 );
               }
               return _HtmlLink(
-                platform: platform,
-                url: element.attributes['src']!,
                 placeholder: '[gif]',
-                textStyle: textStyle
+                textStyle: textStyle,
+                onTap: () => _onLinkTap(context, element.attributes['src']!),
               );
             }
             else if (element.localName == 'a') {
               final String url = element.attributes['href']!;
               final uri = Uri.tryParse(url)!;
               final host = uri.host;
+              final imageSize = imageSizes?[url];
               if (host == 'preview.redd.it') {
                 if (showImages) {
                   return _Image(
-                    platform: platform,
+                    platform: activeCommunity.platform,
+                    activeHost: activeCommunity.host,
                     url: url,
-                    size: imageSizes?[url]
+                    size: imageSize,
+                    onTap: () => _onImageTap(context, url, imageSize)
                   );
                 }
                 return _HtmlLink(
-                  platform: platform,
-                  url: url,
                   placeholder: '[image]',
-                  textStyle: textStyle
+                  textStyle: textStyle,
+                  onTap: () => _onLinkTap(context, url),
                 );
               }
               if (host == 'giphy.com' || host == 'www.giphy.com') {
@@ -138,16 +154,17 @@ class CustomHtml extends StatelessWidget {
                   final directGiphyUrl = getGiphyDirectUrl(url);
                   if (directGiphyUrl != null) {
                     return _Image(
-                      platform: platform,
+                      platform: activeCommunity.platform,
+                      activeHost: activeCommunity.host,
                       url: directGiphyUrl,
+                      onTap: () => _onImageTap(context, directGiphyUrl)
                     );
                   }
                 }
                 return _HtmlLink(
-                  platform: platform,
-                  url: url,
                   placeholder: '[gif]',
-                  textStyle: textStyle
+                  textStyle: textStyle,
+                  onTap: () => _onLinkTap(context, url),
                 );
               }
             }
@@ -155,39 +172,40 @@ class CustomHtml extends StatelessWidget {
           },
           onTapUrl: (url) {
 
-            final communityName = platform.getCommunityNameFromPath(url);
+            final communityName = activeCommunity.platform.getCommunityNameFromPath(url);
             if (communityName != null) {
+              final communty = Community(
+                platform: activeCommunity.platform,
+                host: activeCommunity.host,
+                name: communityName,
+              );
               context.push(
                 () => CommunityScreen(
-                  community: Community(
-                    platform: platform,
-                    host: Uri.parse(url).host,
-                    name: communityName.toLowerCase(),
-                  ),
+                  activeCommunity: activeCommunity.platform.supportsMultipleHosts ? activeCommunity : communty,
+                  community: communty
                 ),
               );
               return true;
             }
 
-            final userName = platform.getUserNameFromPath(url);
+            final userName = activeCommunity.platform.getUserNameFromPath(url);
             if (userName != null) {
               context.push(
                 () => UserDetailsScreen(
-                  platform: platform,
-                  username: userName.toLowerCase(),
-                  host: Uri.parse(url).host
+                  activeCommunity: activeCommunity,
+                  username: userName,
                 ),
               );
               return true;
             }
 
-            navigate(context, platform, url);
+            navigate(context, activeCommunity, url);
             return true;
           },
           onTapImage: (imageMetadata) {
             final url = imageMetadata.sources.firstOrNull?.url;
             if (url != null) {
-              navigate(context, platform, url);
+              navigate(context, activeCommunity, url);
             }
           },
         );
@@ -199,16 +217,14 @@ class CustomHtml extends StatelessWidget {
 
 class _HtmlLink extends StatelessWidget {
 
-  final Platform platform;
-  final String url;
   final String placeholder;
   final TextStyle textStyle;
+  final VoidCallback onTap;
 
   const _HtmlLink({
-    required this.platform,
-    required this.url,
     required this.placeholder,
-    required this.textStyle
+    required this.textStyle,
+    required this.onTap,
   });
 
   @override
@@ -216,7 +232,7 @@ class _HtmlLink extends StatelessWidget {
     return Align(
       alignment: Alignment.topLeft,
       child: InkWell(
-        onTap: () => navigate(context, platform, url),
+        onTap: onTap,
         child: Padding(
           padding: EdgeInsets.only(right: 64),
           child: Text(
@@ -237,13 +253,17 @@ class _HtmlLink extends StatelessWidget {
 class _Image extends StatelessWidget {
 
   final Platform platform;
+  final String activeHost;
   final String url;
   final Size? size;
+  final VoidCallback onTap;
 
   const _Image({
     required this.platform,
+    required this.activeHost,
     required this.url,
-    this.size
+    this.size,
+    required this.onTap
   });
 
   @override
@@ -329,15 +349,7 @@ class _Image extends StatelessWidget {
                             }
                           );
                         },
-                        onTap: () {
-                          context.push(() {
-                            return ImageViewerScreen(
-                              platform: platform,
-                              url: url,
-                              size: size
-                            );
-                          });
-                        }
+                        onTap: onTap
                       ),
                     ),
                   )

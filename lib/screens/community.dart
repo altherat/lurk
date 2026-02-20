@@ -6,7 +6,7 @@ import 'package:lurk/core/extensions.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/community_details.dart';
 import 'package:lurk/repositories/communities.dart';
-import 'package:lurk/screens/simple_feed.dart';
+import 'package:lurk/screens/feed.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_html.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
@@ -18,11 +18,13 @@ import 'package:lurk/widgets/stat.dart';
 
 class CommunityScreen extends StatefulWidget {
 
+  final Community activeCommunity;
   final Community community;
   final GlobalKey<MainScaffoldState>? scaffoldKey;
 
   const CommunityScreen({
     super.key,
+    required this.activeCommunity,
     required this.community,
     this.scaffoldKey
   });
@@ -34,8 +36,7 @@ class CommunityScreen extends StatefulWidget {
 
 class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
 
-  final _feedKey = GlobalKey<SimpleFeedScreenState>();
-  bool _isSingleCommunity = false;
+  final _feedKey = GlobalKey<FeedScreenState>();
 
   @override
   initState() {
@@ -71,23 +72,16 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
 
   @override
   Widget build(BuildContext context) {
-    return SimpleFeedScreen(
+    return FeedScreen(
       key: _feedKey,
       scaffoldKey: widget.scaffoldKey,
-      platform: widget.community.platform,
+      activeCommunity: widget.activeCommunity,
       fetchItems: (options, pageToken) async {
-        final result = await widget.community.getApi(Settings.activeUser.value?.id).fetchCommunityPosts(
-          widget.community.name,
+        final result = await widget.community.platform.getApi(widget.activeCommunity.host, Settings.activeUser.value?.id).fetchCommunityPosts(
+          widget.community.nameAndMaybeHost,
           options: options,
           pageToken: pageToken,
         );
-        if (mounted) {
-          setState(() {
-            _isSingleCommunity = result.items.every(
-              (post) => post.community.name == widget.community.name,
-            );
-          });
-        }
         return result;
       },
       title: widget.community.name == null && widget.community.platform.rootCommunityName != null
@@ -102,6 +96,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
               );
             },
           ),
+      subtitle: widget.activeCommunity.host != widget.community.host ? 'via ${widget.activeCommunity.host}' : null,
       popupMenuActions: widget.community.name != null && !(widget.community.platform.aggregateCommunityNames?.contains(widget.community.name) ?? false)
         ? {
             Text('Info'): (context) => showModalBottomSheet(
@@ -110,6 +105,7 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
               isScrollControlled: true,
               builder: (context) {
                 return _CommunityInfoBottomSheet(
+                  activeHost: widget.activeCommunity.host,
                   community: widget.community,
                   activeUserId: Settings.activeUser.value?.id,
                 );
@@ -117,18 +113,18 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
             ),
           }
         : null,
-      activeCommunity: widget.community,
       feedOptions:(widget.community.name == null ? widget.community.platform.rootPostsFeedOptions : null) ?? widget.community.platform.postsFeedOptions,
       itemBuilder: (context, index, post) {
         return PostTile(
+          activeCommunity: widget.activeCommunity,
           post: post,
           showViewCommunityOption: post.community != widget.community,
           subtitle: PostTileCommentHistorySubtitle(
             post: post,
             extraTexts: [
               post.timeAgoCompact,
-              if (!_isSingleCommunity)
-                post.community.name!.toLowerCase(),
+              if (!(widget.community.platform.aggregateCommunityNames?.contains(widget.community.name) ?? false))
+                post.community.name!,
             ],
           ),
         );
@@ -146,10 +142,12 @@ class _CommunityScreenState extends State<CommunityScreen> with RouteAware {
 
 class _CommunityInfoBottomSheet extends StatefulWidget {
 
+  final String activeHost;
   final Community community;
   final String? activeUserId;
 
   const _CommunityInfoBottomSheet({
+    required this.activeHost,
     required this.community,
     required this.activeUserId,
   });
@@ -167,7 +165,7 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
   @override
   void initState() {
     super.initState();
-    _detailsFuture = widget.community.getApi(widget.activeUserId).fetchCommunityDetails(widget.community.name!);
+    _detailsFuture = widget.community.platform.getApi(widget.community.host, widget.activeUserId).fetchCommunityDetails(widget.community.name!);
     _detailsFuture.then((details) {
       if (widget.activeUserId != null && mounted) {
         setState(() {
@@ -183,13 +181,13 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
         setState(() {
           _isSubscribed = false;
         });
-        await widget.community.getApi(userId).unsubscribeFromCommunity(widget.community.name!, communityId);
+        await widget.community.platform.getApi(widget.community.host, userId).unsubscribeFromCommunity(widget.community.name!, communityId);
       }
       else {
         setState(() {
           _isSubscribed = true;
         });
-        await widget.community.getApi(userId).subscribeToCommunity(widget.community.name!, communityId);
+        await widget.community.platform.getApi(widget.community.host, userId).subscribeToCommunity(widget.community.name!, communityId);
       }
     }
     catch (error, stackTrace) {
@@ -357,7 +355,7 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
                       if (details.longDescriptionHtml != null) ...[
                         const SizedBox(height: 24),
                         CustomHtml(
-                          platform: details.community.platform,
+                          activeCommunity: details.community,
                           html: details.longDescriptionHtml!,
                         ),
                       ],

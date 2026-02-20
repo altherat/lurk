@@ -79,7 +79,7 @@ class Settings {
     homeCommunityName = SettingNotifier(
       initialValue: dbSettings.homeCommunityName,
       companionBuilder: (value) => SettingsCompanion(homeCommunityName: Value(value)),
-      defaultValue: F.appFlavor.defaultCommunities.first.name,
+      defaultValue: F.appFlavor.defaultCommunities.first.name
     );
 
     showCommentImages = SettingNotifier(

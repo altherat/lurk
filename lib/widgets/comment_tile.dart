@@ -19,6 +19,7 @@ const _expansionAnimationDuration = Duration(milliseconds: 200);
 
 class CommentTile extends StatefulWidget {
 
+  final Community activeCommunity;
   final Comment comment;
   final int depth;
   final EdgeInsetsGeometry? padding;
@@ -35,6 +36,7 @@ class CommentTile extends StatefulWidget {
   
   const CommentTile({
     super.key,
+    required this.activeCommunity,
     required this.comment,
     this.depth = 0,
     this.padding,
@@ -68,25 +70,32 @@ class _CommentTileState extends State<CommentTile> {
 
   void _showOptionsBottomSheet() {
     final activeUser = Settings.activeUser.value;
+    final Map<Widget, void Function(BuildContext)> interactionOptions;
+    if (activeUser != null && activeUser.platform == widget.comment.community.platform) {
+      final currentVote = Comments.interactionStates.value((activeUser.id, widget.comment.id))?.vote;
+      interactionOptions = {
+        Text(currentVote == true ? 'Remove upvote' : 'Upvote'): (context) => _updateVote(activeUser.id, true),
+        Text(currentVote == false ? 'Remove downvote' : 'Downvote'): (context) => _updateVote(activeUser.id, false),
+        Text('Reply'): (context) => _onReplyPressed(context, activeUser.id),
+        if (activeUser.id == widget.comment.authorId)
+          Text('Delete'): (context) => _deleteComment(activeUser.id),
+      };
+    }
+    else {
+      interactionOptions = {};
+    }
     showSimpleOptionsBottomSheet(
       context: context,
       title: '${widget.comment.authorName == null ? 'Deleted' : widget.comment.authorName!.toPosessive()} comment',
       options: {
-        if (activeUser != null && activeUser.platform == widget.comment.community.platform) ...{
-          Text('Upvote'): (context) => _updateVote(activeUser.id, true),
-          Text('Downvote'): (context) => _updateVote(activeUser.id, false),
-          Text('Reply'): (context) => _onReplyPressed(context, activeUser.id),
-          if (activeUser.id == widget.comment.authorId)
-            Text('Delete'): (context) => _deleteComment(activeUser.id),
-        },
+        ...interactionOptions,
         ...?widget.optionsBuilder?.call(context, activeUser),
         if (widget.showViewUserOption && widget.comment.authorName != null)
-          Text('View ${widget.comment.community.platform.userPrefix}${widget.comment.authorName}'): (context) {
+          Text('View ${widget.comment.community.platform.userPrefix}${widget.comment.authorName}${widget.comment.community.platform.host == null ? '@${widget.comment.authorHost}' : ''}'): (context) {
             context.push(
               () => UserDetailsScreen(
-                platform: widget.comment.community.platform,
+                activeCommunity: widget.activeCommunity,
                 username: widget.comment.authorName!,
-                host: widget.comment.community.host,
               )
             );
           },
@@ -112,6 +121,7 @@ class _CommentTileState extends State<CommentTile> {
       id: widget.comment.id,
       activeUserId: activeUserId,
       replyingToWidget: CommentTile(
+        activeCommunity: widget.activeCommunity,
         comment: widget.comment,
         isInteractable: false,
       ),
@@ -149,7 +159,7 @@ class _CommentTileState extends State<CommentTile> {
     Widget body;
     if (htmlText != null) {
       body = CustomHtml(
-        platform: widget.comment.community.platform,
+        activeCommunity: widget.activeCommunity,
         html: htmlText,
         imageSizes: widget.comment.images,
       );

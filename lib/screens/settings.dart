@@ -1,3 +1,5 @@
+import 'dart:math';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/constants.dart';
@@ -8,6 +10,11 @@ import 'package:lurk/core/flavors.dart';
 import 'package:lurk/services/api/digg.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_app_bar.dart';
+import 'package:lurk/widgets/expansion_icon.dart';
+
+const Duration _expansionAnimationDuration = Duration(milliseconds: 250);
+const Curve _expansionAnimationCurve = Curves.easeInOutCubicEmphasized;
+const Curve _expansionAnimationReverseCurve = Curves.easeInExpo;
 
 class SettingsScreen extends StatefulWidget {
 
@@ -29,129 +36,166 @@ class _SettingsScreenState extends State<SettingsScreen> {
         child: ListView(
           padding: const EdgeInsets.all(8),
           children: [
-            const _Header(text: 'Home page'),
-            if (F.appFlavor == Flavor.combined) ...[
-              _ChoiceChipSettingListTile(
-                setting: Settings.homeCommunityPlatform,
-                choices: Platform.values,
-                choiceLabel: (platform) => platform.name.toTitleCase(),
-                selectedColor: (platform) => platform.color,
-                onSelected: (platform) {
-                  Settings.homeCommunityName.defaultValue = platform.homeCommunityName;
-                }
-              ),
-            ],
-            ListTile(
-              minVerticalPadding: 0,
-              title: ValueListenableBuilder(
-                valueListenable: Settings.homeCommunityPlatform,
-                builder: (context, homeCommunityPlatform, child) {
-                  return ValueListenableBuilder(
-                    valueListenable: Settings.homeCommunityName,
-                    builder: (context, homeCommunityName, child) {
-                      return _TextField(
-                        defaultValue: Settings.homeCommunityName.hasSavedValue ? homeCommunityName : null,
-                        label: homeCommunityPlatform.communityLabel.toTitleCase(),
-                        hintText: Settings.homeCommunityName.defaultValue,
-                        prefixText: homeCommunityPlatform.communityPrefix,
-                        floatingLabelBehavior: FloatingLabelBehavior.always,
-                        inputFormatters: homeCommunityPlatform.communityNameInputFormatters,
-                        showPrefix: (isFocused, value) => isFocused || value.isNotEmpty || (homeCommunityName?.isNotEmpty ?? false),
-                        onSubmitted: (value) {
-                          Settings.homeCommunityName.value = value.isEmpty ? null : value;
-                        },
+            _ExpansionTile(
+              initiallyExpanded: true,
+              title: 'Home page',
+              children: [
+                if (F.appFlavor == Flavor.combined) ...[
+                  _ChoiceChipSettingListTile(
+                    setting: Settings.homeCommunityPlatform,
+                    choices: Platform.values,
+                    choiceLabel: (platform) => platform.name.toTitleCase(),
+                    selectedColor: (platform) => platform.color,
+                    onSelected: (platform) {
+                      Settings.homeCommunityName.defaultValue = platform.homeCommunityName;
+                    }
+                  ),
+                ],
+                ListTile(
+                  minVerticalPadding: 0,
+                  title: ValueListenableBuilder(
+                    valueListenable: Settings.homeCommunityPlatform,
+                    builder: (context, homeCommunityPlatform, child) {
+                      return ValueListenableBuilder(
+                        valueListenable: Settings.homeCommunityName,
+                        builder: (context, homeCommunityName, child) {
+                          return _TextField(
+                            defaultValue: Settings.homeCommunityName.hasSavedValue ? homeCommunityName : null,
+                            label: homeCommunityPlatform.communityLabel.toTitleCase(),
+                            hintText: Settings.homeCommunityName.defaultValue,
+                            prefixText: homeCommunityPlatform.communityPrefix,
+                            floatingLabelBehavior: FloatingLabelBehavior.always,
+                            inputFormatters: homeCommunityPlatform.communityNameInputFormatters,
+                            showPrefix: (isFocused, value) => isFocused || value.isNotEmpty || (homeCommunityName?.isNotEmpty ?? false),
+                            onSubmitted: (value) {
+                              Settings.homeCommunityName.value = value.isEmpty ? null : value;
+                            },
+                          );
+                        }
                       );
                     }
-                  );
-                }
-              ),
+                  ),
+                )
+              ],
             ),
             const _Divider(),
-            _Header(text: 'General'),
-            _BoolSettingListTile(
-              setting: Settings.showCommentImages,
-              label: 'Comment images'
-            ),
-            _BoolSettingListTile(
-              setting: Settings.autoplayVideos,
-              label: 'Autoplay videos'
-            ),
-            _BoolSettingListTile(
-              setting: Settings.useBottomBar,
-              label: 'Bottom bar'
-            ),
-            _BoolSettingListTile(
-              setting: Settings.reverseCommunityList,
-              label: 'Reverse community list'
-            ),
-            _BoolSettingListTile(
-              setting: Settings.backOnHomeScreenShowCommunityList,
-              label: 'Override back navigation',
-              infoText: 'When enabled and on the home screen, navigating back will show the community list rather than exit the app.',
-            ),
-            if (F.appFlavor.platforms.any((platform) => platform.hasLogin)) ...[
-              _BoolSettingListTile(
-                setting: Settings.swipePostsToVote,
-                label: 'Swipe posts to vote',
-              ),
-              _BoolSettingListTile(
-                setting: Settings.swipeCommentsToVote,
-                label: 'Swipe comments to vote',
-              ),
-              _BoolSettingListTile(
-                setting: Settings.showCommentVotingEdges,
-                label: 'Comment voting edges',
-                infoText: 'Tapping the left side of a comment will upvote it and tapping the right side will downvote it.',
-              ),
-            ],
-            _ChoiceSettingListTile(
-              setting: Settings.commentTapBehavior,
-              title: 'Comment tap behavior',
-              choices: CommentBehavior.values.toList(),
-              choiceLabel: (choice) => choice.label
-            ),
-            _ChoiceSettingListTile(
-              setting: Settings.commentLongPressBehavior,
-              title: 'Comment long press behavior',
-              choices: CommentBehavior.values.toList(),
-              choiceLabel: (choice) => choice.label
+            _ExpansionTile(
+              title: 'General',
+              children: [
+                _BoolSettingListTile(
+                  setting: Settings.showCommentImages,
+                  label: 'Comment images'
+                ),
+                _BoolSettingListTile(
+                  setting: Settings.autoplayVideos,
+                  label: 'Autoplay videos'
+                ),
+                _BoolSettingListTile(
+                  setting: Settings.useBottomBar,
+                  label: 'Bottom bar'
+                ),
+                _BoolSettingListTile(
+                  setting: Settings.reverseCommunityList,
+                  label: 'Reverse community list'
+                ),
+                _BoolSettingListTile(
+                  setting: Settings.backOnHomeScreenShowCommunityList,
+                  label: 'Override back navigation',
+                  infoText: 'When enabled and on the home screen, navigating back will show the community list rather than exit the app.',
+                ),
+                if (F.appFlavor.platforms.any((platform) => platform.hasLogin)) ...[
+                  _BoolSettingListTile(
+                    setting: Settings.swipePostsToVote,
+                    label: 'Swipe posts to vote',
+                  ),
+                  _BoolSettingListTile(
+                    setting: Settings.swipeCommentsToVote,
+                    label: 'Swipe comments to vote',
+                  ),
+                  _BoolSettingListTile(
+                    setting: Settings.showCommentVotingEdges,
+                    label: 'Comment voting edges',
+                    infoText: 'Tapping the left side of a comment will upvote it and tapping the right side will downvote it.',
+                  ),
+                ],
+                _ChoiceSettingListTile(
+                  setting: Settings.commentTapBehavior,
+                  title: 'Comment tap behavior',
+                  choices: CommentBehavior.values.toList(),
+                  choiceLabel: (choice) => choice.label
+                ),
+                _ChoiceSettingListTile(
+                  setting: Settings.commentLongPressBehavior,
+                  title: 'Comment long press behavior',
+                  choices: CommentBehavior.values.toList(),
+                  choiceLabel: (choice) => choice.label
+                ),
+              ],
             ),
             const _Divider(),
-            const _Header(text: 'Colors'),
-            _ColorSettingListTile(
-              setting: Settings.appBarColor,
-              label: 'App bar color',
-            ),
-            _BoolSettingListTile(
-              setting: Settings.showPlatformColorAccents,
-              label: '$platformLabel color accents'
-            ),
-            _BoolSettingListTile(
-              setting: Settings.showPlatformColorTextAccents,
-              label: '$platformLabel color text accents'
+            _ExpansionTile(
+              title: 'Colors',
+              children: [
+                _ColorSettingListTile(
+                  setting: Settings.appBarColor,
+                  label: 'App bar color',
+                ),
+                _BoolSettingListTile(
+                  setting: Settings.showPlatformColorAccents,
+                  label: '$platformLabel color accents'
+                ),
+                _BoolSettingListTile(
+                  setting: Settings.showPlatformColorTextAccents,
+                  label: '$platformLabel color text accents'
+                ),
+              ],
             ),
             const _Divider(),
             if (F.appFlavor == Flavor.combined) ...[
-              const _Header(text: 'Reddit'),
-              const _RedditSettings(),
+              _ExpansionTile(
+                title: 'Reddit',
+                children: [
+                  const _RedditSettings(),
+                ]
+              ),
               const _Divider(),
-              const _Header(text: 'Digg'),
-              const _DiggSettings(),
+              _ExpansionTile(
+                title: 'Digg',
+                children: [
+                  const _DiggSettings(),
+                ]
+              ),
               const _Divider(),
-              const _Header(text: 'Lemmy'),
-              const _LemmySettings(),
+              _ExpansionTile(
+                title: 'Lemmy',
+                children: [
+                  const _LemmySettings(),
+                ]
+              ),
             ]
             else if (F.appFlavor == Flavor.reddit) ...[
-              const _Header(text: 'Other'),
-              const _RedditSettings(),
+              _ExpansionTile(
+                title: 'Other',
+                children: [
+                  const _RedditSettings(),
+                ]
+              ),
             ]
             else if (F.appFlavor == Flavor.digg) ...[
-              const _Header(text: 'Other'),
-              const _DiggSettings(),
+              _ExpansionTile(
+                title: 'Other',
+                children: [
+                  const _DiggSettings(),
+                ]
+              ),
             ]
             else if (F.appFlavor == Flavor.lemmy) ...[
-              const _Header(text: 'Other'),
-              const _LemmySettings(),
+              _ExpansionTile(
+                title: 'Other',
+                children: [
+                  const _LemmySettings(),
+                ]
+              ),
             ],
           ],
         ),
@@ -161,6 +205,66 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
 }
 
+class _ExpansionTile extends StatefulWidget {
+
+  final bool initiallyExpanded;
+  final String title;
+  final List<Widget> children;
+
+  const _ExpansionTile({
+    this.initiallyExpanded = false,
+    required this.title,
+    required this.children
+  });
+
+  @override
+  State<_ExpansionTile> createState() => _ExpansionTileState();
+
+}
+
+class _ExpansionTileState extends State<_ExpansionTile> {
+
+  late final ValueNotifier<bool> _isExpandedNotifier;
+
+  @override
+  void initState() {
+    super.initState();
+    _isExpandedNotifier = ValueNotifier(widget.initiallyExpanded);
+  }
+
+  @override
+  void dispose() {
+    _isExpandedNotifier.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return ExpansionTile(
+      initiallyExpanded: widget.initiallyExpanded,
+      shape: const Border(),
+      onExpansionChanged: (isExpanded) => _isExpandedNotifier.value = isExpanded,
+      expansionAnimationStyle: const AnimationStyle(
+        duration: _expansionAnimationDuration,
+        curve: _expansionAnimationCurve,
+        reverseCurve: _expansionAnimationReverseCurve
+      ),
+      title: _Header(text: widget.title),
+      trailing: ValueListenableBuilder(
+        valueListenable: _isExpandedNotifier,
+        builder: (context, isExpanded, child) {
+          return ExpansionIcon(
+            up: !isExpanded,
+            duration: _expansionAnimationDuration,
+            curve: _expansionAnimationCurve,
+          );
+        }
+      ),
+      children: widget.children
+    );
+  }
+}
+
 class _Divider extends StatelessWidget {
 
   const _Divider();
@@ -168,7 +272,7 @@ class _Divider extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const Divider(
-      height: 32,
+      height: 16,
       color: Constants.lighterBackgroundColor
     );
   }
@@ -265,14 +369,11 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: EdgeInsets.symmetric(horizontal: 16),
-      child: Text(
-        text,
-        style: Theme.of(context).textTheme.titleMedium?.copyWith(
-          color: Theme.of(context).colorScheme.primary,
-          fontWeight: FontWeight.bold,
-        ),
+    return Text(
+      text,
+      style: Theme.of(context).textTheme.titleMedium?.copyWith(
+        color: Theme.of(context).colorScheme.primary,
+        fontWeight: FontWeight.bold,
       ),
     );
   }
