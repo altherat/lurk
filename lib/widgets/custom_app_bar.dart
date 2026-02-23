@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:lurk/core/extensions.dart';
-import 'package:lurk/core/utils.dart';
 import 'package:lurk/services/settings.dart';
 
 class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {

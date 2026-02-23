@@ -1,5 +1,3 @@
-import 'dart:math';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/constants.dart';
@@ -63,7 +61,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             defaultValue: Settings.homeCommunityName.hasSavedValue ? homeCommunityName : null,
                             label: homeCommunityPlatform.communityLabel.toTitleCase(),
                             hintText: Settings.homeCommunityName.defaultValue,
-                            prefixText: homeCommunityPlatform.communityPrefix,
+                            prefixText: homeCommunityPlatform.preferredCommunityPrefix,
                             floatingLabelBehavior: FloatingLabelBehavior.always,
                             inputFormatters: homeCommunityPlatform.communityNameInputFormatters,
                             showPrefix: (isFocused, value) => isFocused || value.isNotEmpty || (homeCommunityName?.isNotEmpty ?? false),

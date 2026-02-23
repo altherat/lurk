@@ -38,6 +38,4 @@ class Settings extends Table {
 
   TextColumn get searchType => text().map(const EnumNameConverter<SearchType>(SearchType.values)).nullable()();
   
-  TextColumn get activeUserId => text().nullable()();
-  
 }

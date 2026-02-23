@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
-import 'package:lurk/repositories/communities.dart';
-import 'package:lurk/repositories/posts.dart';
+import 'package:lurk/core/database/database.dart';
+import 'package:lurk/services/communities.dart';
+import 'package:lurk/services/posts.dart';
 import 'package:lurk/screens/home.dart';
 import 'package:lurk/services/settings.dart';
+import 'package:lurk/services/user_manager.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 
@@ -28,10 +30,12 @@ class _AppState extends State<App> {
   @override
   void initState() {
     super.initState();
+    final db = Database.instance;
     _servicesInitFuture = Future.wait([
-      Settings.init(),
-      Communities.init(),
-      Posts.init(),
+      Settings.init(db),
+      UserManager.init(db),
+      Communities.init(db),
+      Posts.init(db),
     ]);
   }
 

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/utils.dart';
-import 'package:lurk/models/community.dart';
+import 'package:lurk/models/platform_context.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
@@ -10,16 +10,29 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 
 class WebViewerScreen extends StatefulWidget {
 
-  final Community activeCommunity;
+  final PlatformContext platformContext;
+  final String? communityName;
   final String url;
   final Post? post;
 
   const WebViewerScreen({
     super.key,
-    required this.activeCommunity,
+    required this.platformContext,
+    required this.communityName,
     required this.url,
     this.post,
   });
+
+  WebViewerScreen.fromPost({
+    Key? key,
+    required Post post
+  }) : this(
+    key: key,
+    platformContext: post.community.platformContext,
+    communityName: post.community.name,
+    url: post.url,
+    post: post,
+  );
 
   @override
   State<WebViewerScreen> createState() => _WebViewerScreenState();
@@ -72,7 +85,8 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
         }
       },
       child: MainScaffold(
-        activeCommunity: widget.activeCommunity,
+        platformContext: widget.platformContext,
+        activeCommunityName: widget.communityName,
         title: _title != null ? Text(_title!) : null,
         subtitle: Text(widget.url),
         iconActions: [
@@ -83,7 +97,7 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
         ],
         popupMenuActions: {
           if (widget.post != null)
-            Text('View comments'): (context) => context.push(() => PostDetailsScreen.fromPost(activeCommunity: widget.activeCommunity, post: widget.post!)),
+            Text('View comments'): (context) => context.push(() => PostDetailsScreen.fromPost(post: widget.post!)),
           Text('View in browser'): (context) => openInBrowser(widget.url),
           Text('Copy link'): (context) => copyToClipboard(widget.url)
         },

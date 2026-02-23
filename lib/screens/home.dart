@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:lurk/app.dart' as App;
+import 'package:lurk/app.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/screens/community.dart';
 import 'package:lurk/services/settings.dart';
@@ -28,22 +28,23 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
     super.initState();
     _homeCommunity =_getHomeCommunity();
     Settings.homeCommunityPlatform.addListener(_onCommunityChanged);
+    Settings.homeCommunityHost.addListener(_onCommunityChanged);
     Settings.homeCommunityName.addListener(_onCommunityChanged);
   }
 
   @override
   void dispose() { 
-    Settings.onSessionsInvalidated = null;
     Settings.homeCommunityPlatform.removeListener(_onCommunityChanged);
+    Settings.homeCommunityHost.removeListener(_onCommunityChanged);
     Settings.homeCommunityName.removeListener(_onCommunityChanged);
-    App.routeObserver.unsubscribe(this);
+    routeObserver.unsubscribe(this);
     super.dispose();
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    App.routeObserver.subscribe(this, ModalRoute.of(context)!);
+    routeObserver.subscribe(this, ModalRoute.of(context)!);
   }
 
   @override
@@ -54,9 +55,10 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   @override
   void didPopNext() {
     _isActive = true;
-    if (Settings.homeCommunityPlatform.value != _homeCommunity.platform || Settings.homeCommunityName.value != _homeCommunity.name) {
+    final community = _getHomeCommunity();
+    if (community != _homeCommunity) {
       setState(() {
-        _homeCommunity = _getHomeCommunity();
+        _homeCommunity = community;
       });
     }
   }
@@ -79,8 +81,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   @override
   Widget build(BuildContext context) {
     return CommunityScreen(
-      key: ValueKey('home-${_homeCommunity.platform.name}-${_homeCommunity.host}-${_homeCommunity.name}'),
-      activeCommunity: _homeCommunity,
+      key: ValueKey('home-${_homeCommunity.platformContext.platform.name}-${_homeCommunity.nameAndMaybeHost}'),
       community: _homeCommunity,
       scaffoldKey: widget.scaffoldKey
     );

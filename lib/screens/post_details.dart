@@ -6,14 +6,14 @@ import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/comment.dart';
-import 'package:lurk/models/community.dart';
 import 'package:lurk/models/paged_items.dart';
+import 'package:lurk/models/platform_context.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/core/utils.dart';
-import 'package:lurk/repositories/posts.dart';
+import 'package:lurk/services/posts.dart';
 import 'package:lurk/screens/feed.dart';
-import 'package:lurk/services/settings.dart';
+import 'package:lurk/services/user_manager.dart';
 import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/custom_html.dart';
@@ -25,7 +25,7 @@ const _postBodyCollapsedFadingEdgeRatio = 0.9;
 
 class PostDetailsScreen extends StatefulWidget {
 
-  final Community activeCommunity;
+  final PlatformContext platformContext;
   final String? communityName;
   final String url;
   final Post? post;
@@ -35,7 +35,7 @@ class PostDetailsScreen extends StatefulWidget {
 
   const PostDetailsScreen._({
     super.key,
-    required this.activeCommunity,
+    required this.platformContext,
     required this.communityName,
     required this.url,
     this.post,
@@ -43,25 +43,20 @@ class PostDetailsScreen extends StatefulWidget {
     this.inferredSubtitle,
   });
 
-  factory PostDetailsScreen.fromPost({
+  PostDetailsScreen.fromPost({
     Key? key,
-    required Community activeCommunity,
     required Post post
-  }) {
-    return PostDetailsScreen._(
-      key: key,
-      activeCommunity: activeCommunity,
-      communityName: post.community.name,
-      url: post.url,
-      post: post,
-    );
-  }
+  }) : this._(
+    key: key,
+    platformContext: post.community.platformContext,
+    communityName: post.community.name,
+    url: post.url,
+    post: post,
+  );
 
   factory PostDetailsScreen.fromUrl({
     Key? key,
-    required Community activeCommunity,
-    required Platform platform,
-    required String host,
+    required PlatformContext platformContext,
     required String url,
     required PostUrlInfo? urlInfo,
   }) {
@@ -73,11 +68,11 @@ class PostDetailsScreen extends StatefulWidget {
     }
     else  {
       title = urlInfo.inferredTitle ?? url;
-      subtitle = platform.getFullCommunityName(host, urlInfo.communityName);
+      subtitle = platformContext.platform.getFullCommunityName(platformContext.host, urlInfo.communityName);
     }
     return PostDetailsScreen._(
       key: key,
-      activeCommunity: activeCommunity,
+      platformContext: platformContext,
       communityName: urlInfo?.communityName,
       url: url,
       inferredTitle: title,
@@ -106,7 +101,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
     super.initState();
     _post = widget.post;
     _feedOptionsNotifier = ValueNotifier(null);
-    _initialItemsFuture = _fetchItems(widget.activeCommunity.platform.postCommentsFeedOptions.defaults, null);
+    _initialItemsFuture = _fetchItems(widget.platformContext.platform.postCommentsFeedOptions.defaults, null);
   }
 
   @override
@@ -119,13 +114,18 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
   }
 
   Future<PagedItems<CommentItem>> _fetchItems(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) async {
+    final activeUser = UserManager.getActiveUser(widget.platformContext.platform).value;
     _feedOptionsNotifier.value = feedOptions;
     final PostDetails postDetails;
     if (_post != null) {
-      postDetails = await widget.activeCommunity.platform.getApi(widget.activeCommunity.host, Settings.activeUser.value?.id).fetchPostDetailsFromId(_post!.shortId, shortCommentId: _contextCommentShortId, options: feedOptions);
+      postDetails = await Platform.getApi(widget.platformContext, activeUser).fetchPostDetailsFromId(
+        activeUser != null && activeUser.platformContext.host != _post!.community.platformContext.host ? await Platform.getApi(widget.platformContext, activeUser).resolveGlobalToLocalPostId(_post!.globalId!) : _post!.shortLocalId,
+        shortCommentId: _contextCommentShortId,
+        options: feedOptions
+      );
     }
     else {
-      postDetails = await widget.activeCommunity.platform.getApi(widget.activeCommunity.host, Settings.activeUser.value?.id).fetchPostDetailsFromUrl(widget.url, options: feedOptions);
+      postDetails = await Platform.getApi(widget.platformContext, activeUser).fetchPostDetailsFromUrl(widget.url, options: feedOptions);
       _post = postDetails.post;
     }
     _contextCommentShortId = postDetails.contextCommentShortId;
@@ -135,7 +135,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
     if (mounted) {
       setState(() {});
     }
-    Posts.visitedDetails.add(_post!.id);
+    Posts.visitedDetails.add(_post!.localId);
     return PagedItems(items: postDetails.comments);
   }
 
@@ -157,16 +157,15 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
       subtitle = _post!.community.fullName;
       popupMenuActions = {
         Text('View in browser'): (context) => openInBrowser(widget.url),
-        Text('View comments in browser'): (context) => openInBrowser(_post!.community.platform.getPostDetailsUrl(_post!)),
+        Text('View comments in browser'): (context) => openInBrowser(_post!.community.platformContext.platform.getPostDetailsUrl(_post!)),
         Text('Copy link'): (context) => copyToClipboard(widget.url),
-        Text('Copy comments link'): (context) => copyToClipboard(_post!.community.platform.getPostDetailsUrl(_post!))
+        Text('Copy comments link'): (context) => copyToClipboard(_post!.community.platformContext.platform.getPostDetailsUrl(_post!))
       };
       slivers = [
         SliverToBoxAdapter(
           child: Column(
             children: [
               PostTile(
-                activeCommunity: widget.activeCommunity,
                 post: _post!,
                 onTapNavigate: false,
                 showThumbnail: !_post!.isSelf,
@@ -179,7 +178,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                 )
               ),
               if (_post!.textHtml != null)
-                _PostBodyContainer(child: _PostBody(activeHost: widget.activeCommunity.host, post: _post!))
+                _PostBodyContainer(child: _PostBody(post: _post!))
               else
                 const SizedBox(height: 8),
               Container(
@@ -196,7 +195,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                       valueListenable: _feedOptionsNotifier,
                       builder: (context, feedOptions, child) {
                         return Text(
-                          'sorted by${feedOptions != null ? ': ${feedOptions.values.map((option) => option.label.toLowerCase()).join(' / ')}' : ' ${_post!.community.platform.postCommentsFeedOptions.options.first.label.toLowerCase()}'}',
+                          'sorted by${feedOptions != null ? ': ${feedOptions.values.map((option) => option.label.toLowerCase()).join(' / ')}' : ' ${_post!.community.platformContext.platform.postCommentsFeedOptions.options.first.label.toLowerCase()}'}',
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                             fontSize: 11
@@ -209,7 +208,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
               ),
               if (_contextCommentShortId != null)
                 InkWell(
-                  onTap: () => context.push(() => PostDetailsScreen.fromPost(activeCommunity: widget.activeCommunity, post: _post!)),
+                  onTap: () => context.push(() => PostDetailsScreen.fromPost(post: _post!)),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Row(
@@ -243,19 +242,21 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
       popupMenuActions = const {};
       slivers = [];
     }
+    final activeUserListenable = UserManager.getActiveUser(widget.platformContext.platform);
     return FeedScreen(
       key: _simpleFeedScreenKey,
-      activeCommunity: widget.activeCommunity,
-      feedOptions: widget.activeCommunity.platform.postCommentsFeedOptions,
+      platformContext: widget.platformContext,
+      activeCommunityName: widget.communityName,
+      feedOptions: widget.platformContext.platform.postCommentsFeedOptions,
       initialItems: _initialItemsFuture,
       fetchItems: _fetchItems,
       title: title,
       subtitle: subtitle,
       showFeedOptionsSubtitle: false,
-      iconActionsBuilder: (Settings.activeUser, (context) {
-        final activeUser = Settings.activeUser.value;
+      iconActionsBuilder: (activeUserListenable, (context) {
+        final activeUser = activeUserListenable.value;
         return [
-          if (activeUser != null && activeUser.platform == _post!.community.platform)
+          if (activeUser != null)
             IconButton(
               icon: const Icon(Icons.add_comment_rounded),
               tooltip: 'Add comment',
@@ -263,12 +264,10 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                 showAddCommentBottomSheet(
                   context: context,
                   community: _post!.community,
-                  activeUserId: activeUser.id,
-                  id: _post!.id,
+                  id: _post!.localId,
                   replyingToWidget: Column(
                     children: [
                       PostTile(
-                        activeCommunity: widget.activeCommunity,
                         post: _post!,
                         isInteractable: false,
                       ),
@@ -277,7 +276,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                           child: Padding(
                             padding: const EdgeInsets.all(8),
                             child: CustomHtml(
-                              activeCommunity: _post!.community,
+                              platformContext: widget.platformContext,
                               html: _post!.textHtml!
                             )
                           )
@@ -305,10 +304,9 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
           final parentCollapsingAnimationState = _parentCollapsingAnimationStates[item];
           final isCollapsed = _collapsedCommentIds.contains(item.id);
           child = CommentTile(
-            activeCommunity: widget.activeCommunity,
-            padding: EdgeInsets.only(top: index == 0 ? 0 : 8, bottom: 4),
             comment: item,
             depth: item.depth,
+            padding: EdgeInsets.only(top: index == 0 ? 0 : 8, bottom: 4),
             isCollapsed: isCollapsed,
             isInteractable: parentCollapsingAnimationState?.controller.isAnimating != true && childCollapsingAnimationState?.controller.isAnimating != true,
             bodyBuilder: (context, body) {
@@ -445,7 +443,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
           child = _LoadMoreComments(
             comment: item as LoadMoreComment,
             onLoadMoreComments: () async {
-              final comments = await widget.activeCommunity.platform.getApi(widget.activeCommunity.host, Settings.activeUser.value?.id).fetchMoreComments(_post!.id, item.pageToken!, depth: item.depth);
+              final comments = await Platform.getApi(widget.platformContext, UserManager.getActiveUser(widget.platformContext.platform).value).fetchMoreComments(_post!.localId, item.pageToken!, depth: item.depth);
               if (mounted) {
                 _simpleFeedScreenKey.currentState?.feedList?.updateItems((items) => items.replaceRange(index, index + 1, comments));
               }
@@ -591,11 +589,9 @@ class _PostBodyContainer extends StatelessWidget {
 
 class _PostBody extends StatefulWidget {
 
-  final String activeHost;
   final Post post;
 
   const _PostBody({
-    required this.activeHost,
     required this.post,
   });
 
@@ -719,7 +715,7 @@ class _PostBodyState extends State<_PostBody> with SingleTickerProviderStateMixi
           },
           child: RepaintBoundary(
             child: CustomHtml(
-              activeCommunity: widget.post.community,
+              platformContext: widget.post.community.platformContext,
               html: widget.post.textHtml!
             )
           )

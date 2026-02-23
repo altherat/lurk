@@ -5,58 +5,38 @@ import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
-import 'package:lurk/models/community.dart';
+import 'package:lurk/models/platform_context.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/screens/image_viewer.dart';
-import 'package:lurk/services/settings.dart';
+import 'package:lurk/services/user_manager.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/media_scaffold.dart';
 
 class ImageGalleryViewerScreen extends StatefulWidget {
 
-  final Community activeCommunity;
-  final Platform platform;
-  final String host;
+  final PlatformContext platformContext;
+  final String? communityName;
   final String url;
   final Post? post;
 
   const ImageGalleryViewerScreen({
     super.key,
-    required this.activeCommunity,
-    required this.platform,
-    required this.host,
+    required this.platformContext,
+    required this.communityName,
     required this.url,
     this.post
   });
 
-  factory ImageGalleryViewerScreen.fromPost({
+  ImageGalleryViewerScreen.fromPost({
     Key? key,
-    required Community activeCommunity,
     required Post post
-  }) {
-    return ImageGalleryViewerScreen(
-      key: key,
-      activeCommunity: activeCommunity,
-      platform: post.community.platform,
-      host: post.community.host,
-      url: post.url,
-      post: post,
-    );
-  }
-
-  factory ImageGalleryViewerScreen.fromUrl({
-    Key? key,
-    required Community activeCommunity,
-    required String url
-  }) {
-    return ImageGalleryViewerScreen(
-      key: key,
-      activeCommunity: activeCommunity,
-      platform: activeCommunity.platform,
-      host: activeCommunity.host,
-      url: url,
-    );
-  }
+  }) : this(
+    key: key,
+    platformContext: post.community.platformContext,
+    communityName: post.community.nameAndMaybeHost,
+    url: post.url,
+    post: post,
+  );
 
   @override
   State<ImageGalleryViewerScreen> createState() => _ImageGalleryViewerScreenState();
@@ -73,7 +53,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
     super.initState();
     if (widget.post == null) {
       _isLoadingPost = true;
-      widget.platform.getApi(widget.host, Settings.activeUser.value?.id).fetchPostDetailsFromUrl(widget.url).then((postDetails) {
+      Platform.getApi(widget.platformContext, UserManager.getActiveUser(widget.platformContext.platform).value).fetchPostDetailsFromUrl(widget.url).then((postDetails) {
         if (mounted) {
           setState(() {
             _post = postDetails.post!;
@@ -87,6 +67,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
       _post = widget.post!;
     }
   }
+
   @override
   Widget build(BuildContext context) {
     final void Function(BuildContext context)? onSave;
@@ -100,11 +81,10 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
         final count = _post.galleryImages.length;
         saveMedia(
           context: context,
-          platform: widget.platform,
           snackbarMediaTypeMessage: '$count images',
           save: () async {
             for (final image in _post.galleryImages) {
-              final filePath = await downloadMediaToTemp(image.url, widget.platform.savedOrDefaultUserAgent);
+              final filePath = await downloadMediaToTemp(image.url, widget.platformContext.platform.savedOrDefaultUserAgent);
               await Gal.putImage(filePath);
             }
           },
@@ -143,7 +123,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
               children: [
                 ExtendedImage.network(
                   image.url,
-                  headers: {'User-Agent': widget.platform.savedOrDefaultUserAgent},
+                  headers: {'User-Agent': widget.platformContext.platform.savedOrDefaultUserAgent},
                   fit: BoxFit.fitWidth,
                   mode: ExtendedImageMode.gesture,
                   cacheWidth: (MediaQuery.of(context).size.width * MediaQuery.of(context).devicePixelRatio).toInt(),
@@ -182,20 +162,22 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                     color: Colors.transparent,
                     child: InkWell(
                       onTap: () {
-                        context.push(
-                          () => ImageViewerScreen(
-                            activeCommunity: widget.activeCommunity,
+                        context.push(() {
+                          return ImageViewerScreen(
+                            platformContext: widget.platformContext,
+                            communityName: widget.communityName,
                             url: image.url,
                             post: widget.post,
-                          )
-                        );
+                          );
+                        });
                       },
                       onLongPress: () {
                         showSimpleOptionsBottomSheet(
                           context: context,
                           options: MediaScaffold.getOptions(
                             context: context,
-                            activeCommunity: widget.activeCommunity,
+                            platformContext: widget.platformContext,
+                            communityName: widget.communityName,
                             type: 'image',
                             url: image.url,
                             onSave: onSave
@@ -212,7 +194,8 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
       );
     }
     return MediaScaffold(
-      activeCommunity: widget.activeCommunity,
+      platformContext: widget.platformContext,
+      communityName: widget.communityName,
       url: widget.url,
       type: 'images',
       post: widget.post,

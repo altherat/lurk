@@ -3,6 +3,464 @@
 part of 'database.dart';
 
 // ignore_for_file: type=lint
+class $ActiveUsersTable extends ActiveUsers
+    with TableInfo<$ActiveUsersTable, ActiveUser> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $ActiveUsersTable(this.attachedDatabase, [this._alias]);
+  @override
+  late final GeneratedColumnWithTypeConverter<Platform, String> platform =
+      GeneratedColumn<String>(
+        'platform',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<Platform>($ActiveUsersTable.$converterplatform);
+  static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
+  @override
+  late final GeneratedColumn<String> userId = GeneratedColumn<String>(
+    'user_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [platform, userId];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'active_users';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<ActiveUser> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('user_id')) {
+      context.handle(
+        _userIdMeta,
+        userId.isAcceptableOrUnknown(data['user_id']!, _userIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_userIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {platform};
+  @override
+  ActiveUser map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return ActiveUser(
+      platform: $ActiveUsersTable.$converterplatform.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}platform'],
+        )!,
+      ),
+      userId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}user_id'],
+      )!,
+    );
+  }
+
+  @override
+  $ActiveUsersTable createAlias(String alias) {
+    return $ActiveUsersTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<Platform, String, String> $converterplatform =
+      const EnumNameConverter<Platform>(Platform.values);
+}
+
+class ActiveUser extends DataClass implements Insertable<ActiveUser> {
+  final Platform platform;
+  final String userId;
+  const ActiveUser({required this.platform, required this.userId});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    {
+      map['platform'] = Variable<String>(
+        $ActiveUsersTable.$converterplatform.toSql(platform),
+      );
+    }
+    map['user_id'] = Variable<String>(userId);
+    return map;
+  }
+
+  ActiveUsersCompanion toCompanion(bool nullToAbsent) {
+    return ActiveUsersCompanion(
+      platform: Value(platform),
+      userId: Value(userId),
+    );
+  }
+
+  factory ActiveUser.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return ActiveUser(
+      platform: $ActiveUsersTable.$converterplatform.fromJson(
+        serializer.fromJson<String>(json['platform']),
+      ),
+      userId: serializer.fromJson<String>(json['userId']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'platform': serializer.toJson<String>(
+        $ActiveUsersTable.$converterplatform.toJson(platform),
+      ),
+      'userId': serializer.toJson<String>(userId),
+    };
+  }
+
+  ActiveUser copyWith({Platform? platform, String? userId}) => ActiveUser(
+    platform: platform ?? this.platform,
+    userId: userId ?? this.userId,
+  );
+  ActiveUser copyWithCompanion(ActiveUsersCompanion data) {
+    return ActiveUser(
+      platform: data.platform.present ? data.platform.value : this.platform,
+      userId: data.userId.present ? data.userId.value : this.userId,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ActiveUser(')
+          ..write('platform: $platform, ')
+          ..write('userId: $userId')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(platform, userId);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is ActiveUser &&
+          other.platform == this.platform &&
+          other.userId == this.userId);
+}
+
+class ActiveUsersCompanion extends UpdateCompanion<ActiveUser> {
+  final Value<Platform> platform;
+  final Value<String> userId;
+  final Value<int> rowid;
+  const ActiveUsersCompanion({
+    this.platform = const Value.absent(),
+    this.userId = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  ActiveUsersCompanion.insert({
+    required Platform platform,
+    required String userId,
+    this.rowid = const Value.absent(),
+  }) : platform = Value(platform),
+       userId = Value(userId);
+  static Insertable<ActiveUser> custom({
+    Expression<String>? platform,
+    Expression<String>? userId,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (platform != null) 'platform': platform,
+      if (userId != null) 'user_id': userId,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  ActiveUsersCompanion copyWith({
+    Value<Platform>? platform,
+    Value<String>? userId,
+    Value<int>? rowid,
+  }) {
+    return ActiveUsersCompanion(
+      platform: platform ?? this.platform,
+      userId: userId ?? this.userId,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (platform.present) {
+      map['platform'] = Variable<String>(
+        $ActiveUsersTable.$converterplatform.toSql(platform.value),
+      );
+    }
+    if (userId.present) {
+      map['user_id'] = Variable<String>(userId.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('ActiveUsersCompanion(')
+          ..write('platform: $platform, ')
+          ..write('userId: $userId, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $CommunitiesTable extends Communities
+    with TableInfo<$CommunitiesTable, Community> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $CommunitiesTable(this.attachedDatabase, [this._alias]);
+  @override
+  late final GeneratedColumnWithTypeConverter<Platform, String> platform =
+      GeneratedColumn<String>(
+        'platform',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<Platform>($CommunitiesTable.$converterplatform);
+  static const VerificationMeta _hostMeta = const VerificationMeta('host');
+  @override
+  late final GeneratedColumn<String> host = GeneratedColumn<String>(
+    'host',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<String?, String> name =
+      GeneratedColumn<String>(
+        'name',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: true,
+      ).withConverter<String?>($CommunitiesTable.$convertername);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<String> id = GeneratedColumn<String>(
+    'id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
+    'isFavorite',
+  );
+  @override
+  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
+    'is_favorite',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("is_favorite" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [platform, host, name, id, isFavorite];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'communities';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<Community> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('host')) {
+      context.handle(
+        _hostMeta,
+        host.isAcceptableOrUnknown(data['host']!, _hostMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_hostMeta);
+    }
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('is_favorite')) {
+      context.handle(
+        _isFavoriteMeta,
+        isFavorite.isAcceptableOrUnknown(data['is_favorite']!, _isFavoriteMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {platform, host, name};
+  @override
+  Community map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return Community(
+      platform: $CommunitiesTable.$converterplatform.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}platform'],
+        )!,
+      ),
+      host: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}host'],
+      )!,
+      name: $CommunitiesTable.$convertername.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.string,
+          data['${effectivePrefix}name'],
+        )!,
+      ),
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      ),
+      isFavorite: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}is_favorite'],
+      )!,
+    );
+  }
+
+  @override
+  $CommunitiesTable createAlias(String alias) {
+    return $CommunitiesTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<Platform, String, String> $converterplatform =
+      const EnumNameConverter<Platform>(Platform.values);
+  static TypeConverter<String?, String> $convertername =
+      const EmptyStringConverter();
+}
+
+class CommunitiesCompanion extends UpdateCompanion<Community> {
+  final Value<Platform> platform;
+  final Value<String> host;
+  final Value<String?> name;
+  final Value<String?> id;
+  final Value<bool> isFavorite;
+  final Value<int> rowid;
+  const CommunitiesCompanion({
+    this.platform = const Value.absent(),
+    this.host = const Value.absent(),
+    this.name = const Value.absent(),
+    this.id = const Value.absent(),
+    this.isFavorite = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  CommunitiesCompanion.insert({
+    required Platform platform,
+    required String host,
+    required String? name,
+    this.id = const Value.absent(),
+    this.isFavorite = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : platform = Value(platform),
+       host = Value(host),
+       name = Value(name);
+  static Insertable<Community> custom({
+    Expression<String>? platform,
+    Expression<String>? host,
+    Expression<String>? name,
+    Expression<String>? id,
+    Expression<bool>? isFavorite,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (platform != null) 'platform': platform,
+      if (host != null) 'host': host,
+      if (name != null) 'name': name,
+      if (id != null) 'id': id,
+      if (isFavorite != null) 'is_favorite': isFavorite,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  CommunitiesCompanion copyWith({
+    Value<Platform>? platform,
+    Value<String>? host,
+    Value<String?>? name,
+    Value<String?>? id,
+    Value<bool>? isFavorite,
+    Value<int>? rowid,
+  }) {
+    return CommunitiesCompanion(
+      platform: platform ?? this.platform,
+      host: host ?? this.host,
+      name: name ?? this.name,
+      id: id ?? this.id,
+      isFavorite: isFavorite ?? this.isFavorite,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (platform.present) {
+      map['platform'] = Variable<String>(
+        $CommunitiesTable.$converterplatform.toSql(platform.value),
+      );
+    }
+    if (host.present) {
+      map['host'] = Variable<String>(host.value);
+    }
+    if (name.present) {
+      map['name'] = Variable<String>(
+        $CommunitiesTable.$convertername.toSql(name.value),
+      );
+    }
+    if (id.present) {
+      map['id'] = Variable<String>(id.value);
+    }
+    if (isFavorite.present) {
+      map['is_favorite'] = Variable<bool>(isFavorite.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('CommunitiesCompanion(')
+          ..write('platform: $platform, ')
+          ..write('host: $host, ')
+          ..write('name: $name, ')
+          ..write('id: $id, ')
+          ..write('isFavorite: $isFavorite, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
 class $CookiesTable extends Cookies with TableInfo<$CookiesTable, Cookie> {
   @override
   final GeneratedDatabase attachedDatabase;
@@ -266,6 +724,216 @@ class CookiesCompanion extends UpdateCompanion<Cookie> {
           ..write('key: $key, ')
           ..write('value: $value, ')
           ..write('expirationTime: $expirationTime, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $HistoryTable extends History with TableInfo<$HistoryTable, HistoryData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $HistoryTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
+  @override
+  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
+    'item_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  @override
+  late final GeneratedColumnWithTypeConverter<HistoryType, int> type =
+      GeneratedColumn<int>(
+        'type',
+        aliasedName,
+        false,
+        type: DriftSqlType.int,
+        requiredDuringInsert: true,
+      ).withConverter<HistoryType>($HistoryTable.$convertertype);
+  @override
+  List<GeneratedColumn> get $columns => [itemId, type];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'history';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<HistoryData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('item_id')) {
+      context.handle(
+        _itemIdMeta,
+        itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_itemIdMeta);
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {itemId, type};
+  @override
+  HistoryData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return HistoryData(
+      itemId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}item_id'],
+      )!,
+      type: $HistoryTable.$convertertype.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}type'],
+        )!,
+      ),
+    );
+  }
+
+  @override
+  $HistoryTable createAlias(String alias) {
+    return $HistoryTable(attachedDatabase, alias);
+  }
+
+  static JsonTypeConverter2<HistoryType, int, int> $convertertype =
+      const EnumIndexConverter<HistoryType>(HistoryType.values);
+}
+
+class HistoryData extends DataClass implements Insertable<HistoryData> {
+  final String itemId;
+  final HistoryType type;
+  const HistoryData({required this.itemId, required this.type});
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['item_id'] = Variable<String>(itemId);
+    {
+      map['type'] = Variable<int>($HistoryTable.$convertertype.toSql(type));
+    }
+    return map;
+  }
+
+  HistoryCompanion toCompanion(bool nullToAbsent) {
+    return HistoryCompanion(itemId: Value(itemId), type: Value(type));
+  }
+
+  factory HistoryData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return HistoryData(
+      itemId: serializer.fromJson<String>(json['itemId']),
+      type: $HistoryTable.$convertertype.fromJson(
+        serializer.fromJson<int>(json['type']),
+      ),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'itemId': serializer.toJson<String>(itemId),
+      'type': serializer.toJson<int>($HistoryTable.$convertertype.toJson(type)),
+    };
+  }
+
+  HistoryData copyWith({String? itemId, HistoryType? type}) =>
+      HistoryData(itemId: itemId ?? this.itemId, type: type ?? this.type);
+  HistoryData copyWithCompanion(HistoryCompanion data) {
+    return HistoryData(
+      itemId: data.itemId.present ? data.itemId.value : this.itemId,
+      type: data.type.present ? data.type.value : this.type,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HistoryData(')
+          ..write('itemId: $itemId, ')
+          ..write('type: $type')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(itemId, type);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is HistoryData &&
+          other.itemId == this.itemId &&
+          other.type == this.type);
+}
+
+class HistoryCompanion extends UpdateCompanion<HistoryData> {
+  final Value<String> itemId;
+  final Value<HistoryType> type;
+  final Value<int> rowid;
+  const HistoryCompanion({
+    this.itemId = const Value.absent(),
+    this.type = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  HistoryCompanion.insert({
+    required String itemId,
+    required HistoryType type,
+    this.rowid = const Value.absent(),
+  }) : itemId = Value(itemId),
+       type = Value(type);
+  static Insertable<HistoryData> custom({
+    Expression<String>? itemId,
+    Expression<int>? type,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (itemId != null) 'item_id': itemId,
+      if (type != null) 'type': type,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  HistoryCompanion copyWith({
+    Value<String>? itemId,
+    Value<HistoryType>? type,
+    Value<int>? rowid,
+  }) {
+    return HistoryCompanion(
+      itemId: itemId ?? this.itemId,
+      type: type ?? this.type,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (itemId.present) {
+      map['item_id'] = Variable<String>(itemId.value);
+    }
+    if (type.present) {
+      map['type'] = Variable<int>(
+        $HistoryTable.$convertertype.toSql(type.value),
+      );
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('HistoryCompanion(')
+          ..write('itemId: $itemId, ')
+          ..write('type: $type, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -611,17 +1279,6 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       ).withConverter<SearchType?>($SettingsTable.$convertersearchTypen);
-  static const VerificationMeta _activeUserIdMeta = const VerificationMeta(
-    'activeUserId',
-  );
-  @override
-  late final GeneratedColumn<String> activeUserId = GeneratedColumn<String>(
-    'active_user_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -650,7 +1307,6 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
     diggUserAgent,
     lemmyUserAgent,
     searchType,
-    activeUserId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -856,15 +1512,6 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
         ),
       );
     }
-    if (data.containsKey('active_user_id')) {
-      context.handle(
-        _activeUserIdMeta,
-        activeUserId.isAcceptableOrUnknown(
-          data['active_user_id']!,
-          _activeUserIdMeta,
-        ),
-      );
-    }
     return context;
   }
 
@@ -989,10 +1636,6 @@ class $SettingsTable extends Settings with TableInfo<$SettingsTable, Setting> {
           data['${effectivePrefix}search_type'],
         ),
       ),
-      activeUserId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}active_user_id'],
-      ),
     );
   }
 
@@ -1050,7 +1693,6 @@ class Setting extends DataClass implements Insertable<Setting> {
   final String? diggUserAgent;
   final String? lemmyUserAgent;
   final SearchType? searchType;
-  final String? activeUserId;
   const Setting({
     required this.id,
     this.homeCommunityPlatform,
@@ -1078,7 +1720,6 @@ class Setting extends DataClass implements Insertable<Setting> {
     this.diggUserAgent,
     this.lemmyUserAgent,
     this.searchType,
-    this.activeUserId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -1155,9 +1796,6 @@ class Setting extends DataClass implements Insertable<Setting> {
         $SettingsTable.$convertersearchTypen.toSql(searchType),
       );
     }
-    if (!nullToAbsent || activeUserId != null) {
-      map['active_user_id'] = Variable<String>(activeUserId);
-    }
     return map;
   }
 
@@ -1213,9 +1851,6 @@ class Setting extends DataClass implements Insertable<Setting> {
       searchType: searchType == null && nullToAbsent
           ? const Value.absent()
           : Value(searchType),
-      activeUserId: activeUserId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(activeUserId),
     );
   }
 
@@ -1284,7 +1919,6 @@ class Setting extends DataClass implements Insertable<Setting> {
       searchType: $SettingsTable.$convertersearchTypen.fromJson(
         serializer.fromJson<String?>(json['searchType']),
       ),
-      activeUserId: serializer.fromJson<String?>(json['activeUserId']),
     );
   }
   @override
@@ -1337,7 +1971,6 @@ class Setting extends DataClass implements Insertable<Setting> {
       'searchType': serializer.toJson<String?>(
         $SettingsTable.$convertersearchTypen.toJson(searchType),
       ),
-      'activeUserId': serializer.toJson<String?>(activeUserId),
     };
   }
 
@@ -1368,7 +2001,6 @@ class Setting extends DataClass implements Insertable<Setting> {
     Value<String?> diggUserAgent = const Value.absent(),
     Value<String?> lemmyUserAgent = const Value.absent(),
     Value<SearchType?> searchType = const Value.absent(),
-    Value<String?> activeUserId = const Value.absent(),
   }) => Setting(
     id: id ?? this.id,
     homeCommunityPlatform: homeCommunityPlatform.present
@@ -1421,7 +2053,6 @@ class Setting extends DataClass implements Insertable<Setting> {
         ? lemmyUserAgent.value
         : this.lemmyUserAgent,
     searchType: searchType.present ? searchType.value : this.searchType,
-    activeUserId: activeUserId.present ? activeUserId.value : this.activeUserId,
   );
   Setting copyWithCompanion(SettingsCompanion data) {
     return Setting(
@@ -1502,9 +2133,6 @@ class Setting extends DataClass implements Insertable<Setting> {
       searchType: data.searchType.present
           ? data.searchType.value
           : this.searchType,
-      activeUserId: data.activeUserId.present
-          ? data.activeUserId.value
-          : this.activeUserId,
     );
   }
 
@@ -1540,8 +2168,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           ..write('diggPostsFetchDepth: $diggPostsFetchDepth, ')
           ..write('diggUserAgent: $diggUserAgent, ')
           ..write('lemmyUserAgent: $lemmyUserAgent, ')
-          ..write('searchType: $searchType, ')
-          ..write('activeUserId: $activeUserId')
+          ..write('searchType: $searchType')
           ..write(')'))
         .toString();
   }
@@ -1574,7 +2201,6 @@ class Setting extends DataClass implements Insertable<Setting> {
     diggUserAgent,
     lemmyUserAgent,
     searchType,
-    activeUserId,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -1607,8 +2233,7 @@ class Setting extends DataClass implements Insertable<Setting> {
           other.diggPostsFetchDepth == this.diggPostsFetchDepth &&
           other.diggUserAgent == this.diggUserAgent &&
           other.lemmyUserAgent == this.lemmyUserAgent &&
-          other.searchType == this.searchType &&
-          other.activeUserId == this.activeUserId);
+          other.searchType == this.searchType);
 }
 
 class SettingsCompanion extends UpdateCompanion<Setting> {
@@ -1638,7 +2263,6 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
   final Value<String?> diggUserAgent;
   final Value<String?> lemmyUserAgent;
   final Value<SearchType?> searchType;
-  final Value<String?> activeUserId;
   const SettingsCompanion({
     this.id = const Value.absent(),
     this.homeCommunityPlatform = const Value.absent(),
@@ -1666,7 +2290,6 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.diggUserAgent = const Value.absent(),
     this.lemmyUserAgent = const Value.absent(),
     this.searchType = const Value.absent(),
-    this.activeUserId = const Value.absent(),
   });
   SettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -1695,7 +2318,6 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     this.diggUserAgent = const Value.absent(),
     this.lemmyUserAgent = const Value.absent(),
     this.searchType = const Value.absent(),
-    this.activeUserId = const Value.absent(),
   });
   static Insertable<Setting> custom({
     Expression<int>? id,
@@ -1724,7 +2346,6 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Expression<String>? diggUserAgent,
     Expression<String>? lemmyUserAgent,
     Expression<String>? searchType,
-    Expression<String>? activeUserId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -1765,7 +2386,6 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       if (diggUserAgent != null) 'digg_user_agent': diggUserAgent,
       if (lemmyUserAgent != null) 'lemmy_user_agent': lemmyUserAgent,
       if (searchType != null) 'search_type': searchType,
-      if (activeUserId != null) 'active_user_id': activeUserId,
     });
   }
 
@@ -1796,7 +2416,6 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
     Value<String?>? diggUserAgent,
     Value<String?>? lemmyUserAgent,
     Value<SearchType?>? searchType,
-    Value<String?>? activeUserId,
   }) {
     return SettingsCompanion(
       id: id ?? this.id,
@@ -1833,7 +2452,6 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
       diggUserAgent: diggUserAgent ?? this.diggUserAgent,
       lemmyUserAgent: lemmyUserAgent ?? this.lemmyUserAgent,
       searchType: searchType ?? this.searchType,
-      activeUserId: activeUserId ?? this.activeUserId,
     );
   }
 
@@ -1944,9 +2562,6 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
         $SettingsTable.$convertersearchTypen.toSql(searchType.value),
       );
     }
-    if (activeUserId.present) {
-      map['active_user_id'] = Variable<String>(activeUserId.value);
-    }
     return map;
   }
 
@@ -1982,8 +2597,7 @@ class SettingsCompanion extends UpdateCompanion<Setting> {
           ..write('diggPostsFetchDepth: $diggPostsFetchDepth, ')
           ..write('diggUserAgent: $diggUserAgent, ')
           ..write('lemmyUserAgent: $lemmyUserAgent, ')
-          ..write('searchType: $searchType, ')
-          ..write('activeUserId: $activeUserId')
+          ..write('searchType: $searchType')
           ..write(')'))
         .toString();
   }
@@ -2128,10 +2742,6 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
         DriftSqlType.string,
         data['${effectivePrefix}host'],
       )!,
-      hostIconUrl: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}host_icon_url'],
-      ),
       id: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}id'],
@@ -2143,6 +2753,10 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
       iconUrl: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}icon_url'],
+      ),
+      hostIconUrl: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}host_icon_url'],
       ),
     );
   }
@@ -2546,479 +3160,372 @@ class UserCommunitiesCompanion extends UpdateCompanion<UserCommunity> {
   }
 }
 
-class $CommunitiesTable extends Communities
-    with TableInfo<$CommunitiesTable, Community> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $CommunitiesTable(this.attachedDatabase, [this._alias]);
-  @override
-  late final GeneratedColumnWithTypeConverter<Platform, String> platform =
-      GeneratedColumn<String>(
-        'platform',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      ).withConverter<Platform>($CommunitiesTable.$converterplatform);
-  static const VerificationMeta _hostMeta = const VerificationMeta('host');
-  @override
-  late final GeneratedColumn<String> host = GeneratedColumn<String>(
-    'host',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  @override
-  late final GeneratedColumnWithTypeConverter<String?, String> name =
-      GeneratedColumn<String>(
-        'name',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      ).withConverter<String?>($CommunitiesTable.$convertername);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<String> id = GeneratedColumn<String>(
-    'id',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _isFavoriteMeta = const VerificationMeta(
-    'isFavorite',
-  );
-  @override
-  late final GeneratedColumn<bool> isFavorite = GeneratedColumn<bool>(
-    'is_favorite',
-    aliasedName,
-    false,
-    type: DriftSqlType.bool,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'CHECK ("is_favorite" IN (0, 1))',
-    ),
-    defaultValue: const Constant(false),
-  );
-  @override
-  List<GeneratedColumn> get $columns => [platform, host, name, id, isFavorite];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'communities';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<Community> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('host')) {
-      context.handle(
-        _hostMeta,
-        host.isAcceptableOrUnknown(data['host']!, _hostMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_hostMeta);
-    }
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('is_favorite')) {
-      context.handle(
-        _isFavoriteMeta,
-        isFavorite.isAcceptableOrUnknown(data['is_favorite']!, _isFavoriteMeta),
-      );
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {platform, host, name};
-  @override
-  Community map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return Community(
-      platform: $CommunitiesTable.$converterplatform.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}platform'],
-        )!,
-      ),
-      host: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}host'],
-      )!,
-      name: $CommunitiesTable.$convertername.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}name'],
-        )!,
-      ),
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}id'],
-      ),
-      isFavorite: attachedDatabase.typeMapping.read(
-        DriftSqlType.bool,
-        data['${effectivePrefix}is_favorite'],
-      )!,
-    );
-  }
-
-  @override
-  $CommunitiesTable createAlias(String alias) {
-    return $CommunitiesTable(attachedDatabase, alias);
-  }
-
-  static JsonTypeConverter2<Platform, String, String> $converterplatform =
-      const EnumNameConverter<Platform>(Platform.values);
-  static TypeConverter<String?, String> $convertername =
-      const EmptyStringConverter();
-}
-
-class CommunitiesCompanion extends UpdateCompanion<Community> {
-  final Value<Platform> platform;
-  final Value<String> host;
-  final Value<String?> name;
-  final Value<String?> id;
-  final Value<bool> isFavorite;
-  final Value<int> rowid;
-  const CommunitiesCompanion({
-    this.platform = const Value.absent(),
-    this.host = const Value.absent(),
-    this.name = const Value.absent(),
-    this.id = const Value.absent(),
-    this.isFavorite = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  CommunitiesCompanion.insert({
-    required Platform platform,
-    required String host,
-    required String? name,
-    this.id = const Value.absent(),
-    this.isFavorite = const Value.absent(),
-    this.rowid = const Value.absent(),
-  }) : platform = Value(platform),
-       host = Value(host),
-       name = Value(name);
-  static Insertable<Community> custom({
-    Expression<String>? platform,
-    Expression<String>? host,
-    Expression<String>? name,
-    Expression<String>? id,
-    Expression<bool>? isFavorite,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (platform != null) 'platform': platform,
-      if (host != null) 'host': host,
-      if (name != null) 'name': name,
-      if (id != null) 'id': id,
-      if (isFavorite != null) 'is_favorite': isFavorite,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  CommunitiesCompanion copyWith({
-    Value<Platform>? platform,
-    Value<String>? host,
-    Value<String?>? name,
-    Value<String?>? id,
-    Value<bool>? isFavorite,
-    Value<int>? rowid,
-  }) {
-    return CommunitiesCompanion(
-      platform: platform ?? this.platform,
-      host: host ?? this.host,
-      name: name ?? this.name,
-      id: id ?? this.id,
-      isFavorite: isFavorite ?? this.isFavorite,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (platform.present) {
-      map['platform'] = Variable<String>(
-        $CommunitiesTable.$converterplatform.toSql(platform.value),
-      );
-    }
-    if (host.present) {
-      map['host'] = Variable<String>(host.value);
-    }
-    if (name.present) {
-      map['name'] = Variable<String>(
-        $CommunitiesTable.$convertername.toSql(name.value),
-      );
-    }
-    if (id.present) {
-      map['id'] = Variable<String>(id.value);
-    }
-    if (isFavorite.present) {
-      map['is_favorite'] = Variable<bool>(isFavorite.value);
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('CommunitiesCompanion(')
-          ..write('platform: $platform, ')
-          ..write('host: $host, ')
-          ..write('name: $name, ')
-          ..write('id: $id, ')
-          ..write('isFavorite: $isFavorite, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
-class $HistoryTable extends History with TableInfo<$HistoryTable, HistoryData> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $HistoryTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _itemIdMeta = const VerificationMeta('itemId');
-  @override
-  late final GeneratedColumn<String> itemId = GeneratedColumn<String>(
-    'item_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  @override
-  late final GeneratedColumnWithTypeConverter<HistoryType, int> type =
-      GeneratedColumn<int>(
-        'type',
-        aliasedName,
-        false,
-        type: DriftSqlType.int,
-        requiredDuringInsert: true,
-      ).withConverter<HistoryType>($HistoryTable.$convertertype);
-  @override
-  List<GeneratedColumn> get $columns => [itemId, type];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'history';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<HistoryData> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('item_id')) {
-      context.handle(
-        _itemIdMeta,
-        itemId.isAcceptableOrUnknown(data['item_id']!, _itemIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_itemIdMeta);
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {itemId, type};
-  @override
-  HistoryData map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return HistoryData(
-      itemId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}item_id'],
-      )!,
-      type: $HistoryTable.$convertertype.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.int,
-          data['${effectivePrefix}type'],
-        )!,
-      ),
-    );
-  }
-
-  @override
-  $HistoryTable createAlias(String alias) {
-    return $HistoryTable(attachedDatabase, alias);
-  }
-
-  static JsonTypeConverter2<HistoryType, int, int> $convertertype =
-      const EnumIndexConverter<HistoryType>(HistoryType.values);
-}
-
-class HistoryData extends DataClass implements Insertable<HistoryData> {
-  final String itemId;
-  final HistoryType type;
-  const HistoryData({required this.itemId, required this.type});
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['item_id'] = Variable<String>(itemId);
-    {
-      map['type'] = Variable<int>($HistoryTable.$convertertype.toSql(type));
-    }
-    return map;
-  }
-
-  HistoryCompanion toCompanion(bool nullToAbsent) {
-    return HistoryCompanion(itemId: Value(itemId), type: Value(type));
-  }
-
-  factory HistoryData.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return HistoryData(
-      itemId: serializer.fromJson<String>(json['itemId']),
-      type: $HistoryTable.$convertertype.fromJson(
-        serializer.fromJson<int>(json['type']),
-      ),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'itemId': serializer.toJson<String>(itemId),
-      'type': serializer.toJson<int>($HistoryTable.$convertertype.toJson(type)),
-    };
-  }
-
-  HistoryData copyWith({String? itemId, HistoryType? type}) =>
-      HistoryData(itemId: itemId ?? this.itemId, type: type ?? this.type);
-  HistoryData copyWithCompanion(HistoryCompanion data) {
-    return HistoryData(
-      itemId: data.itemId.present ? data.itemId.value : this.itemId,
-      type: data.type.present ? data.type.value : this.type,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('HistoryData(')
-          ..write('itemId: $itemId, ')
-          ..write('type: $type')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(itemId, type);
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is HistoryData &&
-          other.itemId == this.itemId &&
-          other.type == this.type);
-}
-
-class HistoryCompanion extends UpdateCompanion<HistoryData> {
-  final Value<String> itemId;
-  final Value<HistoryType> type;
-  final Value<int> rowid;
-  const HistoryCompanion({
-    this.itemId = const Value.absent(),
-    this.type = const Value.absent(),
-    this.rowid = const Value.absent(),
-  });
-  HistoryCompanion.insert({
-    required String itemId,
-    required HistoryType type,
-    this.rowid = const Value.absent(),
-  }) : itemId = Value(itemId),
-       type = Value(type);
-  static Insertable<HistoryData> custom({
-    Expression<String>? itemId,
-    Expression<int>? type,
-    Expression<int>? rowid,
-  }) {
-    return RawValuesInsertable({
-      if (itemId != null) 'item_id': itemId,
-      if (type != null) 'type': type,
-      if (rowid != null) 'rowid': rowid,
-    });
-  }
-
-  HistoryCompanion copyWith({
-    Value<String>? itemId,
-    Value<HistoryType>? type,
-    Value<int>? rowid,
-  }) {
-    return HistoryCompanion(
-      itemId: itemId ?? this.itemId,
-      type: type ?? this.type,
-      rowid: rowid ?? this.rowid,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (itemId.present) {
-      map['item_id'] = Variable<String>(itemId.value);
-    }
-    if (type.present) {
-      map['type'] = Variable<int>(
-        $HistoryTable.$convertertype.toSql(type.value),
-      );
-    }
-    if (rowid.present) {
-      map['rowid'] = Variable<int>(rowid.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('HistoryCompanion(')
-          ..write('itemId: $itemId, ')
-          ..write('type: $type, ')
-          ..write('rowid: $rowid')
-          ..write(')'))
-        .toString();
-  }
-}
-
 abstract class _$Database extends GeneratedDatabase {
   _$Database(QueryExecutor e) : super(e);
   $DatabaseManager get managers => $DatabaseManager(this);
+  late final $ActiveUsersTable activeUsers = $ActiveUsersTable(this);
+  late final $CommunitiesTable communities = $CommunitiesTable(this);
   late final $CookiesTable cookies = $CookiesTable(this);
+  late final $HistoryTable history = $HistoryTable(this);
   late final $SettingsTable settings = $SettingsTable(this);
   late final $UsersTable users = $UsersTable(this);
   late final $UserCommunitiesTable userCommunities = $UserCommunitiesTable(
     this,
   );
-  late final $CommunitiesTable communities = $CommunitiesTable(this);
-  late final $HistoryTable history = $HistoryTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
   @override
   List<DatabaseSchemaEntity> get allSchemaEntities => [
+    activeUsers,
+    communities,
     cookies,
+    history,
     settings,
     users,
     userCommunities,
-    communities,
-    history,
   ];
 }
 
+typedef $$ActiveUsersTableCreateCompanionBuilder =
+    ActiveUsersCompanion Function({
+      required Platform platform,
+      required String userId,
+      Value<int> rowid,
+    });
+typedef $$ActiveUsersTableUpdateCompanionBuilder =
+    ActiveUsersCompanion Function({
+      Value<Platform> platform,
+      Value<String> userId,
+      Value<int> rowid,
+    });
+
+class $$ActiveUsersTableFilterComposer
+    extends Composer<_$Database, $ActiveUsersTable> {
+  $$ActiveUsersTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnWithTypeConverterFilters<Platform, Platform, String> get platform =>
+      $composableBuilder(
+        column: $table.platform,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$ActiveUsersTableOrderingComposer
+    extends Composer<_$Database, $ActiveUsersTable> {
+  $$ActiveUsersTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get platform => $composableBuilder(
+    column: $table.platform,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get userId => $composableBuilder(
+    column: $table.userId,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$ActiveUsersTableAnnotationComposer
+    extends Composer<_$Database, $ActiveUsersTable> {
+  $$ActiveUsersTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumnWithTypeConverter<Platform, String> get platform =>
+      $composableBuilder(column: $table.platform, builder: (column) => column);
+
+  GeneratedColumn<String> get userId =>
+      $composableBuilder(column: $table.userId, builder: (column) => column);
+}
+
+class $$ActiveUsersTableTableManager
+    extends
+        RootTableManager<
+          _$Database,
+          $ActiveUsersTable,
+          ActiveUser,
+          $$ActiveUsersTableFilterComposer,
+          $$ActiveUsersTableOrderingComposer,
+          $$ActiveUsersTableAnnotationComposer,
+          $$ActiveUsersTableCreateCompanionBuilder,
+          $$ActiveUsersTableUpdateCompanionBuilder,
+          (
+            ActiveUser,
+            BaseReferences<_$Database, $ActiveUsersTable, ActiveUser>,
+          ),
+          ActiveUser,
+          PrefetchHooks Function()
+        > {
+  $$ActiveUsersTableTableManager(_$Database db, $ActiveUsersTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$ActiveUsersTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$ActiveUsersTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$ActiveUsersTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<Platform> platform = const Value.absent(),
+                Value<String> userId = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => ActiveUsersCompanion(
+                platform: platform,
+                userId: userId,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required Platform platform,
+                required String userId,
+                Value<int> rowid = const Value.absent(),
+              }) => ActiveUsersCompanion.insert(
+                platform: platform,
+                userId: userId,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$ActiveUsersTableProcessedTableManager =
+    ProcessedTableManager<
+      _$Database,
+      $ActiveUsersTable,
+      ActiveUser,
+      $$ActiveUsersTableFilterComposer,
+      $$ActiveUsersTableOrderingComposer,
+      $$ActiveUsersTableAnnotationComposer,
+      $$ActiveUsersTableCreateCompanionBuilder,
+      $$ActiveUsersTableUpdateCompanionBuilder,
+      (ActiveUser, BaseReferences<_$Database, $ActiveUsersTable, ActiveUser>),
+      ActiveUser,
+      PrefetchHooks Function()
+    >;
+typedef $$CommunitiesTableCreateCompanionBuilder =
+    CommunitiesCompanion Function({
+      required Platform platform,
+      required String host,
+      required String? name,
+      Value<String?> id,
+      Value<bool> isFavorite,
+      Value<int> rowid,
+    });
+typedef $$CommunitiesTableUpdateCompanionBuilder =
+    CommunitiesCompanion Function({
+      Value<Platform> platform,
+      Value<String> host,
+      Value<String?> name,
+      Value<String?> id,
+      Value<bool> isFavorite,
+      Value<int> rowid,
+    });
+
+class $$CommunitiesTableFilterComposer
+    extends Composer<_$Database, $CommunitiesTable> {
+  $$CommunitiesTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnWithTypeConverterFilters<Platform, Platform, String> get platform =>
+      $composableBuilder(
+        column: $table.platform,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get host => $composableBuilder(
+    column: $table.host,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<String?, String, String> get name =>
+      $composableBuilder(
+        column: $table.name,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+
+  ColumnFilters<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$CommunitiesTableOrderingComposer
+    extends Composer<_$Database, $CommunitiesTable> {
+  $$CommunitiesTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get platform => $composableBuilder(
+    column: $table.platform,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get host => $composableBuilder(
+    column: $table.host,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get name => $composableBuilder(
+    column: $table.name,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$CommunitiesTableAnnotationComposer
+    extends Composer<_$Database, $CommunitiesTable> {
+  $$CommunitiesTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumnWithTypeConverter<Platform, String> get platform =>
+      $composableBuilder(column: $table.platform, builder: (column) => column);
+
+  GeneratedColumn<String> get host =>
+      $composableBuilder(column: $table.host, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<String?, String> get name =>
+      $composableBuilder(column: $table.name, builder: (column) => column);
+
+  GeneratedColumn<String> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<bool> get isFavorite => $composableBuilder(
+    column: $table.isFavorite,
+    builder: (column) => column,
+  );
+}
+
+class $$CommunitiesTableTableManager
+    extends
+        RootTableManager<
+          _$Database,
+          $CommunitiesTable,
+          Community,
+          $$CommunitiesTableFilterComposer,
+          $$CommunitiesTableOrderingComposer,
+          $$CommunitiesTableAnnotationComposer,
+          $$CommunitiesTableCreateCompanionBuilder,
+          $$CommunitiesTableUpdateCompanionBuilder,
+          (Community, BaseReferences<_$Database, $CommunitiesTable, Community>),
+          Community,
+          PrefetchHooks Function()
+        > {
+  $$CommunitiesTableTableManager(_$Database db, $CommunitiesTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$CommunitiesTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$CommunitiesTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$CommunitiesTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<Platform> platform = const Value.absent(),
+                Value<String> host = const Value.absent(),
+                Value<String?> name = const Value.absent(),
+                Value<String?> id = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CommunitiesCompanion(
+                platform: platform,
+                host: host,
+                name: name,
+                id: id,
+                isFavorite: isFavorite,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required Platform platform,
+                required String host,
+                required String? name,
+                Value<String?> id = const Value.absent(),
+                Value<bool> isFavorite = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => CommunitiesCompanion.insert(
+                platform: platform,
+                host: host,
+                name: name,
+                id: id,
+                isFavorite: isFavorite,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$CommunitiesTableProcessedTableManager =
+    ProcessedTableManager<
+      _$Database,
+      $CommunitiesTable,
+      Community,
+      $$CommunitiesTableFilterComposer,
+      $$CommunitiesTableOrderingComposer,
+      $$CommunitiesTableAnnotationComposer,
+      $$CommunitiesTableCreateCompanionBuilder,
+      $$CommunitiesTableUpdateCompanionBuilder,
+      (Community, BaseReferences<_$Database, $CommunitiesTable, Community>),
+      Community,
+      PrefetchHooks Function()
+    >;
 typedef $$CookiesTableCreateCompanionBuilder =
     CookiesCompanion Function({
       required String key,
@@ -3176,6 +3683,139 @@ typedef $$CookiesTableProcessedTableManager =
       Cookie,
       PrefetchHooks Function()
     >;
+typedef $$HistoryTableCreateCompanionBuilder =
+    HistoryCompanion Function({
+      required String itemId,
+      required HistoryType type,
+      Value<int> rowid,
+    });
+typedef $$HistoryTableUpdateCompanionBuilder =
+    HistoryCompanion Function({
+      Value<String> itemId,
+      Value<HistoryType> type,
+      Value<int> rowid,
+    });
+
+class $$HistoryTableFilterComposer extends Composer<_$Database, $HistoryTable> {
+  $$HistoryTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnWithTypeConverterFilters<HistoryType, HistoryType, int> get type =>
+      $composableBuilder(
+        column: $table.type,
+        builder: (column) => ColumnWithTypeConverterFilters(column),
+      );
+}
+
+class $$HistoryTableOrderingComposer
+    extends Composer<_$Database, $HistoryTable> {
+  $$HistoryTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get itemId => $composableBuilder(
+    column: $table.itemId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get type => $composableBuilder(
+    column: $table.type,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$HistoryTableAnnotationComposer
+    extends Composer<_$Database, $HistoryTable> {
+  $$HistoryTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get itemId =>
+      $composableBuilder(column: $table.itemId, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<HistoryType, int> get type =>
+      $composableBuilder(column: $table.type, builder: (column) => column);
+}
+
+class $$HistoryTableTableManager
+    extends
+        RootTableManager<
+          _$Database,
+          $HistoryTable,
+          HistoryData,
+          $$HistoryTableFilterComposer,
+          $$HistoryTableOrderingComposer,
+          $$HistoryTableAnnotationComposer,
+          $$HistoryTableCreateCompanionBuilder,
+          $$HistoryTableUpdateCompanionBuilder,
+          (HistoryData, BaseReferences<_$Database, $HistoryTable, HistoryData>),
+          HistoryData,
+          PrefetchHooks Function()
+        > {
+  $$HistoryTableTableManager(_$Database db, $HistoryTable table)
+    : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$HistoryTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$HistoryTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$HistoryTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> itemId = const Value.absent(),
+                Value<HistoryType> type = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => HistoryCompanion(itemId: itemId, type: type, rowid: rowid),
+          createCompanionCallback:
+              ({
+                required String itemId,
+                required HistoryType type,
+                Value<int> rowid = const Value.absent(),
+              }) => HistoryCompanion.insert(
+                itemId: itemId,
+                type: type,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$HistoryTableProcessedTableManager =
+    ProcessedTableManager<
+      _$Database,
+      $HistoryTable,
+      HistoryData,
+      $$HistoryTableFilterComposer,
+      $$HistoryTableOrderingComposer,
+      $$HistoryTableAnnotationComposer,
+      $$HistoryTableCreateCompanionBuilder,
+      $$HistoryTableUpdateCompanionBuilder,
+      (HistoryData, BaseReferences<_$Database, $HistoryTable, HistoryData>),
+      HistoryData,
+      PrefetchHooks Function()
+    >;
 typedef $$SettingsTableCreateCompanionBuilder =
     SettingsCompanion Function({
       Value<int> id,
@@ -3204,7 +3844,6 @@ typedef $$SettingsTableCreateCompanionBuilder =
       Value<String?> diggUserAgent,
       Value<String?> lemmyUserAgent,
       Value<SearchType?> searchType,
-      Value<String?> activeUserId,
     });
 typedef $$SettingsTableUpdateCompanionBuilder =
     SettingsCompanion Function({
@@ -3234,7 +3873,6 @@ typedef $$SettingsTableUpdateCompanionBuilder =
       Value<String?> diggUserAgent,
       Value<String?> lemmyUserAgent,
       Value<SearchType?> searchType,
-      Value<String?> activeUserId,
     });
 
 class $$SettingsTableFilterComposer
@@ -3380,11 +4018,6 @@ class $$SettingsTableFilterComposer
     column: $table.searchType,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
-
-  ColumnFilters<String> get activeUserId => $composableBuilder(
-    column: $table.activeUserId,
-    builder: (column) => ColumnFilters(column),
-  );
 }
 
 class $$SettingsTableOrderingComposer
@@ -3524,11 +4157,6 @@ class $$SettingsTableOrderingComposer
 
   ColumnOrderings<String> get searchType => $composableBuilder(
     column: $table.searchType,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get activeUserId => $composableBuilder(
-    column: $table.activeUserId,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -3674,11 +4302,6 @@ class $$SettingsTableAnnotationComposer
         column: $table.searchType,
         builder: (column) => column,
       );
-
-  GeneratedColumn<String> get activeUserId => $composableBuilder(
-    column: $table.activeUserId,
-    builder: (column) => column,
-  );
 }
 
 class $$SettingsTableTableManager
@@ -3738,7 +4361,6 @@ class $$SettingsTableTableManager
                 Value<String?> diggUserAgent = const Value.absent(),
                 Value<String?> lemmyUserAgent = const Value.absent(),
                 Value<SearchType?> searchType = const Value.absent(),
-                Value<String?> activeUserId = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
                 homeCommunityPlatform: homeCommunityPlatform,
@@ -3767,7 +4389,6 @@ class $$SettingsTableTableManager
                 diggUserAgent: diggUserAgent,
                 lemmyUserAgent: lemmyUserAgent,
                 searchType: searchType,
-                activeUserId: activeUserId,
               ),
           createCompanionCallback:
               ({
@@ -3800,7 +4421,6 @@ class $$SettingsTableTableManager
                 Value<String?> diggUserAgent = const Value.absent(),
                 Value<String?> lemmyUserAgent = const Value.absent(),
                 Value<SearchType?> searchType = const Value.absent(),
-                Value<String?> activeUserId = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
                 homeCommunityPlatform: homeCommunityPlatform,
@@ -3829,7 +4449,6 @@ class $$SettingsTableTableManager
                 diggUserAgent: diggUserAgent,
                 lemmyUserAgent: lemmyUserAgent,
                 searchType: searchType,
-                activeUserId: activeUserId,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -4231,351 +4850,22 @@ typedef $$UserCommunitiesTableProcessedTableManager =
       UserCommunity,
       PrefetchHooks Function()
     >;
-typedef $$CommunitiesTableCreateCompanionBuilder =
-    CommunitiesCompanion Function({
-      required Platform platform,
-      required String host,
-      required String? name,
-      Value<String?> id,
-      Value<bool> isFavorite,
-      Value<int> rowid,
-    });
-typedef $$CommunitiesTableUpdateCompanionBuilder =
-    CommunitiesCompanion Function({
-      Value<Platform> platform,
-      Value<String> host,
-      Value<String?> name,
-      Value<String?> id,
-      Value<bool> isFavorite,
-      Value<int> rowid,
-    });
-
-class $$CommunitiesTableFilterComposer
-    extends Composer<_$Database, $CommunitiesTable> {
-  $$CommunitiesTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnWithTypeConverterFilters<Platform, Platform, String> get platform =>
-      $composableBuilder(
-        column: $table.platform,
-        builder: (column) => ColumnWithTypeConverterFilters(column),
-      );
-
-  ColumnFilters<String> get host => $composableBuilder(
-    column: $table.host,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<String?, String, String> get name =>
-      $composableBuilder(
-        column: $table.name,
-        builder: (column) => ColumnWithTypeConverterFilters(column),
-      );
-
-  ColumnFilters<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<bool> get isFavorite => $composableBuilder(
-    column: $table.isFavorite,
-    builder: (column) => ColumnFilters(column),
-  );
-}
-
-class $$CommunitiesTableOrderingComposer
-    extends Composer<_$Database, $CommunitiesTable> {
-  $$CommunitiesTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get platform => $composableBuilder(
-    column: $table.platform,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get host => $composableBuilder(
-    column: $table.host,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get name => $composableBuilder(
-    column: $table.name,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<bool> get isFavorite => $composableBuilder(
-    column: $table.isFavorite,
-    builder: (column) => ColumnOrderings(column),
-  );
-}
-
-class $$CommunitiesTableAnnotationComposer
-    extends Composer<_$Database, $CommunitiesTable> {
-  $$CommunitiesTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumnWithTypeConverter<Platform, String> get platform =>
-      $composableBuilder(column: $table.platform, builder: (column) => column);
-
-  GeneratedColumn<String> get host =>
-      $composableBuilder(column: $table.host, builder: (column) => column);
-
-  GeneratedColumnWithTypeConverter<String?, String> get name =>
-      $composableBuilder(column: $table.name, builder: (column) => column);
-
-  GeneratedColumn<String> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<bool> get isFavorite => $composableBuilder(
-    column: $table.isFavorite,
-    builder: (column) => column,
-  );
-}
-
-class $$CommunitiesTableTableManager
-    extends
-        RootTableManager<
-          _$Database,
-          $CommunitiesTable,
-          Community,
-          $$CommunitiesTableFilterComposer,
-          $$CommunitiesTableOrderingComposer,
-          $$CommunitiesTableAnnotationComposer,
-          $$CommunitiesTableCreateCompanionBuilder,
-          $$CommunitiesTableUpdateCompanionBuilder,
-          (Community, BaseReferences<_$Database, $CommunitiesTable, Community>),
-          Community,
-          PrefetchHooks Function()
-        > {
-  $$CommunitiesTableTableManager(_$Database db, $CommunitiesTable table)
-    : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$CommunitiesTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$CommunitiesTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$CommunitiesTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<Platform> platform = const Value.absent(),
-                Value<String> host = const Value.absent(),
-                Value<String?> name = const Value.absent(),
-                Value<String?> id = const Value.absent(),
-                Value<bool> isFavorite = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => CommunitiesCompanion(
-                platform: platform,
-                host: host,
-                name: name,
-                id: id,
-                isFavorite: isFavorite,
-                rowid: rowid,
-              ),
-          createCompanionCallback:
-              ({
-                required Platform platform,
-                required String host,
-                required String? name,
-                Value<String?> id = const Value.absent(),
-                Value<bool> isFavorite = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => CommunitiesCompanion.insert(
-                platform: platform,
-                host: host,
-                name: name,
-                id: id,
-                isFavorite: isFavorite,
-                rowid: rowid,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ),
-      );
-}
-
-typedef $$CommunitiesTableProcessedTableManager =
-    ProcessedTableManager<
-      _$Database,
-      $CommunitiesTable,
-      Community,
-      $$CommunitiesTableFilterComposer,
-      $$CommunitiesTableOrderingComposer,
-      $$CommunitiesTableAnnotationComposer,
-      $$CommunitiesTableCreateCompanionBuilder,
-      $$CommunitiesTableUpdateCompanionBuilder,
-      (Community, BaseReferences<_$Database, $CommunitiesTable, Community>),
-      Community,
-      PrefetchHooks Function()
-    >;
-typedef $$HistoryTableCreateCompanionBuilder =
-    HistoryCompanion Function({
-      required String itemId,
-      required HistoryType type,
-      Value<int> rowid,
-    });
-typedef $$HistoryTableUpdateCompanionBuilder =
-    HistoryCompanion Function({
-      Value<String> itemId,
-      Value<HistoryType> type,
-      Value<int> rowid,
-    });
-
-class $$HistoryTableFilterComposer extends Composer<_$Database, $HistoryTable> {
-  $$HistoryTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get itemId => $composableBuilder(
-    column: $table.itemId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<HistoryType, HistoryType, int> get type =>
-      $composableBuilder(
-        column: $table.type,
-        builder: (column) => ColumnWithTypeConverterFilters(column),
-      );
-}
-
-class $$HistoryTableOrderingComposer
-    extends Composer<_$Database, $HistoryTable> {
-  $$HistoryTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get itemId => $composableBuilder(
-    column: $table.itemId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get type => $composableBuilder(
-    column: $table.type,
-    builder: (column) => ColumnOrderings(column),
-  );
-}
-
-class $$HistoryTableAnnotationComposer
-    extends Composer<_$Database, $HistoryTable> {
-  $$HistoryTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get itemId =>
-      $composableBuilder(column: $table.itemId, builder: (column) => column);
-
-  GeneratedColumnWithTypeConverter<HistoryType, int> get type =>
-      $composableBuilder(column: $table.type, builder: (column) => column);
-}
-
-class $$HistoryTableTableManager
-    extends
-        RootTableManager<
-          _$Database,
-          $HistoryTable,
-          HistoryData,
-          $$HistoryTableFilterComposer,
-          $$HistoryTableOrderingComposer,
-          $$HistoryTableAnnotationComposer,
-          $$HistoryTableCreateCompanionBuilder,
-          $$HistoryTableUpdateCompanionBuilder,
-          (HistoryData, BaseReferences<_$Database, $HistoryTable, HistoryData>),
-          HistoryData,
-          PrefetchHooks Function()
-        > {
-  $$HistoryTableTableManager(_$Database db, $HistoryTable table)
-    : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$HistoryTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$HistoryTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$HistoryTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<String> itemId = const Value.absent(),
-                Value<HistoryType> type = const Value.absent(),
-                Value<int> rowid = const Value.absent(),
-              }) => HistoryCompanion(itemId: itemId, type: type, rowid: rowid),
-          createCompanionCallback:
-              ({
-                required String itemId,
-                required HistoryType type,
-                Value<int> rowid = const Value.absent(),
-              }) => HistoryCompanion.insert(
-                itemId: itemId,
-                type: type,
-                rowid: rowid,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ),
-      );
-}
-
-typedef $$HistoryTableProcessedTableManager =
-    ProcessedTableManager<
-      _$Database,
-      $HistoryTable,
-      HistoryData,
-      $$HistoryTableFilterComposer,
-      $$HistoryTableOrderingComposer,
-      $$HistoryTableAnnotationComposer,
-      $$HistoryTableCreateCompanionBuilder,
-      $$HistoryTableUpdateCompanionBuilder,
-      (HistoryData, BaseReferences<_$Database, $HistoryTable, HistoryData>),
-      HistoryData,
-      PrefetchHooks Function()
-    >;
 
 class $DatabaseManager {
   final _$Database _db;
   $DatabaseManager(this._db);
+  $$ActiveUsersTableTableManager get activeUsers =>
+      $$ActiveUsersTableTableManager(_db, _db.activeUsers);
+  $$CommunitiesTableTableManager get communities =>
+      $$CommunitiesTableTableManager(_db, _db.communities);
   $$CookiesTableTableManager get cookies =>
       $$CookiesTableTableManager(_db, _db.cookies);
+  $$HistoryTableTableManager get history =>
+      $$HistoryTableTableManager(_db, _db.history);
   $$SettingsTableTableManager get settings =>
       $$SettingsTableTableManager(_db, _db.settings);
   $$UsersTableTableManager get users =>
       $$UsersTableTableManager(_db, _db.users);
   $$UserCommunitiesTableTableManager get userCommunities =>
       $$UserCommunitiesTableTableManager(_db, _db.userCommunities);
-  $$CommunitiesTableTableManager get communities =>
-      $$CommunitiesTableTableManager(_db, _db.communities);
-  $$HistoryTableTableManager get history =>
-      $$HistoryTableTableManager(_db, _db.history);
 }

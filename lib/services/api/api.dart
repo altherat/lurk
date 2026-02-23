@@ -28,9 +28,9 @@ abstract class Api<T extends ClientHelper> {
 
   ClientHelper getClientHelper(String host, String? userId);
 
-  String getPostDetailsUrl(Post post) => '${getBaseUrl(post.community.host)}${post.permalink}';
+  String getPostDetailsUrl(Post post) => '${getBaseUrl(post.community.platformContext.host)}${post.permalink}';
 
-  String getCommentUrl(Comment comment) => '${getBaseUrl(comment.community.host)}${comment.permalink}';
+  String getCommentUrl(Comment comment) => '${getBaseUrl(comment.community.platformContext.host)}${comment.permalink}';
 
   Future<CommunityDetails> getCommunityDetails(T clientHelper, String name);
 
@@ -47,6 +47,8 @@ abstract class Api<T extends ClientHelper> {
   Future<PagedItems<dynamic>> getUserItems(T clientHelper, String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
 
   Future<PagedItems<dynamic>> getSearchResults(T clientHelper, String query, String? communityName, {Map<FeedOptionType, FeedOption>? options, String? pageToken});
+
+  Future<String> resolveGlobalToLocalPostId(T clientHelper, String globalId);
 
   Future<LoggedInUser> getLoggedInUser(T clientHelper);
 

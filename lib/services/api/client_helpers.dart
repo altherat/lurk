@@ -30,20 +30,26 @@ abstract class RestClientHelper extends ClientHelper {
 
   Future<Response> get(String path, [Map<String, dynamic>? params]) {
     dev.log('[RestClientHelper] GET: ${Uri.https(host, path, params)}');
-    return _handleResponse(
+    return _debugPrintResponse(
       request(
         _headers,
-        (headers) => performGet(Uri.https(host, path, params), headers)
+        (headers) {
+          _debugPrintRequestHeaders(headers);
+          return performGet(Uri.https(host, path, params), headers);
+        }
       )
     );
   }
 
   Future<Response> post(String path, dynamic body) {
     dev.log('[RestClientHelper] POST: ${Uri.https(host, path)}, body=$body');
-    return _handleResponse(
+    return _debugPrintResponse(
       request(
         _headers,
-        (headers) => performPost(Uri.https(host, path), headers, body)
+        (headers) {
+          _debugPrintRequestHeaders(headers);
+          return performPost(Uri.https(host, path), headers, body);
+        }
       )
     );
   }
@@ -51,7 +57,12 @@ abstract class RestClientHelper extends ClientHelper {
   @protected
   Future<Response> request(Map<String, String> headers, Future<Response> Function(Map<String, String> headers) request) => request(headers);
 
-  Future<Response> _handleResponse(Future<Response> futureResponse) async {
+  void _debugPrintRequestHeaders(Map<String, String> headers) {
+    dev.log('[RestClientHelper] Request headers: ${headers.length}');
+    dev.log('[RestClientHelper]\tUser-Agent: ${headers['User-Agent']}');
+  }
+
+  Future<Response> _debugPrintResponse(Future<Response> futureResponse) async {
     final response = await futureResponse;
     dev.log('[RestClientHelper] Response code: ${response.statusCode}');
     // dev.log('[RestClientHelper] Response: ${response.body}');

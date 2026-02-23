@@ -2,14 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/comment.dart';
-import 'package:lurk/models/community.dart';
 import 'package:lurk/models/community_details.dart';
+import 'package:lurk/models/platform_context.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/screens/community.dart';
 import 'package:lurk/screens/feed.dart';
 import 'package:lurk/screens/user_details.dart';
-import 'package:lurk/services/settings.dart';
+import 'package:lurk/services/user_manager.dart';
 import 'package:lurk/widgets/comment_tile.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/list_tile_icon.dart';
@@ -19,12 +19,14 @@ import 'package:lurk/widgets/user_stats.dart';
 
 class SearchScreen extends StatelessWidget {
 
-  final Community activeCommunity;
+  final PlatformContext platformContext;
+  final String? searchWithinCommunityName;
   final String query;
 
   const SearchScreen({
     super.key,
-    required this.activeCommunity,
+    required this.platformContext,
+    required this.searchWithinCommunityName,
     required this.query,
   });
 
@@ -33,18 +35,18 @@ class SearchScreen extends StatelessWidget {
     final theme = Theme.of(context);
     final FeedOptionsGroup feedOptions;
     final Widget title;
-    if (activeCommunity.name != null) {
-      feedOptions = activeCommunity.platform.postsFeedOptions;
+    if (searchWithinCommunityName != null) {
+      feedOptions = platformContext.platform.searchWithinCommunityFeedOptions;
       title = MultiColoredAppBarTitle(
         texts: [
           ('"', theme.colorScheme.onSurfaceVariant),
           (query, theme.colorScheme.onSurface),
-          ('" in ${activeCommunity.fullName}', theme.colorScheme.onSurfaceVariant)
+          ('" in $searchWithinCommunityName', theme.colorScheme.onSurfaceVariant)
         ],
       );
     }
     else {
-      feedOptions = activeCommunity.platform.searchFeedOptions;
+      feedOptions = platformContext.platform.searchFeedOptions;
       title = MultiColoredAppBarTitle(
         texts: [
           ('"', theme.colorScheme.onSurfaceVariant),
@@ -54,23 +56,20 @@ class SearchScreen extends StatelessWidget {
       );
     }
     return FeedScreen(
-      activeCommunity: activeCommunity,
+      platformContext: platformContext,
       feedOptions: feedOptions,
-      fetchItems: (options, pageToken) => activeCommunity.platform.getApi(activeCommunity.host, Settings.activeUser.value?.id).fetchSearchResults(query, activeCommunity.nameAndMaybeHost, options: options, pageToken: pageToken),
+      fetchItems: (options, pageToken) => Platform.getApi(platformContext, UserManager.getActiveUser(platformContext.platform).value).fetchSearchResults(query, searchWithinCommunityName, options: options, pageToken: pageToken),
       title: title,
+      subtitle: '${platformContext.platform.supportsMultipleHosts ? platformContext.host : platformContext.platform.name.toTitleCase()} search',
       itemBuilder: (context, index, item) {
         if (item is Post) {
-          return PostTile(
-            activeCommunity: activeCommunity,
-            post: item
-          );
+          return PostTile(post: item);
         }
         if (item is Comment) {
           return CommentTile(
-            activeCommunity: activeCommunity,
             comment: item,
             padding: const EdgeInsets.symmetric(vertical: 4),
-            showCommunityName: true,
+            showCommunityName: true
           );
         }
         if (item is CommunityDetails) {
@@ -79,7 +78,6 @@ class SearchScreen extends StatelessWidget {
             title: Row(
               children: [
                 ListTileIcon(
-                  platform: activeCommunity.platform,
                   url: item.iconUrl,
                   placeholderIcon: Icons.groups_rounded,
                 ),
@@ -93,7 +91,7 @@ class SearchScreen extends StatelessWidget {
                       TextSpan(
                         children: [
                           TextSpan(
-                            text: item.community.platform.communityPrefix,
+                            text: item.community.platformContext.platform.preferredCommunityPrefix,
                             style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                           ),
                           TextSpan(
@@ -110,7 +108,7 @@ class SearchScreen extends StatelessWidget {
                 ),
               ],
             ),
-            onTap: () => context.push(() => CommunityScreen(activeCommunity: activeCommunity.platform.supportsMultipleHosts ? activeCommunity : item.community, community: item.community)),
+            onTap: () => context.push(() => CommunityScreen(community: item.community)),
             subtitle: item.shortDescription != null
               ? Padding(
                   padding: const EdgeInsets.only(top: 8),
@@ -135,28 +133,25 @@ class SearchScreen extends StatelessWidget {
             subtitle = UserStats(
               stats: item.stats!,
               valueFontSize: 13,
-              valueColor: Theme.of(context).colorScheme.onSurfaceVariant,
+              valueColor: theme.colorScheme.onSurfaceVariant,
               labelFontSize: 10,
             );
           }
           return ListTile(
             leading: ListTileIcon(
-              platform: activeCommunity.platform,
               url: item.iconUrl,
               placeholderIcon: Icons.no_accounts_rounded,
             ),
             title: Text(item.name),
             subtitle: subtitle,
-            onTap: item.id != null
-              ? () {
-                  context.push(() {
-                    return UserDetailsScreen(
-                      activeCommunity: activeCommunity,
-                      username: item.name,
-                    );
-                  });
-                }
-              : null
+            onTap: () {
+              context.push(() {
+                return UserDetailsScreen(
+                  platformContext: platformContext,
+                  username: item.name,
+                );
+              });
+            }
           );
         }
         return null;

@@ -2,7 +2,7 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/utils.dart';
-import 'package:lurk/models/community.dart';
+import 'package:lurk/models/platform_context.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/custom_interactive_viewer.dart';
@@ -11,23 +11,37 @@ import 'package:lurk/widgets/media_scaffold.dart';
 
 class ImageViewerScreen extends StatelessWidget {
 
-  final Community activeCommunity;
+  final PlatformContext platformContext;
+  final String? communityName;
   final String url;
   final Post? post;
   final Size? size;
 
   const ImageViewerScreen({
     super.key,
-    required this.activeCommunity,
+    required this.platformContext,
+    required this.communityName,
     required this.url,
     this.post,
     this.size
   });
 
+  ImageViewerScreen.fromPost({
+    Key? key,
+    required Post post,
+  }) : this(
+    key: key,
+    platformContext: post.community.platformContext,
+    communityName: post.community.name,
+    url: post.url,
+    post: post,
+    size: post.mediaSize,
+  );
+
   void _onSave(BuildContext context) {
     saveImage(
       context: context,
-      platform: activeCommunity.platform,
+      platform: platformContext.platform,
       url: url,
     );
   }
@@ -35,7 +49,8 @@ class ImageViewerScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MediaScaffold(
-      activeCommunity: activeCommunity,
+      platformContext: platformContext,
+      communityName: communityName,
       url: url,
       type: 'image',
       post: post,
@@ -51,7 +66,8 @@ class ImageViewerScreen extends StatelessWidget {
                 context: context,
                 options: MediaScaffold.getOptions(
                   context: context,
-                  activeCommunity: activeCommunity,
+                  platformContext: platformContext,
+                  communityName: communityName,
                   type: 'image',
                   url: url,
                   onSave: _onSave
@@ -61,7 +77,7 @@ class ImageViewerScreen extends StatelessWidget {
             child: CustomInteractiveViewer(
               child: ExtendedImage.network(
                 url,
-                headers: {'User-Agent': activeCommunity.platform.savedOrDefaultUserAgent},
+                headers: {'User-Agent': platformContext.platform.savedOrDefaultUserAgent},
                 fit: BoxFit.contain, 
                 alignment: Alignment.topCenter,
                 loadStateChanged: (state) {

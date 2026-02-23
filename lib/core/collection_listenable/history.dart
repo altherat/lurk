@@ -4,14 +4,15 @@ import 'package:lurk/core/collection_listenable/collection_listenable.dart';
 
 class HistoryCollectionListenable extends CollectionListenable<String, bool> {
 
-  final Database _db;
   final HistoryType _type;
+  late final Database _db;
   late final Set<String> _ids;
 
-  HistoryCollectionListenable(this._type) : _db = Database.instance;
+  HistoryCollectionListenable(this._type);
 
-  Future<void> init() async {
-    _ids = (await _db.getHistoryIds(_type)).toSet();
+  Future<void> init(Database db) async {
+    _db = db;
+    _ids = (await db.getHistoryIds(_type)).toSet();
   }
   
   void add(String id) {

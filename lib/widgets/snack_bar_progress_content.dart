@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:lurk/core/platforms.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 
 const _indicatorSize = 32.0;
 
 class SnackBarProgressContent extends StatefulWidget {
 
-  final Platform platform;
   final String progressMessage;
   final String completeMessage;
   final String errorMessage;
@@ -15,7 +13,6 @@ class SnackBarProgressContent extends StatefulWidget {
 
   const SnackBarProgressContent({
     super.key,
-    required this.platform,
     required this.progressMessage,
     required this.completeMessage,
     required this.errorMessage,

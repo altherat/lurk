@@ -454,7 +454,6 @@ class RedditApi extends Api<RestClientHelper> {
                   final childData = child['data'];
                   final bool isSuspended = childData['is_suspended'] ?? false;
                   return LookedUpUser(
-                    host: Platform.reddit.host!,
                     id: childData['id'],
                     name: childData['name'],
                     iconUrl: (childData['icon_img'] as String?)?.replaceAll('&amp;', '&'),
@@ -489,6 +488,11 @@ class RedditApi extends Api<RestClientHelper> {
       default:
         return compute(_parsePosts, responseBody);
     }
+  }
+
+  @override
+  Future<String> resolveGlobalToLocalPostId(RestClientHelper clientHelper, String globalId) {
+    throw UnimplementedError();
   }
 
   @override
@@ -659,8 +663,8 @@ class RedditApi extends Api<RestClientHelper> {
         name: data['subreddit'],
         id: data['subreddit_id'],
       ),
-      id: data['name'],
-      shortId: data['id'],
+      localId: data['name'],
+      shortLocalId: data['id'],
       permalink: data['permalink'],
       score: data['score'],
       timestampMs: (data['created_utc'] as num).toInt() * 1000,
@@ -914,7 +918,7 @@ class _AuthClientHelper extends RestClientHelper implements AuthClientHelper {
     }
     else {
       cached = _cachedToken != null;
-      tokenResponse = await _getCachedOrStoredToken();
+      tokenResponse = _cachedToken ??= await _oAuthHelper.getTokenFromStorage();
     }
     dev.log('[Reddit][_AuthClientHelper] Loaded token: cached=$cached, accessToken=${debugTruncateLongString(tokenResponse?.accessToken)}, refreshToken=${debugTruncateLongString(tokenResponse?.refreshToken)}');
     if (tokenResponse == null || (!tokenResponse.hasRefreshToken() && tokenResponse.isExpired())) {
@@ -946,13 +950,11 @@ class _AuthClientHelper extends RestClientHelper implements AuthClientHelper {
       );
       dev.log('[Reddit][_AuthClientHelper] Fetched access token: ${debugTruncateLongString(data['access_token'])}');
     }
-    dev.log('[Reddit][_AuthClientHelper] Request headers: ${headers.length}');
-    dev.log('[Reddit][_AuthClientHelper]\tUser-Agent: ${headers['User-Agent']}');
-    return request(headers);
-  }  
-
-  @override
-  List<String>? get requiredCredentials => null;
+    return request({
+      ...headers,
+      'User-Agent': _userAgentProvider(),
+    });
+  }
 
   @override
   Future<FetchTokenResult> fetchToken([Map<String, String>? credentials]) async {
@@ -995,7 +997,5 @@ class _AuthClientHelper extends RestClientHelper implements AuthClientHelper {
       tokenStorage: tokenStorage
     );
   }
-
-  Future<AccessTokenResponse?> _getCachedOrStoredToken() async => _cachedToken ??= await _oAuthHelper.getTokenFromStorage();
 
 }

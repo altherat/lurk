@@ -6,7 +6,9 @@ import 'package:gal/gal.dart';
 import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/community.dart';
+import 'package:lurk/models/platform_context.dart';
 import 'package:lurk/models/post.dart';
+import 'package:lurk/services/communities.dart';
 import 'package:lurk/screens/image_gallery_viewer.dart';
 import 'package:lurk/screens/image_viewer.dart';
 import 'package:lurk/screens/post_details.dart';
@@ -14,15 +16,14 @@ import 'package:lurk/screens/community.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/screens/video_viewer.dart';
 import 'package:lurk/screens/web_viewer.dart';
+import 'package:lurk/services/user_manager.dart';
 import 'package:lurk/widgets/snack_bar_progress_content.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-String? getPlatformNameOrCommunityHost(Platform platform, Community? community) => platform.host != null || community == null ? platform.name.toTitleCase() : community.host;
-
 Future<void> openInBrowser(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
 
-Future navigate(BuildContext context, Community activeCommunity, String url, {Post? post}) async {
+Future<void> navigate(BuildContext context, PlatformContext platformContext, String? communityName, String url, {Post? post}) async {
   final uri = Uri.tryParse(url);
   if (uri == null) return;
 
@@ -35,89 +36,106 @@ Future navigate(BuildContext context, Community activeCommunity, String url, {Po
   final pathLowerCase = path.toLowerCase();
 
   if (host == 'i.redd.it' || host.endsWith('.imgix.net') || pathLowerCase.endsWith('.jpg') || pathLowerCase.endsWith('.jpeg') || pathLowerCase.endsWith('.png') || pathLowerCase.endsWith('.gif') || pathLowerCase.endsWith('.webp')) {
-    return context.push(
-      () => ImageViewerScreen(
-        activeCommunity: activeCommunity,
+    return context.push(() {
+      return ImageViewerScreen(
+        platformContext: platformContext,
+        communityName: communityName,
         url: url,
         post: post,
-      )
-    );
+        size: post?.mediaSize
+      );
+    });
   }
 
   if (host == 'giphy.com' || host == 'www.giphy.com') {
     final directGiphyUrl = getGiphyDirectUrl(url);
     if (directGiphyUrl != null) {
-      return context.push(
-        () => ImageViewerScreen(
-          activeCommunity: activeCommunity,
+      return context.push(() {
+        return ImageViewerScreen(
+          platformContext: platformContext,
+          communityName: communityName,
           url: directGiphyUrl,
           post: post,
-        )
-      );
+          size: post?.mediaSize
+        );
+      });
     }
   }
 
   if (uri.host == 'v.redd.it' || pathLowerCase.endsWith('.mp4') || pathLowerCase.endsWith('.mov')) {
-    return context.push(
-      () => VideoViewerScreen(
-        activeCommunity: activeCommunity,
+    return context.push(() {
+      return VideoViewerScreen(
+        platformContext: platformContext,
+        communityName: communityName,
         url: url,
         post: post
-      )
-    );
+      );
+    });
   }
 
-  final resolvedPlatform = Platform.forHost(host);
+  final hostWithoutWww = host.replaceFirst('www.', '');
+
+  bool matchesHost(String host) => host == hostWithoutWww || host.replaceFirst('www.', '') == hostWithoutWww;
+
+  final Platform? resolvedPlatform = matchesHost(platformContext.host) ? platformContext.platform
+    : Platform.values.firstWhereOrNull((platform) => platform.host != null && matchesHost(platform.host!))
+    ?? Communities.saved.value.firstWhereOrNull((community) => matchesHost(community.platformContext.host))?.platformContext.platform
+    ?? UserManager.loggedInUsers.value.firstWhereOrNull((user) => matchesHost(user.platformContext.host))?.platformContext.platform;
+
   if (resolvedPlatform != null) {
 
     final communityName = resolvedPlatform.getCommunityNameFromPath(path);
     if (communityName != null) {
-      final community = Community(
-        platform: resolvedPlatform,
-        host: host,
-        name: communityName
-      );
-      return context.push(
-        () => CommunityScreen(
-          activeCommunity: activeCommunity.platform.supportsMultipleHosts ? activeCommunity : community,
-          community: community
-        )
-      );
+      return context.push(() {
+        return CommunityScreen(
+          community: Community(
+            platform: resolvedPlatform,
+            host: host,
+            name: communityName
+          )
+        );
+      });
     }
 
     final userName = resolvedPlatform.getUserNameFromPath(path);
     if (userName != null) {
-      return context.push(
-        () => UserDetailsScreen(
-          activeCommunity: activeCommunity,
+      return context.push(() {
+        return UserDetailsScreen(
+          platformContext: PlatformContext(
+            platform: resolvedPlatform,
+            host: host,
+          ),
           username: userName
-        )
-      );
+        );
+      });
     }
 
     final postUrlInfo = resolvedPlatform.getPostUrlInfoFromPath(path);
     if (postUrlInfo != null) {
-      return context.push(
-        () => PostDetailsScreen.fromUrl(
-          activeCommunity: activeCommunity,
-          platform: resolvedPlatform,
-          host: host,
+      return context.push(() {
+        return PostDetailsScreen.fromUrl(
+          platformContext: PlatformContext(
+            platform: resolvedPlatform,
+            host: host,
+          ),
           url: url,
           urlInfo: postUrlInfo,
-        )
-      );
+        );
+      });
     }
 
     if (resolvedPlatform.isGallery(path)) {
-      return context.push(
-        () => ImageGalleryViewerScreen(
-          activeCommunity: activeCommunity,
-          platform: resolvedPlatform,
-          host: host,
+      return context.push(() {
+        return ImageGalleryViewerScreen(
+          platformContext: PlatformContext(
+            platform: resolvedPlatform,
+            host: host,
+          ),
+          communityName: communityName,
           post: post,
           url: url
-        )
-      );
+        );
+      });
     }
 
     if (resolvedPlatform.isUnresolved(path)) {
@@ -130,7 +148,7 @@ Future navigate(BuildContext context, Community activeCommunity, String url, {Po
         if (response.statusCode == 301) {
           final resolvedUrl = response.headers.value('location');
           if (context.mounted && resolvedUrl != null) {
-            return navigate(context, activeCommunity, resolvedUrl, post: post);
+            return navigate(context, platformContext, communityName, resolvedUrl, post: post);
           }
         }
       }
@@ -144,7 +162,8 @@ Future navigate(BuildContext context, Community activeCommunity, String url, {Po
 
   return context.push(
     () => WebViewerScreen(
-      activeCommunity: activeCommunity,
+      platformContext: platformContext,
+      communityName: communityName,
       post: post,
       url: url,
     )
@@ -324,7 +343,6 @@ Future<void> saveImage({
   required String url,
 }) => saveMedia(
   context: context,
-  platform: platform,
   snackbarMediaTypeMessage: 'image',
   save: () async {
     final filePath = await downloadMediaToTemp(url, platform.savedOrDefaultUserAgent);
@@ -338,7 +356,6 @@ Future<void> saveVideo({
   required String url,
 }) => saveMedia(
   context: context,
-  platform: platform,
   snackbarMediaTypeMessage: 'video',
   save: () async {
     final filePath = await downloadMediaToTemp(url, platform.savedOrDefaultUserAgent);
@@ -348,7 +365,6 @@ Future<void> saveVideo({
 
 Future<void> saveMedia({
   required BuildContext context,
-  required Platform platform,
   required String snackbarMediaTypeMessage,
   required Future<void> Function() save
 }) async {
@@ -368,7 +384,6 @@ Future<void> saveMedia({
   controller = context.showSnackBar(
     duration: const Duration(days: 1),
     content: SnackBarProgressContent(
-      platform: platform,
       progressMessage: 'Saving $snackbarMediaTypeMessage...',
       completeMessage: 'Successfully saved',
       errorMessage: 'Something went wrong',

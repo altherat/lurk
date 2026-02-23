@@ -5,34 +5,35 @@ import 'package:flutter/material.dart';
 import 'package:flutter_widget_from_html_core/flutter_widget_from_html_core.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/extensions.dart';
-import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
-import 'package:lurk/screens/image_viewer.dart';
+import 'package:lurk/models/platform_context.dart';
 import 'package:lurk/screens/community.dart';
+import 'package:lurk/screens/image_viewer.dart';
 import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 
 class CustomHtml extends StatelessWidget {
 
-  final Community activeCommunity;
+  final PlatformContext platformContext;
   final String html;
   final Map<String, Size>? imageSizes;
 
   const CustomHtml({
     super.key,
-    required this.activeCommunity,
+    required this.platformContext,
     required this.html,
     this.imageSizes,
   });
 
-  void _onLinkTap(BuildContext context, String url) => navigate(context, activeCommunity, url);
+  void _onLinkTap(BuildContext context, String url) => navigate(context, platformContext, null, url);
 
   void _onImageTap(BuildContext context, String url, [Size? size]) {
     context.push(() {
       return ImageViewerScreen(
-        activeCommunity: activeCommunity,
+        platformContext: platformContext,
+        communityName: null,
         url: url,
         size: size
       );
@@ -115,8 +116,7 @@ class CustomHtml extends StatelessWidget {
               final imageSize = imageSizes?[url];
               if (showImages) {
                 return _Image(
-                  platform: activeCommunity.platform,
-                  activeHost: activeCommunity.host,
+                  platformContext: platformContext,
                   url: url,
                   size: imageSize,
                   onTap: () => _onImageTap(context, url, imageSize)
@@ -133,11 +133,10 @@ class CustomHtml extends StatelessWidget {
               final uri = Uri.tryParse(url)!;
               final host = uri.host;
               final imageSize = imageSizes?[url];
-              if (host == 'preview.redd.it') {
+              if (platformContext.platform.commentImagesAHrefHosts != null && platformContext.platform.commentImagesAHrefHosts!.contains(host)) {
                 if (showImages) {
                   return _Image(
-                    platform: activeCommunity.platform,
-                    activeHost: activeCommunity.host,
+                    platformContext: platformContext,
                     url: url,
                     size: imageSize,
                     onTap: () => _onImageTap(context, url, imageSize)
@@ -154,8 +153,7 @@ class CustomHtml extends StatelessWidget {
                   final directGiphyUrl = getGiphyDirectUrl(url);
                   if (directGiphyUrl != null) {
                     return _Image(
-                      platform: activeCommunity.platform,
-                      activeHost: activeCommunity.host,
+                      platformContext: platformContext,
                       url: directGiphyUrl,
                       onTap: () => _onImageTap(context, directGiphyUrl)
                     );
@@ -172,40 +170,38 @@ class CustomHtml extends StatelessWidget {
           },
           onTapUrl: (url) {
 
-            final communityName = activeCommunity.platform.getCommunityNameFromPath(url);
+            final communityName = platformContext.platform.getCommunityNameFromPath(url);
             if (communityName != null) {
-              final communty = Community(
-                platform: activeCommunity.platform,
-                host: activeCommunity.host,
-                name: communityName,
-              );
-              context.push(
-                () => CommunityScreen(
-                  activeCommunity: activeCommunity.platform.supportsMultipleHosts ? activeCommunity : communty,
-                  community: communty
-                ),
-              );
+              context.push(() {
+                return CommunityScreen(
+                  community: Community(
+                    platform: platformContext.platform,
+                    host: platformContext.host,
+                    name: communityName,
+                  )
+                );
+              });
               return true;
             }
 
-            final userName = activeCommunity.platform.getUserNameFromPath(url);
+            final userName = platformContext.platform.getUserNameFromPath(url);
             if (userName != null) {
-              context.push(
-                () => UserDetailsScreen(
-                  activeCommunity: activeCommunity,
+              context.push(() {
+                return UserDetailsScreen(
+                  platformContext: platformContext,
                   username: userName,
-                ),
-              );
+                );
+              });
               return true;
             }
 
-            navigate(context, activeCommunity, url);
+            navigate(context, platformContext, null, url);
             return true;
           },
           onTapImage: (imageMetadata) {
             final url = imageMetadata.sources.firstOrNull?.url;
             if (url != null) {
-              navigate(context, activeCommunity, url);
+              navigate(context, platformContext, null, url);
             }
           },
         );
@@ -252,15 +248,13 @@ class _HtmlLink extends StatelessWidget {
 
 class _Image extends StatelessWidget {
 
-  final Platform platform;
-  final String activeHost;
+  final PlatformContext platformContext;
   final String url;
   final Size? size;
   final VoidCallback onTap;
 
   const _Image({
-    required this.platform,
-    required this.activeHost,
+    required this.platformContext,
     required this.url,
     this.size,
     required this.onTap
@@ -298,7 +292,7 @@ class _Image extends StatelessWidget {
         ),
         child: ExtendedImage.network(
           url,
-          headers: {'User-Agent': platform.savedOrDefaultUserAgent},
+          headers: {'User-Agent': platformContext.platform.savedOrDefaultUserAgent},
           cacheHeight: (maxHeight * MediaQuery.devicePixelRatioOf(context)).round(),
           fit: BoxFit.contain,
           loadStateChanged: (state) {
@@ -340,7 +334,7 @@ class _Image extends StatelessWidget {
                               Text('Save image'): (context) {
                                 saveImage(
                                   context: context,
-                                  platform: platform,
+                                  platform: platformContext.platform,
                                   url: url
                                 );
                               },

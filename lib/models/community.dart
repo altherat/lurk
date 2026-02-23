@@ -1,19 +1,20 @@
 import 'package:lurk/core/platforms.dart';
+import 'package:lurk/models/platform_context.dart';
 
 class Community {
 
-  final Platform platform;
-  final String host;
+  final PlatformContext platformContext;
   final String? name;
   final String? id;
   final bool isFavorite;
+  final String? originHost;
 
-  const Community._({
-    required this.platform,
-    required this.host,
-    this.name,
+  const Community.fromPlatformContext(
+    this.platformContext, {
+    required this.name,
     this.id,
     this.isFavorite = false,
+    this.originHost
   });
 
   factory Community({
@@ -22,68 +23,64 @@ class Community {
     String? name,
     String? id,
     bool isFavorite = false,
-  }) {
-    return Community._(
-      platform: platform,
-      host: host,
-      name: name?.toLowerCase(),
-      id: id,
-      isFavorite: isFavorite,
-    );
-  }
-
+    String? originHost
+  }) => Community.fromPlatformContext(
+    PlatformContext(platform: platform, host: host),
+    name: name?.toLowerCase(),
+    id: id,
+    isFavorite: isFavorite,
+    originHost: originHost
+  );
+  
   Community copyWith({
-    Platform? platform,
-    String? host,
+    PlatformContext? platformContext,
     String? name,
     String? id,
     bool? isFavorite
   }) {
-    return Community(
-      platform: platform ?? this.platform,
-      host: host ?? this.host,
+    return Community.fromPlatformContext(
+      platformContext ?? this.platformContext,
       name: name ?? this.name,
       id: id ?? this.id,
       isFavorite: isFavorite ?? this.isFavorite
     );
   }
 
-  String get fullName => platform.getFullCommunityName(host, name);
+  String get fullName => platformContext.platform.getFullCommunityName(originHost ?? platformContext.host, name);
 
-  String? get nameAndMaybeHost => name != null ? platform.host != null ? name : '$name@$host' : null;
+  String? get nameAndMaybeHost => name != null ? platformContext.platform.supportsMultipleHosts ? '$name@${originHost ?? platformContext.host}' : name : null;
 
   @override
   bool operator ==(Object other) {
-    if (identical(this, other)) return true;
-    return other is Community &&
-        other.platform == platform &&
-        other.host == host &&
-        other.name == name;
+    if (identical(this, other)) {
+      return true;
+    }
+    return other is Community
+      && other.platformContext == platformContext
+      && other.name == name;
   }
 
   @override
-  int get hashCode => Object.hash(platform, host, name);
+  int get hashCode => Object.hash(platformContext, name);
 
 }
 
-const Community redditPopular = Community._(
-  platform: Platform.reddit,
-  host: 'reddit.com',
+const Community redditPopular = Community.fromPlatformContext(
+  PlatformContext(platform: Platform.reddit, host: 'www.reddit.com'),
   name: 'popular',
 );
 
-const Community redditAll = Community._(
-  platform: Platform.reddit,
-  host: 'reddit.com',
+const Community redditAll = Community.fromPlatformContext(
+  PlatformContext(platform: Platform.reddit, host: 'www.reddit.com'),
   name: 'all',
 );
 
-const Community diggFrontPage = Community._(
-  platform: Platform.digg,
-  host: 'digg.com',
+const Community diggFrontPage = Community.fromPlatformContext(
+  PlatformContext(platform: Platform.digg, host: 'digg.com'),
+  name: null
 );
 
-const Community lemmyFrontPage = Community._(
-  platform: Platform.lemmy,
-  host: 'lemmy.world'
+const Community lemmyFrontPage = Community.fromPlatformContext(
+  PlatformContext(platform: Platform.lemmy, host: 'lemmy.world'),
+  name: null
 );

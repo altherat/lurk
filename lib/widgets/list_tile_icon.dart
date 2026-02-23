@@ -1,18 +1,15 @@
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
-import 'package:lurk/core/platforms.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 
 class ListTileIcon extends StatelessWidget {
   
-  final Platform platform;
   final String? url;
   final double size;
   final IconData placeholderIcon;
 
   const ListTileIcon({
     super.key,
-    required this.platform,
     required this.url,
     this.size = 40.0,
     required this.placeholderIcon

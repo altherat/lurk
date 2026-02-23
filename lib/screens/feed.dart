@@ -3,9 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
-import 'package:lurk/models/community.dart';
 import 'package:lurk/models/paged_items.dart';
+import 'package:lurk/models/platform_context.dart';
+import 'package:lurk/models/user.dart';
 import 'package:lurk/services/settings.dart';
+import 'package:lurk/services/user_manager.dart';
 import 'package:lurk/widgets/custom_refresh_indicator.dart';
 import 'package:lurk/widgets/feed_list.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
@@ -13,7 +15,9 @@ import 'package:lurk/widgets/main_scaffold.dart';
 class FeedScreen<T> extends StatefulWidget {
 
   final GlobalKey<MainScaffoldState>? scaffoldKey;
-  final Community activeCommunity;
+  final PlatformContext platformContext;
+  final String? activeCommunityName;
+  final bool isCurated;
   final FeedOptionsGroup? feedOptions;
   final Future<PagedItems<T>>? initialItems;
   final Future<PagedItems<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) fetchItems;
@@ -21,6 +25,7 @@ class FeedScreen<T> extends StatefulWidget {
   final String? subtitle;
   final bool showFeedOptionsSubtitle;
   final List<Widget>? iconActions;
+  final bool Function(LoggedInUser user)? userFilter;
   final (Listenable, List<Widget> Function(BuildContext context))? iconActionsBuilder;
   final Map<Widget, Function(BuildContext context)>? popupMenuActions;
   final PreferredSizeWidget? flexibleSpaceHeader;
@@ -32,7 +37,9 @@ class FeedScreen<T> extends StatefulWidget {
   const FeedScreen({
     super.key,
     this.scaffoldKey,
-    required this.activeCommunity,
+    required this.platformContext,
+    this.activeCommunityName,
+    this.isCurated = false,
     this.feedOptions,
     this.initialItems,
     required this.fetchItems,
@@ -40,6 +47,7 @@ class FeedScreen<T> extends StatefulWidget {
     this.subtitle,
     this.showFeedOptionsSubtitle = true,
     this.iconActions,
+    this.userFilter,
     this.iconActionsBuilder,
     this.popupMenuActions,
     this.flexibleSpaceHeader,
@@ -56,6 +64,7 @@ class FeedScreen<T> extends StatefulWidget {
 
 class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderStateMixin {
 
+  late final ValueListenable<LoggedInUser?> _activeUserListenable;
   late List<GlobalKey<FeedListState<T>>> _feedListKeys;
   late List<GlobalKey<CustomRefreshIndicatorState>> _refreshIndicatorKeys;
   late List<ScrollController> _scrollControllers;
@@ -65,6 +74,8 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
   @override
   void initState() {
     super.initState();
+    _activeUserListenable = UserManager.getActiveUser(widget.platformContext.platform);
+    _activeUserListenable.addListener(_onActiveUserChanged);
     if (widget.feedOptions != null && widget.feedOptions!.type == FeedOptionType.category && widget.feedOptions!.options.length <= 3) {
       _tabController = TabController(
         length: widget.feedOptions!.options.length,
@@ -78,9 +89,7 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
         _feedListKeys.add(GlobalKey<FeedListState<T>>());
         _refreshIndicatorKeys.add(GlobalKey<CustomRefreshIndicatorState>());
         _scrollControllers.add(ScrollController());
-        _selectedFeedOptions.add(
-          widget.feedOptions?.options[i].subGroup?.defaults,
-        );
+        _selectedFeedOptions.add(widget.feedOptions?.options[i].subGroup?.defaults);
       }
     } else {
       _feedListKeys = [GlobalKey<FeedListState<T>>()];
@@ -92,11 +101,21 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
 
   @override
   void dispose() {
+    _activeUserListenable.removeListener(_onActiveUserChanged);
     _tabController?.dispose();
     for (var controller in _scrollControllers) {
       controller.dispose();
     }
     super.dispose();
+  }
+
+  void _onActiveUserChanged() {
+    if (widget.isCurated) {
+      reload();
+    }
+    else {
+      refresh();
+    }
   }
 
   FeedListState<T>? get feedList => _feedListKeys[_tabController?.index ?? 0].currentState;
@@ -125,7 +144,7 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
 
   @override
   Widget build(BuildContext context) {
-    if (widget.feedOptions?.type == FeedOptionType.category) {
+    if (_tabController != null) {
       final List<Widget> tabs = [];
       final List<Widget> pages = [];
       for (var i = 0; i < widget.feedOptions!.options.length; i++) {
@@ -149,7 +168,6 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
                       SliverOverlapInjector(handle: overlapAbsorberHandle),
                       FeedList(
                         key: _feedListKeys[i],
-                        platform: widget.activeCommunity.platform,
                         initialItems: i == 0 ? widget.initialItems : null,
                         getItems: (String? pageToken) async {
                           return widget.fetchItems(
@@ -173,7 +191,8 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
       }
       return MainScaffold(
         key: widget.scaffoldKey,
-        activeCommunity: widget.activeCommunity,
+        platformContext: widget.platformContext,
+        activeCommunityName: widget.activeCommunityName,
         title: widget.title,
         subtitle: widget.showFeedOptionsSubtitle
           ? ValueListenableBuilder(
@@ -191,6 +210,7 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
               },
             )
           : widget.subtitle != null ? Text(widget.subtitle!) : null,
+        userFilter: widget.userFilter,
         iconActions: widget.iconActions,
         iconActionsBuilder: (
           Listenable.merge([
@@ -200,16 +220,16 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
           (context) {
             final visibleIndex = _tabController!.animation!.value.round();
             final subGroupOptions = widget.feedOptions!.options[visibleIndex].subGroup;
-            if (subGroupOptions == null) return [];
             return [
               ...?widget.iconActionsBuilder?.$2(context),
-              _FeedFilterIconButton(
-                platform: widget.activeCommunity.platform,
-                feedOptions: subGroupOptions,
-                selectedFeedOptions: _selectedFeedOptions[visibleIndex],
-                onFeedOptionsSelected: _onFeedOptionsSelected,
-              ),
-            ];
+              if (subGroupOptions != null)
+                _FeedFilterIconButton(
+                  platformContext: widget.platformContext,
+                  feedOptions: subGroupOptions,
+                  selectedFeedOptions: _selectedFeedOptions[visibleIndex],
+                  onFeedOptionsSelected: _onFeedOptionsSelected,
+                ),
+              ];
           },
         ),
         popupMenuActions: widget.popupMenuActions,
@@ -250,15 +270,17 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
     return MainScaffold(
       key: widget.scaffoldKey,
       refreshIndicatorKey: _refreshIndicatorKeys[0],
-      activeCommunity: widget.activeCommunity,
+      platformContext: widget.platformContext,
+      activeCommunityName: widget.activeCommunityName,
       customScrollViewController: _scrollControllers[0],
       title: widget.title,
       subtitle: subtitles.isNotEmpty ? Text(subtitles.join(Constants.separator)) : null,
+      userFilter: widget.userFilter,
       iconActionsBuilder: widget.iconActionsBuilder,
       iconActions: [
         ...?widget.iconActions,
         _FeedFilterIconButton(
-          platform: widget.activeCommunity.platform,
+          platformContext: widget.platformContext,
           feedOptions: feedOptions,
           selectedFeedOptions: selectedFeedOptions,
           onFeedOptionsSelected: _onFeedOptionsSelected,
@@ -270,7 +292,6 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
         ...?widget.slivers,
         FeedList(
           key: _feedListKeys[0],
-          platform: widget.activeCommunity.platform,
           initialItems: widget.initialItems,
           getItems: (String? pageToken) =>
               widget.fetchItems(_selectedFeedOptions[0], pageToken),
@@ -293,13 +314,13 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
 
 class _FeedFilterIconButton extends StatelessWidget {
 
-  final Platform platform;
+  final PlatformContext platformContext;
   final FeedOptionsGroup? feedOptions;
   final Map<FeedOptionType, FeedOption>? selectedFeedOptions;
   final Function(Map<FeedOptionType, FeedOption>) onFeedOptionsSelected;
 
   const _FeedFilterIconButton({
-    required this.platform,
+    required this.platformContext,
     required this.feedOptions,
     required this.selectedFeedOptions,
     required this.onFeedOptionsSelected
@@ -313,6 +334,7 @@ class _FeedFilterIconButton extends StatelessWidget {
       iconSize: 26,
       onPressed: feedOptions != null
         ? () {
+            final activeUser = UserManager.getActiveUser(platformContext.platform).value;
             showModalBottomSheet(
               context: context,
               showDragHandle: true,
@@ -322,9 +344,9 @@ class _FeedFilterIconButton extends StatelessWidget {
                   child: Padding(
                     padding: const EdgeInsets.only(bottom: 16),
                     child: _FeedOptionsSelector(
-                      platform: platform,
                       optionsGroup: feedOptions!,
                       selected: selectedFeedOptions,
+                      isLoggedIn: activeUser != null,
                       onSelected: (options) {
                         onFeedOptionsSelected(options);
                         context.pop();
@@ -343,15 +365,15 @@ class _FeedFilterIconButton extends StatelessWidget {
 
 class _FeedOptionsSelector extends StatefulWidget {
 
-  final Platform platform;
   final FeedOptionsGroup optionsGroup;
   final Map<FeedOptionType, FeedOption>? selected;
+  final bool isLoggedIn;
   final Function(Map<FeedOptionType, FeedOption>) onSelected;
 
   const _FeedOptionsSelector({
-    required this.platform,
     required this.optionsGroup,
     required this.selected,
+    required this.isLoggedIn,
     required this.onSelected
   });
 
@@ -402,6 +424,34 @@ class _FeedOptionsSelectorState extends State<_FeedOptionsSelector> {
         children: [
           ...List.generate(toShow.length, (index) {
             final group = toShow[index];
+            final List<Widget> chips = [];
+            for (final option in group.options) {
+              if (!option.requiresLogin || widget.isLoggedIn) {
+                final isSelected = _selected.length > index && _selected[index].$2 == option;
+                chips.add(
+                  ChoiceChip(
+                    materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    label: Text(option.label),
+                    selected: isSelected,
+                    labelStyle: isSelected ? null : TextStyle(color: Theme.of(context).colorScheme.onSurface),
+                    onSelected: (selected) {
+                      if (selected) {
+                        if (_selected.length > index) {
+                          _selected.removeRange(index, _selected.length);
+                        }
+                        _selected.add((group.type, option));
+                        if (option.subGroup != null) {
+                          setState(() {});
+                        }
+                        else {
+                          widget.onSelected({for (var item in _selected) item.$1: item.$2});
+                        }
+                      }
+                    },
+                  )
+                );
+              }
+            }
             return Padding(
               padding: EdgeInsets.fromLTRB(32, index == 0 ? 0 : 16, 32, 0),
               child: Column(
@@ -421,29 +471,7 @@ class _FeedOptionsSelectorState extends State<_FeedOptionsSelector> {
                   Wrap(
                     spacing: Constants.choiceChipGapSize,
                     runSpacing: Constants.choiceChipGapSize,
-                    children: group.options.map((option) {
-                      final isSelected = _selected.length > index && _selected[index].$2 == option;
-                      return ChoiceChip(
-                        materialTapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        label: Text(option.label),
-                        selected: isSelected,
-                        labelStyle: isSelected ? null : TextStyle(color: Theme.of(context).colorScheme.onSurface),
-                        onSelected: (selected) {
-                          if (selected) {
-                            if (_selected.length > index) {
-                              _selected.removeRange(index, _selected.length);
-                            }
-                            _selected.add((group.type, option));
-                            if (option.subGroup != null) {
-                              setState(() {});
-                            }
-                            else {
-                              widget.onSelected({for (var item in _selected) item.$1: item.$2});
-                            }
-                          }
-                        },
-                      );
-                    }).toList(),
+                    children: chips,
                   )
                 ],
               )

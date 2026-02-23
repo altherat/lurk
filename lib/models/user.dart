@@ -1,42 +1,47 @@
 import 'package:lurk/core/platforms.dart';
+import 'package:lurk/models/platform_context.dart';
 
-class LookedUpUser {
-
-  final String host;
-  final String? id;
+abstract class User {
+  
+  final String id;
   final String name;
   final String? iconUrl;
+
+  const User({
+    required this.id,
+    required this.name,
+    required this.iconUrl
+  });
+}
+
+class LookedUpUser extends User {
+
   final bool isSuspended;
   final List<UserStat>? stats;
 
-  LookedUpUser({
-    required this.host,
-    required this.id,
-    required this.name,
-    required this.iconUrl,
+  const LookedUpUser({
+    required super.id,
+    required super.name,
+    required super.iconUrl,
     required this.isSuspended,
     required this.stats
   });
 
 }
 
-class LoggedInUser {
+class LoggedInUser extends User {
 
-  final Platform platform;
-  final String host;
+  final PlatformContext platformContext;
   final String? hostIconUrl;
-  final String id;
-  final String name;
-  final String? iconUrl;
 
   LoggedInUser({
-    required this.platform,
-    required this.host,
+    required Platform platform,
+    required String host,
+    required super.id,
+    required super.name,
+    required super.iconUrl,
     this.hostIconUrl,
-    required this.id,
-    required this.name,
-    required this.iconUrl,
-  });
+  }) : platformContext = PlatformContext(platform: platform, host: host);
 
 }
 

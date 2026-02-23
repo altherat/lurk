@@ -2,9 +2,10 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/extensions.dart';
+import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
-import 'package:lurk/models/community.dart';
-import 'package:lurk/repositories/posts.dart';
+import 'package:lurk/models/user.dart';
+import 'package:lurk/services/posts.dart';
 import 'package:lurk/screens/image_gallery_viewer.dart';
 import 'package:lurk/screens/post_details.dart';
 import 'package:lurk/screens/community.dart';
@@ -12,6 +13,7 @@ import 'package:lurk/screens/user_details.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/services/settings.dart';
+import 'package:lurk/services/user_manager.dart';
 import 'package:lurk/widgets/collection_listenable_builder.dart';
 import 'package:lurk/widgets/swipe_to_vote.dart';
 
@@ -20,7 +22,6 @@ const _voteHeight = 70.0;
 
 class PostTile extends StatelessWidget {
 
-  final Community activeCommunity;
   final Post post;
   final Widget? subtitle;
   final bool isInteractable;
@@ -31,7 +32,6 @@ class PostTile extends StatelessWidget {
 
   const PostTile({
     super.key,
-    required this.activeCommunity,
     required this.post,
     this.subtitle,
     this.isInteractable = true,
@@ -42,31 +42,36 @@ class PostTile extends StatelessWidget {
   });
 
   void _showOptions(BuildContext context) {
+    final Map<Widget, Function(BuildContext)> conditionalOptions = {
+      if (showViewCommunityOption)
+        Text('View ${post.community.fullName}'): (context) => context.push(() => CommunityScreen(community: post.community))
+    };
+    if (showViewUserOption && post.author != null) {
+      final authorHost = post.authorHost ?? post.community.platformContext.host;
+      conditionalOptions[Text('View ${post.community.platformContext.platform.getFullUserName(authorHost, post.author!)}')] = (context) {
+        context.push(() {
+          return UserDetailsScreen(
+            platformContext: post.community.platformContext,
+            username: post.community.platformContext.platform.supportsMultipleHosts ? '${post.author}@$authorHost' : post.author!,
+          );
+        });
+      };
+    }
     showSimpleOptionsBottomSheet(
       context: context,
       title: post.title,
       options: {
-        if (showViewCommunityOption)
-          Text('View ${post.community.fullName}'): (context) => context.push(() => CommunityScreen(activeCommunity: activeCommunity.platform.supportsMultipleHosts ? activeCommunity : post.community, community: post.community)),
-        if (showViewUserOption && post.author != null)
-          Text('View ${post.community.platform.getFullUserName(post.community.host, post.author!)}'): (context) {
-            context.push(
-              () => UserDetailsScreen(
-                activeCommunity: activeCommunity,
-                username: post.author!,
-              )
-            );
-          },
+        ...conditionalOptions,
         Text('View link in browser'): (context) => openInBrowser(post.url),
-        Text('View comments in browser'): (context) => openInBrowser(post.community.platform.getPostDetailsUrl(post)),
+        Text('View comments in browser'): (context) => openInBrowser(post.community.platformContext.platform.getPostDetailsUrl(post)),
         Text('Copy link'): (context) => copyToClipboard(post.url),
-        Text('Copy comments link'): (context) => copyToClipboard(post.community.platform.getPostDetailsUrl(post))
+        Text('Copy comments link'): (context) => copyToClipboard(post.community.platformContext.platform.getPostDetailsUrl(post))
       }      
     );
   }
 
-  void _updateVote(String activeUserId, bool up) {
-    activeCommunity.platform.getApi(activeCommunity.host, activeUserId).votePost(post.id, up);
+  void _updateVote(LoggedInUser activeUser, bool up) {
+    Platform.getApi(activeUser.platformContext, activeUser).votePost(post.localId, up);
   }
 
   @override
@@ -78,9 +83,9 @@ class PostTile extends StatelessWidget {
       if (onTapNavigate) {
         onTap = () {
           if (post.isSelf) {
-            Posts.visitedLinks.add(post.id);
+            Posts.visitedLinks.add(post.localId);
           }
-          context.push(() => PostDetailsScreen.fromPost(activeCommunity: activeCommunity, post: post));
+          context.push(() => PostDetailsScreen.fromPost(post: post));
         };
       }
       else {
@@ -92,21 +97,20 @@ class PostTile extends StatelessWidget {
       onTap = null;
       onLongPress = null;
     }
-    final tile = InkWell(
-      onTap: onTap,
-      onLongPress: onLongPress,
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          SizedBox(
-            width: _voteWidth,
-            height: _voteHeight,
-            child: ValueListenableBuilder(
-              valueListenable: Settings.activeUser,
-              builder: (context, activeUser, child) {
-                final canVote = activeUser != null && activeUser.platform == post.community.platform;
-                return CollectionListenableBuilder(
-                  id: (activeUser?.id, post.id),
+    return ValueListenableBuilder(
+      valueListenable: UserManager.getActiveUser(post.community.platformContext.platform),
+      builder: (context, activeUser, child) {
+        final tile = InkWell(
+          onTap: onTap,
+          onLongPress: onLongPress,
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SizedBox(
+                width: _voteWidth,
+                height: _voteHeight,
+                child: CollectionListenableBuilder(
+                  id: (activeUser?.id, post.localId),
                   collectionListenable: Posts.interactionStates,
                   builder: (context, interactionState) {
                     final String scoreText;
@@ -131,10 +135,10 @@ class PostTile extends StatelessWidget {
                             isActive: interactionState?.vote == true,
                             alignment: Alignment.topCenter,
                             activeColor: Constants.upvoteColor,
-                            onPressed: canVote
+                            onPressed: activeUser != null
                               ? () {
                                   HapticFeedback.mediumImpact();
-                                  _updateVote(activeUser.id, true);
+                                  _updateVote(activeUser, true);
                                 }
                               : null
                           ),
@@ -158,10 +162,10 @@ class PostTile extends StatelessWidget {
                             isActive: interactionState?.vote == false,
                             alignment: Alignment.bottomCenter,
                             activeColor: Constants.downvoteColor,
-                            onPressed: canVote
+                            onPressed: activeUser != null
                               ? () {
                                   HapticFeedback.mediumImpact();
-                                  _updateVote(activeUser.id, false);
+                                  _updateVote(activeUser, false);
                                 }
                               : null
                           ),
@@ -169,123 +173,114 @@ class PostTile extends StatelessWidget {
                       ],
                     );
                   }
-                );
-              }
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(4, 4, 8, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  CollectionListenableBuilder(
-                    id: post.id,
-                    collectionListenable: Posts.visitedLinks,
-                    builder: (context, isVisited) {
-                      return Text.rich(
-                        TextSpan(
-                          style: const TextStyle(fontSize: 13.5, height: 1.2),
-                          children: [
-                            TextSpan(
-                              text: post.title,
-                              style: TextStyle(
-                                fontWeight: post.isStickied ? FontWeight.bold : null,
-                                color: post.isStickied ? Constants.postStickiedTitleColor : isVisited ? Constants.visitedTextColor : null
-                              )
-                            ),
-                            TextSpan(
-                              text: ' (${post.domain})',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: onSurfaceVariantColor
-                              )
-                            ),
-                          ],
-                        ),
-                      );
-                    }
-                  ),
-                  subtitle ?? PostTileCommentHistorySubtitle(
-                    post: post,
-                    extraTexts: [post.timeAgoCompact, post.community.name!]
-                  )
-                ],
+                ),
               ),
-            ),
-          ),
-          if (showThumbnail)
-            SizedBox(
-              width: Constants.thumbnailSize,
-              height: Constants.thumbnailSize,
-              child: Stack(
-                children: [
-                  Positioned.fill(
-                    child: post.thumbnailUrl != null
-                      ? ExtendedImage.network(
-                          post.thumbnailUrl!,
-                          headers: {'User-Agent': post.community.platform.savedOrDefaultUserAgent},
-                          cacheWidth: (Constants.thumbnailSize * MediaQuery.devicePixelRatioOf(context)).round(),
-                          fit: BoxFit.cover,
-                          loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed ? const Icon(Icons.broken_image_rounded) : null,
-                          
-                      )
-                      : DecoratedBox(
-                          decoration: BoxDecoration(
-                            border: BoxBorder.all(color: Constants.lighterBackgroundColor)
-                          ),
-                          child: Icon(
-                            post.isSelf ? Icons.subject_rounded : Icons.link_rounded,
-                            color: Colors.white38,
-                          ),
-                        ),
-                  ),
-                  if (isInteractable)
-                    Positioned.fill(
-                      child: Material(
-                        color: Colors.transparent,
-                        child: InkWell(
-                          onTap: () {
-                            Posts.visitedLinks.add(post.id);
-                            if (post.isSelf) {
-                              context.push(() => PostDetailsScreen.fromPost(activeCommunity: activeCommunity, post: post));
-                            }
-                            else if (post.isGallery) {
-                              context.push(() => ImageGalleryViewerScreen.fromPost(activeCommunity: activeCommunity, post: post));
-                            }
-                            else {
-                              navigate(context, activeCommunity, post.url, post: post);
-                            }
-                          }
-                        ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 4, 8, 0),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      CollectionListenableBuilder(
+                        id: post.localId,
+                        collectionListenable: Posts.visitedLinks,
+                        builder: (context, isVisited) {
+                          return Text.rich(
+                            TextSpan(
+                              style: const TextStyle(fontSize: 13.5, height: 1.2),
+                              children: [
+                                TextSpan(
+                                  text: post.title,
+                                  style: TextStyle(
+                                    fontWeight: post.isStickied ? FontWeight.bold : null,
+                                    color: post.isStickied ? Constants.postStickiedTitleColor : isVisited ? Constants.visitedTextColor : null
+                                  )
+                                ),
+                                TextSpan(
+                                  text: ' (${post.domain})',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: onSurfaceVariantColor
+                                  )
+                                ),
+                              ],
+                            ),
+                          );
+                        }
                       ),
-                    ),
-                ],
+                      subtitle ?? PostTileCommentHistorySubtitle(
+                        post: post,
+                        extraTexts: [post.timeAgoCompact, post.community.name!]
+                      )
+                    ],
+                  ),
+                ),
               ),
-            )
-        ],
-      ),
-    );
-    return ValueListenableBuilder(
-      valueListenable: Settings.swipePostsToVote,
-      child: tile,
-      builder: (context, swipePostsToVote, child) {
-        if (swipePostsToVote) {
-          return ValueListenableBuilder(
-            valueListenable: Settings.activeUser,
-            child: child,
-            builder: (context, activeUser, child) {
-              if (activeUser != null && activeUser.platform == post.community.platform) {
-                return SwipeToVote(
-                  onVote: (upvote) => _updateVote(activeUser.id, upvote),
-                  child: child!
-                );
-              }
-              return child!;
+              if (showThumbnail)
+                SizedBox(
+                  width: Constants.thumbnailSize,
+                  height: Constants.thumbnailSize,
+                  child: Stack(
+                    children: [
+                      Positioned.fill(
+                        child: post.thumbnailUrl != null
+                          ? ExtendedImage.network(
+                              post.thumbnailUrl!,
+                              headers: {'User-Agent': post.community.platformContext.platform.savedOrDefaultUserAgent},
+                              cacheWidth: (Constants.thumbnailSize * MediaQuery.devicePixelRatioOf(context)).round(),
+                              fit: BoxFit.cover,
+                              loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed ? const Icon(Icons.broken_image_rounded) : null,
+                              
+                          )
+                          : DecoratedBox(
+                              decoration: BoxDecoration(
+                                border: BoxBorder.all(color: Constants.lighterBackgroundColor)
+                              ),
+                              child: Icon(
+                                post.isSelf ? Icons.subject_rounded : Icons.link_rounded,
+                                color: Colors.white38,
+                              ),
+                            ),
+                      ),
+                      if (isInteractable)
+                        Positioned.fill(
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                Posts.visitedLinks.add(post.localId);
+                                if (post.isSelf) {
+                                  context.push(() => PostDetailsScreen.fromPost(post: post));
+                                }
+                                else if (post.isGallery) {
+                                  context.push(() => ImageGalleryViewerScreen.fromPost(post: post));
+                                }
+                                else {
+                                  navigate(context, post.community.platformContext, post.community.name, post.url, post: post);
+                                }
+                              }
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
+                )
+            ],
+          ),
+        );
+        return ValueListenableBuilder(
+          valueListenable: Settings.swipePostsToVote,
+          child: tile,
+          builder: (context, swipePostsToVote, child) {
+            if (swipePostsToVote && activeUser != null) {
+              return SwipeToVote(
+                onVote: (upvote) => _updateVote(activeUser, upvote),
+                child: child!
+              );
             }
-          );
-        }
-        return child!;
+            return child!;
+          }
+        );
       }
     );
   }
@@ -305,7 +300,7 @@ class PostTileCommentHistorySubtitle extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return CollectionListenableBuilder(
-      id: post.id,
+      id: post.localId,
       collectionListenable: Posts.visitedDetails,
       builder: (context, isVisited) {
         return Text.rich(

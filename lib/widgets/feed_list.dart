@@ -3,14 +3,12 @@ import 'dart:developer' as dev;
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/extensions.dart';
-import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/icon_message.dart';
 
 class FeedList<T> extends StatefulWidget {
 
-  final Platform platform;
   final Future<PagedItems<T>>? initialItems;
   final Future<PagedItems<T>> Function(String? pageToken) getItems;
   final Widget Function(BuildContext context) noItemsBuilder;
@@ -18,7 +16,6 @@ class FeedList<T> extends StatefulWidget {
 
   const FeedList({
     super.key,
-    required this.platform,
     this.initialItems,
     required this.getItems,
     required this.noItemsBuilder,

@@ -4,6 +4,7 @@ import 'dart:io' as io;
 import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:lurk/core/constants.dart';
+import 'package:lurk/core/database/tables/active_users.dart';
 import 'package:lurk/core/database/tables/communities.dart';
 import 'package:lurk/core/database/tables/cookies.dart';
 import 'package:lurk/core/database/tables/history.dart';
@@ -21,7 +22,7 @@ import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
 
 part 'database.g.dart';
 
-@DriftDatabase(tables: [Cookies, Settings, Users, UserCommunities, Communities, History])
+@DriftDatabase(tables: [ActiveUsers, Communities, Cookies, History, Settings, Users, UserCommunities])
 class Database extends _$Database {
 
   static Database instance = Database._();
@@ -45,8 +46,8 @@ class Database extends _$Database {
             communities,
             F.appFlavor.defaultCommunities.map((community) {
               return CommunitiesCompanion.insert(
-                platform: community.platform,
-                host: community.host,
+                platform: community.platformContext.platform,
+                host: community.platformContext.host,
                 name: community.name
               );
             })
@@ -71,21 +72,20 @@ class Database extends _$Database {
 
   Stream<Map<String, dynamic>> watchSettings(Iterable<String> keys) {
     return (select(settings)..limit(1))
-    .watchSingle()
-    .map((row) {
-      final json = row.toJson();
-      return {
-        for (var key in keys) 
-          key: json[key]
+      .watchSingle()
+      .map((row) {
+        final json = row.toJson();
+        return {
+          for (var key in keys) 
+            key: json[key]
       };
     });
   }
 
   Future<List<Cookie>> getAllValidCookies() {
     final now = DateTime.now();
-    return (
-      select(cookies)
-        ..where((cookie) => cookie.expirationTime.isNull() | cookie.expirationTime.isBiggerThanValue(now))
+    return (select(cookies)
+      ..where((cookie) => cookie.expirationTime.isNull() | cookie.expirationTime.isBiggerThanValue(now))
     ).get();
   }
 
@@ -106,55 +106,74 @@ class Database extends _$Database {
 
   Future<void> deleteCookies(Iterable<String> keys) => (delete(cookies)..where((c) => c.key.isIn(keys))).go();
 
-  Future<Setting?> getAllSettings() => select(settings).getSingleOrNull();
+  Future<Setting> getAllSettings() => select(settings).getSingle();
 
   Future<int> updateSettings(SettingsCompanion companion) => (update(settings)..where((t) => t.id.equals(1))).write(companion);
   
-  Future<List<LoggedInUser>> getAllLoggedInUsers() {
-    return (
-      select(users)
-        ..orderBy([
-          (u) => OrderingTerm(expression: u.name, mode: OrderingMode.asc),
-        ])
+  Future<List<LoggedInUser>> getAllUsers() {
+    return (select(users)
+      ..orderBy(([
+        (u) => OrderingTerm(
+          expression: u.platform.caseMatch(
+            when: {
+              for (var p in Platform.values)
+                Constant(p.name): Constant(p.index),
+            },
+          ),
+          mode: OrderingMode.asc,
+        ),
+      ]))
     ).get();
   }
 
-  Future<void> saveLoggedInUser(LoggedInUser user) {
-    return into(users).insertOnConflictUpdate(
-      UsersCompanion.insert(
-        platform: user.platform,
-        host: user.host,
-        hostIconUrl: Value(user.hostIconUrl),
-        id: user.id,
-        name: user.name,
-        iconUrl: Value(user.iconUrl),
-      ),
-    );
+  Future<void> saveUser(LoggedInUser user) {
+    return into(users)
+      .insertOnConflictUpdate(
+        UsersCompanion.insert(
+          platform: user.platformContext.platform,
+          host: user.platformContext.host,
+          hostIconUrl: Value(user.hostIconUrl),
+          id: user.id,
+          name: user.name,
+          iconUrl: Value(user.iconUrl),
+        ),
+      );
   }
 
-  Future<void> deleteLoggedInUser(LoggedInUser user) {
-    return (
-      delete(users)
-        ..where((u) => u.id.equals(user.id))
-    )
-    .go();
+  Future<void> deleteUser(String id) => (delete(users)..where((u) => u.id.equals(id))).go();
+
+  Future<List<ActiveUser>> getAllActiveUsers() => select(activeUsers).get();
+
+  Future<void> saveActiveUser(Platform platform, String userId) {
+    return into(activeUsers)
+      .insertOnConflictUpdate(
+        ActiveUsersCompanion.insert(
+          platform: platform,
+          userId: userId,
+        ),
+      );
+  }
+
+  Future<void> deleteActiveUser(Platform platform) {
+    return (delete(activeUsers)
+      ..where((t) => t.platform.equals(platform.name))
+    ).go();
   }
 
   Future<List<Community>> getAllCommunities() {
-    return (
-      select(communities)
-        ..orderBy([
-          (c) => OrderingTerm(expression: c.isFavorite, mode: OrderingMode.desc),
-          (c) => OrderingTerm(expression: c.name, mode: OrderingMode.asc),
-        ])
+    return (select(communities)
+      ..orderBy([
+        (c) => OrderingTerm(expression: c.isFavorite, mode: OrderingMode.desc),
+        (c) => OrderingTerm(expression: c.name, mode: OrderingMode.asc),
+      ])
     ).get();
   }
 
   Future<int> saveCommunity(Community community) {
     return into(communities).insert(
       CommunitiesCompanion.insert(
-        platform: community.platform,
-        host: community.host,
+        platform: community.platformContext.platform,
+        host: community.platformContext.host,
         name: community.name,
         isFavorite: Value(community.isFavorite),
         id: Value(community.id),
@@ -164,16 +183,15 @@ class Database extends _$Database {
   }
 
   Future<void> saveAllCommunities(Iterable<Community> communities) {
-    return batch(
-      (batch) {
-        batch.insertAll(
-          this.communities, 
-          communities.map((community) => CommunitiesCompanion.insert(
-            platform: community.platform,
-            host: community.host,
-            name: community.name,
-            isFavorite: Value(community.isFavorite),
-            id: Value(community.id),
+    return batch((batch) {
+      batch.insertAll(
+        this.communities, 
+        communities.map((community) => CommunitiesCompanion.insert(
+          platform: community.platformContext.platform,
+          host: community.platformContext.host,
+          name: community.name,
+          isFavorite: Value(community.isFavorite),
+          id: Value(community.id),
         )).toList(),
         mode: InsertMode.insertOrReplace,
       );
@@ -181,20 +199,17 @@ class Database extends _$Database {
   }
 
   Future<void> deleteCommunity(Community community) {
-    return (
-      delete(communities)
-        ..where((c) => 
-          c.platform.equals(community.platform.name) & 
-          c.name.equals(community.name ?? '')
-        )
-    )
-    .go();
+    return ( delete(communities)
+      ..where((c) => 
+        c.platform.equals(community.platformContext.platform.name) & 
+        c.name.equals(community.name ?? '')
+      )
+    ).go();
   }
 
   Future<List<String>> getHistoryIds(HistoryType type) {
-    return (
-      select(history)
-        ..where((t) => t.type.equalsValue(type))
+    return (select(history)
+      ..where((t) => t.type.equalsValue(type))
     )
     .map((row) => row.itemId)
     .get();

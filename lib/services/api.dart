@@ -9,9 +9,9 @@ import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/user.dart';
-import 'package:lurk/repositories/comments.dart';
-import 'package:lurk/repositories/communities.dart';
-import 'package:lurk/repositories/posts.dart';
+import 'package:lurk/services/comments.dart';
+import 'package:lurk/services/communities.dart';
+import 'package:lurk/services/posts.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/api/client_helpers.dart';
 
@@ -119,6 +119,8 @@ class ApiService {
     return pagedItems;
   }
 
+  Future<String> resolveGlobalToLocalPostId(String globalId) => _api.resolveGlobalToLocalPostId(_clientHelper, globalId);
+
   Future<LoggedInUser> fetchLoggedInUser() => _api.getLoggedInUser(_clientHelper);
 
   Future<List<Community>> fetchSubscribedCommunities() async {
@@ -159,18 +161,18 @@ class ApiService {
     return _api.unsubscribeFromCommunity(_clientHelper, communityId);
   }
 
-  Future<void> votePost(String postId, bool up) => _vote(Posts.interactionStates, postId, up);
+  Future<void> votePost(String postId, bool up) => _api.votePost(_clientHelper, postId, _updateVoteInteractionState(Posts.interactionStates, postId, up));
   
-  Future<void> voteComment(String commentId, bool up) => _vote(Comments.interactionStates, commentId, up);
+  Future<void> voteComment(String commentId, bool up) => _api.voteComment(_clientHelper, commentId, _updateVoteInteractionState(Comments.interactionStates, commentId, up));
 
   Future<Comment> postComment(String parentId, String text) => _api.postComment(_clientHelper, parentId, text);
 
   Future<void> deleteComment(String commentId) => _api.deleteComment(_clientHelper, commentId);
 
-  Future<void> _vote(InteractionStateCollectionListenable listenable, String id, bool up) {
+  bool? _updateVoteInteractionState(InteractionStateCollectionListenable listenable, String id, bool up) {
     final vote = up == listenable.value((_userId!, id))?.vote ? null : up;
     listenable.updateVote(_userId, id, vote);
-    return _api.votePost(_clientHelper, id, vote);
+    return vote;
   }
 
   void _updateDynamicInteractionStates(List<dynamic> items) {
@@ -179,7 +181,7 @@ class ApiService {
     }
     for (final item in items) {
       if (item is Post) {
-        Posts.interactionStates.update(_userId, item.id, InteractionState(score: item.score, vote: item.vote));
+        Posts.interactionStates.update(_userId, item.localId, InteractionState(score: item.score, vote: item.vote));
       }
       else if (item is Comment) {
         Comments.interactionStates.update(_userId, item.id, InteractionState(score: item.score, vote: item.vote));

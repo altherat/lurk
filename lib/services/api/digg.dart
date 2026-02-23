@@ -621,7 +621,6 @@ class DiggApi extends Api<GraphQlClientHelper> {
             final Map<String, dynamic> node = edge['node'];
             final String? iconUrl = node['avatarUrl'];
             return LookedUpUser(
-              host: Platform.digg.host!,
               id: node['_id'],
               name: node['username'],
               iconUrl: iconUrl != null ? _getThumbnailUrl(Uri.parse(iconUrl)) : iconUrl,
@@ -679,6 +678,11 @@ class DiggApi extends Api<GraphQlClientHelper> {
     }
     final response = await clientHelper.query(queryOptions);
     return compute(parseFn, response.data!);
+  }
+
+  @override
+  Future<String> resolveGlobalToLocalPostId(GraphQlClientHelper clientHelper, String globalId) {
+    throw UnimplementedError();
   }
 
   @override
@@ -791,10 +795,8 @@ class DiggApi extends Api<GraphQlClientHelper> {
     final List attachments = json['attachments'];
     final externalContent = json['externalContent'];
     final communityName = json['community']['slug'];
-
     final idLastDashIndex = id.lastIndexOf('-');
     final permalink = '/${id.substring(0, idLastDashIndex)}/${id.substring(idLastDashIndex + 1)}/${json['slug']}';
-
     final String url;
     final String domain;
     final String? thumbnailUrl;
@@ -845,7 +847,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
         host: Platform.digg.host!,
         name: communityName
       ),
-      id: id,
+      localId: id,
       permalink: permalink,
       title: (json['title'] as String).trim(),
       textHtml: _parsePmToHtml(json['pm']),

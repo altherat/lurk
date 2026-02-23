@@ -6,8 +6,9 @@ import 'package:lurk/models/community.dart';
 class Post {
 
   final Community community;
-  final String id;
-  final String shortId;
+  final String localId;
+  final String shortLocalId;
+  final String? globalId;
   final String permalink;
   final int score;
   final int timestampMs;
@@ -30,8 +31,9 @@ class Post {
 
   Post({
     required this.community,
-    required this.id,
-    String? shortId,
+    required this.localId,
+    String? shortLocalId,
+    this.globalId,
     required this.permalink,
     required this.score,
     required this.timestampMs,
@@ -51,7 +53,7 @@ class Post {
     required this.mediaSize,
     required this.galleryImages,
     required this.vote,
-  }) : shortId = shortId ?? id;
+  }) : shortLocalId = shortLocalId ?? localId;
 
   String get timeAgoCompact => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgoCompact;
 

@@ -86,6 +86,19 @@ extension ColorExtension on Color {
   
 }
 
+extension IterableExtension<T> on Iterable<T> {
+
+  T? firstWhereOrNull(bool Function(T element) test) {
+    for (var element in this) {
+      if (test(element)) {
+        return element;
+      }
+    }
+    return null;
+  }
+
+}
+
 extension BuildContextExtension on BuildContext {
 
   void pop<T>([T? result]) => Navigator.pop<T>(this, result);

@@ -8,13 +8,13 @@ class Communities {
   static late final DatabaseListNotifier<Community> saved;
   static late final Map<(Platform, String), Set<String>> _subscribedCommunityNames;
 
-  static Future<void> init() async {
-    final [savedCommunities as List<Community>, getSubscribedCommunityNames as Map<(Platform, String), Set<String>>] = await Future.wait([Database.instance.getAllCommunities(), Database.instance.getAllSubscribedCommunities()]);
+  static Future<void> init(Database db) async {
+    final [savedCommunities as List<Community>, getSubscribedCommunityNames as Map<(Platform, String), Set<String>>] = await Future.wait([db.getAllCommunities(), db.getAllSubscribedCommunities()]);
     saved = DatabaseListNotifier<Community>(
       savedCommunities,
-      save: Database.instance.saveCommunity,
-      saveAll: Database.instance.saveAllCommunities,
-      delete: Database.instance.deleteCommunity,
+      save: db.saveCommunity,
+      saveAll: db.saveAllCommunities,
+      delete: db.deleteCommunity,
     );
     _subscribedCommunityNames = getSubscribedCommunityNames;
   }
