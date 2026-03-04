@@ -8,6 +8,7 @@ import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/database/database.dart';
 import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
+import 'package:lurk/core/name_input_formatter.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/core/flavors.dart';
 import 'package:lurk/models/community.dart';
@@ -33,7 +34,7 @@ class MainScaffold extends StatefulWidget {
 
   final GlobalKey<CustomRefreshIndicatorState>? refreshIndicatorKey;
   final PlatformContext platformContext;
-  final String? activeCommunityName;
+  final Community? activeCommunity;
   final ScrollController? customScrollViewController;
   final Widget? title;
   final Widget? subtitle;
@@ -53,7 +54,7 @@ class MainScaffold extends StatefulWidget {
     super.key,
     this.refreshIndicatorKey,
     required this.platformContext,
-    this.activeCommunityName,
+    this.activeCommunity,
     this.customScrollViewController,
     required this.title,
     this.subtitle,
@@ -118,7 +119,7 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
   List<LoggedInUser> filterLoggedInUsers(List<LoggedInUser> loggedInUsers) => widget.userFilter != null ? loggedInUsers.where(widget.userFilter!).toList() : loggedInUsers;
 
   void _showUsersBottomSheet(BuildContext context, LoggedInUser? activeUser) {
-    final loggedInUsers = filterLoggedInUsers(UserManager.getLoggedInUsers(widget.platformContext.platform).value);
+    final loggedInUsers = filterLoggedInUsers(UserManager.getLoggedInUsersListenable(widget.platformContext.platform).value);
     showModalBottomSheet(
       context: context,
       showDragHandle: true,
@@ -157,8 +158,9 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
             child: SizedBox(
               height: (screenHeight - viewInsetsBottom) * 0.4,
               child: _CommunityList(
+                scaffoldKey: _scaffoldKey,
                 platformContext: widget.platformContext,
-                activeCommunityName: widget.activeCommunityName,
+                activeCommunity: widget.activeCommunity,
                 reverse: Settings.reverseCommunityList.value,
               )
             )
@@ -179,7 +181,7 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
     void onUserLoggedIn(LoggedInUser user) {
       if (UserManager.addLoggedInUser(user)) {
         _showSnackbarMessage('Logged in to $platformNameOrHost as ${user.name}');
-        Platform.getApi(user.platformContext, user).fetchSubscribedCommunities();
+        getApi(widget.platformContext, user).fetchSubscribedCommunities();
       }
       else {
         _showSnackbarMessage('Already logged in to $platformNameOrHost as ${user.name}');
@@ -192,9 +194,10 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
         context: context,
         builder: (context) {
           return _LoginDialog(
+            platform: widget.platformContext.platform,
             title: 'Login to $platformNameOrHost',
             loginFields: widget.platformContext.platform.loginFields!,
-            performLogin: (credentials) => Platform.getApi(widget.platformContext, null).login(credentials),
+            performLogin: (credentials) => getApi(widget.platformContext, null).login(credentials),
           );
         }
       );
@@ -203,13 +206,13 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
       }
     }
     else {
-      final result = await Platform.getApi(widget.platformContext, null).login();
+      final result = await getApi(widget.platformContext, null).login();
       switch (result) {
         case LoginSuccess():
           onUserLoggedIn(result.user);
           break;
         case LoginError(:final message):
-          _showSnackbarMessage('Failed to login: $message');
+          _showSnackbarMessage('Failed to login${message != null ? ': $message' : ''}');
           break;
       }
     }
@@ -301,7 +304,7 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
                         child: const Text('Settings'),
                       )
                     );
-                    final activeUserListenable = UserManager.getActiveUser(widget.platformContext.platform);
+                    final activeUserListenable = UserManager.getActiveUserListenable(widget.platformContext.platform);
                     bottomBar = ValueListenableBuilder(
                       valueListenable: _isBottomBarVisible,
                       builder: (context, isBottomBarVisible, child) {
@@ -384,52 +387,55 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
                     final divider = const Divider(height: 1, color: Constants.lighterBackgroundColor);
                     final communityList = Expanded(
                       child: _CommunityList(
+                        scaffoldKey: _scaffoldKey,
                         platformContext: widget.platformContext,
-                        activeCommunityName: widget.activeCommunityName,
+                        activeCommunity: widget.activeCommunity,
                         reverse: reverse,
                       )
                     );
-                    final loggedInUsersListenable = UserManager.getLoggedInUsers(widget.platformContext.platform);
-                    final activeUserListenable = UserManager.getActiveUser(widget.platformContext.platform);
-                    final userList = ListenableBuilder(
-                      listenable: Listenable.merge([loggedInUsersListenable, activeUserListenable]),
-                      builder: (context, child) {
-                        final filteredLoggedInUsers = filterLoggedInUsers(loggedInUsersListenable.value);
-                        LoggedInUser? activeUser = activeUserListenable.value;
-                        if (activeUser != null && widget.userFilter?.call(activeUser) == false) {
-                          activeUser = filteredLoggedInUsers.firstOrNull;
-                        }
-                        if (activeUser != null) {
-                          return _UserList(
-                            platformContext: widget.platformContext,
-                            loggedInUsers: filteredLoggedInUsers,
-                            activeUser: activeUser,
-                            addUserTileTrailing: const _SettingsIconButton(),
-                            reverse: reverse,
-                            onLoginPressed: () {
-                              context.pop();
-                              _onLoginPressed(context);
-                            }
-                          );
-                        }
-                        else if (widget.platformContext.platform.hasLogin) {
-                          final bool hasLoginRequiredSettings = widget.platformContext.platform.loginRequiredSettingKeys != null;
-                          return StreamBuilder(
-                            stream: hasLoginRequiredSettings ? Database.instance.watchSettings(widget.platformContext.platform.loginRequiredSettingKeys!) : null,
-                            builder: (context, snapshot) {
-                              if (hasLoginRequiredSettings && (!snapshot.hasData || (snapshot.data?.values.any((value) => value == null) ?? true))) {
-                                return const ListTile(leading: _SettingsIconButton());
+                    final loggedInUsersListenable = UserManager.getLoggedInUsersListenable(widget.platformContext.platform);
+                    final activeUserListenable = UserManager.getActiveUserListenable(widget.platformContext.platform);
+                    final footer = Material(
+                      child: ListenableBuilder(
+                        listenable: Listenable.merge([loggedInUsersListenable, activeUserListenable]),
+                        builder: (context, child) {
+                          final filteredLoggedInUsers = filterLoggedInUsers(loggedInUsersListenable.value);
+                          LoggedInUser? activeUser = activeUserListenable.value;
+                          if (activeUser != null && widget.userFilter?.call(activeUser) == false) {
+                            activeUser = filteredLoggedInUsers.firstOrNull;
+                          }
+                          if (activeUser != null) {
+                            return _UserList(
+                              platformContext: widget.platformContext,
+                              loggedInUsers: filteredLoggedInUsers,
+                              activeUser: activeUser,
+                              addUserTileTrailing: const _SettingsIconButton(),
+                              reverse: reverse,
+                              onLoginPressed: () {
+                                context.pop();
+                                _onLoginPressed(context);
                               }
-                              return ListTile(
-                                title: Text('Login to $platformNameOrHost'),
-                                onTap: () => _onLoginPressed(context),
-                                trailing: const _SettingsIconButton(),
-                              );
-                            }
-                          );
+                            );
+                          }
+                          else if (widget.platformContext.platform.hasLogin) {
+                            final bool hasLoginRequiredSettings = widget.platformContext.platform.loginRequiredSettingKeys != null;
+                            return StreamBuilder(
+                              stream: hasLoginRequiredSettings ? Database.instance.watchSettings(widget.platformContext.platform.loginRequiredSettingKeys!) : null,
+                              builder: (context, snapshot) {
+                                if (hasLoginRequiredSettings && (!snapshot.hasData || (snapshot.data?.values.any((value) => value == null) ?? true))) {
+                                  return const ListTile(leading: _SettingsIconButton());
+                                }
+                                return ListTile(
+                                  title: Text('Login to $platformNameOrHost'),
+                                  onTap: () => _onLoginPressed(context),
+                                  trailing: const _SettingsIconButton(),
+                                );
+                              }
+                            );
+                          }
+                          return const ListTile(leading: _SettingsIconButton());
                         }
-                        return const ListTile(leading: _SettingsIconButton());
-                      }
+                      ),
                     );
                     extendBody = false;
                     drawer = Drawer(
@@ -447,7 +453,7 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
                               Column(
                                 children: reverse
                                   ? [
-                                      userList,
+                                      footer,
                                       divider,
                                       communityList,
                                       SizedBox(height: MediaQuery.of(context).viewInsets.bottom)
@@ -455,7 +461,7 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
                                   : [
                                       communityList,
                                       divider,
-                                      userList
+                                      footer
                                     ]
                               ),
                               _Scrim(color: (theme.drawerTheme.backgroundColor ?? theme.canvasColor).withAlpha(Constants.scrimAlpha)),
@@ -554,6 +560,16 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
                         },
                         body: widget.body!
                       );
+                      if (widget.onPullRefresh != null) {
+                        body = CustomRefreshIndicator(
+                          key: widget.refreshIndicatorKey,
+                          edgeOffset: appBarOffset,
+                          onRefresh: () async {
+                            await widget.onPullRefresh!();
+                          },
+                          child: body
+                        );
+                      }
                     }
                     else {
                       body = CustomRefreshIndicator(
@@ -644,11 +660,13 @@ class MainScaffoldState extends State<MainScaffold> with SingleTickerProviderSta
 
 class _LoginDialog extends StatefulWidget {
 
+  final Platform platform;
   final String title;
   final List<LoginField> loginFields;
   final Future<LoginResult> Function(Map<String, String> credentials) performLogin;
 
   const _LoginDialog({
+    required this.platform,
     required this.title,
     required this.loginFields,
     required this.performLogin
@@ -710,7 +728,8 @@ class _LoginDialogState extends State<_LoginDialog> {
         return TextField(
           enabled: !_isLoading,
           controller: _textEditingControllers[index],
-          obscureText: field.isSecret,
+          obscureText: field.type == LoginFieldType.secret,
+          inputFormatters: field.type == LoginFieldType.identity ? [NameInputFormatter(replacements: widget.platform.userNameCleaningRegexReplacements)] : null,
           decoration: InputDecoration(labelText: field.label)
         );
       }
@@ -772,7 +791,7 @@ class _LoginDialogState extends State<_LoginDialog> {
               ),
             ),
             if (_isLoading)
-              const CustomCircularProgressIndicator(size: 16, strokeWidth: 2)
+              const CustomCircularProgressIndicator(size: 16)
           ],
         )
       ],
@@ -832,14 +851,14 @@ class _UserListState extends State<_UserList> {
   void _onTileLongPress(LoggedInUser user) {
     showSimpleOptionsDialog(
       context: context,
-      title: user.platformContext.platform.getFullUserName(user.platformContext.host, user.name),
+      title: user.prefixedNameAndMaybeHost,
       options: {
         'View profile': () {
           context.pop();
           context.push(() {
             return UserDetailsScreen(
               platformContext: widget.platformContext,
-              username: user.name,
+              user: user
             );
           });
         },
@@ -855,6 +874,9 @@ class _UserListState extends State<_UserList> {
   Widget build(BuildContext context) {
     final children = [
       AnimatedCrossFade(
+        crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+        duration: const Duration(milliseconds: 500),
+        sizeCurve: Curves.easeInOutCubicEmphasized, 
         firstChild: const SizedBox(width: double.infinity, height: 0),
         secondChild: Column(
           mainAxisSize: MainAxisSize.min,
@@ -871,11 +893,10 @@ class _UserListState extends State<_UserList> {
             ),
             ...widget.loggedInUsers.where((user) => user != widget.activeUser).map((user) {
               return _UserListTile(
-                platform: user.platformContext.platform,
+                platform: user.platform,
                 user: user,
                 onTap: () async {
-                  UserManager.setActiveUser(user.platformContext.platform, user);
-                  await Future.delayed(const Duration(milliseconds: 500));
+                  UserManager.setActiveUser(user.platform, user);
                   setState(() => _isExpanded = false);
                 },
                 onLongPress: () => _onTileLongPress(user)
@@ -883,25 +904,20 @@ class _UserListState extends State<_UserList> {
             })
           ],
         ),
-        crossFadeState: _isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
-        duration: const Duration(milliseconds: 500),
-        sizeCurve: Curves.easeInOutCubicEmphasized, 
       ),
-      Material(
-        child: _UserListTile(
-          platform: widget.activeUser.platformContext.platform,
-          user: widget.activeUser,
-          trailing: IconButton(
-            onPressed: () => setState(() => _isExpanded = !_isExpanded),
-            icon: ExpansionIcon(
-              up: _isExpanded,
-              duration: const Duration(milliseconds: 500),
-              curve: Curves.easeInOutCubicEmphasized,
-            ),
+      _UserListTile(
+        platform: widget.activeUser.platform,
+        user: widget.activeUser,
+        trailing: IconButton(
+          onPressed: () => setState(() => _isExpanded = !_isExpanded),
+          icon: ExpansionIcon(
+            up: _isExpanded,
+            duration: const Duration(milliseconds: 500),
+            curve: Curves.easeInOutCubicEmphasized,
           ),
-          onTap: () => setState(() => _isExpanded = !_isExpanded),
-          onLongPress: () => _onTileLongPress(widget.activeUser)
         ),
+        onTap: () => setState(() => _isExpanded = !_isExpanded),
+        onLongPress: () => _onTileLongPress(widget.activeUser)
       )
     ];
     return Column(
@@ -920,9 +936,13 @@ class _SettingsIconButton extends StatelessWidget {
   Widget build(BuildContext context) {
     return IconButton(
       icon: Icon(Icons.settings_rounded),
-      onPressed: () => context.push(() => const SettingsScreen())
+      onPressed: () {
+        context.pop();
+        context.push(() => const SettingsScreen());
+      }
     );
   }
+  
 }
 
 class _UserListTile extends StatelessWidget {
@@ -943,13 +963,42 @@ class _UserListTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      horizontalTitleGap: 8,
-      leading: _UserIcon(user: user),
-      title: Text(user.name),
-      trailing: trailing,
-      onTap: onTap,
-      onLongPress: onLongPress,
+    return Material(
+      child: ListTile(
+        horizontalTitleGap: 8,
+        leading: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 250),
+          child: _UserIcon(
+            key: ValueKey('${user.host}-${user.id}'),
+            user: user
+          )
+        ),
+        title: AnimatedSwitcher(
+          duration: const Duration(milliseconds: 500),
+          switchInCurve: Easing.emphasizedDecelerate,
+          switchOutCurve: Easing.emphasizedAccelerate,
+          transitionBuilder: (Widget child, Animation<double> animation) {
+            return FadeTransition(
+              opacity: animation,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0.0, 0.5),
+                  end: Offset.zero,
+                ).animate(animation),
+                child: child,
+              ),
+            );
+          },
+          child: Align(
+            key: ValueKey('${user.host}-${user.id}'),
+            alignment: Alignment.centerLeft,
+            child: Text(user.name),
+          ),
+        ),
+        trailing: trailing,
+        onTap: onTap,
+        onLongPress: onLongPress,
+      ),
     );
   }
 
@@ -960,6 +1009,7 @@ class _UserIcon extends StatelessWidget {
   final LoggedInUser user;
 
   const _UserIcon({
+    super.key,
     required this.user,
   });
 
@@ -969,7 +1019,7 @@ class _UserIcon extends StatelessWidget {
       margin: const EdgeInsets.all(6), 
       decoration: BoxDecoration(
         shape: BoxShape.circle,
-        border: Border.all(color: user.platformContext.platform.color, width: 1), 
+        border: Border.all(color: user.platform.color, width: 1), 
       ),
       child: ListTileIcon(
         url: user.iconUrl,
@@ -982,13 +1032,15 @@ class _UserIcon extends StatelessWidget {
 
 class _CommunityList extends StatefulWidget {
 
+  final GlobalKey<ScaffoldState> scaffoldKey;
   final PlatformContext platformContext;
-  final String? activeCommunityName;
+  final Community? activeCommunity;
   final bool reverse;
 
   const _CommunityList({
+    required this.scaffoldKey,
     required this.platformContext,
-    required this.activeCommunityName,
+    required this.activeCommunity,
     required this.reverse,
   });
 
@@ -1043,7 +1095,7 @@ class _CommunityListState extends State<_CommunityList> {
   }
 
   void _updateVisibleCommunities() {
-    _visibleCommunities = (_searchQuery.isEmpty ? Communities.saved.value : Communities.saved.value.where((community) => community.fullName.contains(_searchQuery))).toList();
+    _visibleCommunities = (_searchQuery.isEmpty ? Communities.saved.value : Communities.saved.value.where((community) => community.prefixedNameAndMaybeHost.contains(_searchQuery))).toList();
   }
 
   void _sortVisibleCommunities() {
@@ -1066,6 +1118,7 @@ class _CommunityListState extends State<_CommunityList> {
   }
 
   void _navigateToCommunity(Community community) {
+    widget.scaffoldKey.currentState?.closeDrawer();
     Navigator.pushAndRemoveUntil(
       context,
       MaterialPageRoute(builder: (context) => CommunityScreen(community: community)),
@@ -1096,15 +1149,15 @@ class _CommunityListState extends State<_CommunityList> {
   //   );
   // }
 
-  bool get _canSearchPlatform => _searchPlatform.host != null || _searchPlatform == widget.platformContext.platform;
+  bool get _canSearchPlatform => _searchPlatform.preferredHost != null || _searchPlatform == widget.platformContext.platform;
 
-  bool get _canSearchWithinCommunity => widget.platformContext.platform == _searchPlatform && widget.activeCommunityName != null && _searchPlatform.canSearchWithinCommunities && !(_searchPlatform.aggregateCommunityNames?.contains(widget.activeCommunityName) ?? false);
+  bool get _canSearchWithinCommunity => widget.platformContext.platform == _searchPlatform && widget.activeCommunity?.name != null && _searchPlatform.canSearchWithinCommunities && !(_searchPlatform.aggregateCommunityNames?.contains(widget.activeCommunity!.name) ?? false);
 
   void _cyclePlatform() {
     setState(() {
       _searchPlatform = Platform.values[(Platform.values.indexOf(_searchPlatform) + 1) % Platform.values.length];
       if (_searchType == SearchType.all) {
-        if (_searchPlatform.host == null && _searchPlatform != widget.platformContext.platform) {
+        if (_searchPlatform.preferredHost == null && _searchPlatform != widget.platformContext.platform) {
           _updateSearchType(SearchType.community);
         }
       }
@@ -1150,7 +1203,7 @@ class _CommunityListState extends State<_CommunityList> {
         _searchBarHint = _searchBarFocusNode.hasFocus ? 'username' : 'Username';
       case SearchType.withinCommunity:
         _searchBarPrefixText = null;
-        _searchBarHint = 'Search ${widget.activeCommunityName}';
+        _searchBarHint = 'Search ${_searchPlatform.getPrefixedCommunityName(widget.activeCommunity!.nameAndMaybeHost)}';
       case SearchType.all:
         _searchBarPrefixText = null;
         _searchBarHint = 'Search ${_searchPlatform.supportsMultipleHosts ? widget.platformContext.host : _searchPlatform.name.toTitleCase()}';
@@ -1178,8 +1231,8 @@ class _CommunityListState extends State<_CommunityList> {
   }
 
   (String, String?)? _getHostAndNameFromSearchQuery(String value) {
-    if (_searchPlatform.host != null) {
-      return (_searchPlatform.host!, value.isNotEmpty ? value : null);
+    if (_searchPlatform.preferredHost != null) {
+      return (_searchPlatform.preferredHost!, value.isNotEmpty ? value : null);
     }
     final match = RegExp(_searchPlatform.hostAndNameFromSearchQueryRegex!).firstMatch(value);
     if (match != null) {
@@ -1198,18 +1251,13 @@ class _CommunityListState extends State<_CommunityList> {
       valueListenable: Settings.showPlatformColorAccents,
       builder: (context, showPlatformColorAccents, child) {
         return ValueListenableBuilder(
-          valueListenable: UserManager.loggedInUsers,
+          valueListenable: UserManager.loggedInUsersListenable,
           builder: (context, allLoggedInUsers, child) {
-            final loggedInPlatformContexts = _searchQuery.isEmpty
-              ? {
-                  for (var u in allLoggedInUsers)
-                    u.platformContext: u
-                }.values.toList()
-              : [];
+            final List<(Platform, String, String?)> loggedInUsersCuratedCommunities = _searchQuery.isEmpty ? allLoggedInUsers.map((user) => (user.platform, user.host, user.hostIconUrl)).toSet().toList() : [];
             return ValueListenableBuilder(
-              valueListenable: UserManager.getActiveUser(widget.platformContext.platform),
+              valueListenable: UserManager.getActiveUserListenable(widget.platformContext.platform),
               builder: (context, activeUser, child) {
-                final headerCount = loggedInPlatformContexts.length + 1;
+                final headerCount = loggedInUsersCuratedCommunities.length + 1;
                 final listView = ListView.builder(
                   reverse: widget.reverse,
                   itemCount: headerCount + _visibleCommunities.length,
@@ -1340,12 +1388,12 @@ class _CommunityListState extends State<_CommunityList> {
                                   if (c1.isFavorite != c2.isFavorite) {
                                     return c1.isFavorite ? -1 : 1;
                                   }
-                                  final startsWith1 = c1.fullName.startsWith(cleanValue);
-                                  final startsWith2 = c2.fullName.startsWith(cleanValue);
+                                  final startsWith1 = c1.prefixedNameAndMaybeHost.startsWith(cleanValue);
+                                  final startsWith2 = c2.prefixedNameAndMaybeHost.startsWith(cleanValue);
                                   if (startsWith1 != startsWith2) {
                                     return startsWith1 ? -1 : 1;
                                   }
-                                  return c1.fullName.compareTo(c2.fullName);
+                                  return c1.prefixedNameAndMaybeHost.compareTo(c2.prefixedNameAndMaybeHost);
                                 });
                               }
                               _updateIsSearchValid();
@@ -1372,10 +1420,14 @@ class _CommunityListState extends State<_CommunityList> {
                               }
                               context.pop();
                               context.push(() {
-                                final (host, username) = _getHostAndNameFromSearchQuery(value)!;
+                                final (host, userName) = _getHostAndNameFromSearchQuery(value)!;
                                 return UserDetailsScreen(
                                   platformContext: widget.platformContext,
-                                  username: username!,
+                                  user: User(
+                                    platform: _searchPlatform,
+                                    host: host,
+                                    name: userName!
+                                  )
                                 );
                               });
                             case SearchType.withinCommunity:
@@ -1387,7 +1439,7 @@ class _CommunityListState extends State<_CommunityList> {
                               context.push(() {
                                 return SearchScreen(
                                   platformContext: widget.platformContext,
-                                  searchWithinCommunityName: widget.activeCommunityName,
+                                  searchWithinCommunityName: widget.activeCommunity!.nameAndMaybeHost,
                                   query: query,
                                 );
                               });
@@ -1400,7 +1452,7 @@ class _CommunityListState extends State<_CommunityList> {
                               context.pop();
                               context.push(() {
                                 return SearchScreen(
-                                  platformContext: PlatformContext(platform: _searchPlatform, host: _searchPlatform.supportsMultipleHosts ? widget.platformContext.host : _searchPlatform.host!),
+                                  platformContext: PlatformContext(platform: _searchPlatform, host: _searchPlatform.preferredHost ?? widget.platformContext.host),
                                   searchWithinCommunityName: null,
                                   query: query
                                 );
@@ -1443,18 +1495,23 @@ class _CommunityListState extends State<_CommunityList> {
                       );
                     }
                     
-                    if (index <= loggedInPlatformContexts.length) {
-                      final user = loggedInPlatformContexts[index - 1];
+                    if (index <= loggedInUsersCuratedCommunities.length) {
+                      final loggedInUserCuratedCommunity = loggedInUsersCuratedCommunities[index - 1];
+                      final loggedInCommunity = Community(
+                        platform: loggedInUserCuratedCommunity.$1,
+                        host: loggedInUserCuratedCommunity.$2,
+                        name: null
+                      );
                       return _CommunityNameListTile(
                         platformContext: widget.platformContext,
-                        activeCommunityName: widget.activeCommunityName,
-                        community: Community.fromPlatformContext(user.platformContext, name: null),
+                        activeCommunity: widget.activeCommunity,
+                        community: loggedInCommunity,
                         isFixed: true,
                         leading: IconButton(
                           onPressed: () {},
-                          icon: user.hostIconUrl != null
+                          icon: loggedInUserCuratedCommunity.$3 != null
                             ? ExtendedImage.network(
-                                user.hostIconUrl!,
+                                loggedInUserCuratedCommunity.$3!,
                                 width: 32,
                                 height: 32,
                                 fit: BoxFit.cover,
@@ -1473,14 +1530,12 @@ class _CommunityListState extends State<_CommunityList> {
                                   Icon(
                                     Icons.reddit_rounded, //TODO
                                     size: 32,
-                                    color: user.platformContext.platform.color
+                                    color: loggedInUserCuratedCommunity.$1.color
                                   ),
                               ],
                           )
                         ),
-                        title: user.platformContext.platform.supportsMultipleHosts
-                          ? CommunityNameText(community: Community.fromPlatformContext(user.platformContext, name: null))
-                          : Text(user.platformContext.platform.rootCommunityName ?? ''),
+                        title: loggedInUserCuratedCommunity.$1.supportsMultipleHosts ? CommunityNameText(community: loggedInCommunity) : Text(loggedInUserCuratedCommunity.$1.rootCommunityName ?? ''),
                         onTap: _navigateToCommunity
                       );
                     }
@@ -1498,7 +1553,7 @@ class _CommunityListState extends State<_CommunityList> {
                     }
                     return _CommunityNameListTile(
                       platformContext: widget.platformContext,
-                      activeCommunityName: widget.activeCommunityName,
+                      activeCommunity: widget.activeCommunity,
                       community: community,
                       isFixed: false,
                       leading: IconButton(
@@ -1514,7 +1569,7 @@ class _CommunityListState extends State<_CommunityList> {
                         builder: (context, showPlatformColorTextAccents, child) {
                           return CommunityNameText(
                             community: community,
-                            prefixColor: showPlatformColorTextAccents ? community.platformContext.platform.color : null,
+                            prefixColor: showPlatformColorTextAccents ? community.platform.color : null,
                             nameColor: color,
                           );
                         }
@@ -1530,8 +1585,8 @@ class _CommunityListState extends State<_CommunityList> {
                   edgeOffset: MediaQuery.of(context).padding.top + 56,
                   onRefresh: () async {
                     final List<Future> futures = [];
-                    for (final user in UserManager.loggedInUsers.value) {
-                      futures.add(Platform.getApi(user.platformContext, user).fetchSubscribedCommunities());
+                    for (final user in UserManager.loggedInUsersListenable.value) {
+                      futures.add(getApi(widget.platformContext, user).fetchSubscribedCommunities());
                     }
                     await Future.wait(futures);
                   },
@@ -1610,7 +1665,7 @@ class _InputFormatter extends TextInputFormatter {
 class _CommunityNameListTile extends StatelessWidget {
   
   final PlatformContext platformContext;
-  final String? activeCommunityName;
+  final Community? activeCommunity;
   final Community community;
   final Widget? leading;
   final Widget title;
@@ -1619,7 +1674,7 @@ class _CommunityNameListTile extends StatelessWidget {
 
   const _CommunityNameListTile({
     required this.platformContext,
-    required this.activeCommunityName,
+    required this.activeCommunity,
     required this.community,
     required this.leading,
     required this.title,
@@ -1640,25 +1695,25 @@ class _CommunityNameListTile extends StatelessWidget {
             ? () {
                 final Map<String, void Function()> options = {};
                 if (community.id != null) {
-                  final activeUser = UserManager.getActiveUser(platformContext.platform).value;
-                  if (activeUser != null) {
-                    if (Communities.isSubscribed(activeUser.platformContext.platform, activeUser.id, community.name!)) {
-                      options['Unsubscribe'] = () => Platform.getApi(activeUser.platformContext, activeUser).unsubscribeFromCommunity(community.name!, community.id!);
+                  final activeUser = UserManager.getActiveUser(platformContext.platform);
+                  if (activeUser?.platform == community.platform) {
+                    if (Communities.isSubscribed(activeUser!, community.id!)) {
+                      options['Unsubscribe'] = () => getApi(platformContext, activeUser).unsubscribeFromCommunity(community.id!);
                     }
                     else {
-                      options['Subscribe'] = () => Platform.getApi(activeUser.platformContext, activeUser).subscribeToCommunity(community.name!, community.id!);
+                      options['Subscribe'] = () => getApi(platformContext, activeUser).subscribeToCommunity(community.id!);
                     }
                   }
                 }
                 showSimpleOptionsDialog(
                   context: context,
-                  title: community.fullName,
+                  title: community.prefixedNameAndMaybeHost,
                   options: options..['Remove'] = () => Communities.saved.remove(community)
                 );
               }
             : null
         ),
-        if (platformContext == community.platformContext && activeCommunityName == community.nameAndMaybeHost)
+        if (community == activeCommunity)
           Positioned(
             left: 0,
             top: 8,

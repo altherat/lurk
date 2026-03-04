@@ -2732,6 +2732,10 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
   LoggedInUser map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
     return LoggedInUser(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}id'],
+      )!,
       platform: $UsersTable.$converterplatform.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.string,
@@ -2741,10 +2745,6 @@ class $UsersTable extends Users with TableInfo<$UsersTable, LoggedInUser> {
       host: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}host'],
-      )!,
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}id'],
       )!,
       name: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -2898,6 +2898,15 @@ class $UserCommunitiesTable extends UserCommunities
         type: DriftSqlType.string,
         requiredDuringInsert: true,
       ).withConverter<Platform>($UserCommunitiesTable.$converterplatform);
+  static const VerificationMeta _hostMeta = const VerificationMeta('host');
+  @override
+  late final GeneratedColumn<String> host = GeneratedColumn<String>(
+    'host',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
   static const VerificationMeta _userIdMeta = const VerificationMeta('userId');
   @override
   late final GeneratedColumn<String> userId = GeneratedColumn<String>(
@@ -2907,19 +2916,19 @@ class $UserCommunitiesTable extends UserCommunities
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
-  static const VerificationMeta _communityNameMeta = const VerificationMeta(
-    'communityName',
+  static const VerificationMeta _communityIdMeta = const VerificationMeta(
+    'communityId',
   );
   @override
-  late final GeneratedColumn<String> communityName = GeneratedColumn<String>(
-    'community_name',
+  late final GeneratedColumn<String> communityId = GeneratedColumn<String>(
+    'community_id',
     aliasedName,
     false,
     type: DriftSqlType.string,
     requiredDuringInsert: true,
   );
   @override
-  List<GeneratedColumn> get $columns => [platform, userId, communityName];
+  List<GeneratedColumn> get $columns => [platform, host, userId, communityId];
   @override
   String get aliasedName => _alias ?? actualTableName;
   @override
@@ -2932,6 +2941,14 @@ class $UserCommunitiesTable extends UserCommunities
   }) {
     final context = VerificationContext();
     final data = instance.toColumns(true);
+    if (data.containsKey('host')) {
+      context.handle(
+        _hostMeta,
+        host.isAcceptableOrUnknown(data['host']!, _hostMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_hostMeta);
+    }
     if (data.containsKey('user_id')) {
       context.handle(
         _userIdMeta,
@@ -2940,22 +2957,22 @@ class $UserCommunitiesTable extends UserCommunities
     } else if (isInserting) {
       context.missing(_userIdMeta);
     }
-    if (data.containsKey('community_name')) {
+    if (data.containsKey('community_id')) {
       context.handle(
-        _communityNameMeta,
-        communityName.isAcceptableOrUnknown(
-          data['community_name']!,
-          _communityNameMeta,
+        _communityIdMeta,
+        communityId.isAcceptableOrUnknown(
+          data['community_id']!,
+          _communityIdMeta,
         ),
       );
     } else if (isInserting) {
-      context.missing(_communityNameMeta);
+      context.missing(_communityIdMeta);
     }
     return context;
   }
 
   @override
-  Set<GeneratedColumn> get $primaryKey => {platform, userId, communityName};
+  Set<GeneratedColumn> get $primaryKey => {platform, host, userId, communityId};
   @override
   UserCommunity map(Map<String, dynamic> data, {String? tablePrefix}) {
     final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
@@ -2966,13 +2983,17 @@ class $UserCommunitiesTable extends UserCommunities
           data['${effectivePrefix}platform'],
         )!,
       ),
+      host: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}host'],
+      )!,
       userId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}user_id'],
       )!,
-      communityName: attachedDatabase.typeMapping.read(
+      communityId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
-        data['${effectivePrefix}community_name'],
+        data['${effectivePrefix}community_id'],
       )!,
     );
   }
@@ -2988,12 +3009,14 @@ class $UserCommunitiesTable extends UserCommunities
 
 class UserCommunity extends DataClass implements Insertable<UserCommunity> {
   final Platform platform;
+  final String host;
   final String userId;
-  final String communityName;
+  final String communityId;
   const UserCommunity({
     required this.platform,
+    required this.host,
     required this.userId,
-    required this.communityName,
+    required this.communityId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -3003,16 +3026,18 @@ class UserCommunity extends DataClass implements Insertable<UserCommunity> {
         $UserCommunitiesTable.$converterplatform.toSql(platform),
       );
     }
+    map['host'] = Variable<String>(host);
     map['user_id'] = Variable<String>(userId);
-    map['community_name'] = Variable<String>(communityName);
+    map['community_id'] = Variable<String>(communityId);
     return map;
   }
 
   UserCommunitiesCompanion toCompanion(bool nullToAbsent) {
     return UserCommunitiesCompanion(
       platform: Value(platform),
+      host: Value(host),
       userId: Value(userId),
-      communityName: Value(communityName),
+      communityId: Value(communityId),
     );
   }
 
@@ -3025,8 +3050,9 @@ class UserCommunity extends DataClass implements Insertable<UserCommunity> {
       platform: $UserCommunitiesTable.$converterplatform.fromJson(
         serializer.fromJson<String>(json['platform']),
       ),
+      host: serializer.fromJson<String>(json['host']),
       userId: serializer.fromJson<String>(json['userId']),
-      communityName: serializer.fromJson<String>(json['communityName']),
+      communityId: serializer.fromJson<String>(json['communityId']),
     );
   }
   @override
@@ -3036,27 +3062,31 @@ class UserCommunity extends DataClass implements Insertable<UserCommunity> {
       'platform': serializer.toJson<String>(
         $UserCommunitiesTable.$converterplatform.toJson(platform),
       ),
+      'host': serializer.toJson<String>(host),
       'userId': serializer.toJson<String>(userId),
-      'communityName': serializer.toJson<String>(communityName),
+      'communityId': serializer.toJson<String>(communityId),
     };
   }
 
   UserCommunity copyWith({
     Platform? platform,
+    String? host,
     String? userId,
-    String? communityName,
+    String? communityId,
   }) => UserCommunity(
     platform: platform ?? this.platform,
+    host: host ?? this.host,
     userId: userId ?? this.userId,
-    communityName: communityName ?? this.communityName,
+    communityId: communityId ?? this.communityId,
   );
   UserCommunity copyWithCompanion(UserCommunitiesCompanion data) {
     return UserCommunity(
       platform: data.platform.present ? data.platform.value : this.platform,
+      host: data.host.present ? data.host.value : this.host,
       userId: data.userId.present ? data.userId.value : this.userId,
-      communityName: data.communityName.present
-          ? data.communityName.value
-          : this.communityName,
+      communityId: data.communityId.present
+          ? data.communityId.value
+          : this.communityId,
     );
   }
 
@@ -3064,66 +3094,76 @@ class UserCommunity extends DataClass implements Insertable<UserCommunity> {
   String toString() {
     return (StringBuffer('UserCommunity(')
           ..write('platform: $platform, ')
+          ..write('host: $host, ')
           ..write('userId: $userId, ')
-          ..write('communityName: $communityName')
+          ..write('communityId: $communityId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(platform, userId, communityName);
+  int get hashCode => Object.hash(platform, host, userId, communityId);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
       (other is UserCommunity &&
           other.platform == this.platform &&
+          other.host == this.host &&
           other.userId == this.userId &&
-          other.communityName == this.communityName);
+          other.communityId == this.communityId);
 }
 
 class UserCommunitiesCompanion extends UpdateCompanion<UserCommunity> {
   final Value<Platform> platform;
+  final Value<String> host;
   final Value<String> userId;
-  final Value<String> communityName;
+  final Value<String> communityId;
   final Value<int> rowid;
   const UserCommunitiesCompanion({
     this.platform = const Value.absent(),
+    this.host = const Value.absent(),
     this.userId = const Value.absent(),
-    this.communityName = const Value.absent(),
+    this.communityId = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   UserCommunitiesCompanion.insert({
     required Platform platform,
+    required String host,
     required String userId,
-    required String communityName,
+    required String communityId,
     this.rowid = const Value.absent(),
   }) : platform = Value(platform),
+       host = Value(host),
        userId = Value(userId),
-       communityName = Value(communityName);
+       communityId = Value(communityId);
   static Insertable<UserCommunity> custom({
     Expression<String>? platform,
+    Expression<String>? host,
     Expression<String>? userId,
-    Expression<String>? communityName,
+    Expression<String>? communityId,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
       if (platform != null) 'platform': platform,
+      if (host != null) 'host': host,
       if (userId != null) 'user_id': userId,
-      if (communityName != null) 'community_name': communityName,
+      if (communityId != null) 'community_id': communityId,
       if (rowid != null) 'rowid': rowid,
     });
   }
 
   UserCommunitiesCompanion copyWith({
     Value<Platform>? platform,
+    Value<String>? host,
     Value<String>? userId,
-    Value<String>? communityName,
+    Value<String>? communityId,
     Value<int>? rowid,
   }) {
     return UserCommunitiesCompanion(
       platform: platform ?? this.platform,
+      host: host ?? this.host,
       userId: userId ?? this.userId,
-      communityName: communityName ?? this.communityName,
+      communityId: communityId ?? this.communityId,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -3136,11 +3176,14 @@ class UserCommunitiesCompanion extends UpdateCompanion<UserCommunity> {
         $UserCommunitiesTable.$converterplatform.toSql(platform.value),
       );
     }
+    if (host.present) {
+      map['host'] = Variable<String>(host.value);
+    }
     if (userId.present) {
       map['user_id'] = Variable<String>(userId.value);
     }
-    if (communityName.present) {
-      map['community_name'] = Variable<String>(communityName.value);
+    if (communityId.present) {
+      map['community_id'] = Variable<String>(communityId.value);
     }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
@@ -3152,8 +3195,9 @@ class UserCommunitiesCompanion extends UpdateCompanion<UserCommunity> {
   String toString() {
     return (StringBuffer('UserCommunitiesCompanion(')
           ..write('platform: $platform, ')
+          ..write('host: $host, ')
           ..write('userId: $userId, ')
-          ..write('communityName: $communityName, ')
+          ..write('communityId: $communityId, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
@@ -4688,15 +4732,17 @@ typedef $$UsersTableProcessedTableManager =
 typedef $$UserCommunitiesTableCreateCompanionBuilder =
     UserCommunitiesCompanion Function({
       required Platform platform,
+      required String host,
       required String userId,
-      required String communityName,
+      required String communityId,
       Value<int> rowid,
     });
 typedef $$UserCommunitiesTableUpdateCompanionBuilder =
     UserCommunitiesCompanion Function({
       Value<Platform> platform,
+      Value<String> host,
       Value<String> userId,
-      Value<String> communityName,
+      Value<String> communityId,
       Value<int> rowid,
     });
 
@@ -4715,13 +4761,18 @@ class $$UserCommunitiesTableFilterComposer
         builder: (column) => ColumnWithTypeConverterFilters(column),
       );
 
+  ColumnFilters<String> get host => $composableBuilder(
+    column: $table.host,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<String> get userId => $composableBuilder(
     column: $table.userId,
     builder: (column) => ColumnFilters(column),
   );
 
-  ColumnFilters<String> get communityName => $composableBuilder(
-    column: $table.communityName,
+  ColumnFilters<String> get communityId => $composableBuilder(
+    column: $table.communityId,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -4740,13 +4791,18 @@ class $$UserCommunitiesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get host => $composableBuilder(
+    column: $table.host,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get userId => $composableBuilder(
     column: $table.userId,
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get communityName => $composableBuilder(
-    column: $table.communityName,
+  ColumnOrderings<String> get communityId => $composableBuilder(
+    column: $table.communityId,
     builder: (column) => ColumnOrderings(column),
   );
 }
@@ -4763,11 +4819,14 @@ class $$UserCommunitiesTableAnnotationComposer
   GeneratedColumnWithTypeConverter<Platform, String> get platform =>
       $composableBuilder(column: $table.platform, builder: (column) => column);
 
+  GeneratedColumn<String> get host =>
+      $composableBuilder(column: $table.host, builder: (column) => column);
+
   GeneratedColumn<String> get userId =>
       $composableBuilder(column: $table.userId, builder: (column) => column);
 
-  GeneratedColumn<String> get communityName => $composableBuilder(
-    column: $table.communityName,
+  GeneratedColumn<String> get communityId => $composableBuilder(
+    column: $table.communityId,
     builder: (column) => column,
   );
 }
@@ -4804,25 +4863,29 @@ class $$UserCommunitiesTableTableManager
           updateCompanionCallback:
               ({
                 Value<Platform> platform = const Value.absent(),
+                Value<String> host = const Value.absent(),
                 Value<String> userId = const Value.absent(),
-                Value<String> communityName = const Value.absent(),
+                Value<String> communityId = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => UserCommunitiesCompanion(
                 platform: platform,
+                host: host,
                 userId: userId,
-                communityName: communityName,
+                communityId: communityId,
                 rowid: rowid,
               ),
           createCompanionCallback:
               ({
                 required Platform platform,
+                required String host,
                 required String userId,
-                required String communityName,
+                required String communityId,
                 Value<int> rowid = const Value.absent(),
               }) => UserCommunitiesCompanion.insert(
                 platform: platform,
+                host: host,
                 userId: userId,
-                communityName: communityName,
+                communityId: communityId,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

@@ -6,6 +6,7 @@ class Constants {
   static const version = '1.0.1';
 
   static const separator = ' • ';
+  static const defaultUserAgent = 'Mozilla/5.0 (Linux; Android 14; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Mobile Safari/537.36';
 
   static const screenTransitionDuration = Duration(milliseconds: 250);
   static const reverseScreenTransitionDuration = Duration(milliseconds: 100);
@@ -53,5 +54,5 @@ class Constants {
   static const defaultShowPlatformColorTextAccents = false;
   static const defaultRedditCopyOldRedditLinks = false;
   static const defaultDiggPostsFetchDepth = 3;
-    
+  
 }

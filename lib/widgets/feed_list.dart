@@ -27,7 +27,7 @@ class FeedList<T> extends StatefulWidget {
 
 }
 
-class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientMixin, SingleTickerProviderStateMixin {
+class FeedListState<T> extends State<FeedList<T>> with SingleTickerProviderStateMixin {
 
   late final AnimationController _animationController;
   LoadingState _loadingState = LoadingState.loading;
@@ -48,9 +48,6 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
       _getItems();
     }
   }
-  
-  @override
-  bool get wantKeepAlive => true;
 
   Future<void> _getItems() => _processItems(widget.getItems(null), (items) => this.items = items);
 
@@ -97,7 +94,6 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
 
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     if (items.isEmpty) {
       if (_loadingState == LoadingState.loading) {
         return const SliverFillRemaining(
@@ -143,7 +139,6 @@ class FeedListState<T> extends State<FeedList<T>> with AutomaticKeepAliveClientM
                     padding: EdgeInsets.all(16),
                     alignment: Alignment.center,
                     size: 24,
-                    strokeWidth: 3,
                   );
                 }
                 return _FeedItemTransition(

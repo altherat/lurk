@@ -1,4 +1,5 @@
 import 'package:drift/drift.dart';
+import 'package:lurk/core/database/database.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/community.dart';
 
@@ -14,16 +15,4 @@ class Communities extends Table {
   @override
   Set<Column> get primaryKey => {platform, host, name};
 
-}
-
-class EmptyStringConverter extends TypeConverter<String?, String> {
-
-  const EmptyStringConverter();
-
-  @override
-  String? fromSql(String from) => from.isEmpty ? null : from;
-
-  @override
-  String toSql(String? to)=> to ?? '';
-  
 }

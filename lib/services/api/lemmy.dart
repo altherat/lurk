@@ -15,7 +15,6 @@ import 'package:lurk/models/community_details.dart';
 import 'package:lurk/models/login.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post.dart';
-import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/services/api/api.dart';
 import 'package:lurk/services/api/client_helpers.dart';
@@ -36,8 +35,14 @@ class LemmyApi extends Api<RestClientHelper> {
 
   @override
   List<LoginField>? get loginFields => [
-    LoginField(label: 'Username or email', isSecret: false),
-    LoginField(label: 'Password', isSecret: true),
+    LoginField(
+      type: LoginFieldType.identity,
+      label: 'Username or email'
+    ),
+    LoginField(
+      type: LoginFieldType.secret,
+      label: 'Password'
+    ),
   ];
 
   @override
@@ -70,7 +75,6 @@ class LemmyApi extends Api<RestClientHelper> {
       },
     );
 
-    final host = clientHelper.host;
     final body = response.body;
     return Isolate.run(() {
       final Map<String, dynamic> json = jsonDecode(body);
@@ -78,13 +82,7 @@ class LemmyApi extends Api<RestClientHelper> {
       final Map<String, dynamic> communityData = view['community'];
       final Map<String, dynamic> counts = view['counts'];
       return CommunityDetails(
-        community: Community(
-          platform: Platform.lemmy,
-          host: host,
-          name: communityData['name'],
-          id: communityData['id'].toString(),
-        ),
-        id: communityData['id'].toString(),
+        community: _parseCommunity(communityData),
         title: communityData['title'],
         createdDate: DateTime.parse(communityData['published']),
         longDescriptionHtml: _markdownToHtml(communityData['description']), 
@@ -98,7 +96,7 @@ class LemmyApi extends Api<RestClientHelper> {
   }
 
   @override
-  Future<PagedItems<Post>> getCommunityPosts(RestClientHelper clientHelper, String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<Post>> getCommunityPosts(RestClientHelper clientHelper, String? id, String? pageToken, Map<FeedOptionType, FeedOption>? options) async {
     final timeInterval = options?[FeedOptionType.time]?.id;
     final response = await clientHelper.get(
       '$_basePath/post/list',
@@ -113,16 +111,31 @@ class LemmyApi extends Api<RestClientHelper> {
         'page_cursor': ?pageToken,
       }
     );
-    final body = response.body;
     final host = clientHelper.host;
+    final body = response.body;
     return Isolate.run(() => _parsePosts(host, body));
   }
 
   @override
-  Future<PostDetails> getPostDetailsFromUrl(RestClientHelper clientHelper, String url, {Map<FeedOptionType, FeedOption>? options}) => getPostDetailsFromId(clientHelper, url, options: options);
+  Future<Post> getPost(RestClientHelper clientHelper, String id) async {
+    final response = await clientHelper.get(
+      '$_basePath/post',
+      {
+        'id': id,
+      },
+    );
+    final host = clientHelper.host;
+    final body = response.body;
+    return Isolate.run(() => _parsePost(host, jsonDecode(body)['post_view']));
+  }
 
   @override
-  Future<PostDetails> getPostDetailsFromId(RestClientHelper clientHelper, String id, {String? shortCommentId, Map<FeedOptionType, FeedOption>? options}) async {
+  Future<(List<CommentItem>, Post)> getCommentsAndPost(RestClientHelper clientHelper, String id, String? communityName, String? contextCommentShortId, Map<FeedOptionType, FeedOption>? options) async {
+    return ((await getCommentsAndMaybePost(clientHelper, id, communityName, contextCommentShortId, options)).$1, await getPost(clientHelper, id));
+  }
+
+  @override
+  Future<(List<CommentItem>, Post?)> getCommentsAndMaybePost(RestClientHelper clientHelper, String id, String? communityName, String? contextCommentShortId, Map<FeedOptionType, FeedOption>? options) async {
     final response = await clientHelper.get(
       '$_basePath/comment/list',
       {
@@ -133,13 +146,50 @@ class LemmyApi extends Api<RestClientHelper> {
         'sort': ?options?[FeedOptionType.sort]?.id,
       }
     );
-    final host = clientHelper.host;
     final body = response.body;
-    return Isolate.run(() => _parsePostDetails(host, body));
+    return Isolate.run(() {
+      final Map<String, dynamic> json = jsonDecode(body);
+      final List<dynamic> rawComments = json['comments'];
+      final Map<String, int> apiRank = {};
+      final Map<String, String> commentToRoot = {};
+
+      for (int i = 0; i < rawComments.length; i++) {
+        final Map<String, dynamic> rawComment = rawComments[i]['comment'];
+        final segments = (rawComment['path'] as String).split('.');
+        final commentId = rawComment['id'].toString();
+        apiRank[commentId] = i;
+        if (segments.length > 1) {
+          commentToRoot[commentId] = segments[1];
+        }
+      }
+      
+      rawComments.sort((a, b) {
+        final Map<String, dynamic> rawCommentA = a['comment'];
+        final Map<String, dynamic> rawCommentB = b['comment'];
+        final String rootA = commentToRoot[rawCommentA['id'].toString()]!;
+        final String rootB = commentToRoot[rawCommentB['id'].toString()]!;
+        if (rootA != rootB) {
+          return (apiRank[rootA]!).compareTo(apiRank[rootB]!);
+        }
+        final partsA = (rawCommentA['path'] as String).split('.');
+        final partsB = (rawCommentB['path'] as String).split('.');
+        final length = partsA.length < partsB.length ? partsA.length : partsB.length;
+        for (int i = 0; i < length; i++) {
+          final String segA = partsA[i];
+          final String segB = partsB[i];
+          if (segA != segB) {
+            return (apiRank[segA]!).compareTo(apiRank[segB]!);
+          }
+        }
+        return partsA.length.compareTo(partsB.length);
+      });
+
+      return (rawComments.map<CommentItem>((item) => _parseComment(item)).toList(), null);
+    });
   }
 
   @override
-  Future<List<CommentItem>> getMoreComments(RestClientHelper clientHelper, String id, String pageToken, {int? depth, Map<FeedOptionType, FeedOption>? options}) async {
+  Future<List<CommentItem>> getMoreComments(RestClientHelper clientHelper, String id, int? depth, String pageToken, Map<FeedOptionType, FeedOption>? options) async {
     final response = await clientHelper.get(
       '$_basePath/comment/list',
       {
@@ -150,19 +200,19 @@ class LemmyApi extends Api<RestClientHelper> {
       }
     );
     final body = response.body;
-    final host = clientHelper.host;
     return Isolate.run(() {
       final Map<String, dynamic> json = jsonDecode(body);
       final List<dynamic> rawComments = json['comments'];
-      return rawComments.map<CommentItem>((item) => _parseComment(host, item)).toList();
+      return rawComments.map<CommentItem>((item) => _parseComment(item)).toList();
     });
   }
 
   @override
-  MultiPartFeedResponse<dynamic, List<UserStat>> getUserDetails(RestClientHelper clientHelper, String id, {Map<FeedOptionType, FeedOption>? options}) {
+  MultiPartFeedResponse<dynamic, List<UserStat>> getUserDetails(RestClientHelper clientHelper, String id, Map<FeedOptionType, FeedOption>? options) {
     final Future<String> futureBody = clientHelper.get('$_basePath/user', {'username': id}).then((response) => response.body);
+    final host = clientHelper.host;
     return MultiPartFeedResponse(
-      items: futureBody.then((body) => _parseUserItems(clientHelper.host, body, null, options?[FeedOptionType.category])),
+      items: futureBody.then((body) => _parseUserItems(host, body, null, options?[FeedOptionType.category])),
       other: futureBody.then((body) {
         final personView = jsonDecode(body)['person_view'];
         return _parseUserStats(personView['person'], personView['counts']);
@@ -171,7 +221,7 @@ class LemmyApi extends Api<RestClientHelper> {
   }
   
   @override
-  Future<PagedItems<dynamic>> getUserItems(RestClientHelper clientHelper, String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<dynamic>> getUserItems(RestClientHelper clientHelper, String id, String? pageToken, Map<FeedOptionType, FeedOption>? options) async {
     final response = await clientHelper.get(
       '$_basePath/user',
       {
@@ -181,13 +231,13 @@ class LemmyApi extends Api<RestClientHelper> {
         'page': ?pageToken
       }
     );
-    final body = response.body;
     final host = clientHelper.host;
+    final body = response.body;
     return Isolate.run(() => _parseUserItems(host, body, pageToken, options?[FeedOptionType.category]));
   }
 
   @override
-  Future<PagedItems<dynamic>> getSearchResults(RestClientHelper clientHelper, String query, String? communityName, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<dynamic>> getSearchResults(RestClientHelper clientHelper, String query, String? communityName, String? pageToken, Map<FeedOptionType, FeedOption>? options) async {
     final response = await clientHelper.get(
       '$_basePath/search',
         {
@@ -199,8 +249,8 @@ class LemmyApi extends Api<RestClientHelper> {
         'page': ?pageToken
       }
     );
-    final body = response.body;
     final host = clientHelper.host;
+    final body = response.body;
     return Isolate.run(() {
       final Map<String, dynamic> json = jsonDecode(body);
       final List<dynamic> items = [];
@@ -215,25 +265,20 @@ class LemmyApi extends Api<RestClientHelper> {
       final List<dynamic>? comments = json['comments'];
       if (comments != null) {
         for (var item in comments) {
-          items.add(_parseComment(host, item));
+          items.add(_parseComment(item));
         }
       }
 
       final List<dynamic>? communities = json['communities'];
       if (communities != null) {
         for (var item in communities) {
-          final community = item['community'];
+          final communityData = item['community'];
           final counts = item['counts'];
           items.add(
             CommunityDetails(
-              community: Community(
-                platform: Platform.lemmy,
-                host: host,
-                name: community['name'],
-                id: community['id'].toString(),
-              ),
-              title: community['title'],
-              iconUrl: community['icon'],
+              community: _parseCommunity(communityData),
+              title: communityData['title'],
+              iconUrl: communityData['icon'],
               subscriberCount: counts['subscribers'],
               postCount: counts['posts'],
             )
@@ -244,14 +289,16 @@ class LemmyApi extends Api<RestClientHelper> {
       final List<dynamic>? users = json['users'];
       if (users != null) {
         for (var item in users) {
-          final Map<String, dynamic> person = item['person'];
+          final Map<String, dynamic> personData = item['person'];
           items.add(
             LookedUpUser(
-              id: person['id'].toString(),
-              name: person['name'],
-              iconUrl: person['avatar'],
-              isSuspended: person['banned'],
-              stats: _parseUserStats(person, item['counts'])
+              platform: Platform.lemmy,
+              host: Uri.parse(personData['actor_id']).host,
+              id: personData['id'].toString(),
+              name: personData['name'],
+              iconUrl: personData['avatar'],
+              isSuspended: personData['banned'],
+              stats: _parseUserStats(personData, item['counts'])
             )
           );
         }
@@ -265,7 +312,7 @@ class LemmyApi extends Api<RestClientHelper> {
   }
 
   @override
-  Future<String> resolveGlobalToLocalPostId(RestClientHelper clientHelper, String globalId) async => jsonDecode((await clientHelper.get('/api/v3/resolve_object', {'q': globalId})).body)['post']['post']['id'].toString();
+  Future<Post> resolveGlobalToLocalPost(RestClientHelper clientHelper, String globalId) async => _parsePost(clientHelper.host, jsonDecode((await clientHelper.get('/api/v3/resolve_object', {'q': globalId})).body)['post']);
 
   @override
   Future<LoggedInUser> getLoggedInUser(RestClientHelper clientHelper) async {
@@ -273,12 +320,12 @@ class LemmyApi extends Api<RestClientHelper> {
     final Map<String, dynamic> data = jsonDecode(response.body);
     final personData = data['my_user']['local_user_view']['person'];
     return LoggedInUser(
+      id: personData['id'].toString(),
       platform: Platform.lemmy,
       host: clientHelper.host,
-      hostIconUrl: data['site_view']['site']['icon'],
-      id: personData['id'].toString(),
       name: personData['name'],
       iconUrl: personData['avatar'],
+      hostIconUrl: data['site_view']['site']['icon'],
     );
   }
 
@@ -287,22 +334,12 @@ class LemmyApi extends Api<RestClientHelper> {
     final response = await clientHelper.get(
       '/api/v3/community/list',
       {
-        'limit': _resultsLimit,
+        'limit': _resultsLimit.toString(),
         'type_': 'Subscribed',
       },
     );
     final body = response.body;
-    return Isolate.run(() {
-      return (jsonDecode(body)['communities'] as List<dynamic>).map((json) {
-        final community = json['community'];
-        return Community(
-          platform: Platform.lemmy,
-          host: clientHelper.host,
-          name: community['name'],
-          id: community['id'].toString(),
-        );
-      }).toList();
-    });
+    return Isolate.run(() => (jsonDecode(body)['communities'] as List).map((json) => _parseCommunity(json['community'])).toList());
   }
 
   @override
@@ -359,8 +396,7 @@ class LemmyApi extends Api<RestClientHelper> {
       },
     );
     final body = response.body;
-    final host = clientHelper.host;
-    return Isolate.run(() => _parseComment(host, jsonDecode(body)['comment_view']));
+    return Isolate.run(() => _parseComment(jsonDecode(body)['comment_view']));
   }
 
   @override 
@@ -374,6 +410,15 @@ class LemmyApi extends Api<RestClientHelper> {
     );
   }
 
+  Community _parseCommunity(Map<String, dynamic> communityData) {
+    return Community(
+      platform: Platform.lemmy,
+      host: Uri.parse(communityData['actor_id']).host,
+      name: (communityData['name'] as String).toLowerCase(),
+      id: communityData['id'].toString(),
+    );
+  }
+
   PagedItems<Post> _parsePosts(String host, String body) {
     final Map<String, dynamic> json = jsonDecode(body);
     return PagedItems(
@@ -384,7 +429,6 @@ class LemmyApi extends Api<RestClientHelper> {
 
   Post _parsePost(String host, Map<String, dynamic> json) {
     final Map<String, dynamic> postData = json['post'];
-    final Map<String, dynamic> communityData = json['community'];
     final Map<String, dynamic> creatorData = json['creator'];
     final Map<String, dynamic> counts = json['counts'];
     final Map<String, dynamic>? imageDetails = json['image_details'];
@@ -393,18 +437,19 @@ class LemmyApi extends Api<RestClientHelper> {
     final String apId = postData['ap_id'];
     final String? urlContentType = postData['url_content_type'];
     final id = postData['id'].toString();
+    final vote = json['my_vote'];
+    ContentType? contentType;
     final String url;
-    final bool isSelf;
     if (postDataUrl != null) {
       url = postDataUrl;
-      isSelf = false;
     }
     else {
+      contentType = ContentType.local;
       url = apId;
-      isSelf = true;
     }
     final String domain;
     if (urlContentType?.startsWith('image/') ?? false) {
+      contentType = ContentType.image;
       domain = 'image';
     }
     else {
@@ -412,85 +457,37 @@ class LemmyApi extends Api<RestClientHelper> {
       domain = uri?.host.replaceFirst(RegExp(r'^www\.'), '') ?? (urlContentType ?? 'unknown');
     }
     return Post(
-      community: Community(
-        platform: Platform.lemmy,
-        host: host,
-        name: communityData['name'],
-        id: communityData['id'].toString(),
-        originHost: Uri.parse(postData['ap_id']).host,
-      ),
+      community: _parseCommunity(json['community']),
       localId: id,
+      localHost: host,
+      shortLocalId: id,
       globalId: apId,
-      permalink: '/post/$id',
+      localUrlPath: '/post/$id',
+      authorId: creatorData['id'].toString(),
+      authorHost: Uri.parse(creatorData['actor_id']).host,
+      authorName: creatorData['name'],
+      contentType: contentType,
       score: counts['score'],
       timestampMs: DateTime.parse(postData['published']).millisecondsSinceEpoch,
       title: postData['name'],
-      textHtml: body != null && body.isNotEmpty ? _markdownToHtml(body) : null,
-      author: creatorData['name'],
-      authorHost: Uri.parse(creatorData['actor_id']).host,
+      body: body,
+      bodyHtml: body != null && body.isNotEmpty ? _markdownToHtml(body) : null,
       commentCount: counts['comments'],
-      url: url,
-      domain: domain,
+      linkUrl: url,
+      linkDomain: domain,
       thumbnailUrl: postData['thumbnail_url'],
-      isDeleted: postData['deleted'],
-      isSelf: isSelf,
-      isNsfw: postData['nsfw'],
-      isStickied: postData['featured_local'] || postData['featured_community'],
-      isGallery: false, 
       mediaSize: imageDetails != null ? Size((imageDetails['width'] as num).toDouble(), (imageDetails['height'] as num).toDouble()) : null,
-      galleryImages: [],
-      vote: json['my_vote'] == 1 ? true : (json['my_vote'] == -1 ? false : null),
+      galleryImages: null,
+      isRemoved: false,
+      isStickied: postData['featured_local'] || postData['featured_community'],
+      isNsfw: postData['nsfw'],
+      vote: vote == 1 ? true : (vote == -1 ? false : null),
     );
   }
 
-  PostDetails _parsePostDetails(String host, String body) {
-    final Map<String, dynamic> json = jsonDecode(body);
-    final List<dynamic> rawComments = json['comments'];
-    final Map<String, int> apiRank = {};
-    final Map<String, String> commentToRoot = {};
-
-    for (int i = 0; i < rawComments.length; i++) {
-      final Map<String, dynamic> rawComment = rawComments[i]['comment'];
-      final segments = (rawComment['path'] as String).split('.');
-      final commentId = rawComment['id'].toString();
-      apiRank[commentId] = i;
-      if (segments.length > 1) {
-        commentToRoot[commentId] = segments[1];
-      }
-    }
-    
-    rawComments.sort((a, b) {
-      final Map<String, dynamic> rawCommentA = a['comment'];
-      final Map<String, dynamic> rawCommentB = b['comment'];
-      final String rootA = commentToRoot[rawCommentA['id'].toString()]!;
-      final String rootB = commentToRoot[rawCommentB['id'].toString()]!;
-      if (rootA != rootB) {
-        return (apiRank[rootA]!).compareTo(apiRank[rootB]!);
-      }
-      final partsA = (rawCommentA['path'] as String).split('.');
-      final partsB = (rawCommentB['path'] as String).split('.');
-      final length = partsA.length < partsB.length ? partsA.length : partsB.length;
-      for (int i = 0; i < length; i++) {
-        final String segA = partsA[i];
-        final String segB = partsB[i];
-        if (segA != segB) {
-          return (apiRank[segA]!).compareTo(apiRank[segB]!);
-        }
-      }
-      return partsA.length.compareTo(partsB.length);
-    });
-
-    return PostDetails(
-      post: null,
-      comments: rawComments.map<CommentItem>((item) => _parseComment(host, item)).toList(),
-      contextCommentShortId: null,
-    );
-  }
-
-  Comment _parseComment(String host, Map<String, dynamic> json) {
+  Comment _parseComment(Map<String, dynamic> json) {
     final Map<String, dynamic> commentData = json['comment'];
     final Map<String, dynamic> creatorData = json['creator'];
-    final Map<String, dynamic> communityData = json['community'];
     final Map<String, dynamic> postData = json['post'];
     final String commentId = commentData['id'].toString();
     final String content = commentData['content'];
@@ -499,25 +496,21 @@ class LemmyApi extends Api<RestClientHelper> {
     final creatorId = creatorData['id'];
     return Comment(
       depth: depth < 0 ? 0 : depth,
-      community: Community(
-        platform: Platform.lemmy,
-        host: Uri.parse(commentData['ap_id']).host,
-        name: communityData['name'],
-        id: communityData['id'].toString(),
-        originHost: host
-      ),
-      id: commentId,
-      permalink: '/post/${postData['id']}/$commentId',
-      isDeleted: commentData['deleted'],
+      community: _parseCommunity(json['community']),
+      localId: commentId,
+      shortLocalId: commentId,
+      urlPath: '/post/${postData['id']}/$commentId',
       authorId: creatorId.toString(),
       authorName: creatorData['name'],
       authorHost: Uri.parse(creatorData['actor_id']).host,
+      isDeleted: commentData['deleted'],
       isModerator: json['creator_is_moderator'],
       isSubmitter: creatorId == postData['creator_id'],
       score: json['counts']['score'],
       timestampMs: DateTime.parse(commentData['published']).millisecondsSinceEpoch,
       text: _htmlToPlainText(textHtml),
       textHtml: textHtml,
+      imageSizes: null,
       vote: json['my_vote'] == 1 ? true : (json['my_vote'] == -1 ? false : null),
       postTitle: postData['name'],
     );
@@ -531,7 +524,7 @@ class LemmyApi extends Api<RestClientHelper> {
           _parsePost(host, item),
       if (type?.id != UserFeedType.posts)
         for (var item in json['comments'] ?? []) 
-          _parseComment(host, item),
+          _parseComment(item),
     ];
     return PagedItems(
       items: items,
@@ -584,7 +577,7 @@ class _ClientHelper extends SimpleRestClientHelper implements AuthClientHelper {
   }
   
   @override
-  Future<FetchTokenResult> fetchToken([Map<String, String>? credentials]) async {
+  Future<FetchTokenResult?> fetchToken([Map<String, String>? credentials]) async {
     dev.log('[Lemmy][_ClientHelper] fetchToken');
     final response = await post(
       '/api/v3/user/login',
@@ -612,7 +605,7 @@ class _ClientHelper extends SimpleRestClientHelper implements AuthClientHelper {
 
   @override
   Future<void> saveToken(String userId) {
-    dev.log('[Lemmy][_ClientHelper] saveToken: userId=$userId, jwt=${debugTruncateLongString(_jwt)}');
+    dev.log('[Lemmy][_ClientHelper] saveToken: key=${'lemmy_jwt_${host}_$userId'}, jwt=${debugTruncateLongString(_jwt)}');
     return _secureStorage.write(key: 'lemmy_jwt_${host}_$userId', value: _jwt);
   }
 

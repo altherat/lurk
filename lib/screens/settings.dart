@@ -3,16 +3,17 @@ import 'package:flutter/services.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
+import 'package:lurk/core/name_input_formatter.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/core/flavors.dart';
 import 'package:lurk/services/api/digg.dart';
 import 'package:lurk/services/settings.dart';
+import 'package:lurk/services/user_manager.dart';
 import 'package:lurk/widgets/custom_app_bar.dart';
 import 'package:lurk/widgets/expansion_icon.dart';
 
 const Duration _expansionAnimationDuration = Duration(milliseconds: 250);
 const Curve _expansionAnimationCurve = Curves.easeInOutCubicEmphasized;
-const Curve _expansionAnimationReverseCurve = Curves.easeInExpo;
 
 class SettingsScreen extends StatefulWidget {
 
@@ -45,7 +46,8 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     choiceLabel: (platform) => platform.name.toTitleCase(),
                     selectedColor: (platform) => platform.color,
                     onSelected: (platform) {
-                      Settings.homeCommunityName.defaultValue = platform.homeCommunityName;
+                      Settings.homeCommunityHost.value = platform.homeCommunityHost;
+                      Settings.homeCommunityName.defaultValue = UserManager.hasActiveUser(platform) ? null : platform.homeCommunityName;
                     }
                   ),
                 ],
@@ -63,7 +65,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             hintText: Settings.homeCommunityName.defaultValue,
                             prefixText: homeCommunityPlatform.preferredCommunityPrefix,
                             floatingLabelBehavior: FloatingLabelBehavior.always,
-                            inputFormatters: homeCommunityPlatform.communityNameInputFormatters,
+                            inputFormatters: [NameInputFormatter(replacements: homeCommunityPlatform.communityNameCleaningRegexReplacements)],
                             showPrefix: (isFocused, value) => isFocused || value.isNotEmpty || (homeCommunityName?.isNotEmpty ?? false),
                             onSubmitted: (value) {
                               Settings.homeCommunityName.value = value.isEmpty ? null : value;
@@ -99,7 +101,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _BoolSettingListTile(
                   setting: Settings.backOnHomeScreenShowCommunityList,
                   label: 'Override back navigation',
-                  infoText: 'When enabled and on the home screen, navigating back will show the community list rather than exit the app.',
+                  infoText: 'When enabled, navigating back on the home screen will show the community list rather than exit the app.',
                 ),
                 if (F.appFlavor.platforms.any((platform) => platform.hasLogin)) ...[
                   _BoolSettingListTile(
@@ -238,29 +240,48 @@ class _ExpansionTileState extends State<_ExpansionTile> {
 
   @override
   Widget build(BuildContext context) {
-    return ExpansionTile(
-      initiallyExpanded: widget.initiallyExpanded,
-      shape: const Border(),
-      onExpansionChanged: (isExpanded) => _isExpandedNotifier.value = isExpanded,
-      expansionAnimationStyle: const AnimationStyle(
-        duration: _expansionAnimationDuration,
-        curve: _expansionAnimationCurve,
-        reverseCurve: _expansionAnimationReverseCurve
-      ),
-      title: _Header(text: widget.title),
-      trailing: ValueListenableBuilder(
-        valueListenable: _isExpandedNotifier,
-        builder: (context, isExpanded, child) {
-          return ExpansionIcon(
-            up: !isExpanded,
-            duration: _expansionAnimationDuration,
-            curve: _expansionAnimationCurve,
-          );
-        }
-      ),
-      children: widget.children
+    return Column(
+      children: [
+        InkWell(
+          onTap: () => _isExpandedNotifier.value = !_isExpandedNotifier.value,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            child: Row(
+              children: [
+                Expanded(child: _Header(text: widget.title)),
+                ValueListenableBuilder(
+                  valueListenable: _isExpandedNotifier,
+                  builder: (context, isExpanded, child) {
+                    return ExpansionIcon(
+                      up: !isExpanded,
+                      duration: _expansionAnimationDuration,
+                      curve: _expansionAnimationCurve,
+                    );
+                  }
+                )
+              ],
+            ),
+          )
+        ),
+        ValueListenableBuilder(
+          valueListenable: _isExpandedNotifier,
+          builder: (context, isExpanded, child) {
+            return AnimatedCrossFade(
+              firstChild: const SizedBox(width: double.infinity, height: 0),
+              secondChild: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: widget.children
+              ),
+              crossFadeState: isExpanded ? CrossFadeState.showSecond : CrossFadeState.showFirst,
+              duration: _expansionAnimationDuration,
+              sizeCurve: _expansionAnimationCurve,
+            );
+          }
+        )
+      ],
     );
   }
+  
 }
 
 class _Divider extends StatelessWidget {
@@ -429,6 +450,7 @@ class _TextFieldState extends State<_TextField> {
 
   @override
   void dispose() {
+    _submit(_controller.text);
     _focusNode.removeListener(_onFocusChange);
     _focusNode.dispose();
     _controller.dispose();
@@ -437,9 +459,7 @@ class _TextFieldState extends State<_TextField> {
 
   void _onFocusChange() {
     if (!_focusNode.hasFocus) {
-      if (_controller.text != _lastSubmittedValue) {
-        _submit(_controller.text);
-      }
+      _submit(_controller.text); 
     }
     _updateShowPrefix();
   }
@@ -456,8 +476,10 @@ class _TextFieldState extends State<_TextField> {
   }
 
   void _submit(String value) {
-    _lastSubmittedValue = value;
-    widget.onSubmitted(value);
+    if (value != _lastSubmittedValue) {
+      _lastSubmittedValue = value;
+      widget.onSubmitted(value);
+    }
   }
 
   @override

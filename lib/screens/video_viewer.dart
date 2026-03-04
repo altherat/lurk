@@ -24,26 +24,24 @@ const List<double> playbackSpeeds = [0.5, 1, 1.25, 1.5, 2];
 class VideoViewerScreen extends StatefulWidget {
 
   final PlatformContext platformContext;
-  final String? communityName;
   final String url;
   final Post? post;
 
   const VideoViewerScreen({
     super.key,
     required this.platformContext,
-    required this.communityName,
     required this.url,
     this.post
   });
 
   VideoViewerScreen.fromPost({
     Key? key,
+    required PlatformContext platformContext,
     required Post post
   }) : this(
     key: key,
-    platformContext: post.community.platformContext,
-    communityName: post.community.name,
-    url: post.url,
+    platformContext: platformContext,
+    url: post.linkUrl!,
     post: post,
   );
 
@@ -54,9 +52,9 @@ class VideoViewerScreen extends StatefulWidget {
 
 class _VideoViewerScreenState extends State<VideoViewerScreen> {
 
+  late Uri _uri;
   late VideoPlayerController _videoController;
-  final ValueNotifier<double> _sliderNotifier = ValueNotifier(0);
-  late final Uri _uri = Uri.parse(widget.url);
+  final _sliderNotifier = ValueNotifier<double>(0);
   bool _isInitialized = false;
   bool _showControls = true;
   bool _isDragging = false;
@@ -66,6 +64,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
   @override
   void initState() {
     super.initState();
+    _uri = Uri.parse(widget.url);
     _init();
   }
 
@@ -98,7 +97,7 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
     }
     else {
       _videoController = VideoPlayerController.networkUrl(
-        _uri,
+        Uri.parse('${widget.url}/DASHPlaylist.mpd'),
         httpHeaders: {
           'User-Agent': widget.platformContext.platform.savedOrDefaultUserAgent,
         },
@@ -110,7 +109,9 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
 
     await _videoController.initialize();
     
-    if (!mounted) return;
+    if (!mounted) {
+      return;
+    }
 
     setState(() {
       _isInitialized = true;
@@ -217,7 +218,6 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
   Widget build(BuildContext context) {
     return MediaScaffold(
       platformContext: widget.platformContext,
-      communityName: widget.communityName,
       url: widget.url,
       type: 'video',
       post: widget.post,
@@ -239,12 +239,11 @@ class _VideoViewerScreenState extends State<VideoViewerScreen> {
                   showSimpleOptionsBottomSheet(
                     context: context,
                     options: MediaScaffold.getOptions(
-                      context: context,
                       platformContext: widget.platformContext,
-                      communityName: widget.communityName,
                       type: 'video',
                       url: widget.url,
-                      onSave: _onSave
+                      post: widget.post,
+                      onSave: _onSave,
                     )
                   );
                 },

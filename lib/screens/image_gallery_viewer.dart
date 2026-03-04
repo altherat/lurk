@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import 'package:gal/gal.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/extensions.dart';
-import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/platform_context.dart';
 import 'package:lurk/models/post.dart';
@@ -15,26 +14,27 @@ import 'package:lurk/widgets/media_scaffold.dart';
 class ImageGalleryViewerScreen extends StatefulWidget {
 
   final PlatformContext platformContext;
-  final String? communityName;
   final String url;
+  final String postId;
   final Post? post;
 
   const ImageGalleryViewerScreen({
     super.key,
     required this.platformContext,
-    required this.communityName,
     required this.url,
+    required this.postId,
     this.post
   });
 
   ImageGalleryViewerScreen.fromPost({
     Key? key,
+    required PlatformContext platformContext,
     required Post post
   }) : this(
     key: key,
-    platformContext: post.community.platformContext,
-    communityName: post.community.nameAndMaybeHost,
-    url: post.url,
+    platformContext: platformContext,
+    url: post.linkUrl!,
+    postId: post.shortLocalId,
     post: post,
   );
 
@@ -53,10 +53,10 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
     super.initState();
     if (widget.post == null) {
       _isLoadingPost = true;
-      Platform.getApi(widget.platformContext, UserManager.getActiveUser(widget.platformContext.platform).value).fetchPostDetailsFromUrl(widget.url).then((postDetails) {
+      getApi(widget.platformContext, UserManager.getActiveUser(widget.platformContext.platform)).fetchPost(widget.postId).then((post) {
         if (mounted) {
           setState(() {
-            _post = postDetails.post!;
+            _post = post;
             _isLoadingPost = false;
           });
         }
@@ -78,12 +78,12 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
     }
     else {
       onSave = (context) {
-        final count = _post.galleryImages.length;
+        final count = _post.galleryImages!.length;
         saveMedia(
           context: context,
           snackbarMediaTypeMessage: '$count images',
           save: () async {
-            for (final image in _post.galleryImages) {
+            for (final image in _post.galleryImages!) {
               final filePath = await downloadMediaToTemp(image.url, widget.platformContext.platform.savedOrDefaultUserAgent);
               await Gal.putImage(filePath);
             }
@@ -93,7 +93,7 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
       body = ListView.separated(
         padding: EdgeInsets.only(bottom: MediaQuery.of(context).padding.bottom),
         cacheExtent: MediaQuery.of(context).size.height,
-        itemCount: 1 + _post.galleryImages.length,
+        itemCount: 1 + _post.galleryImages!.length,
         separatorBuilder: (context, index) => const SizedBox(height: 16),
         itemBuilder: (context, index) {
           if (index == 0) {
@@ -104,19 +104,19 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                 children: [
                   Text(_post.title),
                   Text(
-                    'by ${_post.author ?? '[deleted]'}${Constants.separator}${_post.timeAgoLong}',
+                    'by ${_post.authorName ?? '[deleted]'}${Constants.separator}${_post.timeAgoLong}',
                     style: TextStyle(
                       fontSize: 12,
                       color: Theme.of(context).colorScheme.onSurfaceVariant
                     ),
                   ),
                   const SizedBox(height: 16),
-                  Text(_post.galleryImages.length.toPluralString('image'))
+                  Text(_post.galleryImages!.length.toPluralString('image'))
                 ],
               ),
             );
           }
-          final image = _post.galleryImages[index - 1];
+          final image = _post.galleryImages![index - 1];
           return Hero(
             tag: 'media_${image.url}',
             child: Stack(
@@ -124,8 +124,8 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                 ExtendedImage.network(
                   image.url,
                   headers: {'User-Agent': widget.platformContext.platform.savedOrDefaultUserAgent},
-                  fit: BoxFit.fitWidth,
-                  mode: ExtendedImageMode.gesture,
+                  fit: BoxFit.contain,
+                  width: double.infinity,
                   cacheWidth: (MediaQuery.of(context).size.width * MediaQuery.of(context).devicePixelRatio).toInt(),
                   loadStateChanged: (state) {
                     switch (state.extendedImageLoadState) {
@@ -165,7 +165,6 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                         context.push(() {
                           return ImageViewerScreen(
                             platformContext: widget.platformContext,
-                            communityName: widget.communityName,
                             url: image.url,
                             post: widget.post,
                           );
@@ -175,12 +174,11 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
                         showSimpleOptionsBottomSheet(
                           context: context,
                           options: MediaScaffold.getOptions(
-                            context: context,
                             platformContext: widget.platformContext,
-                            communityName: widget.communityName,
                             type: 'image',
                             url: image.url,
-                            onSave: onSave
+                            post: widget.post,
+                            onSave: onSave,
                           )
                         );
                       },
@@ -195,7 +193,6 @@ class _ImageGalleryViewerScreenState extends State<ImageGalleryViewerScreen> {
     }
     return MediaScaffold(
       platformContext: widget.platformContext,
-      communityName: widget.communityName,
       url: widget.url,
       type: 'images',
       post: widget.post,

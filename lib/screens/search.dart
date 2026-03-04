@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:lurk/core/extensions.dart';
+import 'package:lurk/core/flavors.dart';
 import 'package:lurk/core/platforms.dart';
+import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/community_details.dart';
 import 'package:lurk/models/platform_context.dart';
@@ -41,7 +43,7 @@ class SearchScreen extends StatelessWidget {
         texts: [
           ('"', theme.colorScheme.onSurfaceVariant),
           (query, theme.colorScheme.onSurface),
-          ('" in $searchWithinCommunityName', theme.colorScheme.onSurfaceVariant)
+          ('" in ${platformContext.platform.getPrefixedCommunityName(searchWithinCommunityName)}', theme.colorScheme.onSurfaceVariant)
         ],
       );
     }
@@ -58,15 +60,19 @@ class SearchScreen extends StatelessWidget {
     return FeedScreen(
       platformContext: platformContext,
       feedOptions: feedOptions,
-      fetchItems: (options, pageToken) => Platform.getApi(platformContext, UserManager.getActiveUser(platformContext.platform).value).fetchSearchResults(query, searchWithinCommunityName, options: options, pageToken: pageToken),
+      fetchItems: (options, pageToken) => getApi(platformContext, UserManager.getActiveUser(platformContext.platform)).fetchSearchResults(query, searchWithinCommunityName, pageToken, options),
       title: title,
-      subtitle: '${platformContext.platform.supportsMultipleHosts ? platformContext.host : platformContext.platform.name.toTitleCase()} search',
+      subtitle: F.appFlavor == Flavor.combined ? '${platformContext.platform.supportsMultipleHosts ? platformContext.host : platformContext.platform.name.toTitleCase()} search' : null,
       itemBuilder: (context, index, item) {
         if (item is Post) {
-          return PostTile(post: item);
+          return PostTile(
+            platformContext: platformContext,
+            post: item
+          );
         }
         if (item is Comment) {
           return CommentTile(
+            platformContext: platformContext,
             comment: item,
             padding: const EdgeInsets.symmetric(vertical: 4),
             showCommunityName: true
@@ -91,7 +97,7 @@ class SearchScreen extends StatelessWidget {
                       TextSpan(
                         children: [
                           TextSpan(
-                            text: item.community.platformContext.platform.preferredCommunityPrefix,
+                            text: item.community.platform.preferredCommunityPrefix,
                             style: TextStyle(color: theme.colorScheme.onSurfaceVariant),
                           ),
                           TextSpan(
@@ -148,7 +154,7 @@ class SearchScreen extends StatelessWidget {
               context.push(() {
                 return UserDetailsScreen(
                   platformContext: platformContext,
-                  username: item.name,
+                  user: item,
                 );
               });
             }

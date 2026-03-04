@@ -1,14 +1,24 @@
 import 'package:lurk/core/platforms.dart';
+import 'package:lurk/models/community.dart';
 
 class PlatformContext {
 
   final Platform platform;
   final String host;
+  final String? iconUrl;
 
   const PlatformContext({
     required this.platform,
-    required this.host
+    required this.host,
+    this.iconUrl,
   });
+
+  factory PlatformContext.fromCommunity(Community community) {
+    return PlatformContext(
+      platform: community.platform,
+      host: community.host
+    );
+  }
 
   @override
   bool operator ==(Object other) {

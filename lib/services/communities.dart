@@ -2,53 +2,44 @@ import 'package:lurk/core/database/database.dart';
 import 'package:lurk/core/database_list_notifier.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/community.dart';
+import 'package:lurk/models/user.dart';
 
 class Communities {
 
   static late final DatabaseListNotifier<Community> saved;
-  static late final Map<(Platform, String), Set<String>> _subscribedCommunityNames;
+  static late final Map<(Platform, String, String), Set<String>> _subscribedCommunityIds;
 
-  static Future<void> init(Database db) async {
-    final [savedCommunities as List<Community>, getSubscribedCommunityNames as Map<(Platform, String), Set<String>>] = await Future.wait([db.getAllCommunities(), db.getAllSubscribedCommunities()]);
+  static void init(Database db, List<Community> savedCommunities, Map<(Platform, String, String), Set<String>> subscribedCommunityIds) {
     saved = DatabaseListNotifier<Community>(
       savedCommunities,
       save: db.saveCommunity,
       saveAll: db.saveAllCommunities,
       delete: db.deleteCommunity,
     );
-    _subscribedCommunityNames = getSubscribedCommunityNames;
+    _subscribedCommunityIds = subscribedCommunityIds;
   }
 
-  static void addSubscribedCommunity(Platform platform, String userId, String communityName) {
-    if (_subscribedCommunityNames.putIfAbsent((platform, userId), () => {}).add(communityName)) {
-      Database.instance.saveCommunitySubscription(platform, userId, communityName);
+  static void addSubscribedCommunity(Platform platform, String host, String userId, String communityId) {
+    if (_subscribedCommunityIds.putIfAbsent((platform, host, userId), () => {}).add(communityId)) {
+      Database.instance.saveCommunitySubscription(platform, host, userId, communityId);
     }
   }
 
-  static void removeSubscribedCommunity(Platform platform, String userId, String communityName) {
-    if (_subscribedCommunityNames[(platform, userId)]?.remove(communityName) ?? false) {
-      Database.instance.deleteCommunitySubscription(platform, userId, communityName);
+  static void removeSubscribedCommunity(Platform platform, String host, String userId, String communityId) {
+    if (_subscribedCommunityIds[(platform, host, userId)]?.remove(communityId) ?? false) {
+      Database.instance.deleteCommunitySubscription(platform, host, userId, communityId);
     }
   }
 
-  static void updateSubscribedCommunity(Platform platform, String userId, String communityname, bool isSubscribed) {
-    if (isSubscribed) {
-      addSubscribedCommunity(platform, userId, communityname);
-    }
-    else {
-      removeSubscribedCommunity(platform, userId, communityname);
-    }
-  }
-
-  static void addAllSubscribedCommunities(Platform platform, String userId, Iterable<Community> communities) {
-    final Set<String> communityNames = {};
+  static void addAllSubscribedCommunities(Platform platform, String host, String userId, Iterable<Community> communities) {
+    final Set<String> communityIds = {};
     for (final community in communities) {
-      communityNames.add(community.name!);
+      communityIds.add(community.id!);
     }
-    _subscribedCommunityNames[(platform, userId)] = communityNames;
-    Database.instance.saveAllCommunitySubscriptions(platform, userId, communityNames);
+    _subscribedCommunityIds[(platform, host, userId)] = communityIds;
+    Database.instance.saveAllCommunitySubscriptions(platform, host, userId, communityIds);
   }
 
-  static bool isSubscribed(Platform platform, String userId, String communityName) => _subscribedCommunityNames[(platform, userId)]?.contains(communityName) ?? false;
+  static bool isSubscribed(LoggedInUser user, String communityId) => _subscribedCommunityIds[(user.platform, user.host, user.id)]?.contains(communityId) ?? false;
 
 }

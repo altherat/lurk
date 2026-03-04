@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/extensions.dart';
-import 'package:lurk/core/platforms.dart';
+import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/platform_context.dart';
@@ -21,12 +21,12 @@ import 'package:lurk/widgets/user_stats.dart';
 class UserDetailsScreen extends StatefulWidget {
 
   final PlatformContext platformContext;
-  final String username;
+  final User user;
 
   const UserDetailsScreen({
     super.key,
     required this.platformContext,
-    required this.username,
+    required this.user,
   });
 
   @override
@@ -42,7 +42,10 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
   @override
   void initState() {
     super.initState();
-    final response = Platform.getApi(widget.platformContext, UserManager.getActiveUser(widget.platformContext.platform).value).fetchUserDetails(widget.username);
+    final response = getApi(widget.platformContext, UserManager.getActiveUser(widget.platformContext.platform)).fetchUserDetails(
+      widget.user.nameAndMaybeHost,
+      widget.platformContext.platform.userFeedOptions.defaults
+    );
     _initialItemsFuture = response.items;
     _userStatsFuture = response.other;
   }
@@ -54,14 +57,14 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
       platformContext: widget.platformContext,
       feedOptions: widget.platformContext.platform.userFeedOptions,
       initialItems: _initialItemsFuture,
-      fetchItems: (options, pageToken) => Platform.getApi(widget.platformContext, UserManager.getActiveUser(widget.platformContext.platform).value).fetchUserItems(widget.username, options: options, pageToken: pageToken),
+      fetchItems: (options, pageToken) => getApi(widget.platformContext, UserManager.getActiveUser(widget.platformContext.platform)).fetchUserItems(widget.user.name, pageToken, options),
       title: MultiColoredAppBarTitle(
         texts: [
           (widget.platformContext.platform.userPrefix, theme.colorScheme.onSurfaceVariant),
-          (widget.username, theme.colorScheme.onSurface),
+          (widget.user.name, theme.colorScheme.onSurface),
           if (widget.platformContext.platform.supportsMultipleHosts) ...[
             ('@', theme.colorScheme.onSurfaceVariant),
-            (widget.platformContext.host, theme.colorScheme.onSurface)
+            (widget.user.host, theme.colorScheme.onSurface)
           ]
         ],
       ),
@@ -106,16 +109,21 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
       itemBuilder: (context, index, item) { 
         if (item is Post) {
           return PostTile(
+            platformContext: widget.platformContext,
             post: item,
             showViewUserOption: false,
             subtitle: PostTileCommentHistorySubtitle(
               post: item,
-              extraTexts: [item.timeAgoCompact, ?item.community.name],
+              extraTexts: [
+                item.timeAgoCompact,
+                ?item.community.nameAndMaybeHost
+              ],
             )
           );
         }
         if (item is Comment) {
           return CommentTile(
+            platformContext: widget.platformContext,
             comment: item,
             padding: const EdgeInsets.symmetric(vertical: 8),
             showCommunityName: true,
@@ -123,10 +131,9 @@ class _UserDetailsScreenState extends State<UserDetailsScreen> {
             optionsBuilder: (context, activeUser) => {
               Text('View context'): (context) {
                 context.push(() {
-                  return PostDetailsScreen.fromUrl(
-                    platformContext: item.community.platformContext,
-                    url: item.community.platformContext.platform.getCommentUrl(item),
-                    urlInfo: item.community.platformContext.platform.getPostUrlInfoFromPath(item.permalink)
+                  return PostDetailsScreen.fromComment(
+                    platformContext: widget.platformContext,
+                    comment: item,
                   );
                 });
               }

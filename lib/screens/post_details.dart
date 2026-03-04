@@ -6,10 +6,10 @@ import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/comment.dart';
+import 'package:lurk/models/community.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/platform_context.dart';
 import 'package:lurk/models/post.dart';
-import 'package:lurk/models/post_details.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/services/posts.dart';
 import 'package:lurk/screens/feed.dart';
@@ -20,63 +20,80 @@ import 'package:lurk/widgets/custom_html.dart';
 import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
 
+const _expandCollapseAnimationDuration = Duration(milliseconds: 200);
 const _postBodyCollapsedHeightRatio = 0.4;
 const _postBodyCollapsedFadingEdgeRatio = 0.9;
+const _postBodyCollapsedFadingEdgeThreshold = 16;
 
 class PostDetailsScreen extends StatefulWidget {
 
   final PlatformContext platformContext;
-  final String? communityName;
-  final String url;
+  final Community community;
+  final String postId;
+  final String? contextCommentShortId;
   final Post? post;
-
-  final String? inferredTitle;
-  final String? inferredSubtitle;
+  final String? title;
+  final String subtitle;
 
   const PostDetailsScreen._({
     super.key,
     required this.platformContext,
-    required this.communityName,
-    required this.url,
-    this.post,
-    this.inferredTitle,
-    this.inferredSubtitle,
+    required this.community,
+    required this.postId,
+    required this.contextCommentShortId,
+    required this.post,
+    required this.title,
+    required this.subtitle,
   });
 
   PostDetailsScreen.fromPost({
     Key? key,
+    required PlatformContext platformContext,
     required Post post
   }) : this._(
     key: key,
-    platformContext: post.community.platformContext,
-    communityName: post.community.name,
-    url: post.url,
+    platformContext: platformContext,
+    community: post.community,
+    postId: post.shortLocalId,
+    contextCommentShortId: null,
     post: post,
+    title: post.title,
+    subtitle: post.community.prefixedNameAndMaybeHost,
+  );
+
+  PostDetailsScreen.fromComment({
+    Key? key,
+    required PlatformContext platformContext,
+    required Comment comment
+  }) : this._(
+    key: key,
+    platformContext: platformContext,
+    community: comment.community,
+    postId: comment.postId!,
+    contextCommentShortId: comment.shortLocalId,
+    post: null,
+    title: comment.postTitle,
+    subtitle: comment.community.prefixedNameAndMaybeHost,
   );
 
   factory PostDetailsScreen.fromUrl({
     Key? key,
     required PlatformContext platformContext,
+    required Community community,
     required String url,
-    required PostUrlInfo? urlInfo,
+    required String postId,
+    required String? titleSlug,
+    required String? contextCommentShortId,
   }) {
-    final String? title;
-    final String? subtitle;
-    if (urlInfo == null) {
-      title = null;
-      subtitle = url;
-    }
-    else  {
-      title = urlInfo.inferredTitle ?? url;
-      subtitle = platformContext.platform.getFullCommunityName(platformContext.host, urlInfo.communityName);
-    }
     return PostDetailsScreen._(
       key: key,
       platformContext: platformContext,
-      communityName: urlInfo?.communityName,
-      url: url,
-      inferredTitle: title,
-      inferredSubtitle: subtitle
+      community: community,
+      postId: postId,
+      contextCommentShortId: contextCommentShortId,
+      post: null,
+      title: titleSlug != null ? titleSlug[0].toUpperCase() + titleSlug.substring(1).replaceAll(RegExp(r'[_-]+'), ' ') : url,
+      subtitle: community.prefixedNameAndMaybeHost,
     );
   }
 
@@ -90,7 +107,6 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
   final _simpleFeedScreenKey = GlobalKey<FeedScreenState<CommentItem>>();
   late Future<PagedItems<CommentItem>> _initialItemsFuture;
   Post? _post;
-  String? _contextCommentShortId;
   final Set<String> _collapsedCommentIds = {};
   late final ValueNotifier<Map<FeedOptionType, FeedOption>?> _feedOptionsNotifier;
   final Map<Comment, _ParentCollapsingAnimationState> _parentCollapsingAnimationStates = {};
@@ -114,21 +130,29 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
   }
 
   Future<PagedItems<CommentItem>> _fetchItems(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) async {
-    final activeUser = UserManager.getActiveUser(widget.platformContext.platform).value;
+    final activeUser = UserManager.getActiveUser(widget.platformContext.platform);
     _feedOptionsNotifier.value = feedOptions;
-    final PostDetails postDetails;
+    final List<CommentItem> fetchedComments;
     if (_post != null) {
-      postDetails = await Platform.getApi(widget.platformContext, activeUser).fetchPostDetailsFromId(
-        activeUser != null && activeUser.platformContext.host != _post!.community.platformContext.host ? await Platform.getApi(widget.platformContext, activeUser).resolveGlobalToLocalPostId(_post!.globalId!) : _post!.shortLocalId,
-        shortCommentId: _contextCommentShortId,
-        options: feedOptions
+      if (activeUser != null && activeUser.host != _post!.localHost) {
+        _post = await getApi(widget.platformContext, activeUser).resolveGlobalToLocalPost(_post!.globalId);
+      }
+      final (comments, post) = await getApi(widget.platformContext, activeUser).fetchCommentsAndMaybePost(
+        _post!.shortLocalId,
+        _post!.community.name!,
+        widget.contextCommentShortId,
+        feedOptions
       );
+      fetchedComments = comments;
+      if (post != null) {
+        _post = post;
+      }
     }
     else {
-      postDetails = await Platform.getApi(widget.platformContext, activeUser).fetchPostDetailsFromUrl(widget.url, options: feedOptions);
-      _post = postDetails.post;
+      final (comments, post) = await getApi(widget.platformContext, activeUser).fetchCommentsAndPost(widget.postId, widget.community.name, widget.contextCommentShortId, feedOptions);
+      fetchedComments = comments;
+      _post = post;
     }
-    _contextCommentShortId = postDetails.contextCommentShortId;
     _collapsedCommentIds.clear();
     _parentCollapsingAnimationStates.clear();
     _childCollapsingAnimationStates.clear();
@@ -136,11 +160,12 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
       setState(() {});
     }
     Posts.visitedDetails.add(_post!.localId);
-    return PagedItems(items: postDetails.comments);
+    return PagedItems(items: fetchedComments);
   }
 
   void _addComment(Comment comment, int index, int depth) {
-    _simpleFeedScreenKey.currentState!.feedList!.updateItems((items) {
+    _simpleFeedScreenKey.currentState!.feedList!.updateItems(
+      (items) {
         items.insert(index, comment.copyWith(depth: depth));
       }
     );
@@ -153,32 +178,41 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
     final Map<Widget, Function(BuildContext context)>? popupMenuActions;
     final List<Widget>? slivers;
     if (_post != null) {
+      final bool isLocal = _post!.contentType == ContentType.local;
       title = Text(_post!.title);
-      subtitle = _post!.community.fullName;
+      subtitle = _post!.community.prefixedNameAndMaybeHost;
       popupMenuActions = {
-        Text('View in browser'): (context) => openInBrowser(widget.url),
-        Text('View comments in browser'): (context) => openInBrowser(_post!.community.platformContext.platform.getPostDetailsUrl(_post!)),
-        Text('Copy link'): (context) => copyToClipboard(widget.url),
-        Text('Copy comments link'): (context) => copyToClipboard(_post!.community.platformContext.platform.getPostDetailsUrl(_post!))
+        if (_post!.linkUrl != null && !isLocal)
+          Text('View link in browser'): (context) => openInBrowser(_post!.linkUrl!),
+        Text('View comments in browser'): (context) => openInBrowser(_post!.community.platform.getPostDetailsUrl(_post!)),
+        if (_post!.linkUrl != null && !isLocal)
+          Text('Copy link'): (context) => copyToClipboard(_post!.linkUrl!),
+        Text('Copy comments link'): (context) => copyToClipboard(_post!.community.platform.getPostDetailsUrl(_post!))
       };
       slivers = [
         SliverToBoxAdapter(
           child: Column(
             children: [
               PostTile(
+                platformContext: widget.platformContext,
                 post: _post!,
                 onTapNavigate: false,
-                showThumbnail: !_post!.isSelf,
+                showThumbnail: _post!.contentType != ContentType.local,
                 subtitle: Text(
-                  'posted to ${_post!.community.name}\n${_post!.timeAgoLong} ago by ${_post!.author}',
+                  'posted to ${_post!.community.platform.getPrefixedCommunityName(_post!.community.name)}\n${_post!.timeAgoLong} by ${_post!.authorName ?? '[deleted]'}',
                   style: TextStyle(
                     color: Theme.of(context).colorScheme.onSurfaceVariant,
                     fontSize: 12
                   )
                 )
               ),
-              if (_post!.textHtml != null)
-                _PostBodyContainer(child: _PostBody(post: _post!))
+              if (_post!.bodyHtml != null)
+                _PostBodyContainer(
+                  child: _PostBody(
+                    platformContext: widget.platformContext,
+                    post: _post!
+                  )
+                )
               else
                 const SizedBox(height: 8),
               Container(
@@ -195,7 +229,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                       valueListenable: _feedOptionsNotifier,
                       builder: (context, feedOptions, child) {
                         return Text(
-                          'sorted by${feedOptions != null ? ': ${feedOptions.values.map((option) => option.label.toLowerCase()).join(' / ')}' : ' ${_post!.community.platformContext.platform.postCommentsFeedOptions.options.first.label.toLowerCase()}'}',
+                          'sorted by${feedOptions != null ? ': ${feedOptions.values.map((option) => option.label.toLowerCase()).join(' / ')}' : ' ${_post!.community.platform.postCommentsFeedOptions.options.first.label.toLowerCase()}'}',
                           style: TextStyle(
                             color: Theme.of(context).colorScheme.onSurfaceVariant,
                             fontSize: 11
@@ -206,9 +240,14 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                   ],
                 )
               ),
-              if (_contextCommentShortId != null)
+              if (widget.contextCommentShortId != null)
                 InkWell(
-                  onTap: () => context.push(() => PostDetailsScreen.fromPost(post: _post!)),
+                  onTap: () => context.push(() {
+                    return PostDetailsScreen.fromPost(
+                      platformContext: widget.platformContext,
+                      post: _post!
+                    );
+                  }),
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Row(
@@ -237,16 +276,16 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
       ];
     }
     else {
-      title = widget.inferredTitle != null ? Text(widget.inferredTitle!) : null;
-      subtitle = widget.inferredSubtitle != null ? widget.inferredSubtitle! : widget.url;
+      title = widget.title != null ? Text(widget.title!) : null;
+      subtitle = widget.subtitle;
       popupMenuActions = const {};
       slivers = [];
     }
-    final activeUserListenable = UserManager.getActiveUser(widget.platformContext.platform);
+    final activeUserListenable = UserManager.getActiveUserListenable(widget.platformContext.platform);
     return FeedScreen(
       key: _simpleFeedScreenKey,
       platformContext: widget.platformContext,
-      activeCommunityName: widget.communityName,
+      activeCommunity: widget.community,
       feedOptions: widget.platformContext.platform.postCommentsFeedOptions,
       initialItems: _initialItemsFuture,
       fetchItems: _fetchItems,
@@ -263,21 +302,22 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
               onPressed: () {
                 showAddCommentBottomSheet(
                   context: context,
-                  community: _post!.community,
+                  platformContext: widget.platformContext,
                   id: _post!.localId,
                   replyingToWidget: Column(
                     children: [
                       PostTile(
+                        platformContext: widget.platformContext,
                         post: _post!,
                         isInteractable: false,
                       ),
-                      if (_post!.textHtml != null)
+                      if (_post!.bodyHtml != null)
                         _PostBodyContainer(
                           child: Padding(
                             padding: const EdgeInsets.all(8),
                             child: CustomHtml(
                               platformContext: widget.platformContext,
-                              html: _post!.textHtml!
+                              html: _post!.bodyHtml!
                             )
                           )
                         )
@@ -302,8 +342,9 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
         Widget child;
         if (item is Comment) {
           final parentCollapsingAnimationState = _parentCollapsingAnimationStates[item];
-          final isCollapsed = _collapsedCommentIds.contains(item.id);
+          final isCollapsed = _collapsedCommentIds.contains(item.localId);
           child = CommentTile(
+            platformContext: widget.platformContext,
             comment: item,
             depth: item.depth,
             padding: EdgeInsets.only(top: index == 0 ? 0 : 8, bottom: 4),
@@ -330,7 +371,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                 final onScreenExpandingChildItems = parentCollapsingAnimationState!.childCollapsingAnimationState.childOffsets.keys;
                 feedList.updateItems((items) {
                   items.insertAll(index + 1, onScreenExpandingChildItems);
-                  _collapsedCommentIds.remove(parentComment.id);
+                  _collapsedCommentIds.remove(parentComment.localId);
                 });
                 parentCollapsingAnimationState.controller
                   .forward(from: 0)
@@ -381,11 +422,9 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                   break;
                 }
                 if (parentTopY + accumulatedHeight > screenHeight) {
-                  // debugPrint('offscreen: ${childItem is Comment ? childItem.text : 'LoadMoreComment'}');
                   offScreenChildrenToRemove.add(childItem);
                 }
                 else if ((currentChild?.parentData as SliverMultiBoxAdaptorParentData).index == i) {
-                  // debugPrint('collapsing: ${childItem is Comment ? childItem.text : 'LoadMoreComment'}');
                   final height = currentChild!.size.height;
                   childHeights[childItem] = height;
                   childOffsets[childItem] = accumulatedHeight;
@@ -393,12 +432,10 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                   currentChild = renderSliverList.childAfter(currentChild);
                 }
               }
-              // debugPrint("accumulatedHeight=$accumulatedHeight, offScreenChildrenToRemove=${offScreenChildrenToRemove.length}");
-              // debugPrint('offsets=${childOffsets.map((item, value) => MapEntry((item is Comment ? item.id : 'LoadMoreComment'), value))}');
-              // debugPrint('heights=${childHeights.map((item, value) => MapEntry((item is Comment ? item.id : 'LoadMoreComment'), value))}');
               final animationController = AnimationController(
                 vsync: this, 
-                duration: Duration(milliseconds: (225 + accumulatedHeight * 0.1).round()),
+                duration: _expandCollapseAnimationDuration
+                // duration: Duration(milliseconds: (225 + accumulatedHeight * 0.1).round()),
               );
               final childAnimationStates = _ChildCollapsingAnimationState(
                 totalHeight: accumulatedHeight,
@@ -425,14 +462,14 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
                   if (!mounted) return;
                   feedList.updateItems((items) {
                     items.removeWhere((item) => childOffsets.containsKey(item));
-                    _collapsedCommentIds.add(parentComment.id);
+                    _collapsedCommentIds.add(parentComment.localId);
                   });
                 });
             },
             onReply: (comment) => _addComment(comment, index + 1, item.depth + 1),
             onDelete: () => _simpleFeedScreenKey.currentState!.feedList!.updateItems((items) => items.removeAt(index))
           );
-          if (_contextCommentShortId != null &&item.shortId == _contextCommentShortId) {
+          if (item.shortLocalId == widget.contextCommentShortId) {
             child = Material(
               color: Constants.contextCommentBackgroundColor,
               child: child
@@ -443,7 +480,7 @@ class _PostDetailsScreenState extends State<PostDetailsScreen> with TickerProvid
           child = _LoadMoreComments(
             comment: item as LoadMoreComment,
             onLoadMoreComments: () async {
-              final comments = await Platform.getApi(widget.platformContext, UserManager.getActiveUser(widget.platformContext.platform).value).fetchMoreComments(_post!.localId, item.pageToken!, depth: item.depth);
+              final comments = await getApi(widget.platformContext, UserManager.getActiveUser(widget.platformContext.platform)).fetchMoreComments(_post!.localId, item.depth, item.pageToken!, null);
               if (mounted) {
                 _simpleFeedScreenKey.currentState?.feedList?.updateItems((items) => items.replaceRange(index, index + 1, comments));
               }
@@ -589,9 +626,11 @@ class _PostBodyContainer extends StatelessWidget {
 
 class _PostBody extends StatefulWidget {
 
+  final PlatformContext platformContext;
   final Post post;
 
   const _PostBody({
+    required this.platformContext,
     required this.post,
   });
 
@@ -607,7 +646,7 @@ class _PostBodyState extends State<_PostBody> with SingleTickerProviderStateMixi
   late final Animation _animation;
   double? _expandedHeight;
   bool _canExpand = false;
-  double _fadingEdgeVisibility = 0;
+  double _fadingEdgeStrength = 0;
 
   @override
   void initState() {
@@ -619,14 +658,6 @@ class _PostBodyState extends State<_PostBody> with SingleTickerProviderStateMixi
       reverseCurve: Curves.easeInExpo
     );
     _scrollController.addListener(_onScrollChanged);
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (_scrollController.hasClients && _scrollController.position.maxScrollExtent > 0) {
-        setState(() {
-          _canExpand = true;
-          _fadingEdgeVisibility = 1;
-        });
-      }
-    });
   }
 
   @override
@@ -641,13 +672,17 @@ class _PostBodyState extends State<_PostBody> with SingleTickerProviderStateMixi
     if (!_scrollController.hasClients) {
       return;
     }
-    final position = _scrollController.position;
-    final newVisibility = ((position.maxScrollExtent - position.pixels) / (_scrollController.position.viewportDimension * _postBodyCollapsedFadingEdgeRatio)).clamp(0.0, 1.0);
-    if (newVisibility != _fadingEdgeVisibility) {
+    final newStrength = _getFadingEdgeStrength();
+    if (newStrength != _fadingEdgeStrength) {
       setState(() {
-        _fadingEdgeVisibility = newVisibility;
+        _fadingEdgeStrength = newStrength;
       });
     }
+  }
+
+  double _getFadingEdgeStrength() {
+    final position = _scrollController.position;
+    return ((position.maxScrollExtent - position.pixels) / _postBodyCollapsedFadingEdgeThreshold).clamp(0.0, 1.0);
   }
 
   @override
@@ -661,12 +696,12 @@ class _PostBodyState extends State<_PostBody> with SingleTickerProviderStateMixi
             }
             setState(() {
               _expandedHeight = min(_scrollController.position.maxScrollExtent + _scrollController.position.viewportDimension, MediaQuery.of(context).size.height - (context.findRenderObject() as RenderBox).localToGlobal(Offset.zero).dy);
-              final duration = Duration(milliseconds: (200 + _expandedHeight! * 0.15).toInt());
-              _animationController.duration = duration;
+              // final duration = Duration(milliseconds: (200 + _expandedHeight! * 0.15).toInt());
+              _animationController.duration = _expandCollapseAnimationDuration;
               if (_animation.value == 0) {
                 _scrollController.animateTo(
                   0,
-                  duration: duration,
+                  duration: _expandCollapseAnimationDuration,
                   curve: Curves.easeInOutCubicEmphasized
                 );
                 _animationController.forward();
@@ -677,6 +712,14 @@ class _PostBodyState extends State<_PostBody> with SingleTickerProviderStateMixi
             });
           }
         : null,
+      onLongPress: () {
+        showSimpleOptionsBottomSheet(
+          context: context,
+          options: {
+            Text('Copy text'): (context) => copyToClipboard(widget.post.bodyHtml!)
+          }
+        );
+      },
       child: RawScrollbar(
         controller: _scrollController,
         padding: EdgeInsets.zero,
@@ -693,30 +736,48 @@ class _PostBodyState extends State<_PostBody> with SingleTickerProviderStateMixi
                   if (!_canExpand) {
                     return const LinearGradient(colors: [Colors.transparent, Colors.transparent]).createShader(bounds);
                   }
-                  final strength = (1.0 - _animation.value) * _fadingEdgeVisibility;
+                  final strength = (1.0 - _animation.value) * _fadingEdgeStrength;
                   return LinearGradient(
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [Colors.transparent, Theme.of(context).colorScheme.surface.withAlpha((255 * strength).toInt())],
-                    stops: [_postBodyCollapsedFadingEdgeRatio, _postBodyCollapsedFadingEdgeRatio + ((1 - _postBodyCollapsedFadingEdgeRatio) * strength)],
+                    stops: [_postBodyCollapsedFadingEdgeRatio, _postBodyCollapsedFadingEdgeRatio + (1 - _postBodyCollapsedFadingEdgeRatio) * strength],
                   ).createShader(bounds);
                 },
                 blendMode: BlendMode.dstOut,
-                child: SingleChildScrollView(
-                  physics: _canExpand && _animation.value == 0 ? const AlwaysScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
-                  controller: _scrollController,
-                  child: Padding(
-                    padding: const EdgeInsets.all(8),
-                    child: child,
-                  )
+                child: NotificationListener<ScrollMetricsNotification>(
+                  onNotification: (notification) {
+                    if (!_canExpand && _scrollController.hasClients && _scrollController.position.maxScrollExtent > 0) {
+                      setState(() {
+                        _canExpand = true;
+                        _fadingEdgeStrength = _getFadingEdgeStrength();
+                      });
+                    }
+                    return false;
+                  },
+                  child: SingleChildScrollView(
+                    physics: _canExpand && _animation.value == 0 ? const AlwaysScrollableScrollPhysics() : const NeverScrollableScrollPhysics(),
+                    controller: _scrollController,
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: child,
+                    )
+                  ),
                 ),
               )
             );
           },
           child: RepaintBoundary(
             child: CustomHtml(
-              platformContext: widget.post.community.platformContext,
-              html: widget.post.textHtml!
+              platformContext: widget.platformContext,
+              html: widget.post.bodyHtml!,
+              loadingBuilder: (context) {
+                return const CustomCircularProgressIndicator(
+                  alignment: Alignment.center,
+                  padding: EdgeInsets.all(16),
+                  size: 40,
+                );
+              },
             )
           )
         )
@@ -753,8 +814,8 @@ class _LoadMoreCommentsState extends State<_LoadMoreComments> {
       onTap = null;
       child = const CustomCircularProgressIndicator(
         alignment: Alignment.topLeft,
+        padding: EdgeInsets.symmetric(horizontal: 2.5),
         size: 20,
-        strokeWidth: 2.5
       );
     }
     else {

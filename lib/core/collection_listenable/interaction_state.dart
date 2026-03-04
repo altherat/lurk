@@ -17,12 +17,9 @@ class InteractionStateCollectionListenable extends CollectionListenable<(String?
   void updateVote(String? userId, String id, bool? newVote) {
     final key = (userId, id);
     final currentState = _states[key];
-    if (currentState?.score == null) {
-      return;
-    }
-    final bool? oldVote = currentState!.vote;
+    final bool? oldVote = currentState?.vote;
     _states[key] = InteractionState(
-      score: currentState.score! + (newVote == true ? 1 : (newVote == false ? -1 : 0)) - (oldVote == true ? 1 : (oldVote == false ? -1 : 0)),
+      score: currentState != null && currentState.score != null ? currentState.score! + (newVote == true ? 1 : (newVote == false ? -1 : 0)) - (oldVote == true ? 1 : (oldVote == false ? -1 : 0)) : null,
       vote: newVote
     );
     notifyListeners(key);

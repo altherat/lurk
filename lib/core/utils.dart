@@ -1,13 +1,20 @@
 import 'dart:io';
+import 'dart:io' as io;
 
+import 'package:android_intent_plus/android_intent.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:gal/gal.dart';
+import 'package:lurk/app.dart';
+import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/extensions.dart';
+import 'package:lurk/core/flavors.dart';
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/platform_context.dart';
 import 'package:lurk/models/post.dart';
+import 'package:lurk/models/user.dart';
+import 'package:lurk/services/api.dart';
 import 'package:lurk/services/communities.dart';
 import 'package:lurk/screens/image_gallery_viewer.dart';
 import 'package:lurk/screens/image_viewer.dart';
@@ -19,27 +26,172 @@ import 'package:lurk/screens/web_viewer.dart';
 import 'package:lurk/services/user_manager.dart';
 import 'package:lurk/widgets/snack_bar_progress_content.dart';
 import 'package:path_provider/path_provider.dart';
-import 'package:url_launcher/url_launcher.dart';
 
-Future<void> openInBrowser(String url) => launchUrl(Uri.parse(url), mode: LaunchMode.externalApplication);
+ApiService getApi(PlatformContext platformContext, LoggedInUser? activeUser) => activeUser != null ? Platform.getApi(activeUser.platform, activeUser.host, activeUser.id) : Platform.getApi(platformContext.platform, platformContext.host, null);
 
-Future<void> navigate(BuildContext context, PlatformContext platformContext, String? communityName, String url, {Post? post}) async {
+Future<void> openInBrowser(String url) async {
+  if (io.Platform.isAndroid) {
+    final String? defaultBrowserPackageName = await MethodChannel('lurk/navigation').invokeMethod('getDefaultBrowserPackageName');
+    if (defaultBrowserPackageName != null) {
+      return AndroidIntent(
+        action: 'action_view',
+        data: url,
+        package: defaultBrowserPackageName,
+      ).launch();
+    }
+  }
+}
+
+Future<T?> navigateUri<T>(BuildContext context, Uri uri) async {
+
+  final url = uri.toString();
+
+  String getHost(Platform platform) => platform.preferredHost ?? uri.host.toLowerCase().replaceFirst('www.', '');
+
+  for (final platform in F.appFlavor.platforms) {
+
+    if (platform.communityUrlRegex != null) {
+      final match = RegExp(platform.communityUrlRegex!).firstMatch(url);
+      if (match != null) {
+        return navigatorKey.currentContext?.push(() {
+          return CommunityScreen(
+            community: Community(
+              platform: platform,
+              host: getHost(platform),
+              name: match.namedGroup('communityName')?.toLowerCase()
+            )
+          );
+        });
+      }
+    }
+
+    if (platform.postDetailsUrlRegex != null) {
+      final match = RegExp(platform.postDetailsUrlRegex!).firstMatch(url);
+      if (match != null) {
+        final host = getHost(platform);
+        return navigatorKey.currentContext?.push(() {
+          return PostDetailsScreen.fromUrl(
+            platformContext: PlatformContext(
+              platform: platform,
+              host: host,
+            ),
+            community: Community(
+              platform: platform,
+              host: _getNamedGroupIfPresent(match, 'communityHostName') ?? host,
+              name: _getNamedGroupIfPresent(match, 'communityName')?.toLowerCase()
+            ),
+            url: url,
+            postId: match.namedGroup('postId')!,
+            contextCommentShortId: _getNamedGroupIfPresent(match, 'commentId'),
+            titleSlug: _getNamedGroupIfPresent(match, 'slug'),
+          );
+        });
+      }
+    }
+
+    if (platform.userDetailsUrlRegex != null) {
+      final match = RegExp(platform.userDetailsUrlRegex!).firstMatch(url);
+      if (match != null) {
+        final host = getHost(platform);
+        return navigatorKey.currentContext?.push(() {
+          return UserDetailsScreen(
+            platformContext: PlatformContext(
+              platform: platform,
+              host: host,
+            ),
+            user: User(
+              platform: platform,
+              host: _getNamedGroupIfPresent(match, 'userHostName') ?? host,
+              name: match.namedGroup('userName')!,
+            )
+          );
+        });
+      }
+    }
+
+    if (platform.imageUrlRegex != null) {
+      final match = RegExp(platform.imageUrlRegex!).firstMatch(url);
+      if (match != null) {
+        return navigatorKey.currentContext?.push(() {
+          return ImageViewerScreen(
+            platformContext: PlatformContext(
+              platform: platform,
+              host: getHost(platform),
+            ),
+            url: url,
+          );
+        });
+      }
+    }
+
+    if (platform.videoUrlRegex != null) {
+      final match = RegExp(platform.videoUrlRegex!).firstMatch(url);
+      if (match != null) {
+        return navigatorKey.currentContext?.push(() {
+          return VideoViewerScreen(
+            platformContext: PlatformContext(
+              platform: platform,
+              host: getHost(platform),
+            ),
+            url: url,
+          );
+        });
+      }
+    }
+
+    if (platform.imageGalleryUrlRegex != null) {
+      final match = RegExp(platform.imageGalleryUrlRegex!).firstMatch(url);
+      if (match != null) {
+        return navigatorKey.currentContext?.push(() {
+          return ImageGalleryViewerScreen(
+            platformContext: PlatformContext(
+              platform: platform,
+              host: getHost(platform),
+            ),
+            url: url,
+            postId: match.namedGroup('postId')!,
+          );
+        });
+      }
+    }
+
+    if (platform.unresolvedPostDetailsUrlRegex != null) {
+      final match = RegExp(platform.unresolvedPostDetailsUrlRegex!).firstMatch(url);
+      if (match != null) {
+        final resolvedUrl = await _resolveUrlFromRedirect(platform, url);
+        if (resolvedUrl != null) {
+          if (context.mounted) {
+            return navigateUri<T>(context, Uri.parse(resolvedUrl));
+          }
+        }
+      }
+    }
+    
+  }
+
+  return null;
+}
+
+Future<T?> navigateWithContext<T>(BuildContext context, PlatformContext platformContext, String url, {Post? post}) async {
+
   final uri = Uri.tryParse(url);
-  if (uri == null) return;
+  if (uri == null) {
+    return null;
+  }
 
   var host = uri.host;
-  if (host.isEmpty) return;
+  if (host.isEmpty) {
+    return null;
+  }
 
   host = host.toLowerCase();
-
   final path = uri.path;
   final pathLowerCase = path.toLowerCase();
 
-  if (host == 'i.redd.it' || host.endsWith('.imgix.net') || pathLowerCase.endsWith('.jpg') || pathLowerCase.endsWith('.jpeg') || pathLowerCase.endsWith('.png') || pathLowerCase.endsWith('.gif') || pathLowerCase.endsWith('.webp')) {
+  if (pathLowerCase.endsWith('.jpg') || pathLowerCase.endsWith('.jpeg') || pathLowerCase.endsWith('.png') || pathLowerCase.endsWith('.gif') || pathLowerCase.endsWith('.webp')) {
     return context.push(() {
       return ImageViewerScreen(
         platformContext: platformContext,
-        communityName: communityName,
         url: url,
         post: post,
         size: post?.mediaSize
@@ -47,26 +199,10 @@ Future<void> navigate(BuildContext context, PlatformContext platformContext, Str
     });
   }
 
-  if (host == 'giphy.com' || host == 'www.giphy.com') {
-    final directGiphyUrl = getGiphyDirectUrl(url);
-    if (directGiphyUrl != null) {
-      return context.push(() {
-        return ImageViewerScreen(
-          platformContext: platformContext,
-          communityName: communityName,
-          url: directGiphyUrl,
-          post: post,
-          size: post?.mediaSize
-        );
-      });
-    }
-  }
-
-  if (uri.host == 'v.redd.it' || pathLowerCase.endsWith('.mp4') || pathLowerCase.endsWith('.mov')) {
+  if (pathLowerCase.endsWith('.mp4') || pathLowerCase.endsWith('.mov')) {
     return context.push(() {
       return VideoViewerScreen(
         platformContext: platformContext,
-        communityName: communityName,
         url: url,
         post: post
       );
@@ -75,99 +211,120 @@ Future<void> navigate(BuildContext context, PlatformContext platformContext, Str
 
   final hostWithoutWww = host.replaceFirst('www.', '');
 
+  if (hostWithoutWww == 'giphy.com') {
+    final directGiphyUrl = getGiphyDirectUrl(url);
+    if (directGiphyUrl != null) {
+      return context.push(() {
+        return ImageViewerScreen(
+          platformContext: platformContext,
+          url: directGiphyUrl,
+          post: post,
+          size: post?.mediaSize
+        );
+      });
+    }
+  }
+
   bool matchesHost(String host) => host == hostWithoutWww || host.replaceFirst('www.', '') == hostWithoutWww;
 
   final Platform? resolvedPlatform = matchesHost(platformContext.host) ? platformContext.platform
-    : Platform.values.firstWhereOrNull((platform) => platform.host != null && matchesHost(platform.host!))
-    ?? Communities.saved.value.firstWhereOrNull((community) => matchesHost(community.platformContext.host))?.platformContext.platform
-    ?? UserManager.loggedInUsers.value.firstWhereOrNull((user) => matchesHost(user.platformContext.host))?.platformContext.platform;
+    : Platform.values.firstWhereOrNull((platform) => platform.hosts?.any((host) => matchesHost(host)) ?? false)
+    ?? Communities.saved.value.firstWhereOrNull((community) => matchesHost(community.host))?.platform
+    ?? UserManager.loggedInUsersListenable.value.firstWhereOrNull((user) => matchesHost(user.host))?.platform;
 
   if (resolvedPlatform != null) {
 
-    final communityName = resolvedPlatform.getCommunityNameFromPath(path);
-    if (communityName != null) {
+    RegExpMatch? match = RegExp(resolvedPlatform.communityPathRegex).firstMatch(path);
+    if (match != null) {
       return context.push(() {
         return CommunityScreen(
           community: Community(
             platform: resolvedPlatform,
-            host: host,
-            name: communityName
+            host: _getNamedGroupIfPresent(match!, 'communityHostName') ?? host,
+            name: match.namedGroup('communityName')!.toLowerCase(),
           )
         );
       });
     }
 
-    final userName = resolvedPlatform.getUserNameFromPath(path);
-    if (userName != null) {
+    match = RegExp(resolvedPlatform.userDetailsPathRegex).firstMatch(path);
+    if (match != null) {
+      host = _getNamedGroupIfPresent(match, 'userHostName') ?? host;
       return context.push(() {
         return UserDetailsScreen(
           platformContext: PlatformContext(
             platform: resolvedPlatform,
             host: host,
           ),
-          username: userName
+          user: User(
+            platform: resolvedPlatform,
+            host: host,
+            name: match!.namedGroup('userName')!,
+          )
         );
       });
     }
 
-    final postUrlInfo = resolvedPlatform.getPostUrlInfoFromPath(path);
-    if (postUrlInfo != null) {
+    match = RegExp(resolvedPlatform.postDetailsPathRegex).firstMatch(path);
+    if (match != null) {
       return context.push(() {
         return PostDetailsScreen.fromUrl(
           platformContext: PlatformContext(
             platform: resolvedPlatform,
             host: host,
           ),
-          url: url,
-          urlInfo: postUrlInfo,
-        );
-      });
-    }
-
-    if (resolvedPlatform.isGallery(path)) {
-      return context.push(() {
-        return ImageGalleryViewerScreen(
-          platformContext: PlatformContext(
+          community: Community(
             platform: resolvedPlatform,
             host: host,
+            name: _getNamedGroupIfPresent(match!, 'communityName')?.toLowerCase(),
           ),
-          communityName: communityName,
-          post: post,
-          url: url
+          url: url,
+          postId: match.namedGroup('postId')!,
+          contextCommentShortId: _getNamedGroupIfPresent(match, 'commentId'),
+          titleSlug: _getNamedGroupIfPresent(match, 'slug')
         );
       });
     }
 
-    if (resolvedPlatform.isUnresolved(path)) {
-      final client = HttpClient();
-      try {
-        final request = await client.getUrl(Uri.parse(url));
-        request.followRedirects = false; 
-        request.headers.set('User-Agent', resolvedPlatform.savedOrDefaultUserAgent);
-        final response = await request.close();
-        if (response.statusCode == 301) {
-          final resolvedUrl = response.headers.value('location');
-          if (context.mounted && resolvedUrl != null) {
-            return navigate(context, platformContext, communityName, resolvedUrl, post: post);
-          }
-        }
-      }
-      finally {
-        client.close();
+    if (resolvedPlatform.imageGalleryPathRegex != null) {
+      match = RegExp(resolvedPlatform.imageGalleryPathRegex!).firstMatch(path);
+      if (match != null) {
+        return context.push(() {
+          return ImageGalleryViewerScreen(
+            platformContext: PlatformContext(
+              platform: resolvedPlatform,
+              host: _getNamedGroupIfPresent(match!, 'hostName') ?? host,
+            ),
+            postId: match.namedGroup('postId')!,
+            url: url
+          );
+        });
       }
     }
+
+    if (resolvedPlatform.unresolvedPostDetailsPathRegex != null) {
+      match = RegExp(resolvedPlatform.unresolvedPostDetailsPathRegex!).firstMatch(path);
+      if (match != null) {
+        final resolvedUrl = await _resolveUrlFromRedirect(resolvedPlatform, url);
+        if (resolvedUrl != null && context.mounted) {
+          return navigateWithContext<T>(context, platformContext, resolvedUrl);
+        }
+      }
+    }
+    
   }
 
-  if (!context.mounted) return;
+  if (!context.mounted) {
+    return null;
+  }
 
-  return context.push(
-    () => WebViewerScreen(
+  return context.push(() {
+    return WebViewerScreen(
       platformContext: platformContext,
-      communityName: communityName,
       post: post,
       url: url,
-    )
-  );
+    );
+  });
   
 }
 
@@ -339,13 +496,13 @@ Future<String> downloadMediaToTemp(String path, String userAgent) async {
 
 Future<void> saveImage({
   required BuildContext context,
-  required Platform platform,
+  required Platform? platform,
   required String url,
 }) => saveMedia(
   context: context,
   snackbarMediaTypeMessage: 'image',
   save: () async {
-    final filePath = await downloadMediaToTemp(url, platform.savedOrDefaultUserAgent);
+    final filePath = await downloadMediaToTemp(url, platform?.savedOrDefaultUserAgent ?? Constants.defaultUserAgent);
     await Gal.putImage(filePath);
   }
 );
@@ -420,4 +577,23 @@ String debugTruncateLongString(String? longString, [int maxLength = 10]) {
     return 'null';
   }
   return longString.length > maxLength ? '${longString.substring(0, maxLength ~/ 2)}...${longString.substring(longString.length - maxLength ~/ 2)}' : longString;
+}
+
+String? _getNamedGroupIfPresent(RegExpMatch match, String name) => match.groupNames.contains(name) ? match.namedGroup(name) : null;
+
+Future<String?> _resolveUrlFromRedirect(Platform platform, String url) async {
+  final client = HttpClient();
+  try {
+    final request = await client.getUrl(Uri.parse(url));
+    request.followRedirects = false; 
+    request.headers.set('User-Agent', platform.savedOrDefaultUserAgent);
+    final response = await request.close();
+    if (response.statusCode == 301) {
+      return response.headers.value('location');
+    }
+  }
+  finally {
+    client.close();
+  }
+  return null;
 }

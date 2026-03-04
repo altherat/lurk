@@ -52,3 +52,27 @@ class F {
   static String get name => appFlavor.name;
 
 }
+
+const Community redditPopular = Community(
+  platform: Platform.reddit,
+  name: 'popular',
+  host: 'www.reddit.com',
+);
+
+const Community redditAll = Community(
+  platform: Platform.reddit,
+  name: 'all',
+  host: 'www.reddit.com',
+);
+
+const Community diggFrontPage = Community(
+  platform: Platform.digg,
+  name: null,
+  host: 'digg.com',
+);
+
+const Community lemmyFrontPage = Community(
+  platform: Platform.lemmy,
+  name: null,
+  host: 'lemmy.world',
+);

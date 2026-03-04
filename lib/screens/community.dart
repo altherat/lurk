@@ -2,9 +2,10 @@ import 'dart:developer' as dev;
 import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:lurk/core/extensions.dart';
-import 'package:lurk/core/platforms.dart';
+import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/community_details.dart';
+import 'package:lurk/models/platform_context.dart';
 import 'package:lurk/services/communities.dart';
 import 'package:lurk/screens/feed.dart';
 import 'package:lurk/services/settings.dart';
@@ -17,7 +18,7 @@ import 'package:lurk/widgets/icon_message.dart';
 import 'package:lurk/widgets/post_tile.dart';
 import 'package:lurk/widgets/stat.dart';
 
-class CommunityScreen extends StatefulWidget {
+class CommunityScreen extends StatelessWidget {
 
   final Community community;
   final GlobalKey<MainScaffoldState>? scaffoldKey;
@@ -29,59 +30,52 @@ class CommunityScreen extends StatefulWidget {
   });
 
   @override
-  State<CommunityScreen> createState() => _CommunityScreenState();
-
-}
-
-class _CommunityScreenState extends State<CommunityScreen> {
-
-  @override
   Widget build(BuildContext context) {
-    final isCurated = widget.community.name == null;
-    final isCuratedAndPlatformSupportsMultipleHosts = isCurated && widget.community.platformContext.platform.supportsMultipleHosts;
+    final platformContext = PlatformContext.fromCommunity(community);
+    final isUserCurated = community.name == null;
     return FeedScreen(
-      scaffoldKey: widget.scaffoldKey,
-      platformContext: widget.community.platformContext,
-      activeCommunityName: widget.community.nameAndMaybeHost,
-      isCurated: isCurated,
-      fetchItems: (options, pageToken) async {
-        final result = await Platform.getApi(widget.community.platformContext, isCuratedAndPlatformSupportsMultipleHosts ? null : UserManager.getActiveUser(widget.community.platformContext.platform).value).fetchCommunityPosts(
-          widget.community.nameAndMaybeHost,
-          options: options,
-          pageToken: pageToken,
-        );
-        return result;
-      },
-      title: isCurated && widget.community.platformContext.platform.rootCommunityName != null
-        ? Text(widget.community.platformContext.platform.rootCommunityName!)
+      scaffoldKey: scaffoldKey,
+      platformContext: platformContext,
+      activeCommunity: community,
+      isUserCurated: isUserCurated,
+      fetchItems: (options, pageToken) => getApi(platformContext, UserManager.getActiveUser(community.platform, isUserCurated ? community.host : null)).fetchCommunityPosts(community.name != null ? community.nameAndMaybeHost : null, pageToken, options),
+      title: isUserCurated && community.platform.rootCommunityName != null
+        ? Text(community.platform.rootCommunityName!)
         : ValueListenableBuilder(
             valueListenable: Settings.showPlatformColorTextAccents,
             builder: (context, showPlatformColorTextAccents, child) {
               return CommunityNameText(
-                community: widget.community,
-                prefixColor: showPlatformColorTextAccents ? widget.community.platformContext.platform.color : null,
+                community: community,
+                prefixColor: showPlatformColorTextAccents ? community.platform.color : null,
                 applyAppBarAlpha: true,
               );
             },
           ),
-      userFilter: isCuratedAndPlatformSupportsMultipleHosts ? (user) => user.platformContext.host == widget.community.platformContext.host : null,
-      popupMenuActions: !isCurated && !(widget.community.platformContext.platform.aggregateCommunityNames?.contains(widget.community.name) ?? false)
+      userFilter: isUserCurated && community.platform.supportsMultipleHosts ? (user) => user.host == community.host : null,
+      popupMenuActions: !isUserCurated && !(community.platform.aggregateCommunityNames?.contains(community.name) ?? false)
         ? {
-            Text('Info'): (context) => showModalBottomSheet(
-              context: context,
-              showDragHandle: true,
-              isScrollControlled: true,
-              builder: (context) {
-                return _CommunityInfoBottomSheet(community: widget.community);
-              }
-            ),
+            Text('Info'): (context) {
+              showModalBottomSheet(
+                context: context,
+                showDragHandle: true,
+                isScrollControlled: true,
+                builder: (context) {
+                  return _CommunityInfoBottomSheet(
+                    platformContext: platformContext,
+                    community: community
+                  );
+                }
+              );
+            },
           }
         : null,
-      feedOptions:(isCurated ? widget.community.platformContext.platform.curatedPostsFeedOptions : null) ?? widget.community.platformContext.platform.postsFeedOptions,
+      feedOptions:(isUserCurated ? community.platform.curatedPostsFeedOptions : null) ?? community.platform.postsFeedOptions,
       itemBuilder: (context, index, post) {
         return PostTile(
+          platformContext: platformContext,
           post: post,
-          showViewCommunityOption: post.community != widget.community,
+          activeUserHostRestriction: isUserCurated ? community.host : null,
+          showViewCommunityOption: post.community.host != community.host || post.community.name != community.name,
           subtitle: PostTileCommentHistorySubtitle(
             post: post,
             extraTexts: [
@@ -99,14 +93,15 @@ class _CommunityScreenState extends State<CommunityScreen> {
       },
     );
   }
-
 }
 
 class _CommunityInfoBottomSheet extends StatefulWidget {
 
+  final PlatformContext platformContext;
   final Community community;
 
   const _CommunityInfoBottomSheet({
+    required this.platformContext,
     required this.community,
   });
 
@@ -123,31 +118,31 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
   @override
   void initState() {
     super.initState();
-    _detailsFuture = Platform.getApi(widget.community.platformContext, UserManager.getActiveUser(widget.community.platformContext.platform).value).fetchCommunityDetails(widget.community.name!);
+    _detailsFuture = getApi(widget.platformContext, UserManager.getActiveUser(widget.platformContext.platform)).fetchCommunityDetails(widget.community.nameAndMaybeHost!);
     _detailsFuture.then((details) {
-      final activeUser = UserManager.getActiveUser(widget.community.platformContext.platform).value;
-      if (activeUser != null && mounted) {
+      final activeUser = UserManager.getActiveUser(widget.platformContext.platform);
+      if (activeUser != null && activeUser.platform == widget.platformContext.platform && mounted) {
         setState(() {
-          _isSubscribed = Communities.isSubscribed(widget.community.platformContext.platform, activeUser.id, widget.community.name!);
+          _isSubscribed = Communities.isSubscribed(activeUser, widget.community.id!);
         });
       }
     });
   }
 
   Future<void> _toggleSubscription(String userId, String communityId) async {
-    final activeUser = UserManager.getActiveUser(widget.community.platformContext.platform).value;
+    final activeUser = UserManager.getActiveUser(widget.platformContext.platform);
     try {
       if (_isSubscribed!) {
         setState(() {
           _isSubscribed = false;
         });
-        await Platform.getApi(widget.community.platformContext, activeUser).unsubscribeFromCommunity(widget.community.name!, communityId);
+        await getApi(widget.platformContext, activeUser).unsubscribeFromCommunity(communityId);
       }
       else {
         setState(() {
           _isSubscribed = true;
         });
-        await Platform.getApi(widget.community.platformContext, activeUser).subscribeToCommunity(widget.community.name!, communityId);
+        await getApi(widget.platformContext, activeUser).subscribeToCommunity(communityId);
       }
     }
     catch (error, stackTrace) {
@@ -207,7 +202,6 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
                             return const CustomCircularProgressIndicator(
                               alignment: Alignment.center,
                               size: 48,
-                              strokeWidth: 5,
                               color: Colors.white,
                             );
                           default:
@@ -219,7 +213,7 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
                 Padding(
                   padding: const EdgeInsets.all(16),
                   child: ValueListenableBuilder(
-                    valueListenable: UserManager.getActiveUser(widget.community.platformContext.platform),
+                    valueListenable: UserManager.getActiveUserListenable(widget.platformContext.platform),
                     builder: (context, activeUser, child) {
                       return Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -246,7 +240,6 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
                                             return const CustomCircularProgressIndicator(
                                               alignment: Alignment.center,
                                               size: 32,
-                                              strokeWidth: 4,
                                               color: Colors.white,
                                             );
                                           default:
@@ -273,7 +266,7 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
                           if (activeUser != null) ...[
                             const SizedBox(height: 24),
                             InkWell(
-                              onTap: () => _toggleSubscription(activeUser.id, details.id!),
+                              onTap: () => _toggleSubscription(activeUser.id, widget.community.id!),
                               child: AnimatedContainer(
                                 duration: const Duration(milliseconds: 200),
                                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -320,7 +313,7 @@ class _CommunityInfoBottomSheetState extends State<_CommunityInfoBottomSheet> {
                           if (details.longDescriptionHtml != null) ...[
                             const SizedBox(height: 24),
                             CustomHtml(
-                              platformContext: details.community.platformContext,
+                              platformContext: widget.platformContext,
                               html: details.longDescriptionHtml!,
                             ),
                           ],

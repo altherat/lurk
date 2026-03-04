@@ -53,9 +53,10 @@ dependencies:
   gal: ^2.3.2
   sqlite3_flutter_libs: ^0.5.41
   html: ^0.15.6
-  url_launcher: ^6.3.2
   markdown: ^7.3.0
   flutter_secure_storage: ^10.0.0
+  app_links: ^7.0.0
+  android_intent_plus: ^6.0.0
 
 dev_dependencies:
   flutter_test:

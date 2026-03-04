@@ -3,7 +3,6 @@ import 'package:lurk/models/community.dart';
 class CommunityDetails {
 
   final Community community;
-  final String? id;
   final DateTime? createdDate;
   final String? title;
   final String? shortDescription;
@@ -18,7 +17,6 @@ class CommunityDetails {
 
   const CommunityDetails({
     required this.community,
-    this.id,
     this.createdDate,
     this.title,
     this.shortDescription,

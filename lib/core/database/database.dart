@@ -46,8 +46,8 @@ class Database extends _$Database {
             communities,
             F.appFlavor.defaultCommunities.map((community) {
               return CommunitiesCompanion.insert(
-                platform: community.platformContext.platform,
-                host: community.platformContext.host,
+                platform: community.platform,
+                host: community.host,
                 name: community.name
               );
             })
@@ -130,8 +130,8 @@ class Database extends _$Database {
     return into(users)
       .insertOnConflictUpdate(
         UsersCompanion.insert(
-          platform: user.platformContext.platform,
-          host: user.platformContext.host,
+          platform: user.platform,
+          host: user.host,
           hostIconUrl: Value(user.hostIconUrl),
           id: user.id,
           name: user.name,
@@ -172,8 +172,8 @@ class Database extends _$Database {
   Future<int> saveCommunity(Community community) {
     return into(communities).insert(
       CommunitiesCompanion.insert(
-        platform: community.platformContext.platform,
-        host: community.platformContext.host,
+        platform: community.platform,
+        host: community.host,
         name: community.name,
         isFavorite: Value(community.isFavorite),
         id: Value(community.id),
@@ -187,8 +187,8 @@ class Database extends _$Database {
       batch.insertAll(
         this.communities, 
         communities.map((community) => CommunitiesCompanion.insert(
-          platform: community.platformContext.platform,
-          host: community.platformContext.host,
+          platform: community.platform,
+          host: community.host,
           name: community.name,
           isFavorite: Value(community.isFavorite),
           id: Value(community.id),
@@ -201,7 +201,7 @@ class Database extends _$Database {
   Future<void> deleteCommunity(Community community) {
     return ( delete(communities)
       ..where((c) => 
-        c.platform.equals(community.platformContext.platform.name) & 
+        c.platform.equals(community.platform.name) & 
         c.name.equals(community.name ?? '')
       )
     ).go();
@@ -222,68 +222,86 @@ class Database extends _$Database {
     );
   }
 
-  Future<void> saveCommunitySubscription(Platform platform, String userId, String communityName) {
+  Future<void> saveCommunitySubscription(Platform platform, String host, String userId, String communityId) {
     return into(userCommunities).insert(
       UserCommunitiesCompanion.insert(
         platform: platform,
+        host: host,
         userId: userId,
-        communityName: communityName,
+        communityId: communityId,
       ),
       mode: InsertMode.insertOrIgnore,
     );
   }
 
-  Future<void> saveAllCommunitySubscriptions(Platform platform, String userId, Iterable<String> communityNames) {
+  Future<void> saveAllCommunitySubscriptions(Platform platform, String host, String userId, Iterable<String> communityIds) {
     return batch((batch) {
       batch.insertAll(
         userCommunities,
-        communityNames.map((name) => UserCommunitiesCompanion.insert(
-          platform: platform,
-          userId: userId,
-          communityName: name,
-        )).toList(),
+        communityIds.map((communityId) {
+          return UserCommunitiesCompanion.insert(
+            platform: platform,
+            host: host,
+            userId: userId,
+            communityId: communityId,
+          );
+        }).toList(),
         mode: InsertMode.insertOrIgnore,
       );
     });
   }
 
-  Future<void> deleteCommunitySubscription(Platform platform, String userId, String communityName) {
+  Future<void> deleteCommunitySubscription(Platform platform, String host, String userId, String communityId) {
     return (
       delete(userCommunities)
         ..where((t) => 
           t.platform.equalsValue(platform) & 
+          t.host.equals(host) & 
           t.userId.equals(userId) & 
-          t.communityName.equals(communityName)
+          t.communityId.equals(communityId)
         )
     ).go();
   }
 
-  Future<List<String>> getSubscribedCommunityNames(Platform platform, String userId) {
+  Future<List<String>> getSubscribedCommunityIds(Platform platform, String host, String userId) {
     return (
       select(userCommunities)
-        ..where((t) => t.platform.equalsValue(platform) & t.userId.equals(userId))
-    ).map((row) => row.communityName).get();
+        ..where((t) => t.platform.equalsValue(platform) & t.host.equals(host) & t.userId.equals(userId))
+    ).map((row) => row.communityId).get();
   }
 
-  Future<List<Community>> getSubscribedCommunities(Platform platform, String userId) {
+  Future<List<Community>> getSubscribedCommunities(Platform platform, String host, String userId) {
     return (
       select(userCommunities)
-        ..where((t) => t.platform.equalsValue(platform) & t.userId.equals(userId))
+        ..where((t) => t.platform.equalsValue(platform) & t.host.equals(host) & t.userId.equals(userId))
     ).join([
       innerJoin(communities, 
         communities.platform.equalsExp(userCommunities.platform) & 
-        communities.name.equalsExp(userCommunities.communityName)
+        communities.host.equalsExp(userCommunities.host) & 
+        communities.id.equalsExp(userCommunities.communityId)
       )
     ]).map((row) => row.readTable(communities)).get();
   }
 
-  Future<Map<(Platform, String), Set<String>>> getAllSubscribedCommunities() async {
+  Future<Map<(Platform, String, String), Set<String>>> getAllSubscribedCommunityIds() async {
     final rows = await select(userCommunities).get();
-    final Map<(Platform, String), Set<String>> result = {};
+    final Map<(Platform, String, String), Set<String>> result = {};
     for (final row in rows) {
-      result.putIfAbsent((row.platform, row.userId), () => {}).add(row.communityName);
+      (result[(row.platform, row.host, row.userId)] ??= {}).add(row.communityId);
     }
     return result;
   }
 
+}
+
+class EmptyStringConverter extends TypeConverter<String?, String> {
+
+  const EmptyStringConverter();
+
+  @override
+  String? fromSql(String from) => from.isEmpty ? null : from;
+
+  @override
+  String toSql(String? to)=> to ?? '';
+  
 }

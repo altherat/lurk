@@ -7,53 +7,57 @@ class Post {
 
   final Community community;
   final String localId;
+  final String localHost;
   final String shortLocalId;
-  final String? globalId;
-  final String permalink;
+  final String globalId;
+  final String localUrlPath;
+  final String? authorId;
+  final String? authorHost;
+  final String? authorName;
+  final ContentType? contentType;
   final int score;
   final int timestampMs;
   final String title;
-  final String? textHtml;
-  final String? author;
-  final String? authorHost;
+  final String? body;
+  final String? bodyHtml;
   final int commentCount;
-  final String url;
-  final String domain;
+  final String? linkUrl;
+  final String linkDomain;
   final String? thumbnailUrl;
-  final bool isDeleted;
-  final bool isStickied;
-  final bool isSelf;
-  final bool isNsfw;
-  final bool isGallery;
   final Size? mediaSize;
-  final List<GalleryImage> galleryImages;
+  final List<GalleryImage>? galleryImages;
+  final bool isRemoved;
+  final bool isStickied;
+  final bool isNsfw;
   final bool? vote;
 
   Post({
     required this.community,
     required this.localId,
-    String? shortLocalId,
-    this.globalId,
-    required this.permalink,
+    required this.localHost,
+    required this.shortLocalId,
+    required this.globalId,
+    required this.localUrlPath,
+    required this.authorId,
+    required this.authorHost,
+    required this.authorName,
+    required this.contentType,
     required this.score,
     required this.timestampMs,
     required this.title,
-    required this.textHtml,
-    required this.author,
-    required this.authorHost,
+    required this.body,
+    required this.bodyHtml,
     required this.commentCount,
-    required this.url,
-    required this.domain,
-    this.thumbnailUrl,
-    this.isStickied = false,
-    required this.isDeleted,
-    required this.isSelf,
-    required this.isNsfw,
-    required this.isGallery,
+    required this.linkUrl,
+    required this.linkDomain,
+    required this.thumbnailUrl,
     required this.mediaSize,
     required this.galleryImages,
+    required this.isRemoved,
+    required this.isStickied,
+    required this.isNsfw,
     required this.vote,
-  }) : shortLocalId = shortLocalId ?? localId;
+  });
 
   String get timeAgoCompact => DateTime.fromMillisecondsSinceEpoch(timestampMs).timeAgoCompact;
 
@@ -61,6 +65,13 @@ class Post {
 
   String get commentsLabel => commentCount == 1 ? '1 comment' : '${commentCount.toCommaString()} comments';
 
+}
+
+enum ContentType {
+  local,
+  image,
+  video,
+  imageGallery,
 }
 
 class GalleryImage {

@@ -18,84 +18,89 @@ abstract class CommentItem {
 class Comment extends CommentItem {
   
   final Community community;
-  final String id;
-  final String? shortId;
-  final String permalink;
-  final bool isDeleted;
+  final String localId;
+  final String? shortLocalId;
+  final String urlPath;
   final String? authorId;
   final String? authorName;
   final String? authorHost;
+  final bool isDeleted;
   final bool isModerator;
   final bool isSubmitter;
   final int? score;
   final int timestampMs;
   final String? text;
   final String? textHtml;
-  final Map<String, Size>? images;
+  final Map<String, Size>? imageSizes;
   final bool? vote;
 
   final String? postTitle;
+  final String? postId;
 
   const Comment({
     required super.depth,
     required this.community,
-    required this.id,
-    this.shortId,
-    required this.permalink,
-    required this.isDeleted,
+    required this.localId,
+    required this.shortLocalId,
+    required this.urlPath,
     required this.authorId,
     required this.authorName,
     required this.authorHost,
+    required this.isDeleted,
     required this.isModerator,
     required this.isSubmitter,
     required this.score,
     required this.timestampMs,
     required this.text,
-    this.textHtml, 
-    this.images,
+    required this.textHtml, 
+    required this.imageSizes,
     required this.vote,
     this.postTitle,
+    this.postId,
   });
 
   Comment copyWith({
-    Community? community,
     int? depth,
-    String? id,
-    String? shortId,
-    String? permalink,
-    bool? isDeleted,
+    Community? community,
+    String? localId,
+    String? shortLocalId,
+    String? urlPath,
     String? authorId,
     String? authorName,
     String? authorHost,
+    bool? isDeleted,
     bool? isModerator,
     bool? isSubmitter,
     int? score,
     int? timestampMs,
     String? text,
     String? textHtml,
-    Map<String, Size>? images,
+    Map<String, Size>? imageSizes,
     bool? vote,
     String? postTitle,
+    String? postId,
+    String? communityName,
   }) {
     return Comment(
-      community: community ?? this.community,
       depth: depth ?? this.depth,
-      id: id ?? this.id,
-      shortId: shortId ?? this.shortId,
-      permalink: permalink ?? this.permalink,
-      isDeleted: isDeleted ?? this.isDeleted,
+      community: community ?? this.community,
+      localId: localId ?? this.localId,
+      shortLocalId: shortLocalId ?? this.shortLocalId,
+      urlPath: urlPath ?? this.urlPath,
       authorId: authorId ?? this.authorId,
       authorName: authorName ?? this.authorName,
       authorHost: authorHost ?? this.authorHost,
+      isDeleted: isDeleted ?? this.isDeleted,
       isModerator: isModerator ?? this.isModerator,
       isSubmitter: isSubmitter ?? this.isSubmitter,
       score: score ?? this.score,
       timestampMs: timestampMs ?? this.timestampMs,
       text: text ?? this.text,
       textHtml: textHtml ?? this.textHtml,
-      images: images ?? this.images,
+      imageSizes: imageSizes ?? this.imageSizes,
       vote: vote ?? this.vote,
       postTitle: postTitle ?? this.postTitle,
+      postId: postId ?? this.postId,
     );
   }
 

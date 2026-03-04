@@ -8,6 +8,7 @@ import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/utils.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/platform_context.dart';
+import 'package:lurk/models/user.dart';
 import 'package:lurk/screens/community.dart';
 import 'package:lurk/screens/image_viewer.dart';
 import 'package:lurk/screens/user_details.dart';
@@ -19,21 +20,22 @@ class CustomHtml extends StatelessWidget {
   final PlatformContext platformContext;
   final String html;
   final Map<String, Size>? imageSizes;
+  final Widget Function(BuildContext context)? loadingBuilder;
 
   const CustomHtml({
     super.key,
     required this.platformContext,
     required this.html,
     this.imageSizes,
+    this.loadingBuilder
   });
 
-  void _onLinkTap(BuildContext context, String url) => navigate(context, platformContext, null, url);
+  void _onLinkTap(BuildContext context, String url) => navigateWithContext(context, platformContext, url);
 
   void _onImageTap(BuildContext context, String url, [Size? size]) {
     context.push(() {
       return ImageViewerScreen(
         platformContext: platformContext,
-        communityName: null,
         url: url,
         size: size
       );
@@ -54,7 +56,12 @@ class CustomHtml extends StatelessWidget {
           rebuildTriggers: [showImages],
           textStyle: textStyle,
           onLoadingBuilder: (context, element, loadingProgress) {
-            return Center(child: const CircularProgressIndicator());
+            return loadingBuilder?.call(context)
+              ?? const CustomCircularProgressIndicator(
+                alignment: Alignment.topLeft,
+                padding: EdgeInsets.all(4),
+                size: 24,
+              );
           },
           customStylesBuilder: (element) {
             if (element.localName == 'p') {
@@ -169,39 +176,43 @@ class CustomHtml extends StatelessWidget {
             return null;
           },
           onTapUrl: (url) {
-
-            final communityName = platformContext.platform.getCommunityNameFromPath(url);
-            if (communityName != null) {
+            
+            RegExpMatch? match = RegExp(platformContext.platform.communityPathRegex).firstMatch(url);
+            if (match != null) {
               context.push(() {
                 return CommunityScreen(
                   community: Community(
                     platform: platformContext.platform,
-                    host: platformContext.host,
-                    name: communityName,
+                    host: match!.groupNames.contains('communityHostName') ? match.namedGroup('communityHostName')! : platformContext.host,
+                    name: match.namedGroup('communityName')!,
                   )
                 );
               });
               return true;
             }
 
-            final userName = platformContext.platform.getUserNameFromPath(url);
-            if (userName != null) {
+            match = RegExp(platformContext.platform.userDetailsPathRegex).firstMatch(url);
+            if (match != null) {
               context.push(() {
                 return UserDetailsScreen(
                   platformContext: platformContext,
-                  username: userName,
+                  user: User(
+                    platform: platformContext.platform,
+                    host: match!.groupNames.contains('userHostName') ? match.namedGroup('userHostName')! : platformContext.host,
+                    name: match.namedGroup('userName')!,
+                  ),
                 );
               });
               return true;
             }
 
-            navigate(context, platformContext, null, url);
+            _onLinkTap(context, url);
             return true;
           },
           onTapImage: (imageMetadata) {
             final url = imageMetadata.sources.firstOrNull?.url;
             if (url != null) {
-              navigate(context, platformContext, null, url);
+              _onImageTap(context, url);
             }
           },
         );

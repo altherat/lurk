@@ -1,8 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/login.dart';
-import 'package:lurk/models/platform_context.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/services/api.dart';
@@ -15,7 +13,7 @@ enum Platform {
   
   reddit(
     api: RedditApi(),
-    host: 'www.reddit.com',
+    hosts: ['www.reddit.com', 'old.reddit.com', 'reddit.com'],
     color: Color(0xFFFF4500),
     communityLabel: 'subreddit',
     communityPrefixes: ['r/'],
@@ -25,11 +23,18 @@ enum Platform {
     aggregateCommunityNames: {'all', 'popular'},
     canSearchWithinCommunities: true,
     commentImagesAHrefHosts: ['i.redd.it', 'preview.redd.it'],
-    communityPathRegex: r'^\/r\/([^\/]+)\/?$',
-    userPathRegex: r'^\/(?:u|user)\/([^\/]+)\/?$',
-    postPathRegex: r'^\/r\/([^\/]+)\/comments\/[^\/]+(?:\/([^\/]+))?\/?$',
-    galleryPathRegex: r'^\/gallery\/([^\/]+)\/?$',
-    unresolvedPathRegex: r'^\/r\/[^\/]+\/s\/[^\/]+\/?$',
+    communityUrlRegex: r'^https:\/\/((www|old)\.)?reddit\.com\/r\/(?<communityName>[a-zA-Z0-9_]{3,})\/?$',
+    communityPathRegex: r'^\/r\/(?<communityName>[a-zA-Z0-9_]{3,})\/?$',
+    postDetailsUrlRegex: r'^https:\/\/((www|old)\.)?reddit\.com\/r\/(?<communityName>[a-zA-Z0-9_]{3,})\/comments\/(?<postId>[a-z0-9]+)(?:\/(?<slug>[a-z0-9_]*))?(?:\/(?<commentId>[a-z0-9]+))?\/?$',
+    postDetailsPathRegex: r'^\/r\/(?<communityName>[a-zA-Z0-9_]{3,})\/comments\/(?<postId>[a-z0-9]+)(?:\/(?<slug>[a-z0-9_]*))?(?:\/(?<commentId>[a-z0-9]+))?\/?$',
+    userDetailsUrlRegex: r'^https:\/\/((www|old)\.)?reddit\.com\/(?:user|u)\/(?<userName>[a-zA-Z0-9_-]{3,20})\/?$',
+    userDetailsPathRegex: r'^\/(?:user|u)\/(?<userName>[a-zA-Z0-9_-]{3,20})\/?$',
+    imageGalleryUrlRegex: r'^https:\/\/((www|old)\.)?reddit\.com\/gallery\/(?<postId>[a-z0-9]+)\/?$',
+    imageGalleryPathRegex: r'^\/gallery\/(?<postId>[a-z0-9]+)\/?$',
+    imageUrlRegex: r'^https:\/\/(i|preview)\.redd\.it\/.*$',
+    videoUrlRegex: r'^https:\/\/v\.redd\.it\/.*$',
+    unresolvedPostDetailsUrlRegex: r'^https:\/\/www.reddit\.com\/r\/(?<communityName>[a-zA-Z0-9_]{3,})\/s\/[a-zA-Z0-9]+\/?$',
+    unresolvedPostDetailsPathRegex: r'^\/r\/(?<communityName>[a-zA-Z0-9_]{3,})\/s\/[a-zA-Z0-9]+\/?$',
     communityNameCleaningRegexReplacements: [(r'[^a-zA-Z0-9_]', ''), (r'_{2,}', '_'), (r'^_', '')],
     userNameCleaningRegexReplacements: [(r'[^a-zA-Z0-9_-]', ''), (r'_{2,}', '_'), (r'^_', '')],
     communityNameTypingRegex: r'^(?!_)(?!.*_{2,})[a-z0-9_]*$',
@@ -89,15 +94,19 @@ enum Platform {
 
   digg(
     api: DiggApi(),
-    host: 'digg.com',
+    hosts: ['digg.com'],
     color: Color(0xFF1F65DB),
     communityLabel: 'community',
     communityPrefixes: ['/'],
     userPrefix: '@',
     canSearchWithinCommunities: false,
-    communityPathRegex: r'^\/(?![d@]\/|@)([^\/]+)\/?$',
-    userPathRegex: r'^\/@([^\/]+)\/?$',
-    postPathRegex: r'^\/(?!d\/)([^\/]+)\/[^\/]+(?:\/([^\/]+))?\/?$',
+    communityUrlRegex: r'^^https:\/\/digg\.com\/(?!d\/)(?<communityName>[a-z0-9-]{3,24})\/?$',
+    communityPathRegex: r'^\/(?!d\/)(?<communityName>[a-z0-9-]{3,24})\/?$',
+    postDetailsUrlRegex: r'^https:\/\/digg\.com\/(?!d\/)(?<communityName>[a-z0-9-]{3,24})\/(?<postId>[a-zA-Z0-9]+)(?:\/(?:comment\/(?<commentId>[a-z0-9]+)|(?<slug>[a-z0-9-]+)))?\/?$',
+    postDetailsPathRegex: r'^\/(?!d\/)(?<communityName>[a-z0-9-]{3,24})\/(?<postId>[a-zA-Z0-9]+)(?:\/(?:comment\/(?<commentId>[a-z0-9]+)|(?<slug>[a-z0-9-]+)))?\/?$',
+    userDetailsUrlRegex: r'^https:\/\/digg\.com\/@(?<userName>[a-zA-Z0-9_-]{2,24})\/?$',
+    userDetailsPathRegex: r'^\/@(?<userName>[a-zA-Z0-9_-]{2,24})\/?$',
+    imageUrlRegex: r'^https:\/\/digg-posts-prod-\d+\.imgix\.net\/(?<communityName>[a-z-]{3,24})-(?<postId>[a-zA-Z]+)\/.*$',
     communityNameCleaningRegexReplacements: [(r'[^a-zA-Z0-9-]', ''), (r'^-', ''), (r'-$', '')],
     userNameCleaningRegexReplacements: [(r'[^a-zA-Z0-9_-]', '')],
     communityNameTypingRegex: r'^(?!-)(?!.*-{2,})[a-z0-9-]*$',
@@ -163,9 +172,9 @@ enum Platform {
     userPrefix: 'u/',
     homeCommunityHost: 'lemmy.world',
     canSearchWithinCommunities: true,
-    communityPathRegex: r'^\/c\/([^\/]+)\/?$',
-    userPathRegex: r'^\/u\/([^\/]+)\/?$',
-    postPathRegex: r'^\/post\/([0-9]+)\/?$',
+    communityPathRegex: r'^\/c\/(?<communityName>[a-z0-9._-]+)(?:@(?<communityHostName>[a-z0-9.-]+))?\/?$',
+    userDetailsPathRegex: r'^\/u\/(?<userName>[a-z0-9._-]+)(?:@(?<userHostName>[a-z0-9.-]+))?\/?$',
+    postDetailsPathRegex: r'^\/post\/(?<postId>[0-9]+)\/?$',
     communityNameCleaningRegexReplacements: [(r'[^a-zA-Z0-9._@-]', ''), (r'^[.-@]', ''), (r'@{2,}', '@'), (r'\.{2,}', '.')],
     userNameCleaningRegexReplacements: [(r'[^a-zA-Z0-9._@-]', ''), (r'^[.-@]', ''), (r'@{2,}', '@'), (r'\.{2,}', '.')],
     communityNameTypingRegex: r'^(?!.*@{2,})(?!.*\.{2,})[a-z0-9_]*(@[a-z0-9._-]*)?$',
@@ -213,11 +222,11 @@ enum Platform {
     searchWithinCommunityFeedOptions: _lemmyPostsSortFeedOptionsGroup,
   );
 
-
-  static final Map<(PlatformContext, String?), ApiService> _apiServices = {};
+  // key: (platform, host, userId)
+  static final Map<(Platform, String, String?), ApiService> _apiServices = {};
 
   final Api _api;
-  final String? host;
+  final List<String>? hosts;
   final Color color;
   final String communityLabel;
   final List<String> communityPrefixes;
@@ -228,11 +237,18 @@ enum Platform {
   final Set<String>? aggregateCommunityNames;
   final bool canSearchWithinCommunities;
   final List<String>? commentImagesAHrefHosts;
+  final String? communityUrlRegex;
   final String communityPathRegex;
-  final String userPathRegex;
-  final String postPathRegex;
-  final String? unresolvedPathRegex;
-  final String? galleryPathRegex;
+  final String? postDetailsUrlRegex;
+  final String postDetailsPathRegex;
+  final String? userDetailsUrlRegex;
+  final String userDetailsPathRegex;
+  final String? imageGalleryUrlRegex;
+  final String? imageGalleryPathRegex;
+  final String? imageUrlRegex;
+  final String? videoUrlRegex;
+  final String? unresolvedPostDetailsUrlRegex;
+  final String? unresolvedPostDetailsPathRegex;
   final List<(String, String)> communityNameCleaningRegexReplacements;
   final List<(String, String)> userNameCleaningRegexReplacements;
   final String communityNameTypingRegex;
@@ -250,7 +266,7 @@ enum Platform {
 
   const Platform({
     required Api api,
-    this.host,
+    this.hosts,
     required this.color,
     required this.communityPrefixes,
     required this.userPrefix,
@@ -259,12 +275,19 @@ enum Platform {
     this.rootCommunityName,
     this.aggregateCommunityNames,
     required this.canSearchWithinCommunities,
-    this.commentImagesAHrefHosts,
+    this.commentImagesAHrefHosts, 
+    this.communityUrlRegex,
+    this.postDetailsUrlRegex,
+    this.userDetailsUrlRegex,
+    this.imageGalleryUrlRegex,
+    this.imageGalleryPathRegex,
+    this.imageUrlRegex,
+    this.videoUrlRegex,
+    this.unresolvedPostDetailsUrlRegex,
+    this.unresolvedPostDetailsPathRegex,
     required this.communityPathRegex,
-    required this.userPathRegex,
-    required this.postPathRegex,
-    this.unresolvedPathRegex,
-    this.galleryPathRegex,
+    required this.userDetailsPathRegex,
+    required this.postDetailsPathRegex,
     required this.communityNameCleaningRegexReplacements,
     required this.userNameCleaningRegexReplacements,
     required this.communityNameTypingRegex,
@@ -282,9 +305,8 @@ enum Platform {
     required this.searchWithinCommunityFeedOptions,
   })  : _api = api;
 
-  static ApiService getApi(PlatformContext platformContext, LoggedInUser? activeUser) {
-    final activeContext = activeUser?.platformContext ?? platformContext;
-    final key = (activeContext, activeUser?.id);
+  static ApiService getApi(Platform platform, String host, String? userId) {
+    final key = (platform, host, userId);
     final existing = _apiServices[key];
     if (existing != null) {
       if (existing.isValid) {
@@ -292,24 +314,26 @@ enum Platform {
       }
       _apiServices.remove(key)?.dispose();
     }
-    final api = ApiService(activeContext.platform, activeContext.host, activeContext.platform._api, activeUser?.id);
+    final api = ApiService(platform, host, platform._api, userId);
     _apiServices[key] = api;
     return api;
   }
 
-  static void destroySession(PlatformContext platformContext, LoggedInUser? activeUser) {
-    _apiServices.remove((activeUser?.platformContext ?? platformContext, activeUser?.id))?.dispose();
+  static void destroySession(Platform platform, String host, LoggedInUser? activeUser) {
+    _apiServices.remove(activeUser != null ? (activeUser.platform, activeUser.host, activeUser.id) : (platform, host, null))?.dispose();
   }
 
   static void destroyPlatformSessions(Platform platform) {
     _apiServices.removeWhere((key, service) {
-      if (key.$1.platform == platform) {
+      if (key.$1 == platform) {
         service.dispose();
         return true;
       }
       return false;
     });
   }
+
+  String? get preferredHost => hosts?.first;
 
   String get preferredCommunityPrefix => communityPrefixes.first;
 
@@ -319,7 +343,7 @@ enum Platform {
 
   String get savedOrDefaultUserAgent => _api.savedOrDefaultUserAgent;
 
-  bool get supportsMultipleHosts => host == null;
+  bool get supportsMultipleHosts => preferredHost == null;
 
   String? getHostFromCommunityName(String? communityName) => communityName != null && hostAndNameFromSearchQueryRegex != null ? RegExp(hostAndNameFromSearchQueryRegex!).firstMatch(communityName)?.group(1) : null;
 
@@ -327,42 +351,23 @@ enum Platform {
 
   String getCommentUrl(Comment comment) => _api.getCommentUrl(comment);
 
-  String getFullCommunityName(String host, String? communityName) => _getFullName(host, preferredCommunityPrefix, communityName ?? '');
+  String getPrefixedCommunityName(String? communityName) => _getPrefixedName(preferredCommunityPrefix, communityName);
 
-  String getFullUserName(String host, String userName) => _getFullName(host, userPrefix, userName);
+  String? getCommunityNameAndMaybeHost(String host, String? communityName) => _getNameAndMaybeHost(host, communityName);
 
-  String getPrefixedUsername(String username) => '$userPrefix$username';
+  String getPrefixedCommunityNameAndMaybeHost(String host, String? communityName) => _getPrefixedNameAndMaybeHost(host, preferredCommunityPrefix, communityName);
 
-  String? getCommunityNameFromPath(String urlPath) => RegExp(communityPathRegex).firstMatch(urlPath)?.group(1);
-  
-  String? getUserNameFromPath(String urlPath) => RegExp(userPathRegex).firstMatch(urlPath)?.group(1);
+  String getPrefixedUserName(String username) => _getPrefixedName(userPrefix, username);
 
-  PostUrlInfo? getPostUrlInfoFromPath(String urlPath) {
-    final match = RegExp(postPathRegex).firstMatch(urlPath);
-    if (match != null && match.groupCount >= 1) {
-      final titleSlug = match.group(2);
-      return PostUrlInfo(
-        communityName: match.group(1)!,
-        inferredTitle: titleSlug != null ? titleSlug[0].toUpperCase() + titleSlug.substring(1).replaceAll(RegExp(r'[_-]+'), ' ') : null 
-      );
-    }
-    return null;
-  }
+  String getUserNameAndMaybeHost(String host, String userName) => '$userName${supportsMultipleHosts ? '@$host' : ''}';
 
-  bool isGallery(String urlPath) => galleryPathRegex != null && RegExp(galleryPathRegex!).hasMatch(urlPath);
+  String getPrefixedUserNameAndMaybeHost(String host, String userName) => _getPrefixedNameAndMaybeHost(host, userPrefix, userName);
 
-  bool isUnresolved(String urlPath) => unresolvedPathRegex != null && RegExp(unresolvedPathRegex!).hasMatch(urlPath);
+  String _getPrefixedName(String prefix, String? name) => '$prefix${name ?? ''}';
 
-  String _getFullName(String host, String prefix, String name) => '$prefix$name${supportsMultipleHosts ? '@$host' : ''}';
+  String? _getNameAndMaybeHost(String host, String? name) => supportsMultipleHosts ? '${name ?? ''}@$host' : name;
 
-  List<TextInputFormatter> get communityNameInputFormatters => _getNameInputFormatters(communityNameTypingRegex);
-
-  List<TextInputFormatter> get userNameInputFormatters => _getNameInputFormatters(userNameTypingRegex);
-
-  List<TextInputFormatter> _getNameInputFormatters(String allowedChars) => [
-    FilteringTextInputFormatter.allow(RegExp('[a-zA-Z0-9${RegExp.escape(allowedChars)}]')),
-    _NameInputFormatter(allowedChars)
-  ];
+  String _getPrefixedNameAndMaybeHost(String host, String prefix, String? name) => '$prefix${_getNameAndMaybeHost(host, name)}';
 
 }
 
@@ -555,38 +560,6 @@ enum SearchType {
   final IconData icon;
 
   const SearchType(this.icon);
-
-}
-
-class _NameInputFormatter extends TextInputFormatter {
-
-  final String allowedChars;
-
-  _NameInputFormatter(this.allowedChars);
-
-  @override
-  TextEditingValue formatEditUpdate(TextEditingValue oldValue, TextEditingValue newValue) {
-    final text = newValue.text;
-    if (allowedChars.isNotEmpty) {
-      final escapedChars = RegExp.escape(allowedChars);
-      if (RegExp('[$escapedChars]{2,}').hasMatch(text)) {
-        return oldValue;
-      }
-    }
-    return text.isNotEmpty && RegExp('[${RegExp.escape(allowedChars)}]').hasMatch(text[0]) ? oldValue : newValue;
-  }
-
-}
-
-class PostUrlInfo {
-
-  final String communityName;
-  final String? inferredTitle;
-
-  PostUrlInfo({
-    required this.communityName,
-    required this.inferredTitle
-  });
 
 }
 

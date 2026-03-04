@@ -11,26 +11,24 @@ import 'package:webview_flutter_android/webview_flutter_android.dart';
 class WebViewerScreen extends StatefulWidget {
 
   final PlatformContext platformContext;
-  final String? communityName;
   final String url;
   final Post? post;
 
   const WebViewerScreen({
     super.key,
     required this.platformContext,
-    required this.communityName,
     required this.url,
     this.post,
   });
 
   WebViewerScreen.fromPost({
     Key? key,
+    required PlatformContext platformContext,
     required Post post
   }) : this(
     key: key,
-    platformContext: post.community.platformContext,
-    communityName: post.community.name,
-    url: post.url,
+    platformContext: platformContext,
+    url: post.linkUrl!,
     post: post,
   );
 
@@ -86,7 +84,6 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
       },
       child: MainScaffold(
         platformContext: widget.platformContext,
-        activeCommunityName: widget.communityName,
         title: _title != null ? Text(_title!) : null,
         subtitle: Text(widget.url),
         iconActions: [
@@ -97,7 +94,12 @@ class _WebViewerScreenState extends State<WebViewerScreen> {
         ],
         popupMenuActions: {
           if (widget.post != null)
-            Text('View comments'): (context) => context.push(() => PostDetailsScreen.fromPost(post: widget.post!)),
+            Text('View comments'): (context) => context.push(() {
+              return PostDetailsScreen.fromPost(
+                platformContext: widget.platformContext,
+                post: widget.post!
+              );
+            }),
           Text('View in browser'): (context) => openInBrowser(widget.url),
           Text('Copy link'): (context) => copyToClipboard(widget.url)
         },

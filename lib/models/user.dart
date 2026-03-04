@@ -1,26 +1,35 @@
 import 'package:lurk/core/platforms.dart';
-import 'package:lurk/models/platform_context.dart';
 
-abstract class User {
+class User {
   
-  final String id;
+  final Platform platform;
+  final String host;
   final String name;
   final String? iconUrl;
 
   const User({
-    required this.id,
+    required this.platform,
+    required this.host,
     required this.name,
-    required this.iconUrl
+    this.iconUrl
   });
+  
+  String get nameAndMaybeHost => platform.getUserNameAndMaybeHost(host, name);
+
+  String get prefixedNameAndMaybeHost => platform.getPrefixedUserNameAndMaybeHost(host, name);
+
 }
 
 class LookedUpUser extends User {
 
+  final String? id;
   final bool isSuspended;
   final List<UserStat>? stats;
 
   const LookedUpUser({
-    required super.id,
+    required super.platform,
+    required super.host,
+    required this.id,
     required super.name,
     required super.iconUrl,
     required this.isSuspended,
@@ -31,17 +40,17 @@ class LookedUpUser extends User {
 
 class LoggedInUser extends User {
 
-  final PlatformContext platformContext;
+  final String id;
   final String? hostIconUrl;
 
-  LoggedInUser({
-    required Platform platform,
-    required String host,
-    required super.id,
+  const LoggedInUser({
+    required this.id,
+    required super.platform,
+    required super.host,
     required super.name,
     required super.iconUrl,
     this.hostIconUrl,
-  }) : platformContext = PlatformContext(platform: platform, host: host);
+  });
 
 }
 

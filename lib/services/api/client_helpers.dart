@@ -29,13 +29,13 @@ abstract class RestClientHelper extends ClientHelper {
   Future<Response> performPost(Uri uri, Map<String, String> headers, dynamic body);
 
   Future<Response> get(String path, [Map<String, dynamic>? params]) {
-    dev.log('[RestClientHelper] GET: ${Uri.https(host, path, params)}');
+    dev.log('[RestClientHelper] GET: ${Uri.https(host, path, params != null && params.isNotEmpty ? params : null)}');
     return _debugPrintResponse(
       request(
         _headers,
         (headers) {
           _debugPrintRequestHeaders(headers);
-          return performGet(Uri.https(host, path, params), headers);
+          return performGet(Uri.https(host, path, params != null && params.isNotEmpty ? params : null), headers);
         }
       )
     );
@@ -94,10 +94,7 @@ class SimpleRestClientHelper extends RestClientHelper {
   Future<Response> performGet(Uri uri, Map<String, String> headers) => _client.get(uri, headers: headers);
   
   @override
-  Future<Response> performPost(Uri uri, Map<String, String> headers, dynamic body) {
-    dev.log('[SimpleRestClientHelper] performPost: uri=$uri, body=$body');
-    return _client.post(uri, headers: headers, body: body);
-  }
+  Future<Response> performPost(Uri uri, Map<String, String> headers, dynamic body) => _client.post(uri, headers: headers, body: body);
 
 }
 
@@ -138,6 +135,7 @@ class GraphQlClientHelper extends ClientHelper {
       );
   
   Future<gql.QueryResult<Object?>> query(gql.QueryOptions<Object?> params) async {
+    dev.log('[GraphQlClientHelper] Query: ${params.variables}');
     final response = await _client.query(params);
     // dev.log('[GraphQlClientHelper] Response: ${response.data}');
     return response;
@@ -152,7 +150,7 @@ class GraphQlClientHelper extends ClientHelper {
 
 abstract interface class AuthClientHelper extends ClientHelper {
 
-  Future<FetchTokenResult> fetchToken([Map<String, String>? credentials]);
+  Future<FetchTokenResult?> fetchToken([Map<String, String>? credentials]);
 
   Future<void> saveToken(String userId);
 

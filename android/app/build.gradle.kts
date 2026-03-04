@@ -6,7 +6,7 @@ plugins {
 }
 
 android {
-    namespace = "com.example.reddit_app"
+    namespace = "com.altherat.lurk"
     compileSdk = flutter.compileSdkVersion
     ndkVersion = flutter.ndkVersion
 

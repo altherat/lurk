@@ -66,12 +66,12 @@ class CommunityNameText extends StatelessWidget {
     final theme = Theme.of(context);
     final nameColor = this.nameColor ?? theme.colorScheme.onSurface;
     final texts = [
-      (community.platformContext.platform.preferredCommunityPrefix, prefixColor ?? theme.colorScheme.onSurfaceVariant),
+      (community.platform.preferredCommunityPrefix, prefixColor ?? theme.colorScheme.onSurfaceVariant),
       if (community.name != null)
         (community.name!, nameColor),
-      if (community.platformContext.platform.supportsMultipleHosts) ...[
+      if (community.platform.supportsMultipleHosts) ...[
         ('@', theme.colorScheme.onSurfaceVariant),
-        (community.platformContext.host, nameColor)
+        (community.host, nameColor)
       ]
     ];
     return applyAppBarAlpha ? MultiColoredAppBarTitle(texts: texts) : MultiColoredText(texts: texts);

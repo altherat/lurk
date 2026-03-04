@@ -1,15 +1,20 @@
+import 'dart:async';
+
+import 'package:app_links/app_links.dart';
 import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/database/database.dart';
+import 'package:lurk/core/utils.dart';
 import 'package:lurk/services/communities.dart';
 import 'package:lurk/services/posts.dart';
 import 'package:lurk/screens/home.dart';
-import 'package:lurk/services/settings.dart';
+import 'package:lurk/services/settings.dart' hide Setting;
 import 'package:lurk/services/user_manager.dart';
 import 'package:lurk/widgets/custom_progress_indicators.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 
 final routeObserver = _RouteObserver();
+final navigatorKey = GlobalKey<NavigatorState>();
 
 class App extends StatefulWidget {
 
@@ -26,22 +31,36 @@ class _AppState extends State<App> {
 
   final _scaffoldKey = GlobalKey<MainScaffoldState>();
   late final Future<void> _servicesInitFuture;
+  late final StreamSubscription<Uri> _linkSubscription;
 
   @override
   void initState() {
     super.initState();
     final db = Database.instance;
-    _servicesInitFuture = Future.wait([
-      Settings.init(db),
-      UserManager.init(db),
-      Communities.init(db),
-      Posts.init(db),
-    ]);
+    _servicesInitFuture = () async {
+      final (settings, allUsers, activeUsers, communities, subscribedCommunities) = await (db.getAllSettings(), db.getAllUsers(), db.getAllActiveUsers(), db.getAllCommunities(), db.getAllSubscribedCommunityIds()).wait;
+      Settings.init(db, settings, activeUsers);
+      UserManager.init(db, allUsers, activeUsers);
+      Communities.init(db, communities, subscribedCommunities);
+      Posts.init(db);
+    }();
+    _linkSubscription = AppLinks().uriLinkStream.listen((uri) {
+      if (mounted) {
+        navigateUri(context, uri);
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _linkSubscription.cancel();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      navigatorKey: navigatorKey,
       navigatorObservers: [routeObserver],
       theme: ThemeData(
         useMaterial3: true,

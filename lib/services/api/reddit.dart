@@ -16,7 +16,6 @@ import 'package:lurk/models/community.dart';
 import 'package:lurk/models/community_details.dart';
 import 'package:lurk/models/login.dart';
 import 'package:lurk/models/paged_items.dart';
-import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/services/api/api.dart';
@@ -86,22 +85,20 @@ class RedditApi extends Api<RestClientHelper> {
         final String description = data['public_description'];
         final String communityIconUrl = data['community_icon'];
         final String iconUrl = data['icon_img'];
-        final String? headerUrl = data['header_img'];
         final String bannerMobileUrl = data['mobile_banner_image']!;
         final String bannerBackgroundUrl = data['banner_background_image']!;
         final String bannerUrl = data['banner_img'];
         final String primaryColor = data['primary_color'];
         final String bannerBackgroundColor = data['banner_background_color'];
-        final finalIconUrl = communityIconUrl.isNotEmpty ? communityIconUrl : iconUrl.isNotEmpty ? iconUrl : headerUrl;
+        final finalIconUrl = communityIconUrl.isNotEmpty ? communityIconUrl : iconUrl.isNotEmpty ? iconUrl : data['header_img'];
         final finalBannerUrl = bannerMobileUrl.isNotEmpty ? bannerMobileUrl : bannerBackgroundUrl.isNotEmpty ? bannerBackgroundUrl : bannerUrl.isNotEmpty ? bannerUrl : null;
         return CommunityDetails(
           community: Community(
             platform: Platform.reddit,
-            host: Platform.reddit.host!,
-            name: data['display_name'],
+            host: Platform.reddit.preferredHost!,
+            name: (data['display_name'] as String).toLowerCase(),
             id: data['name'],
           ),
-          id: data['name'],
           createdDate: DateTime.fromMillisecondsSinceEpoch((data['created_utc'] as num).toInt() * 1000, isUtc: true),
           title: _replaceHtmlEscapedCharacters(data['title']),
           shortDescription: description.isNotEmpty ? description : null,
@@ -118,71 +115,61 @@ class RedditApi extends Api<RestClientHelper> {
   }
 
   @override
-  Future<PagedItems<Post>> getCommunityPosts(RestClientHelper clientHelper, String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<Post>> getCommunityPosts(RestClientHelper clientHelper, String? id, String? pageToken, Map<FeedOptionType, FeedOption>? options) async {
     final sort = options?[FeedOptionType.sort];
     final timeRange = options?[FeedOptionType.time];
-    String path = id != null && id.isNotEmpty ? '/r/$id/' : '/';
+    String path = id != null && id.isNotEmpty ? '/r/$id' : '';
     if (sort != null) {
-      path += '${sort.id}/';
+      path += '/${sort.id}';
     }
-    final Map<String, dynamic> params = {};
-    if (timeRange != null) {
-      params['t'] = timeRange.id;
-    }
-    if (pageToken != null) {
-      params['after'] = pageToken;
-    }
-    return compute(_parsePosts, (await clientHelper.get('$path.json', params)).body);
+    final response = await clientHelper.get(
+      '$path.json',
+      {
+        't': ?timeRange?.id,
+        'after': ?pageToken
+      }
+    );
+    return compute(_parsePosts, response.body);
   }
 
   @override
-  Future<PostDetails> getPostDetailsFromUrl(RestClientHelper clientHelper, String url, {Map<FeedOptionType, FeedOption>? options}) async {
-    final uri = Uri.parse(url);
-    final pathSegments = uri.pathSegments;
-    final sort = uri.queryParameters['sort'];
-    if (sort != null) {
-      options ??= {};
-      options[FeedOptionType.sort] = FeedOption('Sort', id: sort);
-    }
-    final String? commentId;
-    if (pathSegments.length > 5) {
-      final segment = pathSegments[5];
-      commentId = segment.isNotEmpty ? segment : null;
-    }
-    else {
-      commentId = null;
-    }
-    return getPostDetailsFromId(clientHelper, pathSegments[3], shortCommentId: commentId, options: options);
+  Future<Post> getPost(RestClientHelper clientHelper, String id) async {
+    final response = await clientHelper.get('/comments/$id.json');
+    return compute(
+      (body) {
+        final json = jsonDecode(body);
+        return _parsePost(json[0]['data']['children'][0]);
+      },
+      response.body
+    );
   }
 
   @override
-  Future<PostDetails> getPostDetailsFromId(RestClientHelper clientHelper, String id, {String? shortCommentId, Map<FeedOptionType, FeedOption>? options}) async {
+  Future<(List<CommentItem>, Post)> getCommentsAndPost(RestClientHelper clientHelper, String id, String? communityName, String? contextCommentShortId, Map<FeedOptionType, FeedOption>? options) async {
     final sort = options?[FeedOptionType.sort];
     final segments = ['comments', id];
     final params = {
       if (sort != null)
         'sort': sort.id,
     };
-    if (shortCommentId != null) {
-      segments.addAll(['comment', shortCommentId]);
+    if (contextCommentShortId != null) {
+      segments.addAll(['comment', contextCommentShortId]);
       params['context'] = '3';
     }
     return compute(
-      ((String, String?) args) {
-        final (body, contextCommentId) = args;
+      (body) {
         final json = jsonDecode(body);
-        return PostDetails(
-          post: _parsePost(json[0]['data']['children'][0]),
-          comments: _parseComments(json[1]['data']['children'] as List, 0),
-          contextCommentShortId: contextCommentId
-        );
+        return (_parseComments(json[1]['data']['children'] as List, 0), _parsePost(json[0]['data']['children'][0]));
       },
-      ((await clientHelper.get('/${segments.join('/')}.json', params)).body, shortCommentId)
+      ((await clientHelper.get('/${segments.join('/')}.json', params)).body)
     );
   }
 
   @override
-  Future<List<CommentItem>> getMoreComments(RestClientHelper clientHelper, String id, String pageToken, {int? depth, Map<FeedOptionType, FeedOption>? options}) async {
+  Future<(List<CommentItem>, Post?)> getCommentsAndMaybePost(RestClientHelper clientHelper, String id, String? communityName, String? contextCommentShortId, Map<FeedOptionType, FeedOption>? options) => getCommentsAndPost(clientHelper, id, communityName, contextCommentShortId, options);
+
+  @override
+  Future<List<CommentItem>> getMoreComments(RestClientHelper clientHelper, String id, int? depth, String pageToken, Map<FeedOptionType, FeedOption>? options) async {
     final body = {
       'api_type': 'json',
       'link_id': id,
@@ -194,8 +181,8 @@ class RedditApi extends Api<RestClientHelper> {
     if (clientHelper is _ClientHelper) {
       response = clientHelper.post('/api/morechildren', body);
       parseFn = (String body) {
-        final Map<String, dynamic> jsonResponse = jsonDecode(body);
-        final List<dynamic> things = jsonResponse['json']['data']['things'];
+        final Map<String, dynamic> json = jsonDecode(body);
+        final List<dynamic> things = json['json']['data']['things'];
         final List<CommentItem> items = [];
         final Map<String, int> batchDepthCache = {};
         for (var thing in things) {
@@ -220,25 +207,25 @@ class RedditApi extends Api<RestClientHelper> {
                 depth: currentDepth,
                 community: Community(
                   platform: Platform.reddit,
-                  host: Platform.reddit.host!,
-                  name: element.attributes['data-subreddit'],
-                  id: element.attributes['data-subreddit-fullname'],
+                  host: Platform.reddit.preferredHost!,
+                  name: element.attributes['data-subreddit']!,
+                  id: data['link'],
                 ),
-                id: id,
-                shortId: id.split('_').last,
-                permalink: element.attributes['data-permalink']!,
-                isDeleted: author == '[deleted]',
+                localId: id,
+                shortLocalId: id.split('_').last,
+                urlPath: element.attributes['data-permalink']!,
                 authorId: element.attributes['data-author-fullname'],
                 authorName: author,
-                authorHost: Platform.reddit.host!,
+                authorHost: Platform.reddit.preferredHost!,
+                isDeleted: author == '[deleted]',
                 isModerator: authorElement?.classes.contains('moderator') ?? false,
                 isSubmitter: authorElement?.classes.contains('submitter') ?? false,
                 score: scoreTitle == null ? null : int.tryParse(scoreTitle),
                 timestampMs: dateTimeString != null ? DateTime.parse(dateTimeString).millisecondsSinceEpoch : 0,
-                images: const {},
+                imageSizes: const {},
                 text: textHtml!.text,
                 textHtml: textHtml.innerHtml.trim(),
-                vote: midcol.classes.contains('likes') ? true : midcol.classes.contains('dislikes') ? false : null
+                vote: midcol.classes.contains('likes') ? true : midcol.classes.contains('dislikes') ? false : null,
               )
             );
           }
@@ -292,9 +279,9 @@ class RedditApi extends Api<RestClientHelper> {
   }
 
   @override
-  MultiPartFeedResponse<dynamic, List<UserStat>> getUserDetails(RestClientHelper clientHelper, String id, {Map<FeedOptionType, FeedOption>? options}) {
+  MultiPartFeedResponse<dynamic, List<UserStat>> getUserDetails(RestClientHelper clientHelper, String id, Map<FeedOptionType, FeedOption>? options) {
     return MultiPartFeedResponse(
-      items: getUserItems(clientHelper, id, options: options),
+      items: getUserItems(clientHelper, id, null, options),
       other: clientHelper.get('/user/$id/about.json').then((response) {
         final data = jsonDecode(response.body)['data'];
         return [
@@ -320,7 +307,7 @@ class RedditApi extends Api<RestClientHelper> {
   }
 
   @override
-  Future<PagedItems<dynamic>> getUserItems(RestClientHelper clientHelper, String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<dynamic>> getUserItems(RestClientHelper clientHelper, String id, String? pageToken, Map<FeedOptionType, FeedOption>? options) async {
     final FeedOption? type = options?[FeedOptionType.category];
     final FeedOption? sort = options?[FeedOptionType.sort];
     final FeedOption? timeRange = options?[FeedOptionType.time];
@@ -370,7 +357,7 @@ class RedditApi extends Api<RestClientHelper> {
   }
 
   @override
-  Future<PagedItems<dynamic>> getSearchResults(RestClientHelper clientHelper, String query, String? communityName, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<dynamic>> getSearchResults(RestClientHelper clientHelper, String query, String? communityName, String? pageToken, Map<FeedOptionType, FeedOption>? options) async {
     final type = options?[FeedOptionType.category]?.id;
     final sort = options?[FeedOptionType.sort];
     final timeRange = options?[FeedOptionType.time];
@@ -411,22 +398,24 @@ class RedditApi extends Api<RestClientHelper> {
               );
             }
             final data = json['data'];
-            final children = data['children'] as List;
             return PagedItems(
-              items: children
+              items: (data['children'] as List)
                   .map((child) {
                     final Map<String, dynamic> childData = child['data'];
                     final String description = childData['public_description'];
-                    final String iconUrl = childData['community_icon'];
+                    final String iconUrl = childData['icon_img'];
+                    final String communityIconUrl = childData['community_icon'];
+                    final finalIconUrl = communityIconUrl.isNotEmpty ? communityIconUrl : iconUrl.isNotEmpty ? iconUrl : childData['header_image'];
+                    // final finalIconUrl = communityIconUrl.isNotEmpty ? Uri.parse(communityIconUrl).replace(queryParameters: {}).toString() : iconUrl.isNotEmpty ? iconUrl : childData['header_image'];
                     return CommunityDetails(
                       community: Community(
                         platform: Platform.reddit,
-                        host: Platform.reddit.host!,
-                        name: childData['display_name'],
+                        host: Platform.reddit.preferredHost!,
+                        name: (childData['display_name'] as String).toLowerCase(),
                         id: childData['name'],
                       ),
                       shortDescription: description.isNotEmpty ? description : null,
-                      iconUrl: iconUrl.isNotEmpty ? Uri.parse(iconUrl).replace(queryParameters: {}).toString() : null,
+                      iconUrl: finalIconUrl != null ? _replaceHtmlEscapedCharacters(finalIconUrl) : null,
                       subscriberCount: childData['subscribers'],
                     );
                   })
@@ -447,13 +436,14 @@ class RedditApi extends Api<RestClientHelper> {
               );
             }
             final data = json['data'];
-            final children = data['children'] as List;
             return PagedItems(
-              items: children
+              items: (data['children'] as List)
                 .map((child) {
                   final childData = child['data'];
-                  final bool isSuspended = childData['is_suspended'] ?? false;
+                  final isSuspended = childData['is_suspended'] == true;
                   return LookedUpUser(
+                    platform: Platform.reddit,
+                    host: Platform.reddit.preferredHost!,
                     id: childData['id'],
                     name: childData['name'],
                     iconUrl: (childData['icon_img'] as String?)?.replaceAll('&amp;', '&'),
@@ -491,7 +481,7 @@ class RedditApi extends Api<RestClientHelper> {
   }
 
   @override
-  Future<String> resolveGlobalToLocalPostId(RestClientHelper clientHelper, String globalId) {
+  Future<Post> resolveGlobalToLocalPost(RestClientHelper clientHelper, String globalId) {
     throw UnimplementedError();
   }
 
@@ -516,8 +506,8 @@ class RedditApi extends Api<RestClientHelper> {
         communities.add(
           Community(
             platform: Platform.reddit,
-            host: Platform.reddit.host!,
-            name: data['display_name'],
+            host: Platform.reddit.preferredHost!,
+            name: (data['display_name'] as String).toLowerCase(),
             id: data['name']
           )
         );
@@ -582,7 +572,22 @@ class RedditApi extends Api<RestClientHelper> {
 
   Post _parsePost(Map<String, dynamic> json) {
     final data = json['data'];
-    final author = data['author'];
+    final localId = data['name'];
+    final authorId = data['author_fullname'];
+    final urlPath = data['permalink'];
+    final List<dynamic>? crosspostParents = data['crosspost_parent_list'];
+
+    final String? authorName;
+    final String? authorHost;
+    if (authorId != null) {
+      authorName = data['author'];
+      authorHost = Platform.reddit.preferredHost;
+    }
+    else {
+      authorName = null;
+      authorHost = null;
+    }
+    
     String? thumbnail = data['thumbnail'];
     if (thumbnail != null) {
       if (thumbnail == '' || thumbnail == 'self' || thumbnail == 'default' || thumbnail == 'nsfw' || thumbnail == 'image') {
@@ -597,18 +602,6 @@ class RedditApi extends Api<RestClientHelper> {
     if (textHtml != null) {
       textHtml = parseFragment(textHtml).text;
     }
-
-    // final secureMedia = data['secure_media'];
-    // String? videoUrl;
-    // if (secureMedia != null) {
-      // final redditVideo = secureMedia['reddit_video'];
-      // if (redditVideo != null) {
-        // videoUrl = redditVideo['hls_url'].replaceAll('&amp;', '&');
-        // videoUrl = redditVideo['dash_url'].replaceAll('&amp;', '&');
-        // videoUrl = redditVideo['fallback_url'];
-        // videoUrl = (redditVideo['hls_url'] ?? redditVideo['dash_url'] ?? redditVideo['fallback_url']).replaceAll('&amp;', '&');
-      // }
-    // }
 
     Size? mediaSize;
     final media = data['media'];
@@ -634,9 +627,7 @@ class RedditApi extends Api<RestClientHelper> {
 
     final List<GalleryImage> galleryImages = [];
     final isGallery = data['is_gallery'] == true;
-    final String domain;
     if (isGallery) {
-      domain = 'image/gallery';
       final metadata = data['media_metadata'];
       final galleryData = data['gallery_data'];
       if (galleryData != null && galleryData['items'] != null) {
@@ -653,50 +644,76 @@ class RedditApi extends Api<RestClientHelper> {
         }
       }
     }
-    else {
-      domain = data['domain'];
+
+    final String linkUrl;
+    final String linkDomain;
+    final bool isRemoved;
+    if (crosspostParents != null) {
+      final Map<String, dynamic> firstCrosspostParent = crosspostParents.first;
+      linkUrl = firstCrosspostParent['url'];
+      linkDomain = firstCrosspostParent['domain'];
+      isRemoved = firstCrosspostParent['removed_by_category'] != null;
     }
+    else {
+      linkUrl = data['url'];
+      linkDomain = data['domain'] as String;
+      isRemoved = data['removed_by_category'] != null;
+    }
+
+    ContentType? contentType;
+    if (data['post_hint'] == 'image') {
+      contentType = ContentType.image;
+    }
+    else if (data['is_video']) {
+      contentType = ContentType.video;
+    }
+    else if (isGallery) {
+      contentType = ContentType.imageGallery;
+    }
+    else if (data['is_self']) {
+      contentType = ContentType.local;
+    }
+    
     return Post(
       community: Community(
         platform: Platform.reddit,
-        host: Platform.reddit.host!,
-        name: data['subreddit'],
+        host: Platform.reddit.preferredHost!,
+        name: (data['subreddit'] as String).toLowerCase(),
         id: data['subreddit_id'],
       ),
-      localId: data['name'],
+      localId: localId,
+      localHost: Platform.reddit.preferredHost!,
       shortLocalId: data['id'],
-      permalink: data['permalink'],
+      globalId: localId,
+      localUrlPath: urlPath,
+      authorId: authorId,
+      authorName: authorName,
+      authorHost: authorHost,
+      contentType: contentType,
       score: data['score'],
       timestampMs: (data['created_utc'] as num).toInt() * 1000,
       title: parse(data['title']).body!.text,
-      textHtml: textHtml,
-      author: author,
-      authorHost: Platform.reddit.host!,
+      body: data['selftext'],
+      bodyHtml: textHtml,
       commentCount: data['num_comments'],
-      url: data['url'],
-      domain: domain,
+      linkUrl: linkUrl.isNotEmpty ? linkUrl : null,
+      linkDomain: linkDomain.toLowerCase(),
       thumbnailUrl: thumbnail,
-      isStickied: data['stickied'],
-      isSelf: data['is_self'],
-      isNsfw: data['over_18'],
-      isGallery: isGallery,
-      isDeleted: author == '[deleted]',
       mediaSize: mediaSize,
-      galleryImages: galleryImages,
-      vote: data['likes']
+      galleryImages: galleryImages.isNotEmpty ? galleryImages : null,
+      isRemoved: isRemoved,
+      isStickied: data['stickied'],
+      isNsfw: data['over_18'],
+      vote: data['likes'],
     );
   }
 
   PagedItems<Post> _parsePosts(String body) {
-    final List<Post> posts = [];
     final json = jsonDecode(body);
     final data = json['data'];
-    for (var child in data['children'] as List) {
-      posts.add(_parsePost(child));
-    }
     return PagedItems(
-      items: posts,
-      pageToken: data['after']
+      items: data != null ? (data['children'] as List).map((child) => _parsePost(child)).toList() : [],
+      pageToken: data?['after']
     );
   }
 
@@ -731,7 +748,7 @@ class RedditApi extends Api<RestClientHelper> {
   }
 
   Comment _parseCommentFromJson(Map<String, dynamic> data, int depth) {
-    final author = data['author'];
+    final authorName = data['author'];
     final Map<String, Size> images = {};
     final Map<String, dynamic>? mediaMetadata = data['media_metadata'];
     if (mediaMetadata != null) {
@@ -746,26 +763,27 @@ class RedditApi extends Api<RestClientHelper> {
       depth: depth,
       community: Community(
         platform: Platform.reddit,
-        host: Platform.reddit.host!,
-        name: data['subreddit'],
-        id: data['subreddit_id'],
+        host: Platform.reddit.preferredHost!,
+        name: (data['subreddit'] as String).toLowerCase(),
+        id: data['subreddit_id']!,
       ),
-      id: data['name'],
-      shortId: data['id'],
-      permalink: data['permalink'],
-      isDeleted: author == '[deleted]',
+      localId: data['name'],
+      shortLocalId: data['id'],
+      urlPath: data['permalink'],
       authorId: data['author_fullname'],
-      authorName: author,
-      authorHost: Platform.reddit.host!,
+      authorName: authorName,
+      authorHost: Platform.reddit.preferredHost!,
+      isDeleted: authorName == '[deleted]',
       isModerator: data['distinguished'] == 'moderator',
       isSubmitter: data['is_submitter'] ?? false,
       score: data['score_hidden'] ? null : data['score'],
       timestampMs: (data['created_utc'] as num).toInt() * 1000,
       text: data['body'],
       textHtml: _replaceHtmlEscapedCharacters(data['body_html']),
-      images: images,
+      imageSizes: images,
       postTitle: data['link_title'],
-      vote: data['likes']
+      postId: (data['link_id'] as String).replaceFirst('t3_', ''),
+      vote: data['likes'],
     );
   }
   
@@ -773,9 +791,9 @@ class RedditApi extends Api<RestClientHelper> {
     final data = jsonDecode(body);
     final iconUri = Uri.parse(data['icon_img']);
     return LoggedInUser(
-      platform: Platform.reddit,
-      host: Platform.reddit.host!,
       id: 't2_${data['id']}',
+      platform: Platform.reddit,
+      host: Platform.reddit.preferredHost!,
       name: data['name'],
       iconUrl: Uri(scheme: iconUri.scheme,host: iconUri.host,path: iconUri.path).toString()
     );
@@ -813,9 +831,10 @@ class _ClientHelper extends SimpleRestClientHelper {
         headers['Cookie'] = _cookies!.values.map((c) => '${c.key}=${c.value}').join('; ');
       }
     }
-    dev.log('[Reddit][_ClientHelper] Request headers: ${headers.length} (${_cookies!.length} cookies)');
-    dev.log('[Reddit][_ClientHelper]\tUser-Agent: ${headers['User-Agent']}');
-    dev.log('[Reddit][_ClientHelper]\tCookie: ${_cookies!.entries.map((entry) => '${entry.key}=${debugTruncateLongString(entry.value.value, 6)}').join(', ')}');
+    dev.log('[Reddit][_ClientHelper] Cookies: ${_cookies!.entries.map((entry) => '${entry.key}=${debugTruncateLongString(entry.value.value, 6)}').join(', ')}');
+    // dev.log('[Reddit][_ClientHelper] Request headers: ${headers.length} (${_cookies!.length} cookies)');
+    // dev.log('[Reddit][_ClientHelper]\tUser-Agent: ${headers['User-Agent']}');
+    // dev.log('[Reddit][_ClientHelper]\tCookie: ${_cookies!.entries.map((entry) => '${entry.key}=${debugTruncateLongString(entry.value.value, 6)}').join(', ')}');
 
     final Response response = await request(headers);
     if (response.headers.containsKey('set-cookie')) {
@@ -957,7 +976,7 @@ class _AuthClientHelper extends RestClientHelper implements AuthClientHelper {
   }
 
   @override
-  Future<FetchTokenResult> fetchToken([Map<String, String>? credentials]) async {
+  Future<FetchTokenResult?> fetchToken([Map<String, String>? credentials]) async {
     dev.log('[Reddit][_AuthClientHelper] fetchToken');
     final redirectUri = Settings.redditRedirectUri.value!;
     _oAuthHelper.clientId = Settings.redditClientId.value!;

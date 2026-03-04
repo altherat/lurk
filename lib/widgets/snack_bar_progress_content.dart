@@ -77,7 +77,6 @@ class _SnackBarProgressContentState extends State<SnackBarProgressContent> {
       prefix = const CustomCircularProgressIndicator(
         alignment: Alignment.center,
         size: 24,
-        strokeWidth: 3,
       );
       message = widget.progressMessage;
     }

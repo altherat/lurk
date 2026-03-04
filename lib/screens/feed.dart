@@ -3,12 +3,13 @@ import 'package:flutter/material.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/extensions.dart';
 import 'package:lurk/core/platforms.dart';
+import 'package:lurk/models/community.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/platform_context.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/services/settings.dart';
 import 'package:lurk/services/user_manager.dart';
-import 'package:lurk/widgets/custom_refresh_indicator.dart';
+import 'package:lurk/widgets/custom_refresh_indicator.dart' hide RefreshCallback;
 import 'package:lurk/widgets/feed_list.dart';
 import 'package:lurk/widgets/main_scaffold.dart';
 
@@ -16,8 +17,8 @@ class FeedScreen<T> extends StatefulWidget {
 
   final GlobalKey<MainScaffoldState>? scaffoldKey;
   final PlatformContext platformContext;
-  final String? activeCommunityName;
-  final bool isCurated;
+  final Community? activeCommunity;
+  final bool isUserCurated;
   final FeedOptionsGroup? feedOptions;
   final Future<PagedItems<T>>? initialItems;
   final Future<PagedItems<T>> Function(Map<FeedOptionType, FeedOption>? feedOptions, String? pageToken) fetchItems;
@@ -38,8 +39,8 @@ class FeedScreen<T> extends StatefulWidget {
     super.key,
     this.scaffoldKey,
     required this.platformContext,
-    this.activeCommunityName,
-    this.isCurated = false,
+    this.activeCommunity,
+    this.isUserCurated = false,
     this.feedOptions,
     this.initialItems,
     required this.fetchItems,
@@ -74,7 +75,7 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
   @override
   void initState() {
     super.initState();
-    _activeUserListenable = UserManager.getActiveUser(widget.platformContext.platform);
+    _activeUserListenable = UserManager.getActiveUserListenable(widget.platformContext.platform);
     _activeUserListenable.addListener(_onActiveUserChanged);
     if (widget.feedOptions != null && widget.feedOptions!.type == FeedOptionType.category && widget.feedOptions!.options.length <= 3) {
       _tabController = TabController(
@@ -110,7 +111,7 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
   }
 
   void _onActiveUserChanged() {
-    if (widget.isCurated) {
+    if (widget.isUserCurated) {
       reload();
     }
     else {
@@ -151,51 +152,35 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
         final option = widget.feedOptions!.options[i];
         tabs.add(Tab(text: option.label));
         pages.add(
-          Builder(
-            builder: (context) {
-              final overlapAbsorberHandle = NestedScrollView.sliverOverlapAbsorberHandleFor(context);
-              return CustomRefreshIndicator(
-                key: _refreshIndicatorKeys[i],
-                edgeOffset: overlapAbsorberHandle.layoutExtent ?? 0,
-                onRefresh: () => _refresh(i),
-                child: Scrollbar(
-                  controller: _scrollControllers[i],
-                  interactive: false,
-                  child: CustomScrollView(
-                    // controller: _scrollControllers[i],
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    slivers: [
-                      SliverOverlapInjector(handle: overlapAbsorberHandle),
-                      FeedList(
-                        key: _feedListKeys[i],
-                        initialItems: i == 0 ? widget.initialItems : null,
-                        getItems: (String? pageToken) async {
-                          return widget.fetchItems(
-                            {
-                              FeedOptionType.category: widget.feedOptions!.options[i],
-                              ...?_selectedFeedOptions[i],
-                            },
-                            pageToken
-                          );
-                        },
-                        noItemsBuilder: widget.noItemsBuilder,
-                        itemBuilder: widget.itemBuilder,
-                      ),
-                    ],
-                  ),
-                ),
+          _TabPage(
+            controller: _scrollControllers[i],
+            refreshIndicatorKey: _refreshIndicatorKeys[i],
+            feedListKey: _feedListKeys[i],
+            initialItems: i == 0 ? widget.initialItems : null,
+            fetchItems: (pageToken) {
+              return widget.fetchItems(
+                {
+                  FeedOptionType.category: widget.feedOptions!.options[i],
+                  ...?_selectedFeedOptions[i],
+                },
+                pageToken
               );
             },
-          ),
+            noItemsBuilder: widget.noItemsBuilder,
+            itemBuilder: widget.itemBuilder,
+            onRefresh: () async {
+              if (i == _tabController!.index) { // TODO
+                await _refresh(i);
+              }
+            }
+          )
         );
       }
-      return MainScaffold(
-        key: widget.scaffoldKey,
-        platformContext: widget.platformContext,
-        activeCommunityName: widget.activeCommunityName,
-        title: widget.title,
-        subtitle: widget.showFeedOptionsSubtitle
-          ? ValueListenableBuilder(
+      final rowChildren = [
+        if (widget.subtitle != null)
+          Text(widget.subtitle!),
+        if (widget.showFeedOptionsSubtitle && widget.feedOptions != null)
+          ValueListenableBuilder(
               valueListenable: _tabController!.animation!,
               builder: (context, value, child) {
                 final index = value.round();
@@ -205,11 +190,17 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
                 }
                 return Opacity(
                   opacity: (1.0 - ((value - index).abs() * 2)).clamp(0.0, 1.0),
-                  child: Text('${widget.subtitle != null ? '${widget.subtitle}${Constants.separator}' : ''}${_getSubtitle(_selectedFeedOptions[index] ?? feedOptionsAtScrollIndex.defaults)}'),
+                  child: Text('${widget.subtitle != null ? Constants.separator : ''}${_getSubtitle(_selectedFeedOptions[index] ?? feedOptionsAtScrollIndex.defaults)}'),
                 );
               },
-            )
-          : widget.subtitle != null ? Text(widget.subtitle!) : null,
+            ),
+      ];
+      return MainScaffold(
+        key: widget.scaffoldKey,
+        platformContext: widget.platformContext,
+        activeCommunity: widget.activeCommunity,
+        title: widget.title,
+        subtitle: rowChildren.isNotEmpty ? Row(children: rowChildren) : null,
         userFilter: widget.userFilter,
         iconActions: widget.iconActions,
         iconActionsBuilder: (
@@ -252,7 +243,10 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
         sliverAppBarFlexibleBackground: widget.flexibleSpaceHeader,
         slivers: widget.slivers,
         bottomSheetBuilder: widget.bottomSheetBuilder,
-        body: TabBarView(controller: _tabController, children: pages),
+        body: TabBarView(
+          controller: _tabController,
+          children: pages
+        ),
         onOtherRefresh: () {
           final index = _tabController!.index;
           _refreshIndicatorKeys[index].currentState?.show();
@@ -260,18 +254,17 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
         },
       );
     }
-    final feedOptions = widget.feedOptions;
     final selectedFeedOptions = _selectedFeedOptions[0];
     final List<String> subtitles = [
       ?widget.subtitle,
-      if (widget.showFeedOptionsSubtitle && feedOptions != null && selectedFeedOptions != null && !mapEquals(selectedFeedOptions, feedOptions.defaults))
+      if (widget.showFeedOptionsSubtitle && widget.feedOptions != null && selectedFeedOptions != null && !mapEquals(selectedFeedOptions, widget.feedOptions!.defaults))
         _getSubtitle(selectedFeedOptions)
     ];
     return MainScaffold(
       key: widget.scaffoldKey,
       refreshIndicatorKey: _refreshIndicatorKeys[0],
       platformContext: widget.platformContext,
-      activeCommunityName: widget.activeCommunityName,
+      activeCommunity: widget.activeCommunity,
       customScrollViewController: _scrollControllers[0],
       title: widget.title,
       subtitle: subtitles.isNotEmpty ? Text(subtitles.join(Constants.separator)) : null,
@@ -281,7 +274,7 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
         ...?widget.iconActions,
         _FeedFilterIconButton(
           platformContext: widget.platformContext,
-          feedOptions: feedOptions,
+          feedOptions: widget.feedOptions,
           selectedFeedOptions: selectedFeedOptions,
           onFeedOptionsSelected: _onFeedOptionsSelected,
         ),
@@ -310,6 +303,68 @@ class FeedScreenState<T> extends State<FeedScreen<T>> with SingleTickerProviderS
 
 }
 
+class _TabPage<T> extends StatefulWidget {
+
+  final ScrollController controller;
+  final GlobalKey<CustomRefreshIndicatorState> refreshIndicatorKey;
+  final GlobalKey<FeedListState> feedListKey;
+  final Future<PagedItems<T>>? initialItems;
+  final Future<PagedItems<T>> Function(String? pageToken) fetchItems;
+  final Widget Function(BuildContext context) noItemsBuilder;
+  final Widget? Function(BuildContext context, int index, T item) itemBuilder;
+  final RefreshCallback onRefresh;
+
+  const _TabPage({
+    required this.controller,
+    required this.refreshIndicatorKey,
+    required this.feedListKey,
+    required this.initialItems,
+    required this.fetchItems, 
+    required this.noItemsBuilder,
+    required this.itemBuilder,
+    required this.onRefresh,  
+  });
+
+  @override
+  State<_TabPage<T>> createState() => _TabPageState<T>();
+
+}
+
+class _TabPageState<T> extends State<_TabPage<T>> with AutomaticKeepAliveClientMixin {
+
+  @override
+  bool get wantKeepAlive => true;
+
+  @override
+  Widget build(BuildContext context) {
+    super.build(context);
+    final overlapAbsorberHandle = NestedScrollView.sliverOverlapAbsorberHandleFor(context);
+    return CustomRefreshIndicator(
+      key: widget.refreshIndicatorKey,
+      edgeOffset: overlapAbsorberHandle.layoutExtent ?? 0,
+      onRefresh: widget.onRefresh,
+      child: Scrollbar(
+        controller: widget.controller,
+        interactive: false,
+        child: CustomScrollView(
+        // controller: widget.controller,
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: [
+            SliverOverlapInjector(handle: overlapAbsorberHandle),
+            FeedList(
+              key: widget.feedListKey,
+              initialItems: widget.initialItems,
+              getItems: widget.fetchItems,
+              noItemsBuilder: widget.noItemsBuilder,
+              itemBuilder: widget.itemBuilder,
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+}
 
 
 class _FeedFilterIconButton extends StatelessWidget {
@@ -334,7 +389,7 @@ class _FeedFilterIconButton extends StatelessWidget {
       iconSize: 26,
       onPressed: feedOptions != null
         ? () {
-            final activeUser = UserManager.getActiveUser(platformContext.platform).value;
+            final activeUser = UserManager.getActiveUser(platformContext.platform);
             showModalBottomSheet(
               context: context,
               showDragHandle: true,

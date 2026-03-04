@@ -12,7 +12,6 @@ import 'package:lurk/widgets/media_scaffold.dart';
 class ImageViewerScreen extends StatelessWidget {
 
   final PlatformContext platformContext;
-  final String? communityName;
   final String url;
   final Post? post;
   final Size? size;
@@ -20,7 +19,6 @@ class ImageViewerScreen extends StatelessWidget {
   const ImageViewerScreen({
     super.key,
     required this.platformContext,
-    required this.communityName,
     required this.url,
     this.post,
     this.size
@@ -28,12 +26,12 @@ class ImageViewerScreen extends StatelessWidget {
 
   ImageViewerScreen.fromPost({
     Key? key,
+    required PlatformContext platformContext,
     required Post post,
   }) : this(
     key: key,
-    platformContext: post.community.platformContext,
-    communityName: post.community.name,
-    url: post.url,
+    platformContext: platformContext,
+    url: post.linkUrl!,
     post: post,
     size: post.mediaSize,
   );
@@ -50,7 +48,6 @@ class ImageViewerScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return MediaScaffold(
       platformContext: platformContext,
-      communityName: communityName,
       url: url,
       type: 'image',
       post: post,
@@ -65,12 +62,11 @@ class ImageViewerScreen extends StatelessWidget {
               showSimpleOptionsBottomSheet(
                 context: context,
                 options: MediaScaffold.getOptions(
-                  context: context,
                   platformContext: platformContext,
-                  communityName: communityName,
                   type: 'image',
                   url: url,
-                  onSave: _onSave
+                  post: post,
+                  onSave: _onSave,
                 )
               );
             },

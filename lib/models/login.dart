@@ -20,12 +20,19 @@ class LoginError extends LoginResult {
 
 class LoginField {
 
+  final LoginFieldType type;
   final String label;
-  final bool isSecret;
 
   LoginField({
     required this.label,
-    required this.isSecret
+    required this.type
   });
+
+}
+
+enum LoginFieldType {
+
+  identity,
+  secret
 
 }

@@ -9,7 +9,6 @@ import 'package:lurk/widgets/main_scaffold.dart';
 class MediaScaffold extends StatelessWidget {
 
   final PlatformContext platformContext;
-  final String? communityName;
   final String url;
   final Post? post;
   final String type;
@@ -19,7 +18,6 @@ class MediaScaffold extends StatelessWidget {
   const MediaScaffold({
     super.key,
     required this.platformContext,
-    required this.communityName,
     required this.url,
     this.post,
     required this.type,
@@ -28,9 +26,7 @@ class MediaScaffold extends StatelessWidget {
   });
 
   static Map<Widget, void Function(BuildContext context)> getOptions({
-    required BuildContext context,
     required PlatformContext platformContext,
-    required String? communityName,
     required String type,
     required String url,
     Post? post,
@@ -38,22 +34,37 @@ class MediaScaffold extends StatelessWidget {
   }) => {
     Text('Save $type'): ?onSave,
     if (post != null)
-      Text('View comments'): (context) => context.push(() => PostDetailsScreen.fromPost(post: post)),
+      Text('View comments'): (context) {
+        context.push(() {
+          return PostDetailsScreen.fromPost(
+            platformContext: platformContext,
+            post: post
+          );
+        });
+      },
     Text('View in browser'): (context) => openInBrowser(url),
     Text('Copy link'): (context) => copyToClipboard(url)
   };
 
   @override
   Widget build(BuildContext context) {
+    final Widget title;
+    final Widget? subtitle;
+    if (post != null) {
+      title = Text(post!.title);
+      subtitle = Text(post!.community.prefixedNameAndMaybeHost);
+    }
+    else {
+      final uri = Uri.parse(url);
+      title = Text('${uri.host}${uri.path}');
+      subtitle = null;
+    }
     return MainScaffold(
       platformContext: platformContext,
-      activeCommunityName: communityName,
-      title: post != null ? Text(post!.title) : null,
-      subtitle: Text(post != null ? post!.community.fullName : url),
+      title: title,
+      subtitle: subtitle,
       popupMenuActions: getOptions(
-        context: context,
         platformContext: platformContext,
-        communityName: communityName,
         type: type,
         url: url,
         post: post,

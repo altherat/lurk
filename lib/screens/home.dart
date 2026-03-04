@@ -66,13 +66,15 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   Community _getHomeCommunity() {
     return Community(
       platform: Settings.homeCommunityPlatform.value,
-      host: Settings.homeCommunityHost.value,
-      name: Settings.homeCommunityName.value
+      name: Settings.homeCommunityName.value,
+      host: Settings.homeCommunityHost.value
     );
   }
 
   void _onCommunityChanged() {
-    if (!_isActive) return;
+    if (!_isActive) {
+      return;
+    }
     setState(() {
       _homeCommunity = _getHomeCommunity();
     });
@@ -81,7 +83,7 @@ class _HomeScreenState extends State<HomeScreen> with RouteAware {
   @override
   Widget build(BuildContext context) {
     return CommunityScreen(
-      key: ValueKey('home-${_homeCommunity.platformContext.platform.name}-${_homeCommunity.nameAndMaybeHost}'),
+      key: ValueKey('home-${_homeCommunity.platform.name}-${_homeCommunity.name}-${_homeCommunity.host}'),
       community: _homeCommunity,
       scaffoldKey: widget.scaffoldKey
     );

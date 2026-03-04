@@ -2,9 +2,11 @@ import 'package:extended_image/extended_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:lurk/core/extensions.dart';
-import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/utils.dart';
+import 'package:lurk/models/platform_context.dart';
 import 'package:lurk/models/user.dart';
+import 'package:lurk/screens/image_viewer.dart';
+import 'package:lurk/screens/video_viewer.dart';
 import 'package:lurk/services/posts.dart';
 import 'package:lurk/screens/image_gallery_viewer.dart';
 import 'package:lurk/screens/post_details.dart';
@@ -22,7 +24,9 @@ const _voteHeight = 70.0;
 
 class PostTile extends StatelessWidget {
 
+  final PlatformContext platformContext;
   final Post post;
+  final String? activeUserHostRestriction;
   final Widget? subtitle;
   final bool isInteractable;
   final bool onTapNavigate;
@@ -32,7 +36,9 @@ class PostTile extends StatelessWidget {
 
   const PostTile({
     super.key,
+    required this.platformContext,
     required this.post,
+    this.activeUserHostRestriction,
     this.subtitle,
     this.isInteractable = true,
     this.onTapNavigate = true,
@@ -42,17 +48,22 @@ class PostTile extends StatelessWidget {
   });
 
   void _showOptions(BuildContext context) {
+    final isLocalPost = post.contentType == ContentType.local;
     final Map<Widget, Function(BuildContext)> conditionalOptions = {
       if (showViewCommunityOption)
-        Text('View ${post.community.fullName}'): (context) => context.push(() => CommunityScreen(community: post.community))
+        Text('View ${post.community.platform.getPrefixedCommunityNameAndMaybeHost(post.community.host, post.community.name)}'): (context) => context.push(() => CommunityScreen(community: post.community))
     };
-    if (showViewUserOption && post.author != null) {
-      final authorHost = post.authorHost ?? post.community.platformContext.host;
-      conditionalOptions[Text('View ${post.community.platformContext.platform.getFullUserName(authorHost, post.author!)}')] = (context) {
+    if (showViewUserOption && post.authorName != null) {
+      final authorHost = post.authorHost ?? post.community.host;
+      conditionalOptions[Text('View ${post.community.platform.getPrefixedUserNameAndMaybeHost(authorHost, post.authorName!)}')] = (context) {
         context.push(() {
           return UserDetailsScreen(
-            platformContext: post.community.platformContext,
-            username: post.community.platformContext.platform.supportsMultipleHosts ? '${post.author}@$authorHost' : post.author!,
+            platformContext: platformContext,
+            user: User(
+              platform: post.community.platform,
+              host: authorHost,
+              name: post.authorName!,
+            ),
           );
         });
       };
@@ -62,16 +73,18 @@ class PostTile extends StatelessWidget {
       title: post.title,
       options: {
         ...conditionalOptions,
-        Text('View link in browser'): (context) => openInBrowser(post.url),
-        Text('View comments in browser'): (context) => openInBrowser(post.community.platformContext.platform.getPostDetailsUrl(post)),
-        Text('Copy link'): (context) => copyToClipboard(post.url),
-        Text('Copy comments link'): (context) => copyToClipboard(post.community.platformContext.platform.getPostDetailsUrl(post))
+        if (post.linkUrl != null && !isLocalPost)
+          Text('View link in browser'): (context) => openInBrowser(post.linkUrl!),
+        Text('View comments in browser'): (context) => openInBrowser(post.community.platform.getPostDetailsUrl(post)),
+        if (post.linkUrl != null && !isLocalPost)
+          Text('Copy link'): (context) => copyToClipboard(post.linkUrl!),
+        Text('Copy comments link'): (context) => copyToClipboard(post.community.platform.getPostDetailsUrl(post))
       }      
     );
   }
 
   void _updateVote(LoggedInUser activeUser, bool up) {
-    Platform.getApi(activeUser.platformContext, activeUser).votePost(post.localId, up);
+    getApi(platformContext, activeUser).votePost(post.localId, up);
   }
 
   @override
@@ -82,10 +95,15 @@ class PostTile extends StatelessWidget {
     if (isInteractable) {
       if (onTapNavigate) {
         onTap = () {
-          if (post.isSelf) {
+          if (post.contentType == ContentType.local) {
             Posts.visitedLinks.add(post.localId);
           }
-          context.push(() => PostDetailsScreen.fromPost(post: post));
+          context.push(() {
+            return PostDetailsScreen.fromPost(
+              platformContext: platformContext,
+              post: post
+            );
+          });
         };
       }
       else {
@@ -98,7 +116,7 @@ class PostTile extends StatelessWidget {
       onLongPress = null;
     }
     return ValueListenableBuilder(
-      valueListenable: UserManager.getActiveUser(post.community.platformContext.platform),
+      valueListenable: UserManager.getActiveUserListenable(platformContext.platform, activeUserHostRestriction),
       builder: (context, activeUser, child) {
         final tile = InkWell(
           onTap: onTap,
@@ -197,7 +215,7 @@ class PostTile extends StatelessWidget {
                                   )
                                 ),
                                 TextSpan(
-                                  text: ' (${post.domain})',
+                                  text: ' (${post.linkDomain})',
                                   style: TextStyle(
                                     fontSize: 12,
                                     color: onSurfaceVariantColor
@@ -210,7 +228,10 @@ class PostTile extends StatelessWidget {
                       ),
                       subtitle ?? PostTileCommentHistorySubtitle(
                         post: post,
-                        extraTexts: [post.timeAgoCompact, post.community.name!]
+                        extraTexts: [
+                          post.timeAgoCompact,
+                          post.community.nameAndMaybeHost!
+                        ]
                       )
                     ],
                   ),
@@ -226,7 +247,7 @@ class PostTile extends StatelessWidget {
                         child: post.thumbnailUrl != null
                           ? ExtendedImage.network(
                               post.thumbnailUrl!,
-                              headers: {'User-Agent': post.community.platformContext.platform.savedOrDefaultUserAgent},
+                              headers: {'User-Agent': platformContext.platform.savedOrDefaultUserAgent},
                               cacheWidth: (Constants.thumbnailSize * MediaQuery.devicePixelRatioOf(context)).round(),
                               fit: BoxFit.cover,
                               loadStateChanged: (state) => state.extendedImageLoadState == LoadState.failed ? const Icon(Icons.broken_image_rounded) : null,
@@ -237,7 +258,7 @@ class PostTile extends StatelessWidget {
                                 border: BoxBorder.all(color: Constants.lighterBackgroundColor)
                               ),
                               child: Icon(
-                                post.isSelf ? Icons.subject_rounded : Icons.link_rounded,
+                                post.contentType == ContentType.local ? Icons.subject_rounded : Icons.link_rounded,
                                 color: Colors.white38,
                               ),
                             ),
@@ -248,15 +269,61 @@ class PostTile extends StatelessWidget {
                             color: Colors.transparent,
                             child: InkWell(
                               onTap: () {
+                                if (post.isRemoved) {
+                                  context.showSnackBarMessage('Post has been removed');
+                                  return;
+                                }
                                 Posts.visitedLinks.add(post.localId);
-                                if (post.isSelf) {
-                                  context.push(() => PostDetailsScreen.fromPost(post: post));
-                                }
-                                else if (post.isGallery) {
-                                  context.push(() => ImageGalleryViewerScreen.fromPost(post: post));
-                                }
-                                else {
-                                  navigate(context, post.community.platformContext, post.community.name, post.url, post: post);
+                                switch (post.contentType) {
+                                  case ContentType.local:
+                                    context.push(() {
+                                      return PostDetailsScreen.fromPost(
+                                        platformContext: platformContext,
+                                        post: post
+                                      );
+                                    });
+                                    break;
+                                  case ContentType.image:
+                                    context.push(() {
+                                      return ImageViewerScreen.fromPost(
+                                        platformContext: platformContext,
+                                        post: post
+                                      );
+                                    });
+                                    break;
+                                  case ContentType.imageGallery:
+                                    if (post.galleryImages != null) {
+                                      context.push(() {
+                                        return ImageGalleryViewerScreen.fromPost(
+                                          platformContext: platformContext,
+                                          post: post
+                                        );
+                                      });
+                                    }
+                                    else {
+                                      context.showSnackBarMessage('No gallery images found');
+                                    }
+                                    break;
+                                  case ContentType.video:
+                                    context.push(() {
+                                      return VideoViewerScreen.fromPost(
+                                        platformContext: platformContext,
+                                        post: post
+                                      );
+                                    });
+                                    break;
+                                  default:
+                                  if (post.linkUrl != null) {
+                                    navigateWithContext(
+                                      context,
+                                      platformContext,
+                                      post.linkUrl!,
+                                      post: post
+                                    );
+                                  }
+                                  else {
+                                    context.showSnackBarMessage('No link found');
+                                  }
                                 }
                               }
                             ),

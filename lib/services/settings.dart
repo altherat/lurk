@@ -3,6 +3,7 @@ import 'package:drift/drift.dart';
 import 'package:flutter/foundation.dart';
 import 'package:lurk/core/constants.dart';
 import 'package:lurk/core/database/database.dart';
+import 'package:lurk/core/database/database.dart' as db;
 import 'package:lurk/core/platforms.dart';
 import 'package:lurk/core/flavors.dart';
 
@@ -38,29 +39,27 @@ class Settings {
 
   static late final Setting<SearchType?> searchType;
 
-  static Future<void> init(Database db) async {
-
-    final dbSettings = await db.getAllSettings();
+  static void init(Database db, db.Setting dbSettings, List<ActiveUser> activeUsers) {
 
     homeCommunityPlatform = SettingNotifier(
       db: db,
       initialValue: dbSettings.homeCommunityPlatform,
       companionBuilder: (value) => SettingsCompanion(homeCommunityPlatform: Value(value)),
-      defaultValue: F.appFlavor.defaultCommunities.first.platformContext.platform,
+      defaultValue: F.appFlavor.defaultCommunities.first.platform,
     );
 
     homeCommunityHost = SettingNotifier(
       db: db,
       initialValue: dbSettings.homeCommunityHost,
       companionBuilder: (value) => SettingsCompanion(homeCommunityHost: Value(value)),
-      defaultValue: F.appFlavor.defaultCommunities.first.platformContext.host,
+      defaultValue: F.appFlavor.defaultCommunities.first.host,
     );
 
     homeCommunityName = SettingNotifier(
       db: db,
       initialValue: dbSettings.homeCommunityName,
       companionBuilder: (value) => SettingsCompanion(homeCommunityName: Value(value)),
-      defaultValue: F.appFlavor.defaultCommunities.first.name
+      defaultValue: activeUsers.any((user) => user.platform == homeCommunityPlatform.value) ? null : F.appFlavor.defaultCommunities.first.name
     );
 
     showCommentImages = SettingNotifier(

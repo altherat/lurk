@@ -35,8 +35,7 @@ class ListTileIcon extends StatelessWidget {
           case LoadState.loading:
             return const CustomCircularProgressIndicator(
               alignment: Alignment.center,
-              size: 24,
-              strokeWidth: 2.5
+              size: 24
             );
           case LoadState.completed:
             return null;

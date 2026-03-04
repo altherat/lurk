@@ -7,7 +7,6 @@ import 'package:lurk/models/interaction_state.dart';
 import 'package:lurk/models/login.dart';
 import 'package:lurk/models/paged_items.dart';
 import 'package:lurk/models/post.dart';
-import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/services/comments.dart';
 import 'package:lurk/services/communities.dart';
@@ -18,16 +17,17 @@ import 'package:lurk/services/api/client_helpers.dart';
 class ApiService {
 
   final Platform platform;
+  final String _host;
   final Api _api;
   final String? _userId;
   final ClientHelper _clientHelper;
 
   ApiService(
     this.platform,
-    String host,
+    this._host,
     this._api,
     this._userId
-  ) : _clientHelper = _api.getClientHelper(host, _userId);
+  ) : _clientHelper = _api.getClientHelper(_host, _userId);
 
   bool get isValid => _clientHelper.isValid;
 
@@ -54,21 +54,26 @@ class ApiService {
   Future<CommunityDetails> fetchCommunityDetails(String name) async {
     final details = await _api.getCommunityDetails(_clientHelper, name);
     if (_userId != null && details.isSubscribed != null) {
-      Communities.updateSubscribedCommunity(platform, _userId, name, details.isSubscribed!);
+      if (details.isSubscribed!) {
+        Communities.addSubscribedCommunity(platform, _host, _userId, name);
+      }
+      else {
+        Communities.removeSubscribedCommunity(platform, _host, _userId, name);
+      }
     }
     return details;
   }
 
-  Future<PagedItems<Post>> fetchCommunityPosts(String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    final pagedItems = await _api.getCommunityPosts(_clientHelper, id, options: options, pageToken: pageToken);
+  Future<PagedItems<Post>> fetchCommunityPosts(String? id, String? pageToken, Map<FeedOptionType, FeedOption>? options) async {
+    final pagedItems = await _api.getCommunityPosts(_clientHelper, id, pageToken, options);
     Communities.saved.updateAll((savedCommunities) {
       bool changed = false;
       final savedCommunitiesIndexes = {
         for (int i = 0; i < savedCommunities.length; i++) 
-          savedCommunities[i]: i
+          (savedCommunities[i].host, savedCommunities[i].name): i
       };
       for (final post in pagedItems.items) {
-        final index = savedCommunitiesIndexes[post.community];
+        final index = savedCommunitiesIndexes[(post.community.host, post.community.name)];
         if (index != null) {
           final savedCommunity = savedCommunities[index];
           if (savedCommunity.id != post.community.id) {
@@ -83,43 +88,49 @@ class ApiService {
     return pagedItems;
   }
 
-  Future<PostDetails> fetchPostDetailsFromUrl(String url, {Map<FeedOptionType, FeedOption>? options}) async {
-    final details = await _api.getPostDetailsFromUrl(_clientHelper, url, options: options);
-    _updateDynamicInteractionStates([details.post, ...details.comments]);
-    return details;
+  Future<Post> fetchPost(String id) async {
+    final post = await _api.getPost(_clientHelper, id);
+    _updateDynamicInteractionStates([post]);
+    return post;
   }
 
-  Future<PostDetails> fetchPostDetailsFromId(String id, {String? shortCommentId, Map<FeedOptionType, FeedOption>? options}) async {
-    final details = await _api.getPostDetailsFromId(_clientHelper,id, shortCommentId: shortCommentId, options: options);
-    _updateDynamicInteractionStates([details.post, ...details.comments]);
-    return details;
+  Future<(List<CommentItem>, Post)> fetchCommentsAndPost(String id, String? communityName, String? contextCommentShortId, Map<FeedOptionType, FeedOption>? options) async {
+    final commentsAndPost = await _api.getCommentsAndPost(_clientHelper, id, communityName, contextCommentShortId, options);
+    _updateDynamicInteractionStates([commentsAndPost.$2, ...commentsAndPost.$1]);
+    return commentsAndPost;
   }
 
-  Future<List<CommentItem>> fetchMoreComments(String id, String pageToken, {int? depth, Map<FeedOptionType, FeedOption>? options}) async {
-    final comments = await _api.getMoreComments(_clientHelper, id, pageToken, depth: depth, options: options);
+  Future<(List<CommentItem>, Post?)> fetchCommentsAndMaybePost(String id, String? communityName, String? contextCommentShortId, Map<FeedOptionType, FeedOption>? options) async {
+    final commentsAndMaybePost = await _api.getCommentsAndMaybePost(_clientHelper, id, communityName, contextCommentShortId, options);
+    _updateDynamicInteractionStates([commentsAndMaybePost.$2, ...commentsAndMaybePost.$1]);
+    return commentsAndMaybePost;
+  }
+
+  Future<List<CommentItem>> fetchMoreComments(String id, int? depth, String pageToken, Map<FeedOptionType, FeedOption>? options) async {
+    final comments = await _api.getMoreComments(_clientHelper, id, depth, pageToken, options);
     _updateDynamicInteractionStates(comments);
     return comments;
   }
 
-  MultiPartFeedResponse<dynamic, List<UserStat>> fetchUserDetails(String id, {Map<FeedOptionType, FeedOption>? options}) {
-    final result = _api.getUserDetails(_clientHelper, id, options: options);
+  MultiPartFeedResponse<dynamic, List<UserStat>> fetchUserDetails(String id, Map<FeedOptionType, FeedOption>? options) {
+    final result = _api.getUserDetails(_clientHelper, id, options);
     result.items.then((pagedItems) => _updateDynamicInteractionStates(pagedItems.items));
     return result;
   }
 
-  Future<PagedItems<dynamic>> fetchUserItems(String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    final pagedItems = await _api.getUserItems(_clientHelper, id, options: options, pageToken: pageToken);
+  Future<PagedItems<dynamic>> fetchUserItems(String id, String? pageToken, Map<FeedOptionType, FeedOption>? options) async {
+    final pagedItems = await _api.getUserItems(_clientHelper, id, pageToken, options);
     _updateDynamicInteractionStates(pagedItems.items);
     return pagedItems;
   }
 
-  Future<PagedItems<dynamic>> fetchSearchResults(String query, String? communityName, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
-    final pagedItems = await _api.getSearchResults(_clientHelper, query, communityName, options: options, pageToken: pageToken);
+  Future<PagedItems<dynamic>> fetchSearchResults(String query, String? communityName, String? pageToken, Map<FeedOptionType, FeedOption>? options) async {
+    final pagedItems = await _api.getSearchResults(_clientHelper, query, communityName, pageToken, options);
     _updateDynamicInteractionStates(pagedItems.items);
     return pagedItems;
   }
 
-  Future<String> resolveGlobalToLocalPostId(String globalId) => _api.resolveGlobalToLocalPostId(_clientHelper, globalId);
+  Future<Post> resolveGlobalToLocalPost(String globalId) => _api.resolveGlobalToLocalPost(_clientHelper, globalId);
 
   Future<LoggedInUser> fetchLoggedInUser() => _api.getLoggedInUser(_clientHelper);
 
@@ -147,17 +158,17 @@ class ApiService {
       }
       return changed;
     });
-    Communities.addAllSubscribedCommunities(platform, _userId!, communities);
+    Communities.addAllSubscribedCommunities(platform, _host, _userId!, communities);
     return communities;
   }
 
-  Future<void> subscribeToCommunity(String communityName, String communityId) async {
-    Communities.addSubscribedCommunity(platform, _userId!, communityName);
+  Future<void> subscribeToCommunity(String communityId) {
+    Communities.addSubscribedCommunity(platform, _host, _userId!, communityId);
     return _api.subscribeToCommunity(_clientHelper, communityId);
   }
 
-  Future<void> unsubscribeFromCommunity(String communityName, String communityId) async {
-    Communities.removeSubscribedCommunity(platform, _userId!, communityName);
+  Future<void> unsubscribeFromCommunity(String communityId) {
+    Communities.removeSubscribedCommunity(platform, _host, _userId!, communityId);
     return _api.unsubscribeFromCommunity(_clientHelper, communityId);
   }
 
@@ -184,7 +195,7 @@ class ApiService {
         Posts.interactionStates.update(_userId, item.localId, InteractionState(score: item.score, vote: item.vote));
       }
       else if (item is Comment) {
-        Comments.interactionStates.update(_userId, item.id, InteractionState(score: item.score, vote: item.vote));
+        Comments.interactionStates.update(_userId, item.localId, InteractionState(score: item.score, vote: item.vote));
       }
     }
   }

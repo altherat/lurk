@@ -9,7 +9,6 @@ import 'package:lurk/models/comment.dart';
 import 'package:lurk/models/community.dart';
 import 'package:lurk/models/community_details.dart';
 import 'package:lurk/models/paged_items.dart';
-import 'package:lurk/models/post_details.dart';
 import 'package:lurk/models/post.dart';
 import 'package:lurk/models/user.dart';
 import 'package:lurk/services/api/api.dart';
@@ -34,6 +33,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
       commentCount
       createdDate
       deletedDate
+      text
       pm
       slug
       type
@@ -43,6 +43,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
         username
       }
       community {
+        _id
         slug
       }
       attachments {
@@ -119,9 +120,10 @@ class DiggApi extends Api<GraphQlClientHelper> {
             memberCount
             postCount
           }
-        }
 
-      '''),
+        }
+        '''
+      ),
       variables: {
         'slug': name
       },
@@ -135,10 +137,10 @@ class DiggApi extends Api<GraphQlClientHelper> {
     return CommunityDetails(
       community: Community(
         platform: Platform.digg,
-        host: Platform.digg.host!,
+        host: Platform.digg.preferredHost!,
         name: name,
+        id: data['_id'],
       ),
-      id: data['_id'],
       createdDate: DateTime.parse(data['createdDate']),
       title: data['name'],
       shortDescription: data['description'],
@@ -151,7 +153,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
   }
 
   @override
-  Future<PagedItems<Post>> getCommunityPosts(GraphQlClientHelper clientHelper, String? id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<Post>> getCommunityPosts(GraphQlClientHelper clientHelper, String? id, String? pageToken, Map<FeedOptionType, FeedOption>? options) async {
     final sort = options?[FeedOptionType.sort];
     return _getPostsRecursive(
       clientHelper,
@@ -171,14 +173,39 @@ class DiggApi extends Api<GraphQlClientHelper> {
   }
 
   @override
-  Future<PostDetails> getPostDetailsFromUrl(GraphQlClientHelper clientHelper, String url, {Map<FeedOptionType, FeedOption>? options}) {
-    final pathSegments = Uri.parse(url).pathSegments;
-    final String postId = '${pathSegments[0]}-${pathSegments[1]}';
-    return getPostDetailsFromId(clientHelper, postId, shortCommentId: pathSegments.length > 3 ? pathSegments[3] : null, options: options);
+  Future<Post> getPost(GraphQlClientHelper clientHelper, String id) async {
+    final gql.QueryOptions queryOptions = gql.QueryOptions(
+      document: gql.gql(r'''
+        query PostDetails($postWhere: PostWhere!) {
+
+          posts(first: 1, where: $postWhere) {
+            edges {
+              node {
+                ...PostFragment
+              }
+            }
+          }
+
+        }
+        '''
+        + postFragment
+      ),
+      variables: {
+        'postWhere': {
+          '_id_EQ': id,
+        }
+      }
+    );
+    final response = await clientHelper.query(queryOptions);
+    return compute(
+      (data) => _parsePost((data['posts']['edges'] as List).first['node']),
+      response.data!,
+    );
   }
 
   @override
-  Future<PostDetails> getPostDetailsFromId(GraphQlClientHelper clientHelper, String id, {String? shortCommentId, Map<FeedOptionType, FeedOption>? options}) async {
+  Future<(List<CommentItem>, Post)> getCommentsAndPost(GraphQlClientHelper clientHelper, String id, String? communityName, String? contextCommentShortId, Map<FeedOptionType, FeedOption>? options) async {
+    final postId = '$communityName-$id';
     final sort = options?[FeedOptionType.sort];
     final gql.QueryOptions queryOptions = gql.QueryOptions(
       document: gql.gql(r'''
@@ -215,6 +242,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
               endCursor
             }
           }
+
         }
         '''
         + postFragment
@@ -223,23 +251,45 @@ class DiggApi extends Api<GraphQlClientHelper> {
       variables: {
         'first': 20,
         'postWhere': {
-          '_id_EQ': id, 
+          '_id_EQ': postId, 
         },
         'commentWhere': {
-          if (shortCommentId != null)
-            '_id_EQ': '$id-$shortCommentId'
+          if (contextCommentShortId != null)
+            '_id_EQ': '$postId-$contextCommentShortId'
           else
-            'postId_EQ': id
+            'postId_EQ': postId
         },
         'sort': (sort ?? Platform.digg.postCommentsFeedOptions.options.first).id
       }
     );
     final response = await clientHelper.query(queryOptions);
-    return compute(_parsePostDetails, (response.data!, shortCommentId));
+    return compute(
+      (data) {
+        final postData = (data['posts']['edges'] as List).first['node'];
+        final commentsData = data['comments'];
+        final post = _parsePost(postData);
+        final comments = _parseComments(commentsData['edges'], post.community, postData['author']['_id'], 0);
+        final pageInfo = commentsData['pageInfo'];
+        if (pageInfo['hasNextPage']) {
+          comments.add(
+            LoadMoreComment(
+              depth: 0,
+              count: post.commentCount - comments.length,
+              pageToken: pageInfo['endCursor']
+            )
+          );
+        }
+        return (comments, post);
+      },
+      response.data!,
+    );
   }
 
   @override
-  Future<List<CommentItem>> getMoreComments(GraphQlClientHelper clientHelper, String id, String pageToken, {int? depth, Map<FeedOptionType, FeedOption>? options}) async {
+  Future<(List<CommentItem>, Post?)> getCommentsAndMaybePost(GraphQlClientHelper clientHelper, String id, String? communityName, String? contextCommentShortId, Map<FeedOptionType, FeedOption>? options) => getCommentsAndPost(clientHelper, id, communityName, contextCommentShortId, options);
+
+  @override
+  Future<List<CommentItem>> getMoreComments(GraphQlClientHelper clientHelper, String id, int? depth, String pageToken, Map<FeedOptionType, FeedOption>? options) async {
     final sort = options?[FeedOptionType.sort];
     final gql.QueryOptions queryOptions = gql.QueryOptions(
       document: gql.gql(r'''
@@ -249,6 +299,13 @@ class DiggApi extends Api<GraphQlClientHelper> {
             edges {
               node {
                 commentCount
+                author {
+                  _id
+                }
+                community {
+                  _id
+                  slug
+                }
               }
             }
           }
@@ -276,6 +333,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
               endCursor
             }
           }
+
         }
         '''
         + commentFragment
@@ -296,14 +354,26 @@ class DiggApi extends Api<GraphQlClientHelper> {
     final response = await clientHelper.query(queryOptions);
     return compute(
       (data) {
+        final Map<String, dynamic> postData = data['posts']['edges'][0]['node'];
+        final Map<String, dynamic> communityData = postData['community'];
         final List edges = data['comments']['edges'];
         final Map<String, dynamic> pageInfo = data['comments']['pageInfo'];
-        final List<CommentItem> comments = _parseComments(edges, '', depth ?? 0);
+        final List<CommentItem> comments = _parseComments(
+          edges,
+          Community(
+            platform: Platform.digg,
+            host: Platform.digg.preferredHost!,
+            name: communityData['slug'],
+            id: communityData['_id'],
+          ),
+          postData['author']['_id'],
+          depth ?? 0
+        );
         if (pageInfo['hasNextPage']) {
           comments.add(
             LoadMoreComment(
               depth: 0,
-              count: data['posts']['edges'][0]['node']['commentCount'] - comments.length,
+              count: postData['commentCount'] - comments.length,
               pageToken: pageInfo['endCursor'],
             ),
           );
@@ -315,7 +385,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
   }
 
   @override
-  MultiPartFeedResponse<dynamic, List<UserStat>> getUserDetails(GraphQlClientHelper clientHelper, String id, {Map<FeedOptionType, FeedOption>? options}) {
+  MultiPartFeedResponse<dynamic, List<UserStat>> getUserDetails(GraphQlClientHelper clientHelper, String id, Map<FeedOptionType, FeedOption>? options) {
     final UserFeedType type = options?[FeedOptionType.category]?.id ?? Platform.digg.userFeedOptions.options.first.id;
     final FeedOption? sort = options?[FeedOptionType.sort];
     switch (type) {
@@ -396,8 +466,10 @@ class DiggApi extends Api<GraphQlClientHelper> {
                   node {
                     ...CommentFragment
                     post {
+                      _id
                       title
                       community {
+                        _id
                         slug
                       }
                     }
@@ -408,6 +480,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
                   endCursor
                 }
               }
+
             }
             '''
             + commentFragment
@@ -427,14 +500,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
         
         final responseFuture = clientHelper.query(queryOptions);
         return MultiPartFeedResponse(
-          items: responseFuture.then((response) {
-            final comments = response.data!['comments'];
-            final pageInfo = comments['pageInfo'];
-            return PagedItems(
-              items: (comments['edges'] as List).map((edge) => _parseComment(edge['node'])).toList(),
-              pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
-            );
-          }),
+          items: responseFuture.then((response) => _parseCommentsResult(response.data!)),
           other: responseFuture.then((response) => _parseAllUserStats(response.data!['accounts']['edges'].first['node'])),
         );
       case _:
@@ -443,7 +509,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
   }
 
   @override
-  Future<PagedItems<dynamic>> getUserItems(GraphQlClientHelper clientHelper, String id, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<dynamic>> getUserItems(GraphQlClientHelper clientHelper, String id, String? pageToken, Map<FeedOptionType, FeedOption>? options) async {
     final UserFeedType type = options?[FeedOptionType.category]?.id ?? Platform.digg.userFeedOptions.options.first.id;
     final FeedOption? sort = options?[FeedOptionType.sort];
     switch (type) {
@@ -493,8 +559,10 @@ class DiggApi extends Api<GraphQlClientHelper> {
                   node {
                     ...CommentFragment
                     post {
+                      _id
                       title
                       community {
+                        _id
                         slug
                       }
                     }
@@ -505,6 +573,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
                   endCursor
                 }
               }
+
             }
             '''
             + commentFragment
@@ -529,7 +598,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
   }
 
   @override
-  Future<PagedItems<dynamic>> getSearchResults(GraphQlClientHelper clientHelper, String query, String? communityName, {Map<FeedOptionType, FeedOption>? options, String? pageToken}) async {
+  Future<PagedItems<dynamic>> getSearchResults(GraphQlClientHelper clientHelper, String query, String? communityName, String? pageToken, Map<FeedOptionType, FeedOption>? options) async {
     final type = options?[FeedOptionType.category]?.id ?? SearchFeedType.posts;
     final gql.QueryOptions queryOptions;
     final PagedItems<dynamic> Function(Map<String, dynamic>) parseFn;
@@ -537,6 +606,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
       queryOptions = gql.QueryOptions(
         document: gql.gql(r'''
           query CommunitiesQuery($first: Int, $where: CommunitiesWhere, $sort: CommunitiesSort, $after: String) {
+
             communities(first: $first, where: $where, sort: $sort, after: $after) {
               edges {
                 node {
@@ -552,6 +622,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
                 hasNextPage
               }
             }
+
           }
           '''
         ),
@@ -572,8 +643,9 @@ class DiggApi extends Api<GraphQlClientHelper> {
             return CommunityDetails(
               community: Community(
                 platform: Platform.digg,
-                host: Platform.digg.host!,
+                host: Platform.digg.preferredHost!,
                 name: node['slug'],
+                id: node['_id'],
               ),
               shortDescription: node['description'],
               iconUrl: iconUrl != null ? _getThumbnailUrl(Uri.parse(iconUrl)) : null,
@@ -621,6 +693,8 @@ class DiggApi extends Api<GraphQlClientHelper> {
             final Map<String, dynamic> node = edge['node'];
             final String? iconUrl = node['avatarUrl'];
             return LookedUpUser(
+              platform: Platform.digg,
+              host: Platform.digg.preferredHost!,
               id: node['_id'],
               name: node['username'],
               iconUrl: iconUrl != null ? _getThumbnailUrl(Uri.parse(iconUrl)) : iconUrl,
@@ -681,7 +755,7 @@ class DiggApi extends Api<GraphQlClientHelper> {
   }
 
   @override
-  Future<String> resolveGlobalToLocalPostId(GraphQlClientHelper clientHelper, String globalId) {
+  Future<Post> resolveGlobalToLocalPost(GraphQlClientHelper clientHelper, String globalId) {
     throw UnimplementedError();
   }
 
@@ -784,49 +858,54 @@ class DiggApi extends Api<GraphQlClientHelper> {
     final comments = data['comments'];
     final pageInfo = comments['pageInfo'];
     return PagedItems(
-      items: (comments['edges'] as List).map((edge) => _parseComment(edge['node'])).toList(),
+      items: (comments['edges'] as List).map((edge) => _parseComment(edge['node'], null, null, 0)).toList(),
       pageToken: pageInfo['hasNextPage'] ? pageInfo['endCursor'] : null,
     );
   }
 
   Post _parsePost(Map<String, dynamic> json) {
-    final String id = json['_id'];
-    final authorUsername = json['author']['username'];
-    final List attachments = json['attachments'];
+    final String fullId = json['_id'];
+    final Map<String, dynamic> communityData = json['community'];
+    final Map<String, dynamic> authorData = json['author'];
     final externalContent = json['externalContent'];
-    final communityName = json['community']['slug'];
-    final idLastDashIndex = id.lastIndexOf('-');
-    final permalink = '/${id.substring(0, idLastDashIndex)}/${id.substring(idLastDashIndex + 1)}/${json['slug']}';
-    final String url;
-    final String domain;
+    final communityName = communityData['slug'];
+    final List attachments = json['attachments'];
+    final idLastDashIndex = fullId.lastIndexOf('-');
+    final id = fullId.substring(idLastDashIndex + 1);
+    final permalink = '/${fullId.substring(0, idLastDashIndex)}/$id/${json['slug']}';
+    ContentType? contentType;
+    final String linkUrl;
+    final String linkDomain;
     final String? thumbnailUrl;
     final Size? mediaSize;
-    final List<GalleryImage> galleryImages;
+    final List<GalleryImage>? galleryImages;
     if (attachments.isNotEmpty) {
-      url = attachments.first['url'];
-      thumbnailUrl = _getThumbnailUrl(Uri.parse(url));
+      linkUrl = attachments.first['url'];
+      thumbnailUrl = _getThumbnailUrl(Uri.parse(linkUrl));
       if (attachments.length > 1) {
-        domain = 'image/gallery';
+        contentType = ContentType.imageGallery;
+        linkDomain = 'image/gallery';
         mediaSize = null;
         galleryImages = attachments.map((a) => GalleryImage(url: a['url'], size: Size((a['width'] as num).toDouble(), (a['height'] as num).toDouble()))).toList();
       }
       else {
         final attachment = attachments.first;
         final num? width = attachment['width'];
-        domain = 'image';
+        contentType = ContentType.image;
+        linkDomain = 'image';
         mediaSize = width != null ? Size(width.toDouble(), (attachment['height'] as num).toDouble()) : null;
-        galleryImages = const [];
+        galleryImages = null;
       }
     }
     else {
       mediaSize = null;
-      galleryImages = const [];
+      galleryImages = null;
       if (externalContent != null) {
-        url = externalContent['url'];
-        final host = Uri.parse(url).host;
+        linkUrl = externalContent['url'];
+        final host = Uri.parse(linkUrl).host;
         final List parts = host.split('.');
         final imageUrl = externalContent['imageUrl'];
-        domain = parts.length >= 2 ? parts.sublist(parts.length - 2).join('.') : host;
+        linkDomain = parts.length >= 2 ? parts.sublist(parts.length - 2).join('.') : host;
         if (imageUrl != null) {
           final uri = Uri.parse(imageUrl);
           thumbnailUrl = uri.host.endsWith('.imgix.net') ? _getThumbnailUrl(uri) : imageUrl;
@@ -836,35 +915,42 @@ class DiggApi extends Api<GraphQlClientHelper> {
         }
       }
       else {
-        url = '$_baseUrl$permalink';
-        domain = 'self.$communityName';
+        contentType = ContentType.local;
+        linkUrl = '$_baseUrl$permalink';
+        linkDomain = 'self.$communityName';
         thumbnailUrl = null;
       }
     }
     return Post(
       community: Community(
         platform: Platform.digg,
-        host: Platform.digg.host!,
-        name: communityName
+        host: Platform.digg.preferredHost!,
+        name: communityName,
+        id: communityData['_id'],
       ),
-      localId: id,
-      permalink: permalink,
-      title: (json['title'] as String).trim(),
-      textHtml: _parsePmToHtml(json['pm']),
+      localId: fullId,
+      localHost: Platform.digg.preferredHost!,
+      shortLocalId: id,
+      globalId: fullId,
+      localUrlPath: permalink,
+      authorId: authorData['_id'],
+      authorHost: Platform.digg.preferredHost!,
+      authorName: authorData['username'],
+      contentType: contentType,
       score: json['score'],
       timestampMs: DateTime.tryParse(json['createdDate'])?.millisecondsSinceEpoch ?? 0,
+      title: (json['title'] as String).trim(),
+      body: json['text'],
+      bodyHtml: _parsePmToHtml(json['pm']),
       commentCount: json['commentCount'],
-      author: authorUsername == '[deleted]' ? null : authorUsername,
-      authorHost: Platform.digg.host!,
-      domain: domain,
-      isSelf: json['type'] == 'TEXT',
-      isNsfw: json['nsfw'],
-      url: url,
+      linkUrl: linkUrl,
+      linkDomain: linkDomain,
       thumbnailUrl: thumbnailUrl,
-      isGallery: attachments.length > 1,
-      isDeleted: json['deletedDate'] != null,
       mediaSize: mediaSize,
       galleryImages: galleryImages,
+      isRemoved: false,
+      isStickied: false,
+      isNsfw: json['nsfw'],
       vote: null
     );
   }
@@ -881,40 +967,16 @@ class DiggApi extends Api<GraphQlClientHelper> {
     return uri.replace(queryParameters: params).toString();
   }
 
-  PostDetails _parsePostDetails((Map<String, dynamic>, String?) args) {
-    final (data, contextCommentId) = args;
-    final postData = (data['posts']['edges'] as List).first['node'];
-    final commentsData = data['comments'];
-    final post = _parsePost(postData);
-    final comments = _parseComments(commentsData['edges'], postData['author']['_id']);
-    final pageInfo = commentsData['pageInfo'];
-    if (pageInfo['hasNextPage']) {
-      comments.add(
-        LoadMoreComment(
-          depth: 0,
-          count: post.commentCount - comments.length,
-          pageToken: pageInfo['endCursor']
-        )
-      );
-    }
-    return PostDetails(
-      post: post,
-      comments: comments,
-      contextCommentShortId: contextCommentId
-    );
-  }
-
-  List<CommentItem> _parseComments(List<dynamic> children, String postAuthorId, [int depth = 0]) {
+  List<CommentItem> _parseComments(List<dynamic> children, Community? community, String postAuthorId, int depth) {
     final List<CommentItem> comments = [];
-
     for (int i = 0; i < children.length; i++) {
       final item = children[i];
       final Map<String, dynamic> data = (item is Map && item.containsKey('node')) ? item['node'] : item as Map<String, dynamic>;
-      comments.add(_parseComment((item is Map && item.containsKey('node')) ? item['node'] : item as Map<String, dynamic>, depth, postAuthorId));
+      comments.add(_parseComment((item is Map && item.containsKey('node')) ? item['node'] : item as Map<String, dynamic>, community, postAuthorId, depth));
       if (depth < 4) {
         final List? replyComments = data['comments'];
         if (replyComments != null && replyComments.isNotEmpty) {
-          comments.addAll(_parseComments(replyComments, postAuthorId, depth + 1));
+          comments.addAll(_parseComments(replyComments, community, postAuthorId, depth + 1));
         }
       }
       else {
@@ -924,34 +986,46 @@ class DiggApi extends Api<GraphQlClientHelper> {
           if (remainingItems.isNotEmpty) {
             final int itemsToTake = replyCount > remainingItems.length ? remainingItems.length : replyCount;
             final childrenToIndent = remainingItems.sublist(0, itemsToTake);
-            comments.addAll(_parseComments(childrenToIndent, postAuthorId, depth + 1));
+            comments.addAll(_parseComments(childrenToIndent, community, postAuthorId, depth + 1));
             i += itemsToTake;
           }
         }
       }
-
     }
-
     return comments; 
   }
 
-  Comment _parseComment(Map<String, dynamic> data, [int depth = 0, String? postAuthorId]) {
+  Comment _parseComment(Map<String, dynamic> data, Community? community, String? postAuthorId, int depth) {
+    final Community finalCommunity;
+    final String? postTitle;
+    if (community != null) {
+      finalCommunity = community;
+      postTitle = null;
+    }
+    else {
+      final postData = data['post'];
+      finalCommunity = Community(
+        platform: Platform.digg,
+        host: Platform.digg.preferredHost!,
+        name: postData['community']['slug'],
+        id: postData['community']['_id'],
+      );  
+      postTitle = postData['title'];
+    }
     final String id = data['_id'];
     final text = data['text'];
     final author = data['author'];
-    final postData = data['post'];
     final pm = data['pm'];
     final List attachments = data['attachments'];
 
     final idLastDashIndex = id.lastIndexOf('-');
     final idSecondLastDash = id.lastIndexOf('-', idLastDashIndex - 1);
     final commentId = id.substring(idLastDashIndex + 1);
+    final postId = id.substring(idSecondLastDash + 1, idLastDashIndex);
 
     final String? authorId;
     final String? authorName;
     final bool isSubmitter;
-    final String? postTitle;
-    final String? communityName;
     if (author != null) {
       authorId = author['_id'];
       authorName = author['username'];
@@ -963,14 +1037,23 @@ class DiggApi extends Api<GraphQlClientHelper> {
       isSubmitter = false;
     }
 
-    if (postData != null) {
-      postTitle = postData?['title'];
-      communityName = postData['community']['slug'];
-    }
-    else {
-      postTitle = null;
-      communityName = null;
-    }
+    // final String? postTitle;
+    // final String? communityId;
+    // final String? communityHost;
+    // final String? communityName;
+    // if (postData != null) {
+    //   final communityData = postData['community'];
+    //   postTitle = postData['title'];
+    //   communityId = communityData['_id'];
+    //   communityHost = Platform.digg.host!;
+    //   communityName = communityData['slug'];
+    // }
+    // else {
+    //   postTitle = null;
+    //   communityId = null;
+    //   communityHost = null;
+    //   communityName = null;
+    // }
 
     final Map<String, Size> images = {};
     final String html = ((pm != null ? _parsePmToHtml(pm) : text) ?? '') + attachments.map((a) {
@@ -985,30 +1068,26 @@ class DiggApi extends Api<GraphQlClientHelper> {
       return '';
     }).join();
 
-
     return Comment(
       depth: depth,
-      community: Community(
-        platform: Platform.digg,
-        host: Platform.digg.host!,
-        name: communityName
-      ),
-      id: id,
-      shortId: commentId,
-      permalink: '/${id.substring(0, idSecondLastDash)}/${id.substring(idSecondLastDash + 1, idLastDashIndex)}/comment/$commentId',
-      isDeleted: data['deletedDate'] != null,
+      community: finalCommunity,
+      localId: id,
+      shortLocalId: commentId,
+      urlPath: '/${id.substring(0, idSecondLastDash)}/$postId/comment/$commentId',
       authorId: null,
       authorName: authorName,
-      authorHost: Platform.digg.host!,
+      authorHost: Platform.digg.preferredHost!,
+      isDeleted: data['deletedDate'] != null,
       isModerator: false,
       isSubmitter: isSubmitter,
       score: data['score'],
       timestampMs: DateTime.parse(data['createdDate']).millisecondsSinceEpoch,
       text: text,
       textHtml: html.isEmpty ? null : html,
-      images: images,
+      imageSizes: images,
+      vote: null,
       postTitle: postTitle,
-      vote: null
+      postId: postId,
     );
   }
 
