@@ -1,6 +1,6 @@
 # Lurk
 
-A Reddit and Digg app for Android created with Flutter. Heavily inspired by the discontinued app Reddit is Fun (RIF).
+A Reddit, Digg, and Lemmy app for Android created with Flutter. Heavily inspired by the discontinued app Reddit is Fun (RIF).
 
 ## Disclaimer
 Reddit has made efforts to phase-out third party apps and Digg very recently relaunched so I wouldn't be surprised if things break or requests get blocked.
@@ -8,7 +8,7 @@ Reddit has made efforts to phase-out third party apps and Digg very recently rel
 I created this mainly out of boredom and have focused most on functionality that I personally used in RIF. Only tested on a Pixel 10 Pro.
 
 ## Versions
-There's 3 versions/APKs included with each release - a standalone Reddit app, a standalone Digg app, and one that combines both.
+There are 4 versions/APKs included with each release - a standalone Reddit app, a standalone Digg app, a standalone Lemmy app, and one that combines all three.
 
 ## Screenshots
 
